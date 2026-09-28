@@ -1,0 +1,296 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/SupportingViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Welcome footnote",
+        "key": "Works with Nextcloud Social, Mastodon, and anything else that speaks the Mastodon API.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "App name",
+        "key": "Aloha Social",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 24
+        }
+      },
+      {
+        "comment": "Welcome subtitle",
+        "key": "Text, photos, video and shorts from across the fediverse — in one app.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "Welcome action",
+        "key": "Add your account",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "App name",
+        "key": "Aloha Social",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "Sidebar search field",
+        "key": "Search",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 121
+        }
+      },
+      {
+        "comment": "Sidebar search field",
+        "key": "Clear search",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "Sidebar search field",
+        "key": "Search",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "Direct messages",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "Discover",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "My Feed",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Photos",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Videos",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 396
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Shorts",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 397
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "News",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 398
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Audio",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 399
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your lists",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 188
+        }
+      },
+      {
+        "comment": "",
+        "key": "My interests",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subscriptions",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "Albums",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "Sidebar section",
+        "key": "Explore",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "Accessibility label for the account drawer toggle",
+        "key": "%@, account menu",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "Accessibility state",
+        "key": "Expanded",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 317
+        }
+      },
+      {
+        "comment": "Accessibility state",
+        "key": "Collapsed",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "Account switcher action",
+        "key": "Add account…",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "Account switcher action",
+        "key": "Add account",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "",
+        "key": "My profile",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "Activities",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "Follow requests",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "",
+        "key": "Liked posts",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bookmarks",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "",
+        "key": "Archived posts",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 244
+        }
+      },
+      {
+        "comment": "",
+        "key": "Statistics",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 245
+        }
+      },
+      {
+        "comment": "",
+        "key": "Blocking",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 247
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "Account switcher action",
+        "key": "Switch to %@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 259
+        }
+      }
+    ]
+  },
+  "version": 1
+}

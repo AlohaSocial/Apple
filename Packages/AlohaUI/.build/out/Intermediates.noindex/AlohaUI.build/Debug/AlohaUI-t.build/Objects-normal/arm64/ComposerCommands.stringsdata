@@ -1,0 +1,32 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/ComposerCommands.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Coin flip result",
+        "key": "heads",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "Coin flip result",
+        "key": "tails",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "Pick command result: the choice, then the options it was made from",
+        "key": "%@ (out of %@)",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 124
+        }
+      }
+    ]
+  },
+  "version": 1
+}

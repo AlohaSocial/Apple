@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/FollowRequestsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Follow requests",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "Empty follow requests",
+        "key": "No follow requests",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Empty follow requests detail",
+        "key": "When your account is locked, people asking to follow you wait here.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "Accessibility label for an avatar button",
+        "key": "Profile of %@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "Follow request action",
+        "key": "Accept",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Follow request action",
+        "key": "Decline",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 72
+        }
+      }
+    ]
+  },
+  "version": 1
+}

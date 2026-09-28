@@ -1,0 +1,240 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/PortfolioView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Portfolio",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "Portfolio section",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "Portfolio section",
+        "key": "Preview",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "Portfolio section picker",
+        "key": "Section",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "Portfolio switch",
+        "key": "Publish my portfolio",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "Portfolio action",
+        "key": "Share the address",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "Portfolio publish explanation",
+        "key": "A draft is private. Once published, anybody with the address can see the page without signing in.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "Portfolio intro placeholder",
+        "key": "A sentence about the work",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "Portfolio section",
+        "key": "Title and introduction",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "Portfolio layout",
+        "key": "A grid of squares",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "Portfolio layout",
+        "key": "One at a time, at its own shape",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "Portfolio field",
+        "key": "Layout",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "Portfolio section",
+        "key": "Layout",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "Portfolio no collections",
+        "key": "You have no albums yet.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "Portfolio source",
+        "key": "My most recent public photos",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "Portfolio source",
+        "key": "One of my albums",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "Portfolio field",
+        "key": "Pictures",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "Portfolio collection placeholder",
+        "key": "Choose an album",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "Portfolio field",
+        "key": "Album",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "Portfolio section",
+        "key": "Pictures",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "Portfolio switch",
+        "key": "Show captions",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "Portfolio switch",
+        "key": "Show where each picture was taken",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "Portfolio switch",
+        "key": "Show the year",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "Portfolio switch",
+        "key": "Show my picture at the top",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "Portfolio section",
+        "key": "On the page",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "Portfolio action",
+        "key": "Save",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "Portfolio empty preview",
+        "key": "Nothing on it yet",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 225
+        }
+      },
+      {
+        "comment": "Portfolio empty preview detail",
+        "key": "Once you have public photos, or an album is chosen, they show here the way visitors will see them.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "Portfolio empty page",
+        "key": "Nothing on it yet",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 337
+        }
+      }
+    ]
+  },
+  "version": 1
+}

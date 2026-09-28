@@ -1,0 +1,40 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/PlaceView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Empty place",
+        "key": "Nothing from here yet",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "Place empty detail",
+        "key": "Public posts tagged with this place appear here.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Place description",
+        "key": "Public posts made here.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "Place fallback title",
+        "key": "Place",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 107
+        }
+      }
+    ]
+  },
+  "version": 1
+}

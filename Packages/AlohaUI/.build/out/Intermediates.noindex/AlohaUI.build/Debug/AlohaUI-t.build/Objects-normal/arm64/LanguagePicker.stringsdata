@@ -1,0 +1,24 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/LanguagePicker.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Language picker option",
+        "key": "Not set",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "Composer picker",
+        "key": "Language",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 34
+        }
+      }
+    ]
+  },
+  "version": 1
+}

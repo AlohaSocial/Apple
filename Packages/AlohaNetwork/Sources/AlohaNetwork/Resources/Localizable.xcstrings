@@ -1,0 +1,33 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Cancelled." : {
+      "comment" : "Request cancelled"
+    },
+    "Couldn't reach your server." : {
+      "comment" : "Network failure"
+    },
+    "That isn't there any more." : {
+      "comment" : "HTTP 404"
+    },
+    "Your server had a problem (%lld)." : {
+      "comment" : "HTTP 5xx, with the status code"
+    },
+    "Your server is asking for a moment." : {
+      "comment" : "HTTP 429"
+    },
+    "Your server sent an unreadable reply." : {
+      "comment" : "Malformed response"
+    },
+    "Your server sent something unexpected." : {
+      "comment" : "Decoding failure"
+    },
+    "Your server wouldn't allow that." : {
+      "comment" : "HTTP 403"
+    },
+    "Your sign-in has expired." : {
+      "comment" : "Error when a token is revoked"
+    }
+  },
+  "version" : "1.0"
+}

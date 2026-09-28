@@ -1,0 +1,368 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Discovery/ExploreView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Discover",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "People",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "Packs",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "Pictures",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "Videos",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "Tags",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "Discover section picker",
+        "key": "Section",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "Discover search prompt",
+        "key": "Any name or handle, on any server",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "Discover search field",
+        "key": "Search people",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "Discover search field",
+        "key": "Clear search",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "Discover search footer naming the directories asked",
+        "key": "Also asks %@.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "Discover section option",
+        "key": "Draw it as a constellation",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "Follow graph row detail",
+        "key": "^[%lld person](inflect: true) you follow follow them",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "Followed by people you follow",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "Suggestion action",
+        "key": "Not interested",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "Suggestion source",
+        "key": "Colleague on your Nextcloud",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 419
+        }
+      },
+      {
+        "comment": "Suggestion source",
+        "key": "Featured by your server",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 422
+        }
+      },
+      {
+        "comment": "Suggestion source",
+        "key": "Widely followed",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 425
+        }
+      },
+      {
+        "comment": "Suggestion source",
+        "key": "You've interacted before",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 428
+        }
+      },
+      {
+        "comment": "Suggestion source",
+        "key": "Like people you recently followed",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 431
+        }
+      },
+      {
+        "comment": "Explore section",
+        "key": "People to follow",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "Popular here",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "Directory order",
+        "key": "Recently active",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 317
+        }
+      },
+      {
+        "comment": "Directory order",
+        "key": "Newest here",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "Directory order picker",
+        "key": "Order",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "The directory",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 331
+        }
+      },
+      {
+        "comment": "Directory explanation",
+        "key": "Everybody on this server who asked to be listed. Nobody appears here without opting in.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 334
+        }
+      },
+      {
+        "comment": "Empty Discover people",
+        "key": "Nobody to suggest yet",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "Empty Discover people detail",
+        "key": "Follow a few people and the server will find more like them.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "Discover search section",
+        "key": "Found",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 369
+        }
+      },
+      {
+        "comment": "Discover search section",
+        "key": "On other servers",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 379
+        }
+      },
+      {
+        "comment": "Discover search footer naming the servers that answered",
+        "key": "From %@.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 384
+        }
+      },
+      {
+        "comment": "Explore section",
+        "key": "Trending hashtags",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 445
+        }
+      },
+      {
+        "comment": "Trend period picker",
+        "key": "Trend period",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 462
+        }
+      },
+      {
+        "comment": "Trend period",
+        "key": "Hour",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 452
+        }
+      },
+      {
+        "comment": "Trend period",
+        "key": "Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 453
+        }
+      },
+      {
+        "comment": "Trend period",
+        "key": "3 days",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 454
+        }
+      },
+      {
+        "comment": "Trend period",
+        "key": "10 days",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 455
+        }
+      },
+      {
+        "comment": "Trend period picker",
+        "key": "Period",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 457
+        }
+      },
+      {
+        "comment": "Discover section",
+        "key": "On other servers",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 472
+        }
+      },
+      {
+        "comment": "Explore section",
+        "key": "Trending links",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 483
+        }
+      },
+      {
+        "comment": "Empty Explore",
+        "key": "Nothing trending",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 490
+        }
+      },
+      {
+        "comment": "Empty Explore detail",
+        "key": "Your server hasn't seen enough activity to rank anything yet.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 493
+        }
+      },
+      {
+        "comment": "Hashtag follow button",
+        "key": "Unfollow #%@",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 675
+        }
+      },
+      {
+        "comment": "Hashtag follow button",
+        "key": "Follow #%@",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 676
+        }
+      }
+    ]
+  },
+  "version": 1
+}

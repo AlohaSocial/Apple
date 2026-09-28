@@ -1,0 +1,368 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/FiltersView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Filtered words",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "Empty filters",
+        "key": "Nothing filtered yet.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "Filter action",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "Filters action",
+        "key": "New filter",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "Filters section",
+        "key": "Filters",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "Filters explanation",
+        "key": "A filter matches the words you give it. Warn folds the post away behind its title; hide takes it out of the timeline altogether.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "Filter with no title",
+        "key": "Untitled",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "Filter action name",
+        "key": "Hide",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "Filter action name",
+        "key": "Blur",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "Filter action name",
+        "key": "Warn",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "Filter expiry badge",
+        "key": "Expired",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "Filter expiry badge",
+        "key": "Until %@",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "Filter context",
+        "key": "Home",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "Filter context",
+        "key": "Notifications",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 193
+        }
+      },
+      {
+        "comment": "Filter context",
+        "key": "Public timelines",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "Filter context",
+        "key": "Conversations",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "Filter context",
+        "key": "Profiles",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 196
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "Never",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 299
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "30 minutes",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "1 hour",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 301
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "6 hours",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "1 day",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "1 week",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "Filter expiry",
+        "key": "Until %@",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 307
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "New filter",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 459
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Edit filter",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 460
+        }
+      },
+      {
+        "comment": "Filter title prompt",
+        "key": "What this filter is for",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "Filter field",
+        "key": "Title",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 363
+        }
+      },
+      {
+        "comment": "Filter title explanation",
+        "key": "The title is what you see where a post was folded away, so make it something you will recognise.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "Filter keyword prompt",
+        "key": "Word or phrase",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "Filter field",
+        "key": "Word",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 378
+        }
+      },
+      {
+        "comment": "Filter keyword option",
+        "key": "Whole word only",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "Filter keyword action",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "Filter action",
+        "key": "Add a word",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 407
+        }
+      },
+      {
+        "comment": "Filter section",
+        "key": "Words",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 413
+        }
+      },
+      {
+        "comment": "Filter whole word explanation",
+        "key": "Whole word only stops “art” matching “start”. Leave it off for a phrase.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 416
+        }
+      },
+      {
+        "comment": "Filter section",
+        "key": "Where it applies",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 427
+        }
+      },
+      {
+        "comment": "Filter context validation",
+        "key": "Pick at least one.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 430
+        }
+      },
+      {
+        "comment": "Filter action choice",
+        "key": "Fold it away",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 437
+        }
+      },
+      {
+        "comment": "Filter action choice",
+        "key": "Hide it completely",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 438
+        }
+      },
+      {
+        "comment": "Filter field",
+        "key": "When it matches",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 441
+        }
+      },
+      {
+        "comment": "Filter field",
+        "key": "Expires after",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 449
+        }
+      },
+      {
+        "comment": "Filter action explanation",
+        "key": "A hidden post leaves no trace in the timeline — you will not know it was there. A folded one shows its title and opens when you ask.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 453
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 470
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Save",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 480
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,45 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld people" : {
+      "comment" : "Alt text fragment"
+    },
+    "A picture" : {
+      "comment" : "Alt text fallback"
+    },
+    "Make friendlier" : {
+      "comment" : "Rewrite action"
+    },
+    "Make more concise" : {
+      "comment" : "Rewrite action"
+    },
+    "Make more formal" : {
+      "comment" : "Rewrite action"
+    },
+    "One person" : {
+      "comment" : "Alt text fragment"
+    },
+    "Proofread" : {
+      "comment" : "Rewrite action"
+    },
+    "Rephrase" : {
+      "comment" : "Rewrite action"
+    },
+    "Shorten" : {
+      "comment" : "Rewrite action"
+    },
+    "Text reads: %@." : {
+      "comment" : "Alt text fragment for text in image"
+    },
+    "The on-device model is still downloading." : {
+      "comment" : "Intelligence unavailable reason"
+    },
+    "Turn on Apple Intelligence in Settings to use these." : {
+      "comment" : "Intelligence unavailable reason"
+    },
+    "with %@" : {
+      "comment" : "Alt text fragment"
+    }
+  },
+  "version" : "1.0"
+}

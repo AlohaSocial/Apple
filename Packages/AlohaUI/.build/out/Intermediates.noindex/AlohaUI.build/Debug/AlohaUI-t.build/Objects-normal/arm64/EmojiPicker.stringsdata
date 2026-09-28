@@ -1,0 +1,48 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/EmojiPicker.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Emoji search prompt",
+        "key": "Search emoji",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Custom emoji",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "Emoji picker empty",
+        "key": "No custom emoji",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "Emoji picker empty detail",
+        "key": "This server hasn't published any.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 97
+        }
+      }
+    ]
+  },
+  "version": 1
+}

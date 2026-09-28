@@ -1,0 +1,16 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Media/RemoteImage.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Accessibility label for undescribed media",
+        "key": "Image without a description",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 73
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,104 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/VideoTrimView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Video trim title",
+        "key": "Trim video",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "Video ceiling notice",
+        "key": "Videos on your server have to be under %@.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "Video quality",
+        "key": "Original",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "Video quality",
+        "key": "1080p",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "Video quality",
+        "key": "720p",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "Video quality picker",
+        "key": "Quality",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "Video export failure",
+        "key": "That video couldn't be prepared.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "Video trim action",
+        "key": "Use",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "Trimmed length",
+        "key": "^[%lld second](inflect: true)",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "Trim slider label",
+        "key": "Start",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "Trim slider label",
+        "key": "End",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 142
+        }
+      }
+    ]
+  },
+  "version": 1
+}

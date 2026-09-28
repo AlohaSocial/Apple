@@ -1,0 +1,41 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "alohamodels",
+          "kind" : "fileSystem",
+          "location" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels",
+          "name" : "AlohaModels"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels"
+        },
+        "subpath" : "alohamodels"
+      },
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "alohanetwork",
+          "kind" : "fileSystem",
+          "location" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork",
+          "name" : "AlohaNetwork"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork"
+        },
+        "subpath" : "alohanetwork"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/ShellPresentations.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Delete confirmation title",
+        "key": "Delete this post?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "Delete confirmation action",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "Delete confirmation action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "Delete confirmation detail",
+        "key": "This can't be undone.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "Moderation confirmation action",
+        "key": "Confirm",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "Moderation confirmation action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 162
+        }
+      }
+    ]
+  },
+  "version": 1
+}

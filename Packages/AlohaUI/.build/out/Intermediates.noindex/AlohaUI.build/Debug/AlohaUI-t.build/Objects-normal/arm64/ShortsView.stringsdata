@@ -1,0 +1,160 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Media/ShortsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Shorts feed",
+        "key": "Following",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "Shorts feed",
+        "key": "For You",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Unmute",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Mute",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "Toolbar button",
+        "key": "Search",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "Accessibility label for a short",
+        "key": "%@: %@",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 309
+        }
+      },
+      {
+        "comment": "Accessibility hint",
+        "key": "Expands the caption",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 345
+        }
+      },
+      {
+        "comment": "Shorts sound line",
+        "key": "Original audio · %@",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 352
+        }
+      },
+      {
+        "comment": "Accessibility label for an avatar button",
+        "key": "Profile of %@",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 387
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Favourite",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 393
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Reply",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 398
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Boost",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 404
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Bookmark",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 410
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "Share",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "Shorts action",
+        "key": "More actions",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 429
+        }
+      },
+      {
+        "comment": "Empty Shorts mode",
+        "key": "No shorts yet",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 461
+        }
+      },
+      {
+        "comment": "Shorts empty state on the following feed",
+        "key": "Nobody you follow has posted a short. Try For You.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "Shorts empty state on a server without only_video",
+        "key": "This server can't filter by media type, so this may take a moment to fill.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 472
+        }
+      },
+      {
+        "comment": "Shorts cover",
+        "key": "Sensitive content",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 531
+        }
+      }
+    ]
+  },
+  "version": 1
+}

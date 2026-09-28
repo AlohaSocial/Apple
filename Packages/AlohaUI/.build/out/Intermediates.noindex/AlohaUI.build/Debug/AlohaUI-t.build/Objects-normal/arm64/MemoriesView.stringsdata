@@ -1,0 +1,128 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/MemoriesView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Looking back",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "Memories setting",
+        "key": "Weekly recap",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "Memories section",
+        "key": "This week",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "Weekly recap explanation",
+        "key": "Once a week, a line at the top of your feed says how much you posted against the week before. Counted on your server, shown to you alone.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "Empty on this day",
+        "key": "Nothing from this day in earlier years.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "Memories section",
+        "key": "On this day",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "Memory row",
+        "key": "%@. %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "Memory age",
+        "key": "^[%lld year](inflect: true) ago",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "Memory with media only",
+        "key": "^[%lld attachment](inflect: true)",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "Weekly recap headline",
+        "key": "Nothing posted this week yet.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "Weekly recap headline",
+        "key": "^[%lld post](inflect: true) this week.",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "Weekly recap comparison",
+        "key": "Last week was quiet too.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "Weekly recap comparison",
+        "key": "Up from ^[%lld post](inflect: true) last week.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "Weekly recap comparison",
+        "key": "Down from ^[%lld post](inflect: true) last week.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "Weekly recap comparison",
+        "key": "The same as last week.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 206
+        }
+      }
+    ]
+  },
+  "version": 1
+}

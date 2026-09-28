@@ -1,0 +1,120 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/SmallViews.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Drafts",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "Draft with no text",
+        "key": "Empty draft",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "Queued draft state",
+        "key": "Will post when you're online",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "Draft attachment count",
+        "key": "^[%lld attachment](inflect: true)",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "Empty drafts",
+        "key": "No drafts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "Drafts explanation",
+        "key": "A post you close without sending is saved here.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Filtered notifications",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "Notification request count",
+        "key": "^[%lld notification](inflect: true) held",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "Notification request action",
+        "key": "Show these",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "Notification request action",
+        "key": "Stop asking",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "Empty notification requests",
+        "key": "Nothing held",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "Notification requests explanation",
+        "key": "Notifications your policy holds back appear here, one row per sender.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "Profile resolution failure",
+        "key": "Couldn't find them",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "Profile resolution failure detail",
+        "key": "Your server couldn't look up @%@.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 192
+        }
+      }
+    ]
+  },
+  "version": 1
+}

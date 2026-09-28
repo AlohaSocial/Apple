@@ -1,0 +1,23 @@
+{
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Sources/AlohaModels/Nextcloud/Interests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Interests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Interests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Interests.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Interests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Interests.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Sources/AlohaModels/Nextcloud/Profile.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Profile.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Profile.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Profile.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Profile.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Profile.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Sources/AlohaModels/Nextcloud/StatusExtras.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/StatusExtras.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/StatusExtras.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/StatusExtras.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/StatusExtras.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/StatusExtras.swiftdeps"
+  }
+}

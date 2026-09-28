@@ -1,0 +1,200 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/SubscriptionsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Subscriptions",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "Subscriptions explanation",
+        "key": "Follow a feed or a YouTube channel here and its latest entries appear below, linked to where they live. Nothing is copied to your server.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "Takeout import failed",
+        "key": "That file could not be read.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 360
+        }
+      },
+      {
+        "comment": "Subscriptions add prompt",
+        "key": "Feed or channel address",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "Subscriptions add field label",
+        "key": "Feed address",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "Subscriptions add action",
+        "key": "Follow",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "Subscriptions section",
+        "key": "Follow a feed",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "Takeout import explanation",
+        "key": "In Google Takeout, export YouTube and YouTube Music with only Subscriptions selected. The archive holds a subscriptions.csv; choose it here and every channel in it is followed.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "Takeout import result",
+        "key": "^[%lld channel](inflect: true) newly followed.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "Takeout import action",
+        "key": "Choose subscriptions.csv",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "Takeout import disclosure",
+        "key": "Bring my YouTube subscriptions",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "Empty subscriptions",
+        "key": "You follow no feeds yet.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "Subscriptions section",
+        "key": "Followed feeds",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 167
+        }
+      },
+      {
+        "comment": "Subscription action",
+        "key": "Unfollow %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 223
+        }
+      },
+      {
+        "comment": "Subscription feed state",
+        "key": "Not read yet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "Subscription feed state",
+        "key": "Read fine, but it lists nothing",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "Subscription feed count",
+        "key": "^[%lld entry](inflect: true)",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "Empty subscription entries",
+        "key": "Nothing yet. Entries appear once a feed you follow has been read.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "Subscription entry hint",
+        "key": "Opens in the browser",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "Subscriptions retry action",
+        "key": "Try again",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "Subscriptions paging action",
+        "key": "Older",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 265
+        }
+      },
+      {
+        "comment": "Subscriptions section",
+        "key": "Latest entries",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "Subscriptions follow failed",
+        "key": "That could not be followed.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "Subscriptions entries failed",
+        "key": "Couldn't load entries.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 406
+        }
+      }
+    ]
+  },
+  "version": 1
+}

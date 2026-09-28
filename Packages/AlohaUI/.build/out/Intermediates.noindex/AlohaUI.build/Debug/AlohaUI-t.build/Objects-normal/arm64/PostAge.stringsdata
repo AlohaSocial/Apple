@@ -1,0 +1,24 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Timeline/PostAge.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Age of a post less than a minute old",
+        "key": "now",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "Age of a post less than a minute old",
+        "key": "now",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 30
+        }
+      }
+    ]
+  },
+  "version": 1
+}

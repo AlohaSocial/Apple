@@ -1,0 +1,40 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Timeline/TimelineSourceToggle.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Timeline source",
+        "key": "My feed",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 21
+        }
+      },
+      {
+        "comment": "Timeline source",
+        "key": "Local",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "Timeline source",
+        "key": "Global",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "Accessibility label",
+        "key": "Timeline source",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 40
+        }
+      }
+    ]
+  },
+  "version": 1
+}

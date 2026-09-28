@@ -1,0 +1,79 @@
+{
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/SubscriptionsView.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SubscriptionsView.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SubscriptionsView.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SubscriptionsView.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SubscriptionsView.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SubscriptionsView.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/TagPeopleSheet.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TagPeopleSheet.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TagPeopleSheet.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TagPeopleSheet.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TagPeopleSheet.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TagPeopleSheet.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/TaggedPostsView.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TaggedPostsView.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TaggedPostsView.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TaggedPostsView.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TaggedPostsView.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/TaggedPostsView.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Safety/ModerationAccountsView.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationAccountsView.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationAccountsView.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationAccountsView.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationAccountsView.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationAccountsView.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Safety/ModerationView.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationView.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationView.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationView.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationView.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ModerationView.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Safety/ReportView.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ReportView.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ReportView.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ReportView.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ReportView.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/ReportView.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Sync/LocalNotifier.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/LocalNotifier.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/LocalNotifier.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/LocalNotifier.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/LocalNotifier.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/LocalNotifier.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Sync/PushRegistrar.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/PushRegistrar.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/PushRegistrar.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/PushRegistrar.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/PushRegistrar.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/PushRegistrar.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Sync/StreamingConnection.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/StreamingConnection.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/StreamingConnection.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/StreamingConnection.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/StreamingConnection.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/StreamingConnection.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Sync/SyncEngine.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SyncEngine.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SyncEngine.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SyncEngine.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SyncEngine.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SyncEngine.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Timeline/SkeletonRow.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SkeletonRow.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SkeletonRow.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SkeletonRow.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SkeletonRow.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUI-t.build/Objects-normal/arm64/SkeletonRow.swiftdeps"
+  }
+}

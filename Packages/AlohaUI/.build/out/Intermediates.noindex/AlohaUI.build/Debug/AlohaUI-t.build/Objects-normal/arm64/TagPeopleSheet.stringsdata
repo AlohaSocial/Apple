@@ -1,0 +1,72 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/TagPeopleSheet.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Tag people",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Tag people field placeholder",
+        "key": "alice@cloud.example, bob",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "Tag people field",
+        "key": "People in this photo",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "Tag people section",
+        "key": "Who is in this photo?",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "Tag people explanation",
+        "key": "Handles, separated by commas — for example alice@cloud.example. Everyone named is told, and the photo appears under Tagged on their profile.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Save",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "Tag people failed",
+        "key": "Couldn't tag them.",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 144
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,248 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Timeline/StatusRow.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Timeline context line",
+        "key": "Boosted by %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "Timeline context line",
+        "key": "Pinned",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "Timeline context line",
+        "key": "Continued thread",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "Timeline context line",
+        "key": "Replying to @%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "Timeline context line",
+        "key": "Replying",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "Accessibility label for a status with a content warning",
+        "key": "%@, %@, content warning: %@",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 470
+        }
+      },
+      {
+        "comment": "Accessibility boost context",
+        "key": "Boosted by %@",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 477
+        }
+      },
+      {
+        "comment": "Accessibility label for a status",
+        "key": "%@, %@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 481
+        }
+      },
+      {
+        "comment": "Accessibility media count",
+        "key": "^[%lld attachment](inflect: true)",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 489
+        }
+      },
+      {
+        "comment": "Accessibility poll marker",
+        "key": "Poll",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 493
+        }
+      },
+      {
+        "comment": "Edited badge",
+        "key": "Edited",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 238
+        }
+      },
+      {
+        "comment": "Bot badge",
+        "key": "Automated account",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "Quote state",
+        "key": "The quoted post was withdrawn.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "Accessibility label for a place chip",
+        "key": "Place: %@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 419
+        }
+      },
+      {
+        "comment": "Status action",
+        "key": "Reply",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 342
+        }
+      },
+      {
+        "comment": "Status action",
+        "key": "Boost",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 348
+        }
+      },
+      {
+        "comment": "Status action",
+        "key": "Favourite",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 355
+        }
+      },
+      {
+        "comment": "Status action",
+        "key": "Bookmark",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "Read-only dislike count on a federated video",
+        "key": "^[%lld dislike](inflect: true) elsewhere",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 381
+        }
+      },
+      {
+        "comment": "Status action",
+        "key": "More actions",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 397
+        }
+      },
+      {
+        "comment": "Status badge",
+        "key": "Archived",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 424
+        }
+      },
+      {
+        "comment": "Row hidden by a keyword filter",
+        "key": "Filtered: %@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 446
+        }
+      },
+      {
+        "comment": "Reveal a filtered post",
+        "key": "Show anyway",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 453
+        }
+      },
+      {
+        "comment": "Accessibility action",
+        "key": "Reply",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 503
+        }
+      },
+      {
+        "comment": "Accessibility action",
+        "key": "Boost",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 508
+        }
+      },
+      {
+        "comment": "Accessibility action",
+        "key": "Favourite",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 513
+        }
+      },
+      {
+        "comment": "Accessibility action",
+        "key": "Bookmark",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 518
+        }
+      },
+      {
+        "comment": "Accessibility action",
+        "key": "Open profile",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 523
+        }
+      },
+      {
+        "comment": "Accessibility action",
+        "key": "Report",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 528
+        }
+      },
+      {
+        "comment": "Accessibility label for a quote card",
+        "key": "Quoted post by %@",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 596
+        }
+      }
+    ]
+  },
+  "version": 1
+}

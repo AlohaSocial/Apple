@@ -1,0 +1,288 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Safety/ModerationView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Moderation",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "Moderation forbidden",
+        "key": "Not yours to moderate",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "Moderation forbidden detail",
+        "key": "Only an administrator of this Nextcloud can see reports and act on accounts.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "Moderation section",
+        "key": "Reports",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "Moderation section",
+        "key": "Accounts",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "Moderation section",
+        "key": "What may trend",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "Moderation scope explanation",
+        "key": "Everything else an administrator does to this instance — storage, retention, relays, the blocklist — stays in the Nextcloud administration page.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Reports",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "Reports filter",
+        "key": "Open",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "Reports filter",
+        "key": "Handled",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "Reports filter",
+        "key": "Show",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "Reports empty",
+        "key": "Nothing handled yet",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "Reports empty",
+        "key": "Nothing to look at",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "Reports empty detail",
+        "key": "Reports from people here and from other servers land in this queue.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "Report badge",
+        "key": "Handled",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 207
+        }
+      },
+      {
+        "comment": "Report badge",
+        "key": "Taken",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "Report badge",
+        "key": "Forwarded",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "Report badge",
+        "key": "^[%lld post](inflect: true)",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Report",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 345
+        }
+      },
+      {
+        "comment": "Report field",
+        "key": "Category",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "Report field",
+        "key": "Reported",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 295
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "Reported account",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 299
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "What the reporter said",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 306
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "Reported by",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "The posts",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 338
+        }
+      },
+      {
+        "comment": "Moderation note prompt",
+        "key": "Why, for the record",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 355
+        }
+      },
+      {
+        "comment": "Moderation field",
+        "key": "Note",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 357
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Silence this account",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 364
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Suspend this account",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 371
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Reopen",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 380
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Mark handled, no action",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 387
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Hand it back",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Take this one",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 402
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "Decide",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 408
+        }
+      },
+      {
+        "comment": "Moderation decisions explanation",
+        "key": "Silencing keeps an account's posts from anyone who does not follow it. Suspending stops them being delivered or shown at all. Either way the report is marked handled.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 411
+        }
+      }
+    ]
+  },
+  "version": 1
+}

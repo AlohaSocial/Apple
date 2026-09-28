@@ -1,0 +1,96 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/AltTextEditor.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Alt text editor title",
+        "key": "Description",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "Alt text guidance",
+        "key": "Describe what's in the image and what it's for. People using a screen reader rely on this.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "Alt text generated notice",
+        "key": "Generated — please check",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "Alt text character count",
+        "key": "%lld/%lld",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "Alt text generation rejected",
+        "key": "That description didn't come out usable.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "Alt text generation failure",
+        "key": "Couldn't read that image.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "Alt text generation unavailable",
+        "key": "Describing images isn't available on this device yet.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "Alt text generation failure",
+        "key": "Couldn't describe that image.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "Alt text generate action",
+        "key": "Describe this",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 119
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Save",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 127
+        }
+      }
+    ]
+  },
+  "version": 1
+}

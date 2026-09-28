@@ -1,0 +1,72 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaIntelligence/Sources/AlohaIntelligence/Intelligence.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Intelligence unavailable reason",
+        "key": "Turn on Apple Intelligence in Settings to use these.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "Intelligence unavailable reason",
+        "key": "The on-device model is still downloading.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "Rewrite action",
+        "key": "Proofread",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "Rewrite action",
+        "key": "Shorten",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Rewrite action",
+        "key": "Rephrase",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "Rewrite action",
+        "key": "Make friendlier",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "Rewrite action",
+        "key": "Make more formal",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "Rewrite action",
+        "key": "Make more concise",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 69
+        }
+      }
+    ]
+  },
+  "version": 1
+}

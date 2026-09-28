@@ -1,0 +1,27 @@
+{
+  "object" : {
+    "artifacts" : [
+
+    ],
+    "dependencies" : [
+      {
+        "basedOn" : null,
+        "packageRef" : {
+          "identity" : "alohamodels",
+          "kind" : "fileSystem",
+          "location" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels",
+          "name" : "AlohaModels"
+        },
+        "state" : {
+          "name" : "fileSystem",
+          "path" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels"
+        },
+        "subpath" : "alohamodels"
+      }
+    ],
+    "prebuilts" : [
+
+    ]
+  },
+  "version" : 7
+}

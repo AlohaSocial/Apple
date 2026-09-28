@@ -1,0 +1,409 @@
+{
+  "" : {
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/AlohaNetwork-primary.dia",
+    "emit-module-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/AlohaNetwork-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/AlohaNetwork-primary-emit-module.dia",
+    "pch" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/AlohaNetwork-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/AlohaNetwork-primary.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/DerivedSources/resource_bundle_accessor.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/resource_bundle_accessor~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/APIClient.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIClient~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/APIError.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/APIError~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/CapabilityDetector.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/CapabilityDetector~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoint.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoint~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Account.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Account~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+AnnualReport.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+AnnualReport~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Composer.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Composer~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Discovery.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Discovery~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Interests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Interests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Moderation.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Moderation~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Profile.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Profile~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+StatusExtras.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+StatusExtras~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints+Stories.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints+Stories~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Endpoints/Endpoints.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Endpoints~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/HTTPTransport.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/HTTPTransport~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Keychain/KeychainStore.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/KeychainStore~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Keychain/SharedStorage.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/SharedStorage~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/LinkHeader.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/LinkHeader~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Account.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Account~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Composer.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Composer~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Discovery.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Discovery~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Extensions.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Extensions~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Interests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Moderation.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Profile.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+StatusExtras.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+StatusExtras~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Stories.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Stories~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Video.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Nextcloud/NextcloudLoginFlow.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Nextcloud/NextcloudPush.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Nextcloud/WebDAV.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebDAV~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/OAuth/OAuthService.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/OAuthService~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/OAuth/PKCE.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/PKCE~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Paginated.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/Paginated~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/RateLimiter.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/RateLimiter~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/ServerProbe.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/ServerProbe~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/WebPush.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.dia",
+    "index-unit-output-path" : "/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/WebPush~partial.swiftmodule"
+  }
+}

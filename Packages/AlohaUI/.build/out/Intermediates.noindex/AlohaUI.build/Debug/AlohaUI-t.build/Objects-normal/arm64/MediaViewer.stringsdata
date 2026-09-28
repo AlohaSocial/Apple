@@ -1,0 +1,48 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Media/MediaViewer.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Media viewer action",
+        "key": "Close",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "Media viewer action",
+        "key": "Show description",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "Alt text button",
+        "key": "ALT",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "Alt text sheet title",
+        "key": "Description",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Done",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 159
+        }
+      }
+    ]
+  },
+  "version": 1
+}

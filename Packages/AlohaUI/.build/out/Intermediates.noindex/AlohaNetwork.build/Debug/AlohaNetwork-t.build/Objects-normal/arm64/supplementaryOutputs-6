@@ -1,0 +1,23 @@
+{
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Interests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Interests.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Moderation.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Moderation.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Profile.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Profile.swiftdeps"
+  }
+}

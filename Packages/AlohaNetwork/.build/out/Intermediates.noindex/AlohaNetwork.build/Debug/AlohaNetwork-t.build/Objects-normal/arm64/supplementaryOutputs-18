@@ -1,0 +1,30 @@
+{
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer+Video.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer+Video.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/MockAPIServer.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/MockAPIServer.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Nextcloud/NextcloudLoginFlow.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudLoginFlow.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/Sources/AlohaNetwork/Nextcloud/NextcloudPush.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaNetwork/.build/out/Intermediates.noindex/AlohaNetwork.build/Debug/AlohaNetwork-t.build/Objects-normal/arm64/NextcloudPush.swiftdeps"
+  }
+}

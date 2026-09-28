@@ -1,0 +1,128 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/DeleteAccountView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Delete account",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "Delete account confirmation title",
+        "key": "Delete %@?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "Delete account explanation",
+        "key": "Everything you posted here is deleted, everyone you follow is unfollowed, and every server that knew this account is told to forget it.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "Delete account explanation",
+        "key": "Your Nextcloud account is not touched. Your files, calendar and chat stay exactly as they are.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "Delete account warning",
+        "key": "It cannot be undone.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Delete account section",
+        "key": "What happens",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "Delete account handle retention",
+        "key": "The handle is held for a while so nobody else can take it the moment you let it go. A new account under a different handle can be made straight away.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "Delete account field",
+        "key": "Your handle",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "Delete account action",
+        "key": "Delete this Social account",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "Delete account section",
+        "key": "Type your handle to confirm",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "Delete account needs Nextcloud",
+        "key": "Deleting is a Nextcloud action rather than a fediverse one, so it needs your Nextcloud connection. Connect it in Settings and come back.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "Delete account unauthorised",
+        "key": "Your Nextcloud connection was refused. Reconnect it in Settings and try again.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "Delete account wrong handle",
+        "key": "That is not the handle of this account.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "Delete account action",
+        "key": "Delete for good",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "Delete account confirmation detail",
+        "key": "Your posts and follows go, and every server that knew you is told. This cannot be undone.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 122
+        }
+      }
+    ]
+  },
+  "version": 1
+}

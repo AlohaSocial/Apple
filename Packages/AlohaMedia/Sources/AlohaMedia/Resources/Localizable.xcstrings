@@ -1,0 +1,18 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Images on your server have to be under %@." : {
+      "comment" : "Upload too large"
+    },
+    "This will be converted before it's posted." : {
+      "comment" : "Upload pre-flight notice"
+    },
+    "Videos on your server have to be under %@." : {
+      "comment" : "Upload too large"
+    },
+    "Your server doesn't accept this kind of file." : {
+      "comment" : "Upload unsupported type"
+    }
+  },
+  "version" : "1.0"
+}

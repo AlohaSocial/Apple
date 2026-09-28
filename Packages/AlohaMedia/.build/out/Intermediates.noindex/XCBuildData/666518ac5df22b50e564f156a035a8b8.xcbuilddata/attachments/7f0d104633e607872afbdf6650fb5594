@@ -1,0 +1,4 @@
+module AlohaMedia {
+header "AlohaMedia-Swift.h"
+export *
+}

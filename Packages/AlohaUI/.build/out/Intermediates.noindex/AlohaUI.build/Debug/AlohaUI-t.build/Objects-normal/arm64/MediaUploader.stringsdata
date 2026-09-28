@@ -1,0 +1,48 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/MediaUploader.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Upload failure",
+        "key": "That image couldn't be converted.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Upload needs a conversion this app cannot do",
+        "key": "That file has to be %@ for your server.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "Upload failure",
+        "key": "That upload didn't finish.",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "Nextcloud attach failure",
+        "key": "That file isn't in your Nextcloud files.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "Upload failure",
+        "key": "That upload didn't finish.",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 262
+        }
+      }
+    ]
+  },
+  "version": 1
+}

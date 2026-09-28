@@ -1,0 +1,40 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/GIFPicker.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "GIF search prompt",
+        "key": "Search pictures",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "GIF picker title",
+        "key": "Pictures",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "GIF picker empty",
+        "key": "Nothing matches",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 86
+        }
+      }
+    ]
+  },
+  "version": 1
+}

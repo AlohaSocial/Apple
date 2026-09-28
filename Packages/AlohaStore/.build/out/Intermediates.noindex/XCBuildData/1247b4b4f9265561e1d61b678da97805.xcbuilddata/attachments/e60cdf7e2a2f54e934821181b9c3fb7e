@@ -1,0 +1,109 @@
+{
+  "" : {
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AlohaStore-primary.dia",
+    "emit-module-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AlohaStore-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AlohaStore-primary-emit-module.dia",
+    "pch" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AlohaStore-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AlohaStore-primary.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/DerivedSources/resource_bundle_accessor.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/resource_bundle_accessor~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Models/AccountSettings.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountSettings~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Models/AccountStore.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/AccountStore~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Models/Records.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Records~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Models/Repositories.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/Repositories~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Models/StoreContainer.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/StoreContainer~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Sync/PollScheduler.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/PollScheduler~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Timeline/TimelineMerge.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineMerge~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/Sources/AlohaStore/Timeline/TimelineStore.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.dia",
+    "index-unit-output-path" : "/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaStore.build/Debug/AlohaStore-t.build/Objects-normal/arm64/TimelineStore~partial.swiftmodule"
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Discovery/ConversationThreadView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Conversation with nobody else",
+        "key": "You",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "Conversation header label",
+        "key": "Private conversation with %@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "Conversation header subtitle",
+        "key": "Private conversation",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "Conversation intro",
+        "key": "Only the people in this conversation can see what you write here.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "Conversation day separator",
+        "key": "Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "Conversation day separator",
+        "key": "Yesterday",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "Conversation own message sender",
+        "key": "You",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "Accessibility media count",
+        "key": "^[%lld attachment](inflect: true)",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "Status action",
+        "key": "Reply",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 289
+        }
+      },
+      {
+        "comment": "Conversation bubble action",
+        "key": "Open post",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "Conversation composer action",
+        "key": "Attach",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 358
+        }
+      },
+      {
+        "comment": "Conversation field prompt",
+        "key": "Write a message…",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "Conversation field label",
+        "key": "Message",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 374
+        }
+      },
+      {
+        "comment": "Conversation composer action",
+        "key": "Send",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 387
+        }
+      }
+    ]
+  },
+  "version": 1
+}

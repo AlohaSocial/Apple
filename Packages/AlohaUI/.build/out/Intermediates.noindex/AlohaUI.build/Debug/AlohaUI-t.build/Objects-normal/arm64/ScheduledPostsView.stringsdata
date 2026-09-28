@@ -1,0 +1,80 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/ScheduledPostsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Scheduled",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "Scheduled post attachment count",
+        "key": "^[%lld attachment](inflect: true)",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "Empty scheduled posts",
+        "key": "Nothing scheduled",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "Scheduled posts explanation",
+        "key": "Posts you schedule from the composer wait here until they go out.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "Schedule picker title",
+        "key": "Schedule",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "Schedule picker label",
+        "key": "Send at",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "Schedule action",
+        "key": "Post immediately instead",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "Schedule action",
+        "key": "Schedule",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 159
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,11 @@
+Target dependency graph (4 targets)
+Target 'AllExcludingTests' in project 'Aggregate'
+➜ Explicit dependency on target 'AlohaDesign-product' in project 'AlohaDesign'
+➜ Explicit dependency on target 'AlohaDesign' in project 'AlohaDesign'
+➜ Explicit dependency on target 'AlohaDesign_AlohaDesign' in project 'AlohaDesign'
+Target 'AlohaDesign-product' in project 'AlohaDesign'
+➜ Explicit dependency on target 'AlohaDesign' in project 'AlohaDesign'
+➜ Explicit dependency on target 'AlohaDesign_AlohaDesign' in project 'AlohaDesign'
+Target 'AlohaDesign' in project 'AlohaDesign'
+➜ Explicit dependency on target 'AlohaDesign_AlohaDesign' in project 'AlohaDesign'
+Target 'AlohaDesign_AlohaDesign' in project 'AlohaDesign' (no dependencies)

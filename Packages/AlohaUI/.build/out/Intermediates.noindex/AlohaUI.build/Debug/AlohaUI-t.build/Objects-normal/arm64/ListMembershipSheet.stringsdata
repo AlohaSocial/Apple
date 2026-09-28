@@ -1,0 +1,80 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/ListMembershipSheet.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Add to list",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "Empty lists in membership sheet",
+        "key": "You have no lists yet. Make one to put %@ on it.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "New list placeholder",
+        "key": "List name",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "New list label",
+        "key": "List name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 86
+        }
+      },
+      {
+        "comment": "New list action",
+        "key": "Add",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 92
+        }
+      },
+      {
+        "comment": "Lists action",
+        "key": "New list",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "List membership section",
+        "key": "Lists",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "List membership explanation",
+        "key": "A list shows only its members' posts. Somebody can be on a list without being followed on a server that allows it; on most, follow them first.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Done",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 139
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,434 @@
+// SPDX-License-Identifier: MIT
+
+import AlohaDesign
+import AlohaModels
+import AlohaNetwork
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// Feeds outside the fediverse — RSS, Atom, YouTube channels — that the server
+/// reads for you. Every entry links back to where it came from; nothing is
+/// copied, which is why this is a list of links and not a timeline of posts.
+public struct SubscriptionsView: View {
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.openURL) private var openURL
+
+    private let session: AccountSession
+
+    @State private var feeds: [SubscriptionFeed] = []
+    @State private var entries: [SubscriptionEntry] = []
+    @State private var newURL = ""
+    @State private var isFollowing = false
+    @State private var isLoadingEntries = false
+    @State private var mayHaveMore = true
+    @State private var isImporting = false
+    @State private var importedCount: Int?
+    @State private var errorMessage: String?
+    @State private var entriesError: String?
+
+    private static let pageSize = 40
+
+    public init(session: AccountSession) {
+        self.session = session
+    }
+
+    public var body: some View {
+        List {
+            Section {
+                Text(
+                    "Follow a feed or a YouTube channel here and its latest entries appear below, linked to where they live. Nothing is copied to your server.",
+                    comment: "Subscriptions explanation"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+                .listRowBackground(palette.background)
+                .listRowSeparator(.hidden)
+            }
+
+            addSection
+            takeoutSection
+            feedsSection
+            entriesSection
+        }
+        .navigationTitle(Text("Subscriptions", comment: "Screen title"))
+        .refreshable {
+            await loadFeeds()
+            await loadEntries(reset: true)
+        }
+        .task {
+            await loadFeeds()
+            await loadEntries(reset: true)
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.commaSeparatedText, .plainText, .data]
+        ) { result in
+            guard case .success(let url) = result else { return }
+            Task { await importTakeout(from: url) }
+        }
+    }
+
+    // MARK: - Sections
+
+    private var addSection: some View {
+        Section {
+            HStack(spacing: AlohaMetrics.space2) {
+                TextField(
+                    String(
+                        localized: "Feed or channel address", comment: "Subscriptions add prompt"),
+                    text: $newURL
+                )
+                .textFieldStyle(.plain)
+                #if os(iOS)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+                .onSubmit { Task { await follow() } }
+                .accessibilityLabel(Text("Feed address", comment: "Subscriptions add field label"))
+
+                Button {
+                    Task { await follow() }
+                } label: {
+                    if isFollowing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Follow", comment: "Subscriptions add action")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(!canFollow || isFollowing)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(palette.destructive)
+            }
+        } header: {
+            Text("Follow a feed", comment: "Subscriptions section")
+        }
+    }
+
+    private var takeoutSection: some View {
+        Section {
+            DisclosureGroup {
+                Text(
+                    "In Google Takeout, export YouTube and YouTube Music with only Subscriptions selected. The archive holds a subscriptions.csv; choose it here and every channel in it is followed.",
+                    comment: "Takeout import explanation"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+
+                Button {
+                    isImporting = true
+                } label: {
+                    Label {
+                        Text("Choose subscriptions.csv", comment: "Takeout import action")
+                    } icon: {
+                        Image(systemName: "doc.badge.arrow.up")
+                    }
+                }
+
+                if let importedCount {
+                    Text(
+                        "^[\(importedCount) channel](inflect: true) newly followed.",
+                        comment: "Takeout import result"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
+            } label: {
+                Label {
+                    Text("Bring my YouTube subscriptions", comment: "Takeout import disclosure")
+                } icon: {
+                    Image(systemName: "play.rectangle")
+                }
+            }
+        }
+    }
+
+    private var feedsSection: some View {
+        Section {
+            ForEach(feeds) { feed in
+                feedRow(feed)
+            }
+            .onDelete { offsets in
+                Task { await unfollow(at: offsets) }
+            }
+
+            if feeds.isEmpty {
+                Text("You follow no feeds yet.", comment: "Empty subscriptions")
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+            }
+        } header: {
+            Text("Followed feeds", comment: "Subscriptions section")
+        }
+    }
+
+    private func feedRow(_ feed: SubscriptionFeed) -> some View {
+        HStack(alignment: .top, spacing: AlohaMetrics.space3) {
+            Image(systemName: "dot.radiowaves.up.forward")
+                .foregroundStyle(palette.accent)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                if let site = feed.siteURL ?? feed.url {
+                    Link(destination: site) {
+                        Text(feed.displayTitle)
+                            .font(AlohaType.name)
+                            .foregroundStyle(palette.label)
+                    }
+                } else {
+                    Text(feed.displayTitle).font(AlohaType.name)
+                }
+
+                if let error = feed.error {
+                    Text(error)
+                        .font(AlohaType.meta)
+                        .foregroundStyle(palette.destructive)
+                } else if feed.lastReadAt == nil {
+                    Text("Not read yet", comment: "Subscription feed state")
+                        .font(AlohaType.meta)
+                        .foregroundStyle(palette.tertiaryLabel)
+                } else if feed.entryCount == 0 {
+                    Text("Read fine, but it lists nothing", comment: "Subscription feed state")
+                        .font(AlohaType.meta)
+                        .foregroundStyle(palette.tertiaryLabel)
+                } else {
+                    Text(
+                        "^[\(feed.entryCount) entry](inflect: true)",
+                        comment: "Subscription feed count"
+                    )
+                    .font(AlohaType.meta)
+                    .foregroundStyle(palette.tertiaryLabel)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                Task { await unfollow(feed) }
+            } label: {
+                Image(systemName: "minus.circle")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(palette.secondaryLabel)
+            .accessibilityLabel(
+                Text("Unfollow \(feed.displayTitle)", comment: "Subscription action"))
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var entriesSection: some View {
+        Section {
+            ForEach(entries) { entry in
+                entryRow(entry)
+            }
+
+            if let entriesError {
+                VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                    Text(entriesError)
+                        .font(.footnote)
+                        .foregroundStyle(palette.destructive)
+                    Button {
+                        Task { await loadEntries(reset: entries.isEmpty) }
+                    } label: {
+                        Text("Try again", comment: "Subscriptions retry action")
+                    }
+                    .controlSize(.small)
+                }
+            } else if entries.isEmpty && !isLoadingEntries {
+                Text(
+                    "Nothing yet. Entries appear once a feed you follow has been read.",
+                    comment: "Empty subscription entries"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+            }
+
+            if isLoadingEntries {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else if mayHaveMore && !entries.isEmpty {
+                Button {
+                    Task { await loadEntries(reset: false) }
+                } label: {
+                    Text("Older", comment: "Subscriptions paging action")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        } header: {
+            Text("Latest entries", comment: "Subscriptions section")
+        }
+    }
+
+    private func entryRow(_ entry: SubscriptionEntry) -> some View {
+        Button {
+            if let url = entry.url { openURL(url) }
+        } label: {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                Text(entry.title.isEmpty ? (entry.url?.absoluteString ?? "") : entry.title)
+                    .font(AlohaType.name)
+                    .foregroundStyle(palette.label)
+                    .multilineTextAlignment(.leading)
+
+                HStack(spacing: AlohaMetrics.space1) {
+                    if let feedTitle = entry.feedTitle, !feedTitle.isEmpty {
+                        Text(feedTitle)
+                    }
+                    if let date = entry.publishedAt {
+                        if entry.feedTitle?.isEmpty == false { Text(verbatim: "·") }
+                        Text(PostAge.short(date))
+                    }
+                }
+                .font(AlohaType.meta)
+                .foregroundStyle(palette.tertiaryLabel)
+
+                if let summary = entry.summary?.trimmingCharacters(in: .whitespacesAndNewlines),
+                    !summary.isEmpty
+                {
+                    Text(summary)
+                        .font(.footnote)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(entry.url == nil)
+        .accessibilityHint(Text("Opens in the browser", comment: "Subscription entry hint"))
+    }
+
+    // MARK: - Actions
+
+    private var canFollow: Bool {
+        let trimmed = newURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.contains(".") && !trimmed.contains(" ")
+    }
+
+    private func follow() async {
+        let address = newURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canFollow, !isFollowing else { return }
+        isFollowing = true
+        defer { isFollowing = false }
+        do {
+            _ = try await session.client.send(Endpoint.subscriptions.follow(url: address))
+            newURL = ""
+            errorMessage = nil
+            await loadFeeds()
+            await loadEntries(reset: true)
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That could not be followed.", comment: "Subscriptions follow failed"
+                )
+        }
+    }
+
+    private func unfollow(at offsets: IndexSet) async {
+        let targets = offsets.map { feeds[$0] }
+        feeds.remove(atOffsets: offsets)
+        for feed in targets {
+            _ = try? await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+        }
+    }
+
+    private func unfollow(_ feed: SubscriptionFeed) async {
+        feeds.removeAll { $0.id == feed.id }
+        _ = try? await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+    }
+
+    private func importTakeout(from url: URL) async {
+        let didAccess = url.startAccessingSecurityScopedResource()
+        defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else {
+            errorMessage = String(
+                localized: "That file could not be read.", comment: "Takeout import failed")
+            return
+        }
+        do {
+            let result = try await session.client.decode(
+                TakeoutResult.self,
+                from: Endpoint.subscriptions.importTakeout(
+                    csv: data, filename: url.lastPathComponent))
+            importedCount = result.subscribed
+            errorMessage = nil
+            await loadFeeds()
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+        }
+    }
+
+    private func loadFeeds() async {
+        if let page = try? await session.client.decode(
+            FeedsPage.self, from: Endpoint.subscriptions.feeds)
+        {
+            feeds = page.feeds
+        }
+    }
+
+    private func loadEntries(reset: Bool) async {
+        isLoadingEntries = true
+        defer { isLoadingEntries = false }
+        do {
+            let maxID = reset ? nil : entries.last?.id
+            let page = try await session.client.decode(
+                EntriesPage.self,
+                from: Endpoint.subscriptions.timeline(limit: Self.pageSize, maxID: maxID))
+            if reset {
+                entries = page.items
+            } else {
+                let known = Set(entries.map(\.id))
+                entries += page.items.filter { !known.contains($0.id) }
+            }
+            mayHaveMore = page.items.count >= Self.pageSize
+            entriesError = nil
+        } catch {
+            await session.handle(error)
+            entriesError =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Couldn't load entries.", comment: "Subscriptions entries failed")
+        }
+    }
+
+    // The three envelope shapes the routes answer with.
+    private struct FeedsPage: Decodable {
+        var feeds: [SubscriptionFeed]
+        init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            feeds =
+                (try? c.decode(LossyArray<SubscriptionFeed>.self, forKey: .feeds))?.elements ?? []
+        }
+        enum CodingKeys: String, CodingKey { case feeds }
+    }
+
+    private struct EntriesPage: Decodable {
+        var items: [SubscriptionEntry]
+        init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            items =
+                (try? c.decode(LossyArray<SubscriptionEntry>.self, forKey: .items))?.elements ?? []
+        }
+        enum CodingKeys: String, CodingKey { case items }
+    }
+
+    private struct TakeoutResult: Decodable {
+        @LenientInt var subscribed: Int
+    }
+}

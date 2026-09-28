@@ -1,0 +1,4 @@
+module AlohaIntelligence {
+header "AlohaIntelligence-Swift.h"
+export *
+}

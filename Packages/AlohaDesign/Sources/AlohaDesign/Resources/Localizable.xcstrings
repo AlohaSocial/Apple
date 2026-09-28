@@ -1,0 +1,45 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Aloha" : {
+      "comment" : "App icon name"
+    },
+    "Black" : {
+      "comment" : "Theme name"
+    },
+    "Dim" : {
+      "comment" : "Theme name"
+    },
+    "Forest" : {
+      "comment" : "App icon name"
+    },
+    "Grape" : {
+      "comment" : "App icon name"
+    },
+    "High Contrast Dark" : {
+      "comment" : "Theme name"
+    },
+    "High Contrast Light" : {
+      "comment" : "Theme name"
+    },
+    "Ocean" : {
+      "comment" : "App icon name"
+    },
+    "Rose" : {
+      "comment" : "App icon name"
+    },
+    "Slate" : {
+      "comment" : "App icon name"
+    },
+    "System" : {
+      "comment" : "Theme name"
+    },
+    "Warm Dark" : {
+      "comment" : "Theme name"
+    },
+    "Warm Light" : {
+      "comment" : "Theme name"
+    }
+  },
+  "version" : "1.0"
+}

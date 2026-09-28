@@ -1,0 +1,296 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Safety/ModerationAccountsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Accounts",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "Moderation account search prompt",
+        "key": "Username",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "Moderation origin filter",
+        "key": "Everyone",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "Moderation origin filter",
+        "key": "Here",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "Moderation origin filter",
+        "key": "Elsewhere",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "Moderation filter",
+        "key": "From",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "Moderation standing filter",
+        "key": "Any standing",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "Moderation standing filter",
+        "key": "Active",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "Moderation standing filter",
+        "key": "Silenced",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "Moderation standing filter",
+        "key": "Suspended",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "Moderation filter",
+        "key": "Standing",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "Moderation accounts empty",
+        "key": "Nobody matches that.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "Account standing",
+        "key": "Silenced",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "Account standing",
+        "key": "Suspended",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "Account standing",
+        "key": "Marked sensitive",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Open profile",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "Moderation note prompt",
+        "key": "Why, for the record",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "Moderation field",
+        "key": "Note",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Lift the silence",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Silence",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Lift the suspension",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Suspend",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "Moderation action",
+        "key": "Stop forcing warnings on their media",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "Moderation section",
+        "key": "Decide",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 254
+        }
+      },
+      {
+        "comment": "Moderation decisions explanation",
+        "key": "Silencing keeps their posts from anyone who does not follow them. Suspending stops them being delivered or shown at all.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 257
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Close",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "What may trend",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "Trends filter",
+        "key": "Hashtags",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 332
+        }
+      },
+      {
+        "comment": "Trends filter",
+        "key": "Posts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "Trends filter",
+        "key": "Links",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 334
+        }
+      },
+      {
+        "comment": "Trends filter",
+        "key": "Show",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 336
+        }
+      },
+      {
+        "comment": "Trends empty",
+        "key": "Nothing is trending here yet.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 365
+        }
+      },
+      {
+        "comment": "Trends moderation explanation",
+        "key": "Everything nobody has objected to trends already, so approving only records that you have looked. Rejecting is what keeps something out of Explore.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 371
+        }
+      },
+      {
+        "comment": "Trend decision badge",
+        "key": "Decided",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 414
+        }
+      },
+      {
+        "comment": "Trend decision",
+        "key": "Looked at it",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 422
+        }
+      },
+      {
+        "comment": "Trend decision",
+        "key": "Keep it out",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 430
+        }
+      }
+    ]
+  },
+  "version": 1
+}

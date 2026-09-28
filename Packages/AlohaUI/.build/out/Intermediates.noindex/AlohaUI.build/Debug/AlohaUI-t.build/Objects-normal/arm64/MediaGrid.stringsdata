@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Media/MediaGrid.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Accessibility",
+        "key": "Sensitive content. Double-tap to show.",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "Badge on media that carries alt text",
+        "key": "ALT",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "Accessibility label",
+        "key": "Media without a description",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "Cover over sensitive media",
+        "key": "Sensitive content",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "Cover over sensitive media, action hint",
+        "key": "Tap to show",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "hide_all policy notice",
+        "key": "Media hidden by your settings",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 170
+        }
+      }
+    ]
+  },
+  "version": 1
+}

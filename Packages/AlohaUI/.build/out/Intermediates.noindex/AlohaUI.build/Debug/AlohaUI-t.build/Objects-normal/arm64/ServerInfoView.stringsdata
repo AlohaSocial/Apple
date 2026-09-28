@@ -1,0 +1,128 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/ServerInfoView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "About this server",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "Spoken form of the server's hostname",
+        "key": "Server: %@",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "Server info field",
+        "key": "Server",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "Server info field",
+        "key": "Servers it has heard of",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "Chart axis",
+        "key": "Week",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "Chart axis",
+        "key": "Posts",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "Server info section",
+        "key": "Posts a week",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "Server info activity explanation",
+        "key": "Sign-ins and new accounts are not counted: an account here is a Nextcloud user, so there is no registration for the server to count.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Server info section",
+        "key": "Rules",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "Server info section",
+        "key": "Servers it refuses",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "Server info blocks explanation",
+        "key": "Published by the administrators of this server. A server that publishes none shows nothing here, which is not the same as refusing none.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "Server info peer filter",
+        "key": "Filter",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "Server info peers truncated",
+        "key": "^[%lld more](inflect: true). Filter to narrow the list.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "Server info peer filter",
+        "key": "Filter",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 131
+        }
+      },
+      {
+        "comment": "Server info section",
+        "key": "Who it federates with",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 151
+        }
+      }
+    ]
+  },
+  "version": 1
+}

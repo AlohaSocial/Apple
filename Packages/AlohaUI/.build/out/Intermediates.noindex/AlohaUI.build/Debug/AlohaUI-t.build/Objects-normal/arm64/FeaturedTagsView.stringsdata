@@ -1,0 +1,96 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/FeaturedTagsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Featured hashtags",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "Featured tags empty state",
+        "key": "Featured hashtags appear at the top of your profile, so people see what you post about before they scroll.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "Featured tag use count",
+        "key": "^[%lld post](inflect: true)",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "Featured tag action",
+        "key": "Stop featuring #%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "Featured tags section",
+        "key": "Featured",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "Featured tags limit",
+        "key": "Up to %lld.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "Featured tag validation",
+        "key": "That isn't a hashtag.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "Featured tag field placeholder",
+        "key": "hashtag",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "Featured tag action",
+        "key": "Feature this hashtag",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "Featured tags section",
+        "key": "Add one",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "Featured tags section",
+        "key": "Hashtags you post with",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 140
+        }
+      }
+    ]
+  },
+  "version": 1
+}

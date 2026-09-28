@@ -1,0 +1,16 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/ThreadView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Thread screen title",
+        "key": "Post",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 63
+        }
+      }
+    ]
+  },
+  "version": 1
+}

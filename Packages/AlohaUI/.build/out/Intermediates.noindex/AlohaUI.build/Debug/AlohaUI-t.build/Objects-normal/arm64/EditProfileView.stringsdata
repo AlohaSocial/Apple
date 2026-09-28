@@ -1,0 +1,296 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/EditProfileView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Edit profile",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Profile editing note for a managed account",
+        "key": "Your server manages your name and picture. Change them in your Nextcloud settings.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "Profile editing action",
+        "key": "Save",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "Profile editing field",
+        "key": "Picture",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 131
+        }
+      },
+      {
+        "comment": "Profile editing action",
+        "key": "Choose…",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "Profile editing action",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "Profile editing field",
+        "key": "Banner",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "Profile editing action",
+        "key": "Choose…",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 176
+        }
+      },
+      {
+        "comment": "Profile editing action",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "Profile editing section",
+        "key": "Pictures",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "Profile editing field",
+        "key": "Display name",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "Profile editing field",
+        "key": "Bio",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "Profile editing section",
+        "key": "About you",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "Profile field name placeholder",
+        "key": "Label",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "Profile field value placeholder",
+        "key": "Content",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "Profile editing action",
+        "key": "Add a field",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "Profile editing section",
+        "key": "Fields",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 238
+        }
+      },
+      {
+        "comment": "Profile fields explanation",
+        "key": "Up to four. A link back to this profile from a site you list gets a verified mark.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "Profile editing switch",
+        "key": "Approve who follows you",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "Profile editing switch",
+        "key": "Suggest this account to others",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "Profile editing switch",
+        "key": "Let search find your public posts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "Profile editing switch",
+        "key": "This is an automated account",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "Profile editing section",
+        "key": "Who finds you",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "Profile editing field placeholder",
+        "key": "Language, e.g. en",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 282
+        }
+      },
+      {
+        "comment": "Visibility",
+        "key": "Public",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "Visibility",
+        "key": "Unlisted",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "Visibility",
+        "key": "Followers only",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "Visibility",
+        "key": "Direct",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "Profile editing field",
+        "key": "Who sees new posts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 273
+        }
+      },
+      {
+        "comment": "Profile editing switch",
+        "key": "Mark my media sensitive by default",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "Sensitive media policy",
+        "key": "Always show",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "Sensitive media policy",
+        "key": "Blur until tapped",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "Sensitive media policy",
+        "key": "Don't show at all",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 307
+        }
+      },
+      {
+        "comment": "Profile editing field",
+        "key": "Media marked sensitive",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "Profile editing section",
+        "key": "Posting defaults",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 314
+        }
+      },
+      {
+        "comment": "Posting defaults explanation",
+        "key": "These are what a new post starts with. Every post can still be changed as you write it.",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 317
+        }
+      }
+    ]
+  },
+  "version": 1
+}

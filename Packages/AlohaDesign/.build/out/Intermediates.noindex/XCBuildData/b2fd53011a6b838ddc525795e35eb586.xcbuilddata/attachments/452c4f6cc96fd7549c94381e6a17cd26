@@ -1,0 +1,89 @@
+{
+  "" : {
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/AlohaDesign-primary.dia",
+    "emit-module-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/AlohaDesign-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/AlohaDesign-primary-emit-module.dia",
+    "pch" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/AlohaDesign-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/AlohaDesign-primary.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/DerivedSources/GeneratedStringSymbols_Localizable.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/GeneratedStringSymbols_Localizable~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/DerivedSources/resource_bundle_accessor.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/resource_bundle_accessor~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/Sources/AlohaDesign/Accent.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Accent~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/Sources/AlohaDesign/ProminentButton.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ProminentButton~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/Sources/AlohaDesign/ServerAccent.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/ServerAccent~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/Sources/AlohaDesign/Symbols.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Symbols~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/Sources/AlohaDesign/Theme.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Theme~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/Sources/AlohaDesign/Typography.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.dia",
+    "index-unit-output-path" : "/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaDesign/.build/out/Intermediates.noindex/AlohaDesign.build/Debug/AlohaDesign-t.build/Objects-normal/arm64/Typography~partial.swiftmodule"
+  }
+}

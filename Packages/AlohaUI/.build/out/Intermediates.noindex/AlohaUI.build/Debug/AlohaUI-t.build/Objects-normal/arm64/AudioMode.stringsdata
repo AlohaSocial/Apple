@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Media/AudioMode.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Empty Audio mode",
+        "key": "No audio yet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "Empty Audio detail",
+        "key": "Posts with audio attachments will show up here.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "Audio action",
+        "key": "Pause",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "Audio action",
+        "key": "Play",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 217
+        }
+      },
+      {
+        "comment": "Audio with no text",
+        "key": "Untitled audio",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "Audio action",
+        "key": "Stop",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 258
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,80 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Discovery/FollowConstellationView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Constellation accessibility label",
+        "key": "^[%lld person](inflect: true) the people you follow also follow",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 93
+        }
+      },
+      {
+        "comment": "Constellation star accessibility label",
+        "key": "%@, followed by ^[%lld person](inflect: true) you follow",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "Constellation centre",
+        "key": "You",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "Constellation action",
+        "key": "Centre again",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "Constellation star detail",
+        "key": "^[%lld person](inflect: true) you follow follows them.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "Constellation star section",
+        "key": "Through",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 193
+        }
+      },
+      {
+        "comment": "Follow button state",
+        "key": "Following",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 202
+        }
+      },
+      {
+        "comment": "Follow button action",
+        "key": "Follow",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "Constellation action",
+        "key": "Open profile",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 213
+        }
+      }
+    ]
+  },
+  "version": 1
+}

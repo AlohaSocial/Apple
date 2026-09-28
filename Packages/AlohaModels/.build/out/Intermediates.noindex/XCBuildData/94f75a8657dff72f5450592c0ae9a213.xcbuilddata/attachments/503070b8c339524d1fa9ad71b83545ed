@@ -1,0 +1,49 @@
+{
+  "" : {
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AlohaModelsTests-primary.dia",
+    "emit-module-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AlohaModelsTests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AlohaModelsTests-primary-emit-module.dia",
+    "pch" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AlohaModelsTests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AlohaModelsTests-primary.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/DerivedSources/test_entry_point.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.dia",
+    "index-unit-output-path" : "/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/test_entry_point~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Tests/AlohaModelsTests/AnnualAndModerationTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.dia",
+    "index-unit-output-path" : "/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/AnnualAndModerationTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Tests/AlohaModelsTests/ClassifierTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.dia",
+    "index-unit-output-path" : "/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/ClassifierTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Tests/AlohaModelsTests/DecodingTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.dia",
+    "index-unit-output-path" : "/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModelsTests-p.build/Objects-normal/arm64/DecodingTests~partial.swiftmodule"
+  }
+}

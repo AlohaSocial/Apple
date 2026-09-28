@@ -1,0 +1,120 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Timeline/TimelineKeyboard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Next post",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Previous post",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Like the post in focus",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Boost the post in focus",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Reply to the post in focus",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Open the post in focus",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Show these shortcuts",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Write a new post",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Search",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "Keyboard shortcut",
+        "key": "Send what you are writing",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Keyboard shortcuts",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "Shortcut section",
+        "key": "In a timeline",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "Shortcut section",
+        "key": "Anywhere",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Done",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 90
+        }
+      }
+    ]
+  },
+  "version": 1
+}

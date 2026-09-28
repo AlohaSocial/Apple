@@ -1,0 +1,9 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "New Post" : {
+      "comment" : "Menu item"
+    }
+  },
+  "version" : "1.0"
+}

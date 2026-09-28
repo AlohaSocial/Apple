@@ -1,0 +1,4 @@
+module AlohaDesign {
+header "AlohaDesign-Swift.h"
+export *
+}

@@ -1,0 +1,264 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Safety/ReportView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Report screen title",
+        "key": "Report",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "Report action",
+        "key": "Send",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Report category",
+        "key": "Spam",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "Report category",
+        "key": "Breaks a server rule",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "Report category",
+        "key": "Illegal content",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "Report category",
+        "key": "Something else",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Report field",
+        "key": "Reason",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 85
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "Why are you reporting this?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "Which rule?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "Report placeholder",
+        "key": "Anything the moderators should know",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "Report field",
+        "key": "Comment",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "Report option",
+        "key": "Also send to their server",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "Report forwarding explanation",
+        "key": "%@ moderates this account. Sending it there too usually gets more done.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "Report option",
+        "key": "Block this account",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "Report option",
+        "key": "Mute this account",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "Report section",
+        "key": "While you're here",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "Report confirmation detail",
+        "key": "It's gone to this server's moderators and to %@.",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "Report confirmation detail",
+        "key": "It's gone to this server's moderators.",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 175
+        }
+      },
+      {
+        "comment": "Report confirmation",
+        "key": "Report sent",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Done",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Blocking",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "Safety action",
+        "key": "Unblock",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "Empty safety list",
+        "key": "None",
+        "location": {
+          "startingColumn": 14,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "Safety section",
+        "key": "Blocked accounts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "Safety action",
+        "key": "Unmute",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 266
+        }
+      },
+      {
+        "comment": "Safety section",
+        "key": "Muted accounts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 273
+        }
+      },
+      {
+        "comment": "Safety action",
+        "key": "Unblock",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "Safety field",
+        "key": "Domain",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 294
+        }
+      },
+      {
+        "comment": "Safety action",
+        "key": "Block",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "Safety section",
+        "key": "Blocked servers",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "Domain block explanation",
+        "key": "Blocking a server hides everyone on it and removes your follows there.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 311
+        }
+      }
+    ]
+  },
+  "version": 1
+}

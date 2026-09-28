@@ -1,0 +1,23 @@
+{
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Sources/AlohaModels/Entities/Poll.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Poll.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Poll.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Poll.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Poll.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Poll.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Sources/AlohaModels/Entities/Relationship.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Relationship.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Relationship.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Relationship.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Relationship.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Relationship.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaModels/Sources/AlohaModels/Entities/Status.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Status.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Status.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Status.dia",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Status.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaStore/.build/out/Intermediates.noindex/AlohaModels.build/Debug/AlohaModels-t.build/Objects-normal/arm64/Status.swiftdeps"
+  }
+}

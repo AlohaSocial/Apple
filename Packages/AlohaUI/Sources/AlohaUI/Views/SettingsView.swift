@@ -1,0 +1,635 @@
+// SPDX-License-Identifier: MIT
+
+import AlohaDesign
+import AlohaIntelligence
+import AlohaMedia
+import AlohaModels
+import SwiftUI
+
+public struct SettingsView: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.alohaPalette) private var palette
+
+    /// Eight sections in one scroll is a lot to read through for one switch.
+    @State private var settingsQuery = ""
+
+    /// Section titles and the words somebody might actually type looking for
+    /// them — "dark" should find Appearance, not nothing.
+    private static let searchTerms: [(title: String, keywords: String)] = [
+        ("Accounts", "account accounts add sign switch remove"),
+        (
+            "Your account",
+            "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
+        ),
+        ("Appearance", "appearance theme density serif icon dark light text"),
+        ("Nextcloud", "nextcloud files push notification server connect"),
+        ("Media", "media autoplay video sensitive blur mute loop data"),
+        ("Posting", "posting compose composer visibility language alt draft"),
+        ("Intelligence", "intelligence ai writing rewrite summary on-device apple"),
+        ("Storage", "storage cache cached media clear disk"),
+        (
+            "Content",
+            "content filter filters language translate translation mute block drafts held review waiting moderator memories recap looking back on this day"
+        ),
+        ("Sound & touch", "sound touch haptics vibrate vibration audio chime tick senses silent"),
+        ("Moderation", "moderation moderator reports admin administrator suspend silence trends"),
+        (
+            "About",
+            "about licence license version source code developer contact server peers activity federation keyboard shortcuts year wrapped"
+        ),
+    ]
+
+    private func shows(_ title: String, _ keywords: String) -> Bool {
+        guard !settingsQuery.isEmpty else { return true }
+        let needle = settingsQuery.lowercased()
+        return title.lowercased().contains(needle) || keywords.contains(needle)
+    }
+
+    private var hasAnyMatch: Bool {
+        Self.searchTerms.contains { shows($0.title, $0.keywords) }
+    }
+
+    private let onAddAccount: () -> Void
+    @State private var cacheSize = 0
+    @State private var isShowingNextcloudConnect = false
+    @State private var isShowingShortcuts = false
+
+    public init(onAddAccount: @escaping () -> Void) {
+        self.onAddAccount = onAddAccount
+    }
+
+    public var body: some View {
+        @Bindable var environment = environment
+
+        Form {
+            if shows("Accounts", "account accounts add sign switch remove") {
+                Section {
+                    ForEach(environment.sessions) { session in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(session.snapshot.bestDisplayName).font(.body)
+                                Text(session.snapshot.qualifiedHandle)
+                                    .font(.caption)
+                                    .foregroundStyle(palette.secondaryLabel)
+                            }
+                            Spacer()
+                            if session.needsReauthentication {
+                                Text("Sign in again", comment: "Account state")
+                                    .font(.caption)
+                                    .foregroundStyle(palette.destructive)
+                            }
+                            if session.id == environment.activeSession?.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(palette.accent)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { environment.setActiveAccount(session.id) }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(accountLabel(session))
+                        .accessibilityAddTraits(
+                            session.id == environment.activeSession?.id
+                                ? [.isButton, .isSelected] : .isButton
+                        )
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                Task { await environment.removeAccount(session.id) }
+                            } label: {
+                                Text("Remove", comment: "Account action")
+                            }
+                        }
+                    }
+
+                    Button(action: onAddAccount) {
+                        Text("Add account…", comment: "Settings action")
+                    }
+                } header: {
+                    Text("Accounts", comment: "Settings section")
+                }
+            }
+
+            if shows(
+                "Appearance",
+                "appearance theme density serif icon dark light text")
+            {
+                Section {
+                    Picker(selection: $environment.theme) {
+                        ForEach(AlohaTheme.allCases) { theme in
+                            Text(theme.displayName).tag(theme)
+                        }
+                    } label: {
+                        Text("Theme", comment: "Settings item")
+                    }
+
+                    Picker(selection: $environment.metrics.density) {
+                        Text("Compact", comment: "Density").tag(AlohaMetrics.Density.compact)
+                        Text("Comfortable", comment: "Density").tag(
+                            AlohaMetrics.Density.comfortable)
+                        Text("Spacious", comment: "Density").tag(AlohaMetrics.Density.spacious)
+                    } label: {
+                        Text("Density", comment: "Settings item")
+                    }
+
+                    Toggle(isOn: $environment.metrics.useSerifBody) {
+                        Text("Serif body text", comment: "Settings item")
+                    }
+
+                    #if os(iOS)
+                        AppIconPicker()
+                    #endif
+                } header: {
+                    Text("Appearance", comment: "Settings section")
+                } footer: {
+                    if environment.serverAccent != nil {
+                        Text(
+                            "The accent colour comes from your Nextcloud, so the app looks like the server it is signed in to.",
+                            comment: "Where the accent colour comes from")
+                    }
+                }
+            }
+
+            if let session = environment.activeSession {
+                if shows(
+                    "Your account",
+                    "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
+                ) {
+                    yourAccountSection(session)
+                }
+                if shows("Nextcloud", "nextcloud files push notification server connect") {
+                    nextcloudSection(session)
+                }
+                if shows("Media", "media autoplay video sensitive blur mute loop data") {
+                    mediaSection(session)
+                }
+                if shows("Posting", "posting compose composer visibility language alt draft") {
+                    composerSection(session)
+                }
+            }
+
+            if shows("Intelligence", "intelligence ai writing rewrite summary on-device apple") {
+                intelligenceSection
+            }
+
+            if !settingsQuery.isEmpty && !hasAnyMatch {
+                ContentUnavailableView.search(text: settingsQuery)
+            }
+
+            if shows("Storage", "storage cache cached media clear disk") {
+                Section {
+                    LabeledContent {
+                        Text(cacheSize.formatted(.byteCount(style: .file)))
+                    } label: {
+                        Text("Cached media", comment: "Settings item")
+                    }
+
+                    Button(role: .destructive) {
+                        Task {
+                            await ImageLoader.shared.clear()
+                            cacheSize = await ImageLoader.shared.currentDiskSize()
+                        }
+                    } label: {
+                        Text("Clear cache", comment: "Settings action")
+                    }
+                } header: {
+                    Text("Storage", comment: "Settings section")
+                }
+            }
+
+            if shows(
+                "Content",
+                "content filter filters language translate translation mute block drafts held review waiting moderator memories recap looking back on this day"
+            ) {
+                Section {
+                    NavigationLink(value: Route.filters) {
+                        Label {
+                            Text("Filters", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "line.3.horizontal.decrease")
+                        }
+                    }
+                    NavigationLink(value: Route.safety) {
+                        Label {
+                            Text("Privacy & Safety", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.block)
+                        }
+                    }
+                    NavigationLink(value: Route.notificationRequests) {
+                        Label {
+                            Text("Filtered notifications", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.notifications)
+                        }
+                    }
+                    NavigationLink(value: Route.drafts) {
+                        Label {
+                            Text("Drafts", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.compose)
+                        }
+                    }
+                    if environment.activeSession?.capabilities.isNextcloudSocial == true {
+                        // A post a moderator holds must never vanish without a
+                        // word; this is where it waits.
+                        NavigationLink(value: Route.heldPosts) {
+                            Label {
+                                Text("Waiting to be looked at", comment: "Settings item")
+                            } icon: {
+                                Image(systemName: "clock.badge.questionmark")
+                            }
+                        }
+                        NavigationLink(value: Route.memories) {
+                            Label {
+                                Text("Looking back", comment: "Settings item")
+                            } icon: {
+                                Image(systemName: "calendar.badge.clock")
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Content", comment: "Settings section")
+                }
+            }
+
+            if shows(
+                "Sound & touch",
+                "sound touch haptics vibrate vibration audio chime tick senses silent")
+            {
+                sensesSection
+            }
+
+            if let session = environment.activeSession,
+                session.capabilities.isNextcloudSocial,
+                shows(
+                    "Moderation",
+                    "moderation moderator reports admin administrator suspend silence trends")
+            {
+                moderationSection(session)
+            }
+
+            if let session = environment.activeSession {
+                Section {
+                    if session.capabilities.isNextcloudSocial {
+                        // Nextcloud Social can do this over the API, so the
+                        // reader never has to ask an administrator — which
+                        // means explaining to a colleague why.
+                        NavigationLink(value: Route.deleteAccount) {
+                            Text("Delete my Social account", comment: "Settings action")
+                                .foregroundStyle(palette.destructive)
+                        }
+                    } else {
+                        // Everywhere else the account belongs to the server and
+                        // there is no route for it.
+                        Link(destination: URL(string: "https://\(session.snapshot.instanceHost)")!)
+                        {
+                            Text("Delete my account on this server", comment: "Settings action")
+                        }
+                    }
+                } footer: {
+                    if session.capabilities.isNextcloudSocial {
+                        Text(
+                            "Your posts and follows go, every server that knew you is told, and your Nextcloud account is untouched.",
+                            comment: "Account deletion explanation")
+                    } else {
+                        Text(
+                            "Signing out removes everything from this device. Deleting the account itself happens on \(session.snapshot.instanceHost), because that is where it lives.",
+                            comment: "Account deletion explanation")
+                    }
+                }
+            }
+
+            if shows("About", "about licence license version source code developer contact") {
+                Section {
+                    LabeledContent {
+                        Text(verbatim: "1.0")
+                    } label: {
+                        Text("Version", comment: "Settings item")
+                    }
+                    Link(destination: URL(string: "https://github.com/nextcloud/AlohaSocial")!) {
+                        Text("Source code", comment: "Settings item")
+                    }
+                    Link(
+                        destination: URL(string: "https://github.com/nextcloud/AlohaSocial/issues")!
+                    ) {
+                        Text("Contact the developer", comment: "Settings item")
+                    }
+                    if environment.activeSession != nil {
+                        NavigationLink(value: Route.serverInfo) {
+                            Label {
+                                Text("About this server", comment: "Settings item")
+                            } icon: {
+                                Image(systemName: "server.rack")
+                            }
+                        }
+                    }
+                    Button {
+                        isShowingShortcuts = true
+                    } label: {
+                        Label {
+                            Text("Keyboard shortcuts", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "keyboard")
+                        }
+                    }
+                } header: {
+                    Text("About", comment: "Settings section")
+                } footer: {
+                    Text(
+                        "Aloha Social is open source under the MIT licence.",
+                        comment: "Settings footer")
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .searchable(
+            text: $settingsQuery,
+            placement: .automatic,
+            prompt: Text("Search settings", comment: "Settings search field")
+        )
+        .navigationTitle(Text("Settings", comment: "Screen title"))
+        .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
+        .sheet(isPresented: $isShowingNextcloudConnect) {
+            if let session = environment.activeSession {
+                NextcloudConnectView(session: session)
+            }
+        }
+        .task { cacheSize = await ImageLoader.shared.currentDiskSize() }
+    }
+
+    /// Everything about who you are on the server, the way Nextcloud Social's
+    /// own settings page lists it: profile first, then what hangs off it.
+    private func yourAccountSection(_ session: AccountSession) -> some View {
+        Section {
+            NavigationLink(value: Route.editProfile) {
+                Label {
+                    Text("Edit profile", comment: "Settings item")
+                } icon: {
+                    Image(systemName: AlohaSymbol.profile)
+                }
+            }
+            NavigationLink(value: Route.featuredTags) {
+                Label {
+                    Text("Featured hashtags", comment: "Settings item")
+                } icon: {
+                    Image(systemName: AlohaSymbol.hashtag)
+                }
+            }
+            if session.capabilities.isNextcloudSocial {
+                NavigationLink(value: Route.portfolio) {
+                    Label {
+                        Text("Portfolio", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "photo.on.rectangle.angled")
+                    }
+                }
+                NavigationLink(value: Route.channels) {
+                    Label {
+                        Text("Video channels", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "tv")
+                    }
+                }
+                NavigationLink(value: Route.migration) {
+                    Label {
+                        Text("Migration", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "shippingbox")
+                    }
+                }
+                NavigationLink(value: Route.authorizedApps) {
+                    Label {
+                        Text("Authorized apps", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "key")
+                    }
+                }
+                NavigationLink(value: Route.annualReport) {
+                    Label {
+                        Text("Your year", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "calendar")
+                    }
+                }
+            }
+        } header: {
+            Text("Your account", comment: "Settings section")
+        }
+    }
+
+    /// Sound and touch, per device. Nothing here goes to the server: both are
+    /// about the phone or the Mac in front of the reader.
+    private var sensesSection: some View {
+        Section {
+            HStack {
+                Toggle(
+                    isOn: Binding(
+                        get: { Senses.shared.soundsEnabled },
+                        set: { Senses.shared.soundsEnabled = $0 })
+                ) {
+                    Text("Play sounds", comment: "Settings item")
+                }
+                Button {
+                    Senses.shared.play(.like)
+                } label: {
+                    Image(systemName: AlohaSymbol.play)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(Text("Listen", comment: "Settings action"))
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { Senses.shared.hapticsEnabled },
+                    set: { Senses.shared.hapticsEnabled = $0 })
+            ) {
+                Text("Vibrate", comment: "Settings item")
+            }
+        } header: {
+            Text("Sound & touch", comment: "Settings section")
+        } footer: {
+            Text(
+                "A soft tick when you like something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting.",
+                comment: "Senses explanation")
+        }
+    }
+
+    /// The moderator's screens. Shown only where the server could serve them;
+    /// everything behind the row says plainly when it is not yours to see.
+    private func moderationSection(_ session: AccountSession) -> some View {
+        Section {
+            NavigationLink(value: Route.moderation) {
+                Label {
+                    Text("Moderation", comment: "Settings item")
+                } icon: {
+                    Image(systemName: "shield.lefthalf.filled")
+                }
+            }
+        } header: {
+            Text("Moderation", comment: "Settings section")
+        } footer: {
+            Text(
+                "Only an administrator of this Nextcloud can act on reports and accounts. Everything else about running the instance stays in its administration page.",
+                comment: "Moderation section explanation")
+        }
+    }
+
+    private func nextcloudSection(_ session: AccountSession) -> some View {
+        Section {
+            Button {
+                isShowingNextcloudConnect = true
+            } label: {
+                HStack {
+                    Label {
+                        Text("Your Nextcloud", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "cloud")
+                    }
+                    Spacer()
+                    Text(
+                        session.hasNextcloudConnection
+                            ? String(localized: "Connected", comment: "Nextcloud state")
+                            : String(localized: "Not connected", comment: "Nextcloud state")
+                    )
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if session.isPushActive {
+                Label {
+                    Text("Notifications are pushed", comment: "Push state")
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                }
+                .font(.footnote)
+                .foregroundStyle(palette.boost)
+            }
+        } header: {
+            Text("Nextcloud", comment: "Settings section")
+        } footer: {
+            Text(
+                "Connecting your Nextcloud lets you attach files already on it, and lets notifications be pushed instead of polled.",
+                comment: "Nextcloud settings explanation")
+        }
+    }
+
+    private func mediaSection(_ session: AccountSession) -> some View {
+        Section {
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.autoplayVideo },
+                    set: { value in
+                        Task { await session.updateSettings { $0.autoplayVideo = value } }
+                    })
+            ) {
+                Text("Autoplay video", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.startMuted },
+                    set: { value in Task { await session.updateSettings { $0.startMuted = value } }
+                    })
+            ) {
+                Text("Start muted", comment: "Settings item")
+            }
+
+            Picker(
+                selection: Binding(
+                    get: { session.settings.sensitiveMediaPolicy },
+                    set: { value in
+                        Task { await session.updateSettings { $0.sensitiveMediaPolicy = value } }
+                    })
+            ) {
+                Text("Always show", comment: "Sensitive media policy").tag(
+                    SensitiveMediaPolicy.showAll)
+                Text("Blur until tapped", comment: "Sensitive media policy").tag(
+                    SensitiveMediaPolicy.blur)
+                Text("Don't show at all", comment: "Sensitive media policy").tag(
+                    SensitiveMediaPolicy.hideAll)
+            } label: {
+                Text("Sensitive media", comment: "Settings item")
+            }
+        } header: {
+            Text("Media", comment: "Settings section")
+        } footer: {
+            // The cost is stated in one line rather than hidden.
+            Text("Videos play automatically, including on cellular.", comment: "Autoplay footnote")
+        }
+    }
+
+    private func composerSection(_ session: AccountSession) -> some View {
+        Section {
+            Picker(
+                selection: Binding(
+                    get: { session.settings.defaultVisibility },
+                    set: { value in
+                        Task { await session.updateSettings { $0.defaultVisibility = value } }
+                    })
+            ) {
+                Text("Public", comment: "Visibility").tag(Visibility.public)
+                Text("Unlisted", comment: "Visibility").tag(Visibility.unlisted)
+                Text("Followers only", comment: "Visibility").tag(Visibility.private)
+            } label: {
+                Text("Default visibility", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.warnAboutMissingAltText },
+                    set: { value in
+                        Task { await session.updateSettings { $0.warnAboutMissingAltText = value } }
+                    })
+            ) {
+                Text("Warn about missing descriptions", comment: "Settings item")
+            }
+        } header: {
+            Text("Posting", comment: "Settings section")
+        }
+    }
+
+    @ViewBuilder
+    private var intelligenceSection: some View {
+        let availability = environment.intelligence.availability
+        // Hidden entirely on an ineligible device; shown disabled with a reason
+        // where the model exists but is not ready (docs/10 §2).
+        if availability.shouldShowSettingsSection {
+            Section {
+                LabeledContent {
+                    Text(
+                        availability.isAvailable
+                            ? String(localized: "On this device", comment: "Intelligence state")
+                            : String(localized: "Unavailable", comment: "Intelligence state"))
+                } label: {
+                    Text("Writing help", comment: "Settings item")
+                }
+                .disabled(!availability.isAvailable)
+            } header: {
+                Text("Intelligence", comment: "Settings section")
+            } footer: {
+                if let explanation = availability.explanation {
+                    Text(explanation)
+                } else {
+                    Text(
+                        "These run entirely on this device. Nothing you write is sent to Aloha Social or anyone else.",
+                        comment: "Intelligence privacy footnote")
+                }
+            }
+        }
+    }
+}
+
+extension SettingsView {
+    /// A handle is not a sentence. Read aloud it should be words, not
+    /// punctuation — "alice at cloud.example.test".
+    fileprivate func accountLabel(_ session: AccountSession) -> Text {
+        let handle = session.snapshot.qualifiedHandle
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+            .replacingOccurrences(of: "@", with: " at ")
+        return Text(
+            "\(session.snapshot.bestDisplayName), \(handle)",
+            comment: "Accessibility label for an account row")
+    }
+}

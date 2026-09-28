@@ -1,0 +1,24 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Intelligence/Translator.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Translation attribution",
+        "key": "Translated by your server",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "Translation attribution",
+        "key": "Translated on this device",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 98
+        }
+      }
+    ]
+  },
+  "version": 1
+}

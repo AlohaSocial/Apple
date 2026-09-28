@@ -1,0 +1,144 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/AppShell.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Bookmarks",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 403
+        }
+      },
+      {
+        "comment": "Screen title",
+        "key": "Liked posts",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 408
+        }
+      },
+      {
+        "comment": "Toolbar action",
+        "key": "New post",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "Compose button",
+        "key": "New post",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 275
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "My Feed",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 523
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Photos",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 524
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Videos",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 525
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Shorts",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 526
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "News",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 527
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "Audio",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 528
+        }
+      },
+      {
+        "comment": "Timeline source",
+        "key": "Local",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 513
+        }
+      },
+      {
+        "comment": "Timeline source",
+        "key": "Global",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 514
+        }
+      },
+      {
+        "comment": "Mode title",
+        "key": "My Feed",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 515
+        }
+      },
+      {
+        "comment": "Block confirmation",
+        "key": "Block %@?",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 661
+        }
+      },
+      {
+        "comment": "Mute confirmation",
+        "key": "Mute %@?",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 663
+        }
+      },
+      {
+        "comment": "Block explanation",
+        "key": "They won't be able to follow you or see your posts, and you won't see theirs.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 672
+        }
+      },
+      {
+        "comment": "Mute explanation",
+        "key": "You won't see their posts. They won't be told.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 676
+        }
+      }
+    ]
+  },
+  "version": 1
+}

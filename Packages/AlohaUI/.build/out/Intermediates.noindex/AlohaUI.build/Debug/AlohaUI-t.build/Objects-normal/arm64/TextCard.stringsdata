@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Composer/TextCard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Card background",
+        "key": "Your colour",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "Card background",
+        "key": "Sunset",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "Card background",
+        "key": "Ocean",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "Card background",
+        "key": "Forest",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "Card background",
+        "key": "Night",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Card background",
+        "key": "Lemon",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 69
+        }
+      }
+    ]
+  },
+  "version": 1
+}

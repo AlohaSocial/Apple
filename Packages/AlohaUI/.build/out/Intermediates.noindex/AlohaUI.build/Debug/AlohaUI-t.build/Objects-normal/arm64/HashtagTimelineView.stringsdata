@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Discovery/HashtagTimelineView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Related hashtags row",
+        "key": "Related hashtags",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "Hashtag follow button",
+        "key": "Unfollow #%@",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "Hashtag follow button",
+        "key": "Follow #%@",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "Hashtag follow state",
+        "key": "Following",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "Hashtag follow action",
+        "key": "Follow",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "Related hashtags row lead-in",
+        "key": "Also",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 76
+        }
+      }
+    ]
+  },
+  "version": 1
+}

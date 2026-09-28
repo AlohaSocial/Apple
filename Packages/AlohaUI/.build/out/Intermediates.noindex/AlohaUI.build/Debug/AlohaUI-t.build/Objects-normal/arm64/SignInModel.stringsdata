@@ -1,0 +1,56 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Views/SignInModel.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Sign-in validation failure",
+        "key": "That doesn't look like a server address. Try something like cloud.example.com — it has to be https.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "Sign-in discovery failure",
+        "key": "Couldn't find a Mastodon API at that address. If this is a Nextcloud, its administrator may still need to apply the web-server rules.",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "Sign-in discovery failure",
+        "key": "That address couldn't be understood.",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 83
+        }
+      },
+      {
+        "comment": "Manual candidate explanation",
+        "key": "the address you entered",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "Manual API base failure",
+        "key": "Nothing answered at that address.",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "Sign-in authorisation failure",
+        "key": "Signing in didn't finish.",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 190
+        }
+      }
+    ]
+  },
+  "version": 1
+}

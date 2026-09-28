@@ -1,0 +1,312 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Discovery/ListsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Your lists",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "List settings button",
+        "key": "Edit %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "Exclusive list badge",
+        "key": "Kept out of Home",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "List action",
+        "key": "Edit list",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "List action",
+        "key": "Delete list",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "List action",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "List action",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "New list placeholder",
+        "key": "List name",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "New list label",
+        "key": "List name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "New list action",
+        "key": "Add",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "Lists action",
+        "key": "New list",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "Lists section",
+        "key": "Lists",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "Lists explanation",
+        "key": "A list timeline is your home timeline narrowed to its members — it never shows you something home would not.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "Empty followed hashtags",
+        "key": "None yet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 154
+        }
+      },
+      {
+        "comment": "Lists section",
+        "key": "Followed hashtags",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "Followed hashtags explanation",
+        "key": "Following a hashtag puts its public posts into your home timeline.",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "Delete list title",
+        "key": "Delete %@?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 417
+        }
+      },
+      {
+        "comment": "New list placeholder",
+        "key": "List name",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "List field",
+        "key": "Name",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "List replies policy",
+        "key": "Nobody's replies",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 282
+        }
+      },
+      {
+        "comment": "List replies policy",
+        "key": "Replies to members",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "List replies policy",
+        "key": "Replies to anyone I follow",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "List field",
+        "key": "Show replies",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 289
+        }
+      },
+      {
+        "comment": "List field",
+        "key": "Keep members out of Home",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 292
+        }
+      },
+      {
+        "comment": "Exclusive list explanation",
+        "key": "An exclusive list's members appear only here, not in your home timeline.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "List member search prompt",
+        "key": "Search people to add",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "List member search label",
+        "key": "Search",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "List member action",
+        "key": "Add %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 340
+        }
+      },
+      {
+        "comment": "List section",
+        "key": "Add people",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "Empty list members",
+        "key": "Nobody on this list yet.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 373
+        }
+      },
+      {
+        "comment": "List member action",
+        "key": "Remove",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 365
+        }
+      },
+      {
+        "comment": "List section",
+        "key": "Members",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 378
+        }
+      },
+      {
+        "comment": "List action",
+        "key": "Delete list",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Close",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 398
+        }
+      },
+      {
+        "comment": "Sheet action",
+        "key": "Save",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 408
+        }
+      },
+      {
+        "comment": "List action",
+        "key": "Delete list",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 423
+        }
+      },
+      {
+        "comment": "Delete list detail",
+        "key": "Its members are not unfollowed.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 426
+        }
+      },
+      {
+        "comment": "List add failed",
+        "key": "Couldn't add them. Follow them first.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 485
+        }
+      }
+    ]
+  },
+  "version": 1
+}

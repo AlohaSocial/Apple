@@ -1,0 +1,79 @@
+{
+  "" : {
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/AlohaUITests-primary.dia",
+    "emit-module-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/AlohaUITests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/AlohaUITests-primary-emit-module.dia",
+    "pch" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/AlohaUITests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/AlohaUITests-primary.swiftdeps"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/DerivedSources/test_entry_point.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/test_entry_point~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Tests/AlohaUITests/ComposerCommandsTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/ComposerCommandsTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Tests/AlohaUITests/FilterTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/FilterTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Tests/AlohaUITests/IsolationTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/IsolationTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Tests/AlohaUITests/PostAgeTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/PostAgeTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Tests/AlohaUITests/VideoChaptersTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/VideoChaptersTests~partial.swiftmodule"
+  },
+  "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Tests/AlohaUITests/WiringTests.swift" : {
+    "const-values" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.swiftconstvalues",
+    "dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.d",
+    "diagnostics" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.dia",
+    "index-unit-output-path" : "/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.o",
+    "llvm-bc" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.bc",
+    "object" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.o",
+    "swift-dependencies" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests.swiftdeps",
+    "swiftmodule" : "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/.build/out/Intermediates.noindex/AlohaUI.build/Debug/AlohaUITests-p.build/Objects-normal/arm64/WiringTests~partial.swiftmodule"
+  }
+}

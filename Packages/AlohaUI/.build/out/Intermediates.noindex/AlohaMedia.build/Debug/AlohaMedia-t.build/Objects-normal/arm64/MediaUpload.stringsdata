@@ -1,0 +1,40 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaMedia/Sources/AlohaMedia/MediaUpload.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Upload pre-flight notice",
+        "key": "This will be converted before it's posted.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "Upload too large",
+        "key": "Videos on your server have to be under %@.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "Upload too large",
+        "key": "Images on your server have to be under %@.",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "Upload unsupported type",
+        "key": "Your server doesn't accept this kind of file.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 77
+        }
+      }
+    ]
+  },
+  "version": 1
+}

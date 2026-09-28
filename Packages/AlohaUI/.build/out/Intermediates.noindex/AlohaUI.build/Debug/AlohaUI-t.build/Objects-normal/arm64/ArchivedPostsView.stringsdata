@@ -1,0 +1,40 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/ArchivedPostsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Archived posts",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "Archived posts action",
+        "key": "Unarchive",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "Empty archived posts",
+        "key": "Nothing archived",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Archived posts explanation",
+        "key": "Archiving takes a post off your profile without deleting it. Find it here to bring it back.",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 68
+        }
+      }
+    ]
+  },
+  "version": 1
+}

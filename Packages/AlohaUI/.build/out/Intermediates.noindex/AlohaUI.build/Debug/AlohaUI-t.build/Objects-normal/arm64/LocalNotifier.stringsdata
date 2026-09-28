@@ -1,0 +1,136 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Sync/LocalNotifier.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Notification action",
+        "key": "Reply",
+        "location": {
+          "startingColumn": 59,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "Notification action",
+        "key": "Send",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 27
+        }
+      },
+      {
+        "comment": "Notification action",
+        "key": "Favourite",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "Notification action",
+        "key": "Boost",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "Grouped notification",
+        "key": "%@ and %lld others",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ mentioned you",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ favourited your post",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ boosted your post",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ followed you",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ asked to follow you",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "A poll has ended",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ edited a post",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "%@ posted",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "A moderator acted on your account",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "Notification title",
+        "key": "Some of your follows were cut",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "Unknown account",
+        "key": "Someone",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 106
+        }
+      }
+    ]
+  },
+  "version": 1
+}

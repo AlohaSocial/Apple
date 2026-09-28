@@ -1,0 +1,200 @@
+{
+  "source": "/Users/karlitschek/Documents/AlohaSocial/AlohaSocial/Packages/AlohaUI/Sources/AlohaUI/Nextcloud/AnnualReportView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "Screen title",
+        "key": "Your year",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "Annual report best post",
+        "key": "Boosted most",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "Annual report best post",
+        "key": "Most replied to",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 217
+        }
+      },
+      {
+        "comment": "Annual report best post",
+        "key": "Liked most",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "Annual report empty",
+        "key": "No year to look back on yet",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "Annual report empty detail",
+        "key": "A year you posted in gets a report. Come back once you have written something.",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "Annual report year picker",
+        "key": "Year",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "Annual archetype",
+        "key": "A quiet year — you read more than you wrote.",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "Annual archetype",
+        "key": "A year of passing things on.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "Annual archetype",
+        "key": "A year of asking.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 266
+        }
+      },
+      {
+        "comment": "Annual archetype",
+        "key": "A year of answering other people.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "Annual archetype",
+        "key": "A year of writing, and of being read.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "Annual archetype",
+        "key": "Your year.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "Annual report figure",
+        "key": "Posts",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "Annual report figure",
+        "key": "New followers",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "Annual report figure",
+        "key": "Busiest month",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "Annual report section",
+        "key": "Month by month",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "Annual report section",
+        "key": "Who arrived",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "Chart axis",
+        "key": "Month",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "Chart axis",
+        "key": "Posts",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 146
+        }
+      },
+      {
+        "comment": "Chart axis",
+        "key": "Month",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "Chart axis",
+        "key": "Followers",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "Annual report section",
+        "key": "What you wrote about",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "Annual report section",
+        "key": "How far they went",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 228
+        }
+      }
+    ]
+  },
+  "version": 1
+}
