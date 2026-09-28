@@ -40,6 +40,13 @@ import Foundation
         /// Seeds one signed-in account so the shell lands on Home.
         @MainActor
         public static func seedIfNeeded(_ environment: AppEnvironment) async {
+            // The theme is persisted in `UserDefaults`, which survives a
+            // relaunch of the same install. A tour that chose a theme left it
+            // chosen for whatever ran next, so the screenshots of every other
+            // screen depended on test order — and the one test that asserts the
+            // system theme follows the system only passed when nothing had
+            // chosen one first. The mock always starts from the same place.
+            environment.theme = .system
             guard !startsSignedOut else { return }
             TermsGate.recordAcceptance()
             guard environment.sessions.isEmpty else { return }

@@ -199,6 +199,32 @@ The last one is the useful one: an accessibility audit timing out is a screen
 that will not settle, and a screen that will not settle is one that moves under
 the reader.
 
+### What the gates could not catch
+
+Every suite above asks whether an element exists, is reachable and is labelled.
+None of them asks what colour it was drawn in — so all of them passed on a
+composer that had lost the app's theme entirely and opened cream in an app
+running Black. Forty screenshots were taken of it; nothing failed; the file was
+sitting in `/tmp/shots` looking wrong.
+
+The cause was a modifier chain, not a colour: `alohaTheme` writes into the
+environment, and a `.sheet` attached above that write is a sibling of it rather
+than a descendant, so every sheet the shell owned fell back to `AlohaDesign`'s
+environment default. `AppShell` now nests its presentations inside the theme
+instead of appending it to the chain, which makes the mistake unrepeatable
+rather than merely fixed.
+
+`ThemeTourTests.testSheetsWearTheChosenTheme` is the guard: it chooses a theme,
+opens the composer, and samples the mean luminance of the body area — under
+0.25 for Black, over 0.70 for Warm Light. Both directions, because "always
+dark" passes a test that only checks Black and is just as wrong. Against the
+defect it was written for it reports 0.98.
+
+**The general rule this bought:** a test that only asks whether an element
+exists cannot see anything about how it looks. Where appearance is the
+behaviour — themes, contrast, a scrim over a photograph — something has to read
+the pixels.
+
 ## 7. Logging
 
 - `OSLog` with a subsystem per package (`com.nextcloud.alohasocial.network`, …)

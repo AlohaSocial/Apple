@@ -2,6 +2,57 @@
 
 import XCTest
 
+#if canImport(UIKit)
+    import UIKit
+#endif
+
+#if os(iOS)
+    extension XCTestCase {
+        /// The mean luminance of a region of the screen, 0 (black) to 1 (white),
+        /// where the region is given in fractions of the screen so it does not
+        /// have to be restated per device.
+        ///
+        /// Everything else in these tours asks whether an element exists and is
+        /// labelled. Nothing asked what colour it was drawn in, which is how a
+        /// composer that had lost the app's theme — cream, in an app running
+        /// Black — passed a forty-screen tour and an accessibility audit
+        /// without a single failure.
+        ///
+        /// A region rather than a pixel: the caret, antialiasing and a sheet's
+        /// shadow all move individual pixels, and the question is about the
+        /// surface. Averaging is done by drawing the crop into a 1×1 context.
+        @MainActor
+        func meanLuminance(
+            of region: CGRect, in screenshot: XCUIScreenshot
+        ) -> Double? {
+            guard let image = screenshot.image.cgImage else { return nil }
+            let size = CGSize(width: CGFloat(image.width), height: CGFloat(image.height))
+            let crop = CGRect(
+                x: region.minX * size.width, y: region.minY * size.height,
+                width: region.width * size.width, height: region.height * size.height
+            ).integral
+            guard crop.width >= 1, crop.height >= 1,
+                let sample = image.cropping(to: crop)
+            else { return nil }
+
+            var pixel: [UInt8] = [0, 0, 0, 0]
+            guard
+                let context = CGContext(
+                    data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return nil }
+            context.interpolationQuality = .medium
+            context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+
+            // Rec. 709, the weighting `ServerAccent.luminance` uses, so a
+            // failure here reads in the same units as the design tokens.
+            return 0.2126 * (Double(pixel[0]) / 255) + 0.7152 * (Double(pixel[1]) / 255)
+                + 0.0722 * (Double(pixel[2]) / 255)
+        }
+    }
+#endif
+
 /// Shared plumbing for the screen tours.
 extension XCTestCase {
     /// Saves a PNG to `/tmp/shots/` (iOS; the simulator shares the host disk)

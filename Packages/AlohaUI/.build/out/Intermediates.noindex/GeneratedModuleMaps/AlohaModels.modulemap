@@ -1,4 +1,0 @@
-module AlohaModels {
-header "AlohaModels-Swift.h"
-export *
-}

@@ -14,8 +14,35 @@ Text posts. Photos, the way Pixelfed does them. Long video, the way PeerTube
 does it. Short vertical video, the way Loops does it. Audio. One app, one
 account list, six platforms.
 
-**Status: specification.** No implementation yet. Everything below `docs/` is
-the contract an implementation has to satisfy.
+Six platforms, but not six identical apps, and deliberately so
+([docs/00 §3](docs/00-overview.md)): iPhone, iPad, Mac and Vision Pro get the
+full feature set. **Apple Watch is a companion** — home timeline,
+notifications, quick actions, short replies; it never authenticates on its own.
+**Apple TV is video only** — Video and Shorts modes, and no composer.
+
+**Status: implemented, pre-release.** All nine phases of
+[docs/13](docs/13-implementation-plan.md) are built: ~57,000 lines of Swift in
+eight local packages, 294 package tests plus 62 UI tests, and every platform
+target building in Release with warnings as errors. Everything below `docs/` is
+the contract the implementation satisfies, and
+[docs/14 §6](docs/14-open-questions.md) records where it deliberately differs.
+
+What it has **not** had is a real server. Every Nextcloud-specific route is
+exercised against `MockAPIServer`, which was written from the same
+specification — so it agrees with this client by construction. The open
+questions in [docs/14 §3](docs/14-open-questions.md) are the ones a running
+instance has to answer before 1.0.
+
+## Building
+
+Xcode 27 and nothing older; the toolchain is not optional, because every
+platform is pinned to the 27 line. Open `AlohaSocial.xcodeproj`, set a signing
+team, and run. There are no dependencies to fetch — the eight packages are
+`path:` siblings and there is no third-party code.
+
+`-AlohaMockServer` as a launch argument boots straight into a populated
+timeline against the in-process mock, skipping OAuth. It is how the screen
+tours run, and the fastest way to see the app without an account.
 
 ## Reading order
 

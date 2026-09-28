@@ -1,0 +1,27 @@
+# SwiftPM build products. 24,877 of these files were committed in the initial
+# import — 432 MB of caches carrying absolute paths from one machine, which is
+# the opposite of the clean-clone build docs/13 P9.8 asks for.
+.build/
+.swiftpm/
+
+# `Package.resolved` is deliberately NOT ignored. There is nothing remote to
+# pin today — every dependency is a `path:` sibling and the `licence` CI job
+# fails if that changes — but the day one is added, the resolved versions are
+# what makes a build reproducible, and a rule added now would silently hide it.
+
+# Xcode per-user state: window positions, the last scheme selected, breakpoints.
+# None of it belongs to the project.
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# Build output
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store

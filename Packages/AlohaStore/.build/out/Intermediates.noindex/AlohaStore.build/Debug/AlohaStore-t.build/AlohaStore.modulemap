@@ -1,4 +1,0 @@
-module AlohaStore {
-header "AlohaStore-Swift.h"
-export *
-}

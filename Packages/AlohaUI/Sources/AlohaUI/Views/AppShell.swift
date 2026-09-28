@@ -8,7 +8,6 @@ import SwiftUI
 public struct AppShell: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.alohaPalette) private var palette
 
     /// A tab bar selection that can be a mode *or* the messages tab.
     /// Tagging the extra tab with `FeedMode.home` made the two collide.
@@ -38,7 +37,28 @@ public struct AppShell: View {
 
     public init() {}
 
+    /// The theme wraps everything the shell can put on screen, including its
+    /// presentations. It cannot be one more link in the chain below.
+    ///
+    /// `alohaTheme` works by writing into the environment, and a `.sheet`
+    /// attached *above* that write does not inherit it — the presentation is a
+    /// sibling of the environment modifier, not a descendant. With the theme
+    /// applied mid-chain, every sheet the shell owns — composer, sign-in,
+    /// report, edit, and the media viewer — fell back to the `@Entry` default
+    /// in `AlohaDesign`, which is Warm Light. The app ran in Black and the
+    /// composer opened cream.
+    ///
+    /// Nesting rather than appending is what makes that unrepeatable: a
+    /// `.sheet` added to `content` later is inside the wrap by construction,
+    /// wherever in the chain it lands.
     public var body: some View {
+        content
+            .alohaTheme(
+                environment.theme, metrics: environment.metrics, accent: environment.serverAccent
+            )
+    }
+
+    private var content: some View {
         root
             .overlay {
                 if isCelebrating { ConfettiView(isFalling: isCelebrating) }
@@ -53,9 +73,6 @@ public struct AppShell: View {
                 }
             }
             .environment(\.mediaTransition, mediaTransition)
-            .alohaTheme(
-                environment.theme, metrics: environment.metrics, accent: environment.serverAccent
-            )
             .modifier(
                 ShellSheets(
                     isPresentingSignIn: $isPresentingSignIn,

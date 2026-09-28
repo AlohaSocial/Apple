@@ -25,10 +25,16 @@ to choose, and things to check with the server before building against them.
 - **Safari extension** for "open this in Aloha Social".
 - **Nextcloud Files browser** beyond the composer's path picker.
 - **Admin and moderation console** over Nextcloud Social's admin API.
-- **Annual reports / Wrapstodon** (`/api/v1/annual_reports`), **memories**
-  (`/api/v1/memories/on_this_day`), **starter packs**, **places**, **channels**,
-  **follow graph**, **GIF search**. All served by Nextcloud Social, none load-bearing.
 - **CarPlay** for audio mode.
+
+**Deferred, then built anyway.** Annual reports / Wrapstodon
+(`/api/v1/annual_reports`), memories (`/api/v1/memories/on_this_day`), starter
+packs, places, channels, the follow graph and GIF search were all listed here
+as past 1.0. Every one of them is now in the app — `AnnualReportView`,
+`MemoriesView`, `StarterPacksView`, `PlaceView`, `ChannelsView`,
+`FollowConstellationView`, `GIFPicker`, each behind its capability flag. They
+were cheap once the endpoints were modelled, and none is load-bearing, which is
+what made them easy to add and would make them easy to drop. Recorded in §6.
 
 ## 3. To verify against the server before building
 
@@ -78,9 +84,10 @@ Each of these would make the client materially better and none is large.
 
 ## 6. Implementation status
 
-Recorded 2026-09-20, after building the app against this specification.
-**Phases 0–9 are implemented.** 191 tests across eight suites; all five
-platform targets build in Release; both extensions ship.
+Recorded 2026-09-20, after building the app against this specification, and
+kept current since. **Phases 0–9 are implemented.** 294 tests across eight
+package suites plus 62 UI tests; all five platform targets build in Release
+with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`; both extensions ship.
 
 ### Complete
 

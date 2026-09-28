@@ -1,4 +1,0 @@
-module AlohaHTML {
-header "AlohaHTML-Swift.h"
-export *
-}

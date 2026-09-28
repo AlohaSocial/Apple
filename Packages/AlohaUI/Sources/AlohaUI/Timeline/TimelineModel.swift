@@ -60,6 +60,37 @@ public final class TimelineModel {
         }
     }
 
+    /// What a refresh should ask the server for, and how the answer merges.
+    ///
+    /// A model that has never fetched asks for the **head** of the timeline,
+    /// even when the cache handed it rows to draw immediately.
+    ///
+    /// Deciding this from the rows alone conflated "I have a cache" with "I
+    /// have fetched": a freshly built model with a warm cache asked only for
+    /// what was newer, the server had nothing newer, and the cache was left on
+    /// screen however old or wrong it was. Switching the source rebuilds the
+    /// model by design (`AppShell.timelineChrome` keys it on the source), so
+    /// the other source's copy of a shared post stayed up — the title and the
+    /// toggle said My feed while the rows still read Local.
+    ///
+    /// Statuses are cached per id and shared between timelines, so this is not
+    /// only about the toggle: it is how an edited post, or one whose counts
+    /// have moved, is stale until something forces a cold load.
+    ///
+    /// Pulled out of `performRefresh` and made static so it can be tested. It
+    /// is four lines of branching that cost a visible bug once, and nothing
+    /// about it needs a session, a store or a server to check.
+    ///
+    /// `nonisolated` because it reads no state: the two things it decides from
+    /// are handed to it. That is also what lets a test call it without hopping
+    /// to the main actor.
+    nonisolated static func refreshPlan(
+        hasFetchedBefore: Bool, newestRowID: String?
+    ) -> (anchor: PageAnchor, direction: TimelineMerge.Direction) {
+        guard hasFetchedBefore, let newestRowID else { return (.cold, .cold) }
+        return (.newerThan(newestRowID), .newer)
+    }
+
     /// One refresh in flight per timeline; a second coalesces onto the first.
     public func refresh() async {
         if let refreshTask {
@@ -76,26 +107,11 @@ public final class TimelineModel {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        // A model that has never fetched asks for the **head** of the timeline,
-        // even when the cache handed it rows to draw immediately.
-        //
-        // Deciding this from `rows` alone conflated "I have a cache" with "I
-        // have fetched": a freshly built model with a warm cache asked only for
-        // what was newer, the server had nothing newer, and the cache was left
-        // on screen however old or wrong it was. Switching the source rebuilds
-        // the model by design (`AppShell.timelineChrome` keys it on the source),
-        // so the other source's copy of a shared post stayed up — the title and
-        // the toggle said My feed while the rows still read Local.
-        //
-        // Statuses are cached per id and shared between timelines, so this is
-        // not only about the toggle: it is how an edited post, or one whose
-        // counts have moved, is stale until something forces a cold load.
-        let isFirstFetch = lastRefresh == nil
-        let newest = rows.compactMap(\.status).first?.id
-        let anchor: PageAnchor =
-            (isFirstFetch ? nil : newest).map { .newerThan($0) } ?? .cold
-        let direction: TimelineMerge.Direction =
-            (isFirstFetch || newest == nil) ? .cold : .newer
+        let plan = Self.refreshPlan(
+            hasFetchedBefore: lastRefresh != nil,
+            newestRowID: rows.compactMap(\.status).first?.id)
+        let anchor = plan.anchor
+        let direction = plan.direction
 
         do {
             let harvest = try await fetch(anchor: anchor)

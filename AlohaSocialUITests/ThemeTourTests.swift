@@ -55,6 +55,57 @@ import XCTest
             shoot("62-system-light")
         }
 
+        /// A sheet is not a descendant of the modifier chain it is attached to,
+        /// so the theme has to wrap the presentations rather than sit among
+        /// them. When it did not, every sheet the shell owns — composer,
+        /// sign-in, report, edit, media viewer — fell back to `AlohaDesign`'s
+        /// environment default, Warm Light, and the composer opened cream in an
+        /// app running Black.
+        ///
+        /// Both directions, because "always dark" would pass a test that only
+        /// looked at Black and is just as wrong.
+        func testSheetsWearTheChosenTheme() {
+            for (theme, expectation) in [("Black", Brightness.dark), ("Warm Light", .light)] {
+                launchAndChoose(theme: theme)
+
+                let composer = app.buttons["New post"].firstMatch
+                XCTAssertTrue(composer.waitForExistence(timeout: 8), "\(theme): no compose button")
+                composer.tap()
+                XCTAssertTrue(
+                    app.textViews.firstMatch.waitForExistence(timeout: 8),
+                    "\(theme): composer never opened")
+                sleep(1)
+                shoot("63-composer-\(theme.lowercased().replacingOccurrences(of: " ", with: "-"))")
+
+                // Empty body text, below the navigation bar and well above the
+                // keyboard: the composer's own background and nothing else.
+                let surface = CGRect(x: 0.30, y: 0.28, width: 0.40, height: 0.12)
+                guard let luminance = meanLuminance(of: surface, in: XCUIScreen.main.screenshot())
+                else {
+                    XCTFail("\(theme): could not sample the composer")
+                    return
+                }
+
+                switch expectation {
+                case .dark:
+                    XCTAssertLessThan(
+                        luminance, 0.25,
+                        "\(theme): the composer is light (\(luminance)) — the sheet lost the theme")
+                case .light:
+                    XCTAssertGreaterThan(
+                        luminance, 0.70,
+                        "\(theme): the composer is dark (\(luminance)) — the sheet lost the theme")
+                }
+
+                app.terminate()
+            }
+        }
+
+        private enum Brightness {
+            case dark
+            case light
+        }
+
         private func launchAndChoose(theme: String) {
             app = XCUIApplication()
             app.launchArguments = ["-AlohaMockServer"]
