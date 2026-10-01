@@ -11,7 +11,7 @@ import WidgetKit
 /// never downloads (docs/09 §8).
 struct LatestPostsProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> PostsEntry {
-        PostsEntry(date: Date(), posts: [], accountHandle: "@you")
+        PostsEntry(date: Date(), posts: [], accountHandle: "@you", serverTheme: nil)
     }
 
     func snapshot(for configuration: WidgetAccount, in context: Context) async -> PostsEntry {
@@ -29,10 +29,12 @@ struct LatestPostsProvider: AppIntentTimelineProvider {
 
     private func entry(for configuration: WidgetAccount) async -> PostsEntry {
         guard let snapshot = await WidgetData.account(matching: configuration) else {
-            return PostsEntry(date: Date(), posts: [], accountHandle: "")
+            return PostsEntry(date: Date(), posts: [], accountHandle: "", serverTheme: nil)
         }
         let posts = await WidgetData.latestPosts(accountID: snapshot.id, limit: 6)
-        return PostsEntry(date: Date(), posts: posts, accountHandle: snapshot.qualifiedHandle)
+        return PostsEntry(
+            date: Date(), posts: posts, accountHandle: snapshot.qualifiedHandle,
+            serverTheme: WidgetData.serverTheme(of: snapshot))
     }
 }
 
@@ -40,6 +42,8 @@ struct PostsEntry: WidgetKit.TimelineEntry {
     let date: Date
     let posts: [WidgetPost]
     let accountHandle: String
+    /// The account's server colour, so the widget wears what the app does.
+    let serverTheme: AlohaThemeModifier.ServerTheme?
 }
 
 struct WidgetPost: Identifiable, Hashable {
@@ -66,6 +70,7 @@ struct LatestPostsWidget: Widget {
             kind: "LatestPosts", intent: WidgetAccount.self, provider: LatestPostsProvider()
         ) { entry in
             LatestPostsView(entry: entry)
+                .serverTint(entry.serverTheme)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName(Text("Latest posts", comment: "Widget name"))
@@ -99,7 +104,9 @@ struct LatestPostsView: View {
                             HStack(spacing: 4) {
                                 Text(post.author)
                                     .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.tint)
                                     .lineLimit(1)
+                                    .widgetAccentable()
                                 Spacer(minLength: 0)
                                 Text(
                                     post.createdAt,
@@ -126,7 +133,7 @@ struct LatestPostsView: View {
 
 struct UnreadProvider: TimelineProvider {
     func placeholder(in context: Context) -> UnreadEntry {
-        UnreadEntry(date: Date(), count: 0)
+        UnreadEntry(date: Date(), count: 0, serverTheme: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UnreadEntry) -> Void) {
@@ -143,19 +150,23 @@ struct UnreadProvider: TimelineProvider {
     }
 
     private func entry() async -> UnreadEntry {
-        UnreadEntry(date: Date(), count: await WidgetData.unreadCount())
+        UnreadEntry(
+            date: Date(), count: await WidgetData.unreadCount(),
+            serverTheme: await WidgetData.activeServerTheme())
     }
 }
 
 struct UnreadEntry: WidgetKit.TimelineEntry {
     let date: Date
     let count: Int
+    let serverTheme: AlohaThemeModifier.ServerTheme?
 }
 
 struct UnreadWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Unread", provider: UnreadProvider()) { entry in
             UnreadView(entry: entry)
+                .serverTint(entry.serverTheme)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName(Text("Unread notifications", comment: "Widget name"))
@@ -187,7 +198,10 @@ struct UnreadView: View {
             .gaugeStyle(.accessoryCircular)
         default:
             VStack(alignment: .leading, spacing: 2) {
-                Image(systemName: "bell.fill").font(.title3)
+                Image(systemName: "bell.fill")
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .widgetAccentable()
                 Text(entry.count, format: .number)
                     .font(.largeTitle.weight(.bold))
                     .contentTransition(.numericText())

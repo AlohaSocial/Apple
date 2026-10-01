@@ -53,7 +53,7 @@ public struct NextcloudFile: Sendable, Hashable, Identifiable {
 public struct WebDAVClient: Sendable {
     private let credentials: NextcloudLoginFlow.Credentials
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "webdav")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "webdav")
 
     public init(
         credentials: NextcloudLoginFlow.Credentials,

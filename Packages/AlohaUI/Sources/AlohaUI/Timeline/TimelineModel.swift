@@ -31,7 +31,7 @@ public final class TimelineModel {
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
 
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "timeline")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "timeline")
 
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key

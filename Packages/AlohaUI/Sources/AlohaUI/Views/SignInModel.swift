@@ -38,7 +38,7 @@ public final class SignInModel {
 
     private var outcome: ServerProbe.Outcome?
     private var typedHost = ""
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "signin")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "signin")
 
     public init() {}
 

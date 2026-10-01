@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaDesign
 import AlohaNetwork
 import Foundation
 import Observation
@@ -9,17 +10,22 @@ import WatchConnectivity
 @MainActor
 @Observable
 final class WatchLink: NSObject {
-    nonisolated struct Credentials: Codable, Sendable, Hashable {
-        var accountID: UUID
-        var apiBase: URL
-        var token: String
-        var handle: String
-    }
+    typealias Credentials = WatchPairing
 
     private(set) var credentials: Credentials?
     private(set) var client: APIClient?
 
-    private let store = KeychainStore(service: "com.nextcloud.alohasocial.watch")
+    /// The colour of the account's server, as the phone resolved it.
+    var serverTheme: AlohaThemeModifier.ServerTheme? {
+        guard let credentials,
+            credentials.accentBrightHex != nil || credentials.accentDarkHex != nil
+        else { return nil }
+        return AlohaThemeModifier.ServerTheme(
+            brightHex: credentials.accentBrightHex, darkHex: credentials.accentDarkHex,
+            textHex: credentials.accentTextHex)
+    }
+
+    private let store = KeychainStore(service: "social.aloha.app.watch")
 
     override init() {
         super.init()
@@ -49,6 +55,12 @@ final class WatchLink: NSObject {
             accessToken: credentials.token)
     }
 
+    private func forget() {
+        credentials = nil
+        client = nil
+        try? store.remove("credentials")
+    }
+
     private func persist(_ credentials: Credentials) {
         guard let data = try? JSONEncoder().encode(credentials),
             let raw = String(data: data, encoding: .utf8)
@@ -68,9 +80,12 @@ extension WatchLink: WCSessionDelegate {
     nonisolated func session(
         _ session: WCSession, didReceiveApplicationContext context: [String: Any]
     ) {
-        guard let data = context["credentials"] as? Data,
-            let decoded = try? JSONDecoder().decode(Credentials.self, from: data)
-        else { return }
+        // An empty context is the phone saying it has no account any more.
+        guard let data = context[WatchPairing.contextKey] as? Data else {
+            Task { @MainActor in self.forget() }
+            return
+        }
+        guard let decoded = try? JSONDecoder().decode(Credentials.self, from: data) else { return }
 
         Task { @MainActor in
             self.adopt(decoded)

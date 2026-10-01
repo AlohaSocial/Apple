@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AVKit
+import AlohaDesign
 import AlohaMedia
 import AlohaModels
 import AlohaNetwork
@@ -50,6 +51,7 @@ struct TVRootView: View {
                 }
             }
         }
+        .serverTint(model.serverTheme)
         .task { await model.restore() }
     }
 }

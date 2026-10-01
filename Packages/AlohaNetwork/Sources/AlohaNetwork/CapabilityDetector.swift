@@ -11,7 +11,7 @@ import OSLog
 /// always means `false`.
 public struct CapabilityDetector: Sendable {
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "capabilities")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "capabilities")
 
     public init(transport: any HTTPTransport = URLSessionTransport()) {
         self.transport = transport

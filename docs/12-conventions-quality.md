@@ -227,7 +227,7 @@ the pixels.
 
 ## 7. Logging
 
-- `OSLog` with a subsystem per package (`com.nextcloud.alohasocial.network`, …)
+- `OSLog` with a subsystem per package (`social.aloha.app.network`, …)
   and categories per area.
 - Privacy annotations on every interpolation: `.public` only for things that are
   genuinely not personal (status codes, route templates, durations). Handles,

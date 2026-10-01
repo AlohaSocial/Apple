@@ -10,7 +10,7 @@ import SwiftData
 /// Views never touch a `ModelContext`.
 @ModelActor
 public actor TimelineStore {
-    private static let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "store")
+    private static let logger = Logger(subsystem: "social.aloha.app", category: "store")
     private static let parser = StatusHTMLParser()
 
     // MARK: - Reading

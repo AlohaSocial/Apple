@@ -77,7 +77,7 @@ it differs. No other timeline is polled; they refresh on appear.
 ## 4. Background refresh
 
 - One `BGAppRefreshTaskRequest` with identifier
-  `com.nextcloud.alohasocial.refresh`, `earliestBeginDate` = now + the
+  `social.aloha.app.refresh`, `earliestBeginDate` = now + the
   configured interval, re-submitted at the end of every run.
 - The handler has a hard 25-second budget and sets an expiration handler that
   cancels in-flight work and saves what it has.

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaDesign
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
@@ -41,6 +42,22 @@ enum WidgetData {
                     ? plain(target.content) : target.spoilerText,
                 createdAt: target.createdAt)
         }
+    }
+
+    /// What the account's Nextcloud said about its colour, from the
+    /// capabilities the app persisted — a widget never asks the server.
+    static func serverTheme(of snapshot: AccountStore.Snapshot) -> AlohaThemeModifier.ServerTheme? {
+        guard let theme = snapshot.capabilities.theme, theme.hasColour else { return nil }
+        return AlohaThemeModifier.ServerTheme(
+            brightHex: theme.hex(onDarkBackground: false),
+            darkHex: theme.hex(onDarkBackground: true),
+            textHex: theme.textHex)
+    }
+
+    /// The colour of the account the app last had active.
+    @MainActor
+    static func activeServerTheme() async -> AlohaThemeModifier.ServerTheme? {
+        await account(matching: WidgetAccount()).flatMap(serverTheme(of:))
     }
 
     @MainActor

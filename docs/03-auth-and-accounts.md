@@ -175,12 +175,12 @@ launch.
 
 - Access tokens, client ids and client secrets live in the **Keychain**,
   `kSecClassGenericPassword`, access group
-  `$(AppIdentifierPrefix)com.nextcloud.alohasocial` so the share extension and
+  `$(AppIdentifierPrefix)social.aloha.app` so the share extension and
   widgets can read them.
 - `kSecAttrAccessible = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`.
   **`ThisDeviceOnly` is deliberate**: tokens must not sync to iCloud Keychain
   or transfer in an encrypted backup to a different device.
-- Service: `com.nextcloud.alohasocial.token`; account key:
+- Service: `social.aloha.app.token`; account key:
   `<accountUUID>` (not the handle, which can change).
 - Non-secret account metadata (handle, display name, avatar URL, API base,
   capabilities) lives in SwiftData, not the Keychain.

@@ -82,7 +82,7 @@ public enum UploadPreflight {
 
 /// Prepares bytes for upload: transcoding, downscaling and trimming.
 public struct MediaPreparer: Sendable {
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "media")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "media")
 
     public init() {}
 

@@ -61,13 +61,13 @@ MACOSX_DEPLOYMENT_TARGET = 27.0
 XROS_DEPLOYMENT_TARGET = 27.0
 WATCHOS_DEPLOYMENT_TARGET = 27.0          // watch target
 TVOS_DEPLOYMENT_TARGET = 27.0             // tv target
-PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial
+PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app
 ENABLE_USER_SCRIPT_SANDBOXING = YES
 ```
 
-App group: `group.com.nextcloud.alohasocial` — shared by app, share extension,
+App group: `group.social.aloha.app` — shared by app, share extension,
 widgets and intents extension for the SwiftData store and the Keychain access
-group. Keychain access group: `$(AppIdentifierPrefix)com.nextcloud.alohasocial`.
+group. Keychain access group: `$(AppIdentifierPrefix)social.aloha.app`.
 
 ## 3. Package layout
 

@@ -16,7 +16,7 @@ import OSLog
 public struct ServerProbe: Sendable {
     private let transport: any HTTPTransport
     private let perCandidateTimeout: Duration
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "probe")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "probe")
 
     public init(
         transport: any HTTPTransport = URLSessionTransport(),

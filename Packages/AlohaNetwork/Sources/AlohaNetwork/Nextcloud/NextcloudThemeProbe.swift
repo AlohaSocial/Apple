@@ -22,7 +22,7 @@ import OSLog
 public struct NextcloudThemeProbe: Sendable {
     private let transport: any HTTPTransport
     private let timeout: Duration
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "theming")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "theming")
 
     public init(
         transport: any HTTPTransport = URLSessionTransport(),

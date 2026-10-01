@@ -7,7 +7,7 @@ import SwiftData
 /// The one model container, in the app group so the share extension and the
 /// widgets read what the app wrote.
 public enum StoreContainer {
-    public static let appGroupIdentifier = "group.com.nextcloud.alohasocial"
+    public static let appGroupIdentifier = "group.social.aloha.app"
 
     public static let schema = Schema([
         AccountRecord.self,
@@ -21,7 +21,7 @@ public enum StoreContainer {
         RelationshipRecord.self,
     ])
 
-    private static let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "store")
+    private static let logger = Logger(subsystem: "social.aloha.app", category: "store")
 
     /// Builds the container, and rebuilds it from scratch if that fails.
     ///

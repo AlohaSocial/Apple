@@ -306,11 +306,11 @@ public struct SettingsView: View {
                     } label: {
                         Text("Version", comment: "Settings item")
                     }
-                    Link(destination: URL(string: "https://github.com/nextcloud/AlohaSocial")!) {
+                    Link(destination: URL(string: "https://github.com/AlohaSocial/Apple")!) {
                         Text("Source code", comment: "Settings item")
                     }
                     Link(
-                        destination: URL(string: "https://github.com/nextcloud/AlohaSocial/issues")!
+                        destination: URL(string: "https://github.com/AlohaSocial/Apple/issues")!
                     ) {
                         Text("Contact the developer", comment: "Settings item")
                     }

@@ -8,7 +8,7 @@ to choose, and things to check with the server before building against them.
 | # | Assumption | Why | Cost of being wrong |
 |---|---|---|---|
 | 1 | ~~Autoplay is on by default in Shorts mode, Wi-Fi-only elsewhere.~~ **Resolved:** autoplay is always on, on every network, including cellular and Low Power Mode. One off-switch, no per-network states. | Confirmed by the product owner. | — |
-| 2 | Bundle id `com.nextcloud.alohasocial`, replacing the seed project's `nextcloud.AlohaSocial`. | The seed value is not a valid reverse-DNS identifier. | Must be decided before the first TestFlight build; changing it later means a new App Store record. |
+| 2 | ~~Bundle id `com.nextcloud.alohasocial`.~~ **Resolved:** `social.aloha.app`, with `group.social.aloha.app` as the app group and the extensions under it (`.share`, `.widgets`, `.notificationservice`, `.watch`, `.tv`). | The brand moved to its own organisation before the first TestFlight build, which was the last cheap moment. | — |
 | 3 | The app name is "Aloha Social" and the URL scheme is `alohasocial://`. | From the working directory and the seed project. | Rename is cheap now, expensive after launch. |
 | 4 | No CLAUDE.md at the repository root; conventions live in [12-conventions-quality.md](12-conventions-quality.md). | The multi-file spec set was chosen over the variant that added one. | None — a CLAUDE.md can be added later pointing at doc 12. |
 | 5 | Age rating 17+. | Unrestricted access to arbitrary federated content. | Rejection at review if set lower. |

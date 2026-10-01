@@ -8,7 +8,7 @@ import Foundation
 /// app and reading it from an extension silently returns nothing, because each
 /// process has its own standard domain. Naming it once removes the chance.
 public enum AppGroup {
-    public static let identifier = "group.com.nextcloud.alohasocial"
+    public static let identifier = "group.social.aloha.app"
 
     /// Falls back to `.standard` where the entitlement is missing — an unsigned
     /// local build — so the app still works alone even though sharing does not.
@@ -19,7 +19,7 @@ public enum AppGroup {
 
     /// The Keychain access group. Must be passed to every `CredentialStore`,
     /// or an extension cannot read what the app wrote.
-    public static let keychainAccessGroup = "com.nextcloud.alohasocial"
+    public static let keychainAccessGroup = "social.aloha.app"
 
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"

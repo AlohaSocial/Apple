@@ -15,7 +15,7 @@ import OSLog
 /// browsing Files, and registering for push through Nextcloud's proxy.
 public struct NextcloudLoginFlow: Sendable {
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "nextcloud")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "nextcloud")
 
     public init(transport: any HTTPTransport = URLSessionTransport()) {
         self.transport = transport

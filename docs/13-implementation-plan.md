@@ -20,7 +20,7 @@ an empty but correct architecture.
 
 **Work packages**
 
-- P0.1 Rewrite the seed Xcode project: bundle id `com.nextcloud.alohasocial`,
+- P0.1 Rewrite the seed Xcode project: bundle id `social.aloha.app`,
   Swift 6 language mode, strict concurrency complete, `MainActor` default
   isolation, deployment targets at 27.0, app group, Keychain access group.
   Delete `Item.swift` and the template `ContentView`. Replace the

@@ -10,15 +10,15 @@ import OSLog
 
 /// `BGAppRefreshTask` and `BGProcessingTask` registration (docs/08 §4).
 public enum BackgroundWork {
-    public static let refreshIdentifier = "com.nextcloud.alohasocial.refresh"
-    public static let maintenanceIdentifier = "com.nextcloud.alohasocial.maintenance"
+    public static let refreshIdentifier = "social.aloha.app.refresh"
+    public static let maintenanceIdentifier = "social.aloha.app.maintenance"
 
     /// A hard budget. The expiration handler cancels in-flight work and saves
     /// what it has rather than being killed mid-write.
     public static let refreshBudget: TimeInterval = 25
 
     private static let logger = Logger(
-        subsystem: "com.nextcloud.alohasocial", category: "background")
+        subsystem: "social.aloha.app", category: "background")
 
     @MainActor
     public static func register(environment: AppEnvironment) {

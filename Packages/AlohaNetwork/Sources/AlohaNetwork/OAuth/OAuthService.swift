@@ -14,7 +14,7 @@ public struct OAuthService: Sendable {
     public static let clientName = "Aloha Social"
     public static let redirectURI = "alohasocial://oauth-callback"
     public static let outOfBandRedirectURI = "urn:ietf:wg:oauth:2.0:oob"
-    public static let website = "https://github.com/nextcloud/AlohaSocial"
+    public static let website = "https://github.com/AlohaSocial/Apple"
     /// Coarse grants covering every granular scope Nextcloud Social checks
     /// (`read:lists`, `read:notifications`, `write:notifications`,
     /// `read:stories`, `write:stories`). `push` costs nothing on a server with
@@ -22,7 +22,7 @@ public struct OAuthService: Sendable {
     public static let scopes = "read write follow push"
 
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "oauth")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "oauth")
 
     public init(transport: any HTTPTransport = URLSessionTransport()) {
         self.transport = transport

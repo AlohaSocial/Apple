@@ -77,6 +77,10 @@ public struct SignInView: View {
                 Text("Continue", comment: "Sign-in action")
             }
             .disabled(typed.trimmingCharacters(in: .whitespaces).isEmpty)
+        } header: {
+            BrandMark(size: 72)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, AlohaMetrics.space3)
         } footer: {
             VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 Text(

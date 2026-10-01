@@ -17,9 +17,7 @@ public struct WelcomeView: View {
             Spacer()
 
             VStack(spacing: AlohaMetrics.space3) {
-                Image(systemName: "bubble.left.and.text.bubble.right")
-                    .font(.system(size: 56))
-                    .foregroundStyle(palette.accent)
+                BrandMark(size: 112)
 
                 Text("Aloha Social", comment: "App name")
                     .font(.largeTitle.weight(.bold))

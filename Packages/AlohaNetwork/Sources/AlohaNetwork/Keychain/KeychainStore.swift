@@ -10,8 +10,8 @@ import Security
 /// backup restored onto a different device (docs/03 §5). The access group lets
 /// the share extension and widgets read what the app wrote.
 public struct KeychainStore: Sendable {
-    public static let tokenService = "com.nextcloud.alohasocial.token"
-    public static let clientService = "com.nextcloud.alohasocial.client"
+    public static let tokenService = "social.aloha.app.token"
+    public static let clientService = "social.aloha.app.client"
 
     private let service: String
     private let accessGroup: String?
@@ -65,8 +65,8 @@ public struct KeychainStore: Sendable {
     private static let teamPrefix: String? = {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: "com.nextcloud.alohasocial.prefix-probe",
-            kSecAttrService as String: "com.nextcloud.alohasocial.prefix-probe",
+            kSecAttrAccount as String: "social.aloha.app.prefix-probe",
+            kSecAttrService as String: "social.aloha.app.prefix-probe",
             kSecReturnAttributes as String: true,
         ]
         var item: CFTypeRef?

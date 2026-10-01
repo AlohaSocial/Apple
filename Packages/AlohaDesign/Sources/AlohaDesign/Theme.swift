@@ -89,7 +89,10 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
         }
     }
 
-    /// The identity: warm, high-contrast, content-forward. Boost is green,
+    /// The identity: warm, high-contrast, content-forward. The accent is the
+    /// brand coral (`#E8604C`, the hibiscus) with only its lightness moved,
+    /// far enough to reach 4.5:1 on each ground (7:1 on the high-contrast
+    /// ones) — it is what a server that names no colour of its own wears. Boost is green,
     /// favourite amber, bookmark violet — kept distinct at badge size and
     /// distinguishable under the common colour-vision deficiencies.
     public func palette(for scheme: ColorScheme, increaseContrast: Bool = false) -> AlohaPalette {
@@ -114,7 +117,7 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
                 label: Color(red: 0.11, green: 0.10, blue: 0.09),
                 secondaryLabel: Color(red: 0.40, green: 0.38, blue: 0.36),
                 tertiaryLabel: Color(red: 0.46, green: 0.44, blue: 0.41),
-                accent: Color(red: 0.78, green: 0.26, blue: 0.14),
+                accent: Color(red: 0.851, green: 0.204, blue: 0.109),
                 accentMuted: Color(red: 0.95, green: 0.62, blue: 0.35),
                 destructive: Color(red: 0.78, green: 0.16, blue: 0.16),
                 boost: Color(red: 0.16, green: 0.55, blue: 0.33),
@@ -132,7 +135,7 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
                 label: .black,
                 secondaryLabel: Color(white: 0.22),
                 tertiaryLabel: Color(white: 0.34),
-                accent: Color(red: 0.72, green: 0.20, blue: 0.08),
+                accent: Color(red: 0.659, green: 0.158, blue: 0.085),
                 accentMuted: Color(red: 0.60, green: 0.30, blue: 0.10),
                 destructive: Color(red: 0.65, green: 0.05, blue: 0.05),
                 boost: Color(red: 0.06, green: 0.40, blue: 0.20),
@@ -150,7 +153,7 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
                 label: Color(red: 0.97, green: 0.96, blue: 0.95),
                 secondaryLabel: Color(red: 0.72, green: 0.70, blue: 0.68),
                 tertiaryLabel: Color(red: 0.58, green: 0.56, blue: 0.54),
-                accent: Color(red: 0.98, green: 0.52, blue: 0.36),
+                accent: Color(red: 0.914, green: 0.405, blue: 0.330),
                 onAccent: Color(red: 0.12, green: 0.06, blue: 0.03),
                 accentMuted: Color(red: 0.85, green: 0.60, blue: 0.40),
                 destructive: Color(red: 0.95, green: 0.42, blue: 0.40),
@@ -169,7 +172,7 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
                 label: .white,
                 secondaryLabel: Color(white: 0.86),
                 tertiaryLabel: Color(white: 0.72),
-                accent: Color(red: 1.0, green: 0.62, blue: 0.45),
+                accent: Color(red: 0.919, green: 0.443, blue: 0.372),
                 onAccent: .black,
                 accentMuted: Color(red: 0.95, green: 0.72, blue: 0.55),
                 destructive: Color(red: 1.0, green: 0.55, blue: 0.52),
@@ -306,10 +309,7 @@ public struct AlohaThemeModifier: ViewModifier {
         // is left out entirely rather than forced — the app's own accent is
         // known to work, and an unreadable one is worse than a colour that is
         // not quite theirs.
-        let isDark = palette.backgroundComponents.red < 0.5
-        let wantedHex =
-            isDark ? (accent?.darkHex ?? accent?.brightHex) : (accent?.brightHex ?? accent?.darkHex)
-        if let fixed = ServerAccent.legible(hex: wantedHex, on: palette.backgroundComponents) {
+        if let fixed = accent?.legibleComponents(on: palette.backgroundComponents) {
             palette.accent = ServerAccent.colour(fixed)
             palette.onAccent = ServerAccent.textColour(on: fixed, preferring: accent?.textHex)
         }
@@ -322,7 +322,46 @@ public struct AlohaThemeModifier: ViewModifier {
     }
 }
 
+extension AlohaThemeModifier.ServerTheme {
+    /// The server's colour made legible against `ground`, or `nil` where it
+    /// cannot be — the one rule every process applies, so the widgets, the
+    /// watch and the TV wear the same colour the app does.
+    public func legibleComponents(on ground: ServerAccent.RGB) -> ServerAccent.RGB? {
+        let isDark = ground.red < 0.5
+        let wantedHex = isDark ? (darkHex ?? brightHex) : (brightHex ?? darkHex)
+        return ServerAccent.legible(hex: wantedHex, on: ground)
+    }
+
+    /// The accent for a surface the app does not paint itself — a widget, the
+    /// watch, the TV — measured against the app's own ground for that scheme,
+    /// which is close enough to the system's to keep the 4.5:1 floor.
+    public func accent(for scheme: ColorScheme) -> Color? {
+        let ground = AlohaTheme.system.palette(for: scheme).backgroundComponents
+        return legibleComponents(on: ground).map(ServerAccent.colour)
+    }
+}
+
+/// Tints a surface with the server's colour, or leaves the platform's own
+/// tint where there is none. For the processes that have no `AppEnvironment`
+/// and so no `alohaTheme` — they still owe the person the server's colour.
+public struct ServerTintModifier: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    let theme: AlohaThemeModifier.ServerTheme?
+
+    public func body(content: Content) -> some View {
+        if let colour = theme?.accent(for: scheme) {
+            content.tint(colour)
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
+    public func serverTint(_ theme: AlohaThemeModifier.ServerTheme?) -> some View {
+        modifier(ServerTintModifier(theme: theme))
+    }
+
     public func alohaTheme(
         _ theme: AlohaTheme, metrics: AlohaMetrics = AlohaMetrics(),
         accent: AlohaThemeModifier.ServerTheme? = nil

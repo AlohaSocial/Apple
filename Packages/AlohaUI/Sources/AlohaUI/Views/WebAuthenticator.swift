@@ -26,7 +26,7 @@ public final class WebAuthenticator {
     private let contextProvider = AnchorProvider()
     private var pending: (state: String, continuation: CheckedContinuation<URL, any Error>)?
     private var session: ASWebAuthenticationSession?
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "webauth")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "webauth")
 
     private init() {}
 

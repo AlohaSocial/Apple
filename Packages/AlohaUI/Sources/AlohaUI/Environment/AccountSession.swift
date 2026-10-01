@@ -19,7 +19,7 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
     private let timelines: TimelineStore
     private let support: SupportStore
     private let accounts: AccountStore
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "session")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "session")
 
     public init(
         snapshot: AccountStore.Snapshot,
