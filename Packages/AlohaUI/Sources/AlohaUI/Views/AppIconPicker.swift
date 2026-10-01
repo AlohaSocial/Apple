@@ -10,8 +10,9 @@ import SwiftUI
     ///
     /// The previews are drawn rather than loaded: an alternate icon lives in
     /// the asset catalog as an *icon*, which `UIImage(named:)` will not reliably
-    /// hand back, and redrawing the mark in SwiftUI keeps the two in step
-    /// without shipping the artwork twice.
+    /// hand back. Each one tints the one-colour mark (`AlohaMark`, the @ cut
+    /// out) on the icon's sand ground, which is how the icons are recoloured
+    /// too.
     struct AppIconPicker: View {
         @Environment(\.alohaPalette) private var palette
 
@@ -64,23 +65,22 @@ import SwiftUI
         }
     }
 
-    /// The mark, drawn small: gradient ground, two bubbles.
+    /// The mark, drawn small: sand ground, hibiscus in the variant's colour.
     private struct IconPreview: View {
         let accent: AlohaIconVariant
         let isSelected: Bool
 
         var body: some View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [accent.swatch.mix(with: .white, by: 0.18), accent.swatch],
-                        startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
+                .fill(Color(red: 0.984, green: 0.957, blue: 0.918))
                 .frame(width: 60, height: 60)
                 .overlay {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(.white)
+                    Image("AlohaMark", bundle: .module)
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .frame(width: 36, height: 36)
+                        .foregroundStyle(accent.swatch)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
