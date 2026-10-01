@@ -40,17 +40,20 @@ what made them easy to add and would make them easy to drop. Recorded in §6.
 
 | # | Question | Where it matters |
 |---|---|---|
-| 1 | Does `POST /api/v1/statuses` on Nextcloud honour an `Idempotency-Key` header, or ignore it? If ignored, retry-on-timeout can double-post and the composer needs a different safety net (e.g. a pre-flight check for an identical recent status). | [07-composer.md](07-composer.md) §5 |
-| 2 | Does Nextcloud accept `scheduled_at` on `POST /api/v1/statuses`? The scheduled-statuses read/update/delete routes exist and a cron runs them, but the creation path should be confirmed. | [07-composer.md](07-composer.md) §5 |
-| 3 | Does the OAuth flow accept `urn:ietf:wg:oauth:2.0:oob` as a registered redirect URI for a *new* registration, not only in `denyUrl`? The whole tvOS sign-in depends on it. | [03-auth-and-accounts.md](03-auth-and-accounts.md) §7 |
+| 1 | ~~Does `POST /api/v1/statuses` honour `Idempotency-Key`?~~ **Answered:** yes, for an hour — but the key is stored only once the post exists, so a retry that overtakes a slow first attempt still double-posts, and scheduled and held-for-review posts skip it. The composer now checks the account's last few posts for an identical one before resending after a transient failure. Upstream fix proposed in [15](15-upstream-proposals.md) §2.7. | [07-composer.md](07-composer.md) §5 |
+| 2 | ~~Does Nextcloud accept `scheduled_at` on create?~~ **Answered:** yes, at least five minutes ahead (`ScheduledStatusService::requestedTime`). | [07-composer.md](07-composer.md) §5 |
+| 3 | ~~Does OAuth accept `urn:ietf:wg:oauth:2.0:oob` for a new registration?~~ **Answered:** yes; the code is shown on a page with a Copy button. It is sixty characters and lives ten minutes, so the TV shows a QR code and the code is pasted from the iPhone's Apple TV keyboard. A phone relay is proposed in [15](15-upstream-proposals.md) §1.3. | [03-auth-and-accounts.md](03-auth-and-accounts.md) §7 |
 | 4 | ~~What credentials does WebDAV browsing need?~~ **Answered:** the Social token is issued by Social's own authorisation server and is not a Nextcloud session, so WebDAV refuses it. **Nextcloud Login Flow v2** grants a real app password, and one app password unlocks both Files browsing and push. Implemented; see §7. | [07-composer.md](07-composer.md) §6 |
-| 5 | Is `only_media` / `only_video` / `only_news` a **422** on a server that does not implement them, or silently ignored? The capability probe assumes 422 on Nextcloud and gates on `software.name` elsewhere; if stock Mastodon silently ignores them the fallback is correct either way, but the probe can be simplified if the behaviour is known. | [02-server-api.md](02-server-api.md) §4 |
-| 6 | Does `Account.avatar` returning `""` still occur on current `master`? The compatibility document lists it as an open defect verified against a running instance. The defensive decode stays regardless, but a fix upstream is worth having. | [04-data-model.md](04-data-model.md) §2 |
-| 7 | Will the ActivityPub attachment-shape defect (attachments served in Mastodon client shape rather than as `Document` with `mediaType`) affect anything this client reads? It is a *peer*-facing defect, so probably not — but a status re-fetched from a peer could carry the odd shape. | [04-data-model.md](04-data-model.md) §2 |
+| 5 | ~~Is an unsupported narrowing a 422?~~ **Answered:** never — unknown parameters are ignored on Nextcloud and Mastodon alike, so the probe could not detect anything. Narrowing is now decided by the software name alone. | [02-server-api.md](02-server-api.md) §4 |
+| 6 | ~~Does `Account.avatar` still come back `""`?~~ **Answered:** yes, for an actor with no icon (`Person::exportAsLocal`), and `header` falls back to the avatar. The defensive decode stays, and a header equal to the avatar is now treated as no header. | [04-data-model.md](04-data-model.md) §2 |
+| 7 | ~~Does the ActivityPub attachment-shape defect reach this client?~~ **Answered:** fixed on `master` (`MediaAttachment::asDocument`), and the client API was never affected. | [04-data-model.md](04-data-model.md) §2 |
 
 ## 4. Worth proposing upstream to Nextcloud
 
 Each of these would make the client materially better and none is large.
+All six are written up as issues ready to file in
+[15-upstream-proposals.md](15-upstream-proposals.md) §2, with a full design for
+Web Push.
 
 1. **An `only_short` timeline narrowing**, decided on the write like `only_video`
    and `only_news` are, using duration and aspect from the stored media meta.

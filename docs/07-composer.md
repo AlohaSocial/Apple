@@ -192,8 +192,9 @@ media sweep to collect.
   Drafts carry their media as **local file references plus any already-uploaded
   `media_id`s** — re-opening a draft does not re-upload what is already on the
   server unless the id has expired.
-- **Scheduled posts**: where `POST /api/v1/statuses` accepts `scheduled_at`
-  (Nextcloud runs a cron for these). A date picker with a minimum of
+- **Scheduled posts**: `POST /api/v1/statuses` accepts `scheduled_at` at least
+  five minutes ahead, and answers 422 for anything sooner or malformed
+  (`ScheduledStatusService::requestedTime`); a cron publishes them. A date picker with a minimum of
   +5 minutes. Scheduled posts are managed from a list backed by
   `GET/PUT/DELETE /api/v1/scheduled_statuses` — note this route sends **no
   `Link` header**, so it is fetched whole and not paged.

@@ -215,11 +215,13 @@ Detection order, all of it tolerant of failure:
    no announcement: `/api/v1/videos/continue`, `/api/v1/stories/carousel`,
    `/api/v1/collections`. 200 → available; 404 → absent; 401 → available but
    unauthorised (treat as available).
-4. `only_media` / `only_video` / `only_news` are probed by requesting
-   `/api/v1/timelines/public?limit=1&only_video=true` and checking for a **422**
-   (Mastodon accepts unknown query parameters silently, so absence of 422 is
-   not proof — additionally gate on `softwareName == "nextcloud social"` for
-   `only_video` and `only_news`, which are this app's own).
+4. `only_media` / `only_video` / `only_news` are decided by the software name
+   alone, never probed. Nextcloud reads a fixed list of timeline parameters
+   (`ProbeOptions::fromArray`) and Mastodon ignores what it does not know, so an
+   unsupported narrowing answers 200 exactly like a supported one. `only_video`
+   and `only_news` are Nextcloud's; `only_media` is Nextcloud's and Mastodon's.
+   Nodeinfo names the software `nextcloud-social`; the check matches on
+   "nextcloud" and "social" both being present.
 5. `hlsLadder`, `emojiReactions` and `quotePosts` are latched on first sighting
    of the relevant field in a decoded entity, and persisted.
 
