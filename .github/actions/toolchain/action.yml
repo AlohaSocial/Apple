@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: MIT
+name: Toolchain
+description: >
+  Selects the Xcode this project requires, and optionally resolves an iOS
+  simulator to run on. Fails loudly when the runner image does not carry the
+  toolchain rather than silently building with an older one, which is how a
+  project pinned to one OS line ends up green on CI and broken in Xcode.
+
+inputs:
+  xcode:
+    description: The Xcode version the project requires.
+    required: true
+  simulator:
+    description: Resolve an iOS simulator and export ALOHA_SIMULATOR.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Select Xcode
+      shell: bash
+      run: |
+        set -euo pipefail
+        app="/Applications/Xcode_${{ inputs.xcode }}.app"
+        if [ ! -d "$app" ]; then
+          echo "::error::Xcode ${{ inputs.xcode }} is not installed on this runner."
+          echo "The project needs it: docs/00-overview.md §3 pins every platform to"
+          echo "the 27 line, and no earlier SDK can build it. Available here:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || echo "  (none)"
+          exit 1
+        fi
+        sudo xcode-select --switch "$app"
+        xcodebuild -version
+        swift --version
+
+    - name: Resolve a simulator
+      if: inputs.simulator == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Named by runtime rather than by model: the runner images rename the
+        # newest iPhone every autumn, and a hardcoded name turns a green build
+        # into "Unable to find a destination" the week the image updates.
+        udid=$(xcrun simctl list devices available --json | python3 -c '
+        import json, sys
+        devices = json.load(sys.stdin)["devices"]
+        found = [
+            device["udid"]
+            for runtime, entries in devices.items() if "iOS" in runtime
+            for device in entries if device["name"].startswith("iPhone")
+        ]
+        if not found:
+            sys.exit("no iPhone simulator is available on this runner")
+        print(found[-1])
+        ')
+        echo "ALOHA_SIMULATOR=$udid" >> "$GITHUB_ENV"
+        xcrun simctl boot "$udid" || true
+        echo "Simulator: $udid"

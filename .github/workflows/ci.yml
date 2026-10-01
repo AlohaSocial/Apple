@@ -1,0 +1,210 @@
+# SPDX-License-Identifier: MIT
+#
+# The gates docs/12 §6 specifies. That table described this file for months
+# before it existed: 290 tests, a forty-screen tour and an accessibility audit
+# were in the repository with nothing running them.
+#
+# A pull request that fails any job does not merge. There are no exceptions for
+# "just a small change" (docs/12 §6).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # docs/00-overview.md §3: Xcode 27, Swift 6.4, every platform on the 27 line.
+  XCODE: "27.0"
+
+jobs:
+  # Every target for every platform, release, warnings as errors.
+  #
+  # Simulator destinations throughout, with signing off: a device build needs a
+  # signing identity, and a CI job that needs a secret to compile is a job
+  # contributors cannot run. Nothing here is platform-specific enough for the
+  # device slice to catch what the simulator slice does not.
+  #
+  # iPadOS is not a row: it is the iOS target, and `TARGETED_DEVICE_FAMILY` is
+  # "1,2" on it.
+  build:
+    name: build (${{ matrix.platform }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS
+            scheme: AlohaSocial
+            destination: generic/platform=iOS Simulator
+          - platform: macOS
+            scheme: AlohaSocial
+            destination: platform=macOS
+          - platform: visionOS
+            scheme: AlohaSocial
+            destination: generic/platform=visionOS Simulator
+          - platform: watchOS
+            scheme: AlohaSocialWatch
+            destination: generic/platform=watchOS Simulator
+          - platform: tvOS
+            scheme: AlohaSocialTV
+            destination: generic/platform=tvOS Simulator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchain
+        with:
+          xcode: ${{ env.XCODE }}
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project AlohaSocial.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -configuration Release \
+            -destination "${{ matrix.destination }}" \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            CODE_SIGNING_ALLOWED=NO
+
+  # Every package that has a Tests directory, discovered by walking Packages/*/
+  # rather than listed by hand — a hand-written list had already lost
+  # AlohaDesign and AlohaIntelligence (docs/12 §6).
+  test:
+    name: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchain
+        with:
+          xcode: ${{ env.XCODE }}
+      - name: Test every package
+        run: |
+          set -euo pipefail
+          tested=0
+          for package in Packages/*/; do
+            [ -d "${package}Tests" ] || continue
+            echo "── $(basename "$package")"
+            (cd "$package" && swift test)
+            tested=$((tested + 1))
+          done
+          echo "Tested $tested packages."
+          # A refactor that renames Tests/ or moves a package should fail here
+          # rather than quietly test nothing and report success.
+          if [ "$tested" -lt 8 ]; then
+            echo "::error::Only $tested packages were tested; expected at least 8."
+            exit 1
+          fi
+
+  # The same suites on the simulator, where the `#if os(iOS)` paths are the
+  # ones that actually run.
+  test-simulator:
+    name: test-simulator
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchain
+        with:
+          xcode: ${{ env.XCODE }}
+          simulator: "true"
+      - name: Test every package on the simulator
+        run: |
+          set -euo pipefail
+          for package in Packages/*/; do
+            [ -d "${package}Tests" ] || continue
+            name=$(basename "$package")
+            echo "── $name"
+            (cd "$package" && xcodebuild test \
+              -scheme "$name" \
+              -destination "id=$ALOHA_SIMULATOR")
+          done
+
+  # The screen tours and the accessibility audit, with the screenshots kept.
+  #
+  # This is the job that sees what the unit suites cannot: every one of them
+  # passes on a composer drawn in the wrong palette, because an element's
+  # existence and its label are all they look at.
+  ui:
+    name: ui
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchain
+        with:
+          xcode: ${{ env.XCODE }}
+          simulator: "true"
+      - name: Run the tours
+        run: |
+          xcodebuild test \
+            -project AlohaSocial.xcodeproj \
+            -scheme AlohaSocialUITests \
+            -destination "id=$ALOHA_SIMULATOR" \
+            -resultBundlePath TestResults.xcresult
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: |
+            /tmp/shots
+            TestResults.xcresult
+          if-no-files-found: warn
+
+  # The localisation gate and the design-token suite.
+  accessibility:
+    name: accessibility
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchain
+        with:
+          xcode: ${{ env.XCODE }}
+      - name: Every user-facing string has a translator comment
+        run: python3 tools/check-localisation.py
+      - name: Design tokens meet the contrast floor
+        run: cd Packages/AlohaDesign && swift test
+
+  lint:
+    name: lint
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/toolchain
+        with:
+          xcode: ${{ env.XCODE }}
+      # Named directories rather than recursing over Packages, which would walk
+      # SwiftPM's own checkouts under .build (docs/12 §6).
+      - name: swift-format
+        run: |
+          swift format lint --strict --recursive \
+            Packages/*/Sources Packages/*/Tests \
+            AlohaSocial AlohaSocialWatch AlohaSocialTV \
+            AlohaWidgets AlohaShareExtension AlohaNotificationService \
+            AlohaSocialUITests
+
+  licence:
+    name: licence
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every source file carries its SPDX header
+        run: |
+          set -euo pipefail
+          missing=$(git ls-files '*.swift' | xargs grep -L 'SPDX-License-Identifier' || true)
+          if [ -n "$missing" ]; then
+            echo "::error::Missing SPDX header:"
+            echo "$missing"
+            exit 1
+          fi
+      - name: No third-party runtime dependency has appeared
+        run: |
+          set -euo pipefail
+          # docs/00-overview.md §8: zero third-party runtime dependencies is a
+          # success criterion for 1.0, not a preference. Every `.package` in
+          # this repository is a `path:` to a sibling.
+          if grep -n 'url:' Packages/*/Package.swift; then
+            echo "::error::A remote SPM dependency was added."
+            exit 1
+          fi
