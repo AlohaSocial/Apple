@@ -1,13 +1,14 @@
 # 02 — Server API contract
 
-Everything in this document was verified against Nextcloud Social `master`
+Everything in this document was verified against the `master` branch of
+[nextcloud/social](https://github.com/nextcloud/social)
 (app version 0.19.95 / 0.24.1 line, September 2026) — its `docs/API.md`,
 `docs/Mastodon-Compatibility.md` and its controller route attributes — and
 against the Mastodon 4.3 client API.
 
-## 1. What Nextcloud Social serves
+## 1. What Nextcloud serves
 
-Nextcloud Social announces `Mastodon 4.3.0` compatibility
+Nextcloud announces `Mastodon 4.3.0` compatibility
 (`version: "4.2.0 (compatible; Nextcloud Social <v>)"` on v1, and
 `api_versions: {"mastodon": 3}`). Of Mastodon's 145 documented client routes,
 **three** are genuinely unserved:
@@ -22,7 +23,7 @@ Everything else Mastodon documents is implemented and does real work. The one
 remaining stub in the whole surface is `/api/saved_searches/list.json`, a
 Twitter-era route that always answers `[]`. Do not call it.
 
-## 2. Nextcloud Social extensions worth using
+## 2. Nextcloud extensions worth using
 
 These are the reason the app is Nextcloud-first. Each must sit behind a
 capability flag (§4).
@@ -90,7 +91,7 @@ a viewer; "not yours to see" and "there are none" are both **404**.
 
 **Known asymmetry:** Pixelfed only fans stories out to instances it has
 identified as Pixelfed, so stories *from* Pixelfed accounts do not arrive at a
-Nextcloud Social instance. Stories will mostly be local and from other Social
+Nextcloud instance. Stories will mostly be local and from other Nextcloud
 instances. Do not present an empty carousel as an error.
 
 ### Media from Nextcloud Files
@@ -132,7 +133,7 @@ All optional, all capability-gated, all deferred past Phase 5 — see
 
 ### PeerTube route translation
 
-Nextcloud Social also translates a read-only slice of PeerTube's own API
+Nextcloud also translates a read-only slice of PeerTube's own API
 (`/api/v1/videos`, `/api/v1/video-channels`, `/api/v1/config`,
 `/api/v1/users/me`, `/api/v1/search/videos`, `/api/v1/videos/{id}/comment-threads`).
 
@@ -144,7 +145,7 @@ thinking they are needed.
 
 ## 3. Hard limits to respect
 
-| Limit | Value on Nextcloud Social | Where to read it |
+| Limit | Value on Nextcloud | Where to read it |
 |---|---|---|
 | Status length | 5000 characters | `configuration.statuses.max_characters` |
 | Attachments per status | server-stated | `configuration.statuses.max_media_attachments` |
@@ -185,7 +186,7 @@ struct ServerCapabilities: Sendable, Codable, Equatable {
     var translation: Bool            // configuration.translation.enabled
     var translationLanguages: [String: [String]]
 
-    // Nextcloud Social extensions
+    // Nextcloud extensions
     var onlyMediaFilter: Bool
     var onlyVideoFilter: Bool
     var onlyNewsFilter: Bool
@@ -207,7 +208,7 @@ Detection order, all of it tolerant of failure:
 
 1. `GET /.well-known/nodeinfo/2.1`, falling back to `2.0`, for
    `software.name` / `software.version`. This is served at the **domain root**
-   on Nextcloud Social even when the API is not.
+   on Nextcloud even when the API is not.
 2. `GET {apiBase}/api/v2/instance`, falling back to `/api/v1/instance`. Gives
    limits, `urls`, `configuration`, `api_versions`, `vapid_key`.
 3. Cheap `HEAD`/`GET` probes with `limit=1` for the extension routes that have
@@ -270,7 +271,7 @@ enum APIError: Error, Sendable {
 ```
 
 Mastodon-shaped errors are `{"error": "...", "error_description": "..."}`.
-Nextcloud Social's Custom Local API uses a different envelope
+Nextcloud's Custom Local API uses a different envelope
 (`{"result": …, "status": 1}`) — the app touches only two of those routes
 (`/api/v1/global/accounts/search`, `/api/v1/global/tags/search`) and must
 decode them separately. Prefer `/api/v2/search` and

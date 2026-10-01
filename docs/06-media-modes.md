@@ -23,7 +23,7 @@ boosted in Home.
 
 ## 2. Sourcing
 
-| Mode | Nextcloud Social | Any other server |
+| Mode | Nextcloud | Any other server |
 |---|---|---|
 | Home | `/timelines/{home,public}` | same |
 | Photos | `+ only_media=true` | fetch normally, filter to statuses whose attachments are all images, over-fetch ×3 to fill a page |
@@ -138,7 +138,7 @@ Additional signals, any of which promotes a status that fails the aspect test:
 - the status or its tags contain `#loops`, `#short`, `#shorts`, `#reel`;
 - the attachment's `meta.original.duration ≤ 60 s` regardless of aspect.
 
-Where `meta` is missing — which happens, since Nextcloud Social fills `meta`
+Where `meta` is missing — which happens, since Nextcloud fills `meta`
 only for what it probed — the classification is deferred: the status is
 provisionally excluded from Shorts, and reclassified once the player reports
 `AVAsset` dimensions and duration. The reclassification is persisted on
@@ -279,7 +279,7 @@ Where `capabilities.stories`.
   first must not read to the poster as "could not be deleted".
 - **Expect the carousel to be sparse.** Pixelfed only fans stories out to
   instances it has identified as Pixelfed, so stories from Pixelfed accounts do
-  not arrive at a Nextcloud Social instance at all. The empty state says
+  not arrive at a Nextcloud instance at all. The empty state says
   "No stories right now", never anything that reads as an error.
 
 ## 7. News and Audio modes

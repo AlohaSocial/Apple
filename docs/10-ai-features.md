@@ -98,7 +98,7 @@ The highest-value feature here, and the one most worth getting right.
 
 Two paths, and the server's comes first.
 
-1. **Server translation** where `capabilities.translation` — Nextcloud Social
+1. **Server translation** where `capabilities.translation` — Nextcloud
    implements `POST /api/v1/statuses/{nid}/translate` through Nextcloud's own
    translation provider, and advertises the language pairs at
    `/api/v1/instance/translation_languages`. This is a real translation, it is

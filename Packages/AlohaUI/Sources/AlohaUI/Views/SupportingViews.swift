@@ -42,7 +42,7 @@ public struct WelcomeView: View {
             .buttonStyle(.alohaProminent)
 
             Text(
-                "Works with Nextcloud Social, Mastodon, and anything else that speaks the Mastodon API.",
+                "Works with Nextcloud, Mastodon, and anything else that speaks the Mastodon API.",
                 comment: "Welcome footnote"
             )
             .font(.caption)

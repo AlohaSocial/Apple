@@ -24,7 +24,7 @@ to choose, and things to check with the server before building against them.
 - **Immersive visionOS experiences.**
 - **Safari extension** for "open this in Aloha Social".
 - **Nextcloud Files browser** beyond the composer's path picker.
-- **Admin and moderation console** over Nextcloud Social's admin API.
+- **Admin and moderation console** over Nextcloud's admin API.
 - **CarPlay** for audio mode.
 
 **Deferred, then built anyway.** Annual reports / Wrapstodon
@@ -40,15 +40,15 @@ what made them easy to add and would make them easy to drop. Recorded in §6.
 
 | # | Question | Where it matters |
 |---|---|---|
-| 1 | Does `POST /api/v1/statuses` on Nextcloud Social honour an `Idempotency-Key` header, or ignore it? If ignored, retry-on-timeout can double-post and the composer needs a different safety net (e.g. a pre-flight check for an identical recent status). | [07-composer.md](07-composer.md) §5 |
-| 2 | Does Nextcloud Social accept `scheduled_at` on `POST /api/v1/statuses`? The scheduled-statuses read/update/delete routes exist and a cron runs them, but the creation path should be confirmed. | [07-composer.md](07-composer.md) §5 |
+| 1 | Does `POST /api/v1/statuses` on Nextcloud honour an `Idempotency-Key` header, or ignore it? If ignored, retry-on-timeout can double-post and the composer needs a different safety net (e.g. a pre-flight check for an identical recent status). | [07-composer.md](07-composer.md) §5 |
+| 2 | Does Nextcloud accept `scheduled_at` on `POST /api/v1/statuses`? The scheduled-statuses read/update/delete routes exist and a cron runs them, but the creation path should be confirmed. | [07-composer.md](07-composer.md) §5 |
 | 3 | Does the OAuth flow accept `urn:ietf:wg:oauth:2.0:oob` as a registered redirect URI for a *new* registration, not only in `denyUrl`? The whole tvOS sign-in depends on it. | [03-auth-and-accounts.md](03-auth-and-accounts.md) §7 |
 | 4 | ~~What credentials does WebDAV browsing need?~~ **Answered:** the Social token is issued by Social's own authorisation server and is not a Nextcloud session, so WebDAV refuses it. **Nextcloud Login Flow v2** grants a real app password, and one app password unlocks both Files browsing and push. Implemented; see §7. | [07-composer.md](07-composer.md) §6 |
-| 5 | Is `only_media` / `only_video` / `only_news` a **422** on a server that does not implement them, or silently ignored? The capability probe assumes 422 on Nextcloud Social and gates on `software.name` elsewhere; if stock Mastodon silently ignores them the fallback is correct either way, but the probe can be simplified if the behaviour is known. | [02-server-api.md](02-server-api.md) §4 |
+| 5 | Is `only_media` / `only_video` / `only_news` a **422** on a server that does not implement them, or silently ignored? The capability probe assumes 422 on Nextcloud and gates on `software.name` elsewhere; if stock Mastodon silently ignores them the fallback is correct either way, but the probe can be simplified if the behaviour is known. | [02-server-api.md](02-server-api.md) §4 |
 | 6 | Does `Account.avatar` returning `""` still occur on current `master`? The compatibility document lists it as an open defect verified against a running instance. The defensive decode stays regardless, but a fix upstream is worth having. | [04-data-model.md](04-data-model.md) §2 |
 | 7 | Will the ActivityPub attachment-shape defect (attachments served in Mastodon client shape rather than as `Document` with `mediaType`) affect anything this client reads? It is a *peer*-facing defect, so probably not — but a status re-fetched from a peer could carry the odd shape. | [04-data-model.md](04-data-model.md) §2 |
 
-## 4. Worth proposing upstream to Nextcloud Social
+## 4. Worth proposing upstream to Nextcloud
 
 Each of these would make the client materially better and none is large.
 
@@ -206,7 +206,7 @@ conversations):
   `GeometryReader` lays its child out top-leading and `RemoteImage` never
   claimed the space it was given.
 - **Explore offered a trend period picker to servers that ignore it.** Only
-  Nextcloud Social narrows trends by period; on Mastodon the control changed
+  Nextcloud narrows trends by period; on Mastodon the control changed
   nothing. It now appears only where it works.
 - **Every row was called "ellipsis" to VoiceOver on macOS** — the combined row
   inherited the overflow menu's identifier — and the spoken label named the
@@ -228,9 +228,10 @@ and notification screens rather than a 404 banner.
 A fourth pass, this one about how the app feels rather than whether it works.
 
 **The app had no icon.** `AppIcon.appiconset` held a `Contents.json` and no
-images at all. `tools/make-icons.swift` draws the mark — two speech bubbles,
-one behind the other — and writes every size the catalog asks for, plus five
-alternate icon sets registered through
+images at all. `tools/make-icons.sh` renders the Aloha Social mark — the
+"@ stamen hibiscus" from https://github.com/AlohaSocial/Logos — with Inkscape
+and writes every size the catalog asks for, plus five alternate icon sets (the
+flower recoloured) registered through
 `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`.
 
 **Nobody had a face.** Every row, notification and conversation showed an empty
@@ -275,7 +276,7 @@ what is built is worse than no list:
   job alongside the screen tours.
 - **Places, starter packs, annual reports and memories** all exist —
   `PlaceView`, `StarterPacksView`, `AnnualReportView`, `MemoriesView`. The
-  annual report is Mastodon's `#Wrapstodon`, which Nextcloud Social serves over
+  annual report is Mastodon's `#Wrapstodon`, which Nextcloud serves over
   the API and has no web page of its own for.
 
 

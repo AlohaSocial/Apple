@@ -46,7 +46,7 @@ position, character counter.
   - Debounced 250 ms, cancelled on further typing, results cached per query for
     the session.
 - **Character counter** reads `configuration.statuses.max_characters` (5000 on
-  Nextcloud Social, 500 on stock Mastodon) and
+  Nextcloud, 500 on stock Mastodon) and
   `characters_reserved_per_url`, and counts a URL as that fixed cost. The
   spoiler text counts against the same budget, as Mastodon does. Over-length
   disables Post and the counter turns destructive.
@@ -55,7 +55,7 @@ position, character counter.
 
 ### The three games
 
-`/dice`, `/flip` and `/pick`, a port of Nextcloud Social's
+`/dice`, `/flip` and `/pick`, a port of Nextcloud's
 `src/utils/composerCommands.js` and deliberately a faithful one — a post written
 here and a post written in the web app must say the same thing.
 
@@ -73,7 +73,7 @@ roll happens once, at the moment of posting.
 ### A short post as a card
 
 Up to 120 characters, with nothing attached and no poll, can go out drawn big on
-colour — six backgrounds, the first in the writer's own hue. Nextcloud Social's
+colour — six backgrounds, the first in the writer's own hue. Nextcloud's
 `ShortComposerDialog.vue` and `textCard.js`.
 
 Drawn to a 1080×1080 picture and uploaded as an ordinary attachment rather than
@@ -127,7 +127,7 @@ choose is worse than saying so.
 
 ### Adjustments
 
-The seven Nextcloud Social offers, with the same names and the same numbers as
+The seven Nextcloud offers, with the same names and the same numbers as
 its `imageFilters.js`: Original, Mono, Noir, Warm, Cool, Vivid, Faded, Sepia.
 Deliberately mild — a filter that cannot be undone after upload should not be
 the kind that ruins a photograph.
@@ -193,7 +193,7 @@ media sweep to collect.
   `media_id`s** — re-opening a draft does not re-upload what is already on the
   server unless the id has expired.
 - **Scheduled posts**: where `POST /api/v1/statuses` accepts `scheduled_at`
-  (Nextcloud Social runs a cron for these). A date picker with a minimum of
+  (Nextcloud runs a cron for these). A date picker with a minimum of
   +5 minutes. Scheduled posts are managed from a list backed by
   `GET/PUT/DELETE /api/v1/scheduled_statuses` — note this route sends **no
   `Link` header**, so it is fetched whole and not paged.

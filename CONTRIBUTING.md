@@ -58,7 +58,7 @@ has the graph and what each package owns.
 ## The one thing not to break
 
 API base discovery ([docs/03-auth-and-accounts.md](docs/03-auth-and-accounts.md) §2).
-Nextcloud Social's Mastodon API is only at the domain root when an
+Nextcloud's Mastodon API is only at the domain root when an
 administrator has applied the web-server rewrite rules, and many instances have
 not. `ServerProbe` finds it either way. The test that pins this is
 `"A Nextcloud WITHOUT the rewrite rules still resolves"` in

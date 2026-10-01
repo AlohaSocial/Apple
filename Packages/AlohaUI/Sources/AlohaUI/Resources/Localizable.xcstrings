@@ -561,7 +561,7 @@
     "Aloha Social shows posts from servers across the fediverse. Those servers are run by other people, and this app does not control what they publish." : {
       "comment" : "Terms gate explanation"
     },
-    "Aloha Social works with Nextcloud Social, Mastodon, and any server that speaks the Mastodon API." : {
+    "Aloha Social works with Nextcloud, Mastodon, and any server that speaks the Mastodon API." : {
       "comment" : "Sign-in explanation"
     },
     "Also" : {
@@ -3372,7 +3372,7 @@
     "What happens" : {
       "comment" : "Delete account section"
     },
-    "What is Nextcloud Social?" : {
+    "What is Nextcloud?" : {
       "comment" : "Sign-in link"
     },
     "What may trend" : {
@@ -3498,7 +3498,7 @@
     "Working on it…" : {
       "comment" : "Rewrite in progress"
     },
-    "Works with Nextcloud Social, Mastodon, and anything else that speaks the Mastodon API." : {
+    "Works with Nextcloud, Mastodon, and anything else that speaks the Mastodon API." : {
       "comment" : "Welcome footnote"
     },
     "Write a message…" : {

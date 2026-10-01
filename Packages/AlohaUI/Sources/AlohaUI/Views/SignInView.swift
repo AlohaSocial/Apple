@@ -80,10 +80,10 @@ public struct SignInView: View {
         } footer: {
             VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 Text(
-                    "Aloha Social works with Nextcloud Social, Mastodon, and any server that speaks the Mastodon API.",
+                    "Aloha Social works with Nextcloud, Mastodon, and any server that speaks the Mastodon API.",
                     comment: "Sign-in explanation")
-                Link(destination: URL(string: "https://github.com/nextcloud/social")!) {
-                    Text("What is Nextcloud Social?", comment: "Sign-in link")
+                Link(destination: URL(string: "https://nextcloud.com")!) {
+                    Text("What is Nextcloud?", comment: "Sign-in link")
                 }
             }
         }

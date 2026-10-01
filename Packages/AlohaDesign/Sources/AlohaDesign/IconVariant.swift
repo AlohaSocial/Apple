@@ -4,9 +4,9 @@ import SwiftUI
 
 /// Which mark sits on the Home Screen.
 ///
-/// These used to be the app's accent colour as well. They are not any more: the
-/// accent is the colour of the Nextcloud the account is on, which is the colour
-/// its people already know the server by (`ServerAccent`). The icon stays a
+/// Only the icon. The app's accent is never chosen in here: it is the colour
+/// of the Nextcloud the account is on, read from its `theming` capability,
+/// which is the colour its people already know the server by. The icon stays a
 /// choice, because an icon is about finding the app on a crowded Home Screen
 /// rather than about the server.
 ///
@@ -33,11 +33,11 @@ public enum AlohaIconVariant: String, CaseIterable, Sendable, Codable, Identifia
         }
     }
 
-    /// The mark's colour. `aloha` is the app's own, which the theme also uses
-    /// as its accent where a server names none.
-    public func colour(default fallback: Color) -> Color {
+    /// The flower's colour in this icon, for drawing its preview. The same
+    /// colours `tools/make-icons.sh` recolours the icons with.
+    public var swatch: Color {
         switch self {
-        case .aloha: fallback
+        case .aloha: Color(red: 0.910, green: 0.376, blue: 0.298)
         case .ocean: Color(red: 0.11, green: 0.47, blue: 0.78)
         case .forest: Color(red: 0.13, green: 0.50, blue: 0.33)
         case .grape: Color(red: 0.47, green: 0.29, blue: 0.75)
@@ -45,8 +45,4 @@ public enum AlohaIconVariant: String, CaseIterable, Sendable, Codable, Identifia
         case .slate: Color(red: 0.33, green: 0.38, blue: 0.45)
         }
     }
-
-    /// The swatch the icon preview is drawn from, which must look right with
-    /// no context around it.
-    public var swatch: Color { colour(default: Color(red: 0.90, green: 0.36, blue: 0.24)) }
 }

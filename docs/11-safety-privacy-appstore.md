@@ -135,7 +135,7 @@ any future addition of analytics requires changing this document first.
   why reading a post does not announce the reader to a server they never chose
   to talk to.
 - Remote avatars and header images **are** loaded from their origin hosts,
-  because Mastodon servers cache them and Nextcloud Social serves cached copies
+  because Mastodon servers cache them and Nextcloud serves cached copies
   via `/document/get`. Prefer the local cache URL when the entity offers one.
 
 ## 4. Age rating
@@ -175,7 +175,7 @@ any future addition of analytics requires changing this document first.
 
 ## 7. Moderation
 
-A moderator surface, over Mastodon's `/api/v1/admin/*`, which Nextcloud Social
+A moderator surface, over Mastodon's `/api/v1/admin/*`, which Nextcloud
 serves from `AdminApiController`. The server's own `/moderation/*` routes need a
 Nextcloud session **and** a CSRF token, which no API client has and none can
 obtain — so before this a moderator could act from a browser and from nowhere

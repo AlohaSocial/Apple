@@ -47,7 +47,7 @@ an empty but correct architecture.
 
 ## Phase 1 — Talking to a server
 
-**Goal:** sign in to a Nextcloud Social instance **with and without** the root
+**Goal:** sign in to a Nextcloud instance **with and without** the root
 rewrite, and to mastodon.social, from the same build.
 
 **Work packages**
@@ -64,14 +64,14 @@ rewrite, and to mastodon.social, from the same build.
   shared access group.
 - P1.6 `ServerCapabilities` detection, persistence, and the 24-hour refresh.
 - P1.7 The `MockAPIServer` and its six configurations, plus the fixture corpus
-  captured from a real Nextcloud Social instance and from mastodon.social.
+  captured from a real Nextcloud instance and from mastodon.social.
 - P1.8 The sign-in screen with its three states and the failure UI including
   the copyable web-server snippet.
 
 **Acceptance**
 
 - Sign-in succeeds against `MockAPIServer` in **all six** configurations.
-- Sign-in succeeds against a real Nextcloud Social instance without the rewrite
+- Sign-in succeeds against a real Nextcloud instance without the rewrite
   rules applied — verified manually and recorded in the PR.
 - Sign-in succeeds against mastodon.social.
 - Decoding tests pass against the real-capture corpus.
@@ -169,7 +169,7 @@ rewrite, and to mastodon.social, from the same build.
 
 **Acceptance**
 
-- Against a Nextcloud Social mock (no streaming, no push), a new mention appears
+- Against a Nextcloud mock (no streaming, no push), a new mention appears
   as a local notification within one poll interval, exactly once.
 - Against a Mastodon mock advertising streaming, the socket is used and the poll
   interval drops to the safety-net value.

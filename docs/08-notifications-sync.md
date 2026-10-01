@@ -2,14 +2,14 @@
 
 ## 1. The constraint
 
-Nextcloud Social serves **no streaming API** and **no Web Push**. It says so
+Nextcloud serves **no streaming API** and **no Web Push**. It says so
 explicitly rather than leaving a client to time out: `instance.urls` is an empty
 object, and `vapid_key` is an empty string. Both are deliberate signals meaning
 "do not wait for a socket, do not offer push".
 
 So the baseline is **polling**, and the app is designed around polling being the
 normal case rather than a degraded one. Where a server *does* advertise
-streaming or a VAPID key — real Mastodon today, Nextcloud Social later — the app
+streaming or a VAPID key — real Mastodon today, Nextcloud later — the app
 upgrades automatically.
 
 ## 2. Three tiers
@@ -141,7 +141,7 @@ When `capabilities.webPushVAPIDKey != nil`:
 - Disable the corresponding local-notification raising for that account so
   nothing is shown twice.
 - Unsubscribe on sign-out.
-- **This path is written but dormant for Nextcloud Social.** Do not delete it
+- **This path is written but dormant for Nextcloud.** Do not delete it
   and do not let it bit-rot: it is what makes the app correct the day the server
   gains push, and it is what makes the app good on mastodon.social today.
 

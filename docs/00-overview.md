@@ -7,7 +7,7 @@ only, targeting the 2026 OS releases and nothing before them.
 
 It talks the **Mastodon client API**. That makes it work against Mastodon,
 GoToSocial, Akkoma, Pleroma and anything else serving that protocol. Its
-**primary target is Nextcloud Social**, which serves that API plus a set of
+**primary target is Nextcloud**, which serves that API plus a set of
 extensions — video ladders, story carousels, Pixelfed and PeerTube route
 translations, per-reader watch positions — that no other server has in one
 place. Aloha Social uses them where they exist and degrades cleanly where they
@@ -28,7 +28,7 @@ app, not one timeline that renders all four badly.**
 - Nextcloud-specific extensions are allowed and encouraged, but every one of
   them must be behind a capability flag, and the app must be fully usable with
   every flag off.
-- Onboarding names Nextcloud Social first and explains what it is. Other
+- Onboarding names Nextcloud first and explains what it is. Other
   servers are equally reachable, one field away.
 
 ## 3. Platforms
@@ -56,10 +56,10 @@ its own gestures. They are not filters bolted onto one list.
 | Mode | Inspired by | Server support |
 |---|---|---|
 | **Home** (text) | Mastodon | Universal |
-| **Photos** | Pixelfed | `only_media=true` on Nextcloud Social; client-side filter elsewhere |
-| **Video** | PeerTube | `only_video=true` on Nextcloud Social; client-side filter elsewhere |
+| **Photos** | Pixelfed | `only_media=true` on Nextcloud; client-side filter elsewhere |
+| **Video** | PeerTube | `only_video=true` on Nextcloud; client-side filter elsewhere |
 | **Shorts** | Loops | Client-side classification everywhere (see [06-media-modes.md](06-media-modes.md) §4) |
-| **News** | — | `only_news=true` on Nextcloud Social only; hidden elsewhere |
+| **News** | — | `only_news=true` on Nextcloud only; hidden elsewhere |
 | **Audio** | — | Client-side classification everywhere |
 
 Full treatment in [06-media-modes.md](06-media-modes.md).
@@ -91,10 +91,10 @@ Full treatment in [06-media-modes.md](06-media-modes.md).
 
 ## 6. Explicit non-goals for 1.0
 
-- **No account creation.** Nextcloud Social's client API cannot create an
+- **No account creation.** Nextcloud's client API cannot create an
   account (`registrations: false` always) and Mastodon sign-up flows differ per
   server. Onboarding links out to the server's own sign-up page.
-- **No instance administration console.** Nextcloud Social serves a full admin
+- **No instance administration console.** Nextcloud serves a full admin
   API; its *moderation* half — the reports queue, silencing and suspending an
   account, and what may trend — is in scope and described in
   [11-safety-privacy-appstore.md](11-safety-privacy-appstore.md) §7. Instance
@@ -103,7 +103,7 @@ Full treatment in [06-media-modes.md](06-media-modes.md).
   where an administrator already is when they are doing it.
 - **No Nextcloud Files browser**, beyond the single "attach a file already on
   my Nextcloud" picker described in [07-composer.md](07-composer.md) §6.
-- **No PeerTube upload.** Nextcloud Social's PeerTube routes are read-only.
+- **No PeerTube upload.** Nextcloud's PeerTube routes are read-only.
   Video is posted through the Mastodon media + status routes instead.
 - **No custom server-side feed algorithm.** Ordering is the server's.
 - **No cross-account merged timeline** in 1.0. Deferred, noted in
@@ -129,7 +129,7 @@ Used consistently across every document and expected in the code.
 
 ## 8. Success criteria for 1.0
 
-1. A person adds a Nextcloud Social account and reads their home timeline in
+1. A person adds a Nextcloud account and reads their home timeline in
    under 30 seconds from app launch, including on an instance that has **not**
    applied the root-rewrite rules.
 2. The same build, unmodified, signs into `mastodon.social` and works.

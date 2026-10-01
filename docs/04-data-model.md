@@ -14,7 +14,7 @@ Repositories convert between them. Nothing else does.
 
 ## 2. Decoding rules
 
-These are load-bearing. Nextcloud Social is a partial implementation and other
+These are load-bearing. Nextcloud is a partial implementation and other
 servers are forks of forks; a strict decoder will fail on real data.
 
 1. **A malformed entity must never fail its page.** Arrays of entities decode
@@ -22,23 +22,23 @@ servers are forks of forks; a strict decoder will fail on real data.
    and reports failures to the logger. A timeline page with one bad status shows
    nineteen.
 2. **Every optional in Mastodon's documentation is optional here**, plus:
-   - `Account.avatar` may be `""` on Nextcloud Social (a known defect:
+   - `Account.avatar` may be `""` on Nextcloud (a known defect:
      `Person::exportAsLocal()` falls through to a possibly-empty stored value).
      Decode avatar and header as `String`, and treat empty as "no image" rather
      than failing the whole account.
-   - `Status.poll` is present-or-null on Nextcloud Social but may be absent on
+   - `Status.poll` is present-or-null on Nextcloud but may be absent on
      other servers.
-   - `MediaAttachment.meta` is an object, never a list, on Nextcloud Social —
+   - `MediaAttachment.meta` is an object, never a list, on Nextcloud —
      but decode defensively against servers that send `[]`.
    - `Instance.urls`, `.stats`, `.configuration` are objects, never `[]`, on
-     Nextcloud Social. Other servers are less careful.
+     Nextcloud. Other servers are less careful.
 3. **Unknown enum cases decode to a `.unknown(String)` case**, never throw.
    This applies to `Visibility`, `NotificationKind`, `AttachmentKind`,
    `FilterAction`, `FilterContext`. A notification kind the app does not know
    renders as a generic row with the account and a timestamp; it never crashes
    and never disappears silently without a log line.
 4. **Ids are `String`**, always, everywhere, even where a server sends numbers.
-   A custom decoder accepts both. Nextcloud Social uses numeric `nid`s; Mastodon
+   A custom decoder accepts both. Nextcloud uses numeric `nid`s; Mastodon
    uses snowflake strings. Never parse an id as an integer for ordering.
 5. **Dates** are ISO 8601 with fractional seconds optional. One shared
    `JSONDecoder.dateDecodingStrategy` handles both forms plus Unix seconds
