@@ -2,31 +2,103 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Cancelled." : {
-      "comment" : "Request cancelled"
+      "comment" : "Request cancelled",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgebrochen."
+          }
+        }
+      }
     },
     "Couldn't reach your server." : {
-      "comment" : "Network failure"
+      "comment" : "Network failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server ist nicht erreichbar."
+          }
+        }
+      }
     },
     "That isn't there any more." : {
-      "comment" : "HTTP 404"
+      "comment" : "HTTP 404",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das gibt es nicht mehr."
+          }
+        }
+      }
     },
     "Your server had a problem (%lld)." : {
-      "comment" : "HTTP 5xx, with the status code"
+      "comment" : "HTTP 5xx, with the status code",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server hatte ein Problem (%lld)."
+          }
+        }
+      }
     },
     "Your server is asking for a moment." : {
-      "comment" : "HTTP 429"
+      "comment" : "HTTP 429",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server bittet um einen Moment Geduld."
+          }
+        }
+      }
     },
     "Your server sent an unreadable reply." : {
-      "comment" : "Malformed response"
+      "comment" : "Malformed response",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server hat eine unlesbare Antwort geschickt."
+          }
+        }
+      }
     },
     "Your server sent something unexpected." : {
-      "comment" : "Decoding failure"
+      "comment" : "Decoding failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server hat etwas Unerwartetes geschickt."
+          }
+        }
+      }
     },
     "Your server wouldn't allow that." : {
-      "comment" : "HTTP 403"
+      "comment" : "HTTP 403",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server hat das nicht erlaubt."
+          }
+        }
+      }
     },
     "Your sign-in has expired." : {
-      "comment" : "Error when a token is revoked"
+      "comment" : "Error when a token is revoked",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Anmeldung ist abgelaufen."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -49,6 +49,25 @@ The short version:
   works around, and the route where there is one.
 - Feature folders, not layer folders.
 
+## Translations
+
+Every user-facing string lives in a String Catalog (`*.xcstrings`), one per
+package and one per app target, with a translator comment on each (CI checks).
+English is the source; German ships with the app as the first translation.
+
+Translations are done on Transifex, in Nextcloud's project, by the same
+community that translates Nextcloud. `.tx/config` maps every catalog to a
+resource:
+
+```sh
+tx push -s   # upload new or changed English strings
+tx pull -a   # write translations back into the catalogs
+```
+
+Commit the pulled catalogs like any other change. Do not edit another
+language's strings by hand in the catalog; change them on Transifex, or the next
+pull overwrites the edit.
+
 ## Where things live
 
 `Packages/` holds eight local Swift packages in a strict DAG; the app target is

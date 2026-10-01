@@ -2,43 +2,147 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Aloha" : {
-      "comment" : "App icon name"
+      "comment" : "App icon name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aloha"
+          }
+        }
+      }
     },
     "Black" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schwarz"
+          }
+        }
+      }
     },
     "Dim" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedimmt"
+          }
+        }
+      }
     },
     "Forest" : {
-      "comment" : "App icon name"
+      "comment" : "App icon name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wald"
+          }
+        }
+      }
     },
     "Grape" : {
-      "comment" : "App icon name"
+      "comment" : "App icon name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traube"
+          }
+        }
+      }
     },
     "High Contrast Dark" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoher Kontrast dunkel"
+          }
+        }
+      }
     },
     "High Contrast Light" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoher Kontrast hell"
+          }
+        }
+      }
     },
     "Ocean" : {
-      "comment" : "App icon name"
+      "comment" : "App icon name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ozean"
+          }
+        }
+      }
     },
     "Rose" : {
-      "comment" : "App icon name"
+      "comment" : "App icon name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rose"
+          }
+        }
+      }
     },
     "Slate" : {
-      "comment" : "App icon name"
+      "comment" : "App icon name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schiefer"
+          }
+        }
+      }
     },
     "System" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
     },
     "Warm Dark" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warm dunkel"
+          }
+        }
+      }
     },
     "Warm Light" : {
-      "comment" : "Theme name"
+      "comment" : "Theme name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warm hell"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

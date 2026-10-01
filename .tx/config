@@ -1,0 +1,111 @@
+# Transifex client configuration (https://developers.transifex.com/docs/cli).
+#
+# String Catalogs are multilingual: the source and every translation live in
+# the same .xcstrings file, so file_filter and source_file are the same path.
+# `tx push -s` uploads new English strings; `tx pull -a` writes translations
+# back into the catalogs, which are then committed like any other change.
+#
+# The resources live in Nextcloud's own Transifex project, where its translation
+# community already works; each must be created there before its first push.
+
+[main]
+host = https://app.transifex.com
+lang_map = pt_BR: pt-BR, pt_PT: pt-PT, zh_CN: zh-Hans, zh_TW: zh-Hant, zh_HK: zh-HK, es_419: es-419, sr@latin: sr-Latn
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohashareextension]
+file_filter = AlohaShareExtension/Localizable.xcstrings
+source_file = AlohaShareExtension/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohasocial-infoplist]
+file_filter = AlohaSocial/InfoPlist.xcstrings
+source_file = AlohaSocial/InfoPlist.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohasocial]
+file_filter = AlohaSocial/Localizable.xcstrings
+source_file = AlohaSocial/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohasocialtv]
+file_filter = AlohaSocialTV/Localizable.xcstrings
+source_file = AlohaSocialTV/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohasocialwatch]
+file_filter = AlohaSocialWatch/Localizable.xcstrings
+source_file = AlohaSocialWatch/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohawidgets]
+file_filter = AlohaWidgets/Localizable.xcstrings
+source_file = AlohaWidgets/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohadesign]
+file_filter = Packages/AlohaDesign/Sources/AlohaDesign/Resources/Localizable.xcstrings
+source_file = Packages/AlohaDesign/Sources/AlohaDesign/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohahtml]
+file_filter = Packages/AlohaHTML/Sources/AlohaHTML/Resources/Localizable.xcstrings
+source_file = Packages/AlohaHTML/Sources/AlohaHTML/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohaintelligence]
+file_filter = Packages/AlohaIntelligence/Sources/AlohaIntelligence/Resources/Localizable.xcstrings
+source_file = Packages/AlohaIntelligence/Sources/AlohaIntelligence/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohamedia]
+file_filter = Packages/AlohaMedia/Sources/AlohaMedia/Resources/Localizable.xcstrings
+source_file = Packages/AlohaMedia/Sources/AlohaMedia/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohamodels]
+file_filter = Packages/AlohaModels/Sources/AlohaModels/Resources/Localizable.xcstrings
+source_file = Packages/AlohaModels/Sources/AlohaModels/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohanetwork]
+file_filter = Packages/AlohaNetwork/Sources/AlohaNetwork/Resources/Localizable.xcstrings
+source_file = Packages/AlohaNetwork/Sources/AlohaNetwork/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohastore]
+file_filter = Packages/AlohaStore/Sources/AlohaStore/Resources/Localizable.xcstrings
+source_file = Packages/AlohaStore/Sources/AlohaStore/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50
+
+[o:nextcloud:p:nextcloud:r:aloha-social-alohaui]
+file_filter = Packages/AlohaUI/Sources/AlohaUI/Resources/Localizable.xcstrings
+source_file = Packages/AlohaUI/Sources/AlohaUI/Resources/Localizable.xcstrings
+source_lang = en
+type = XCSTRINGS
+minimum_perc = 50

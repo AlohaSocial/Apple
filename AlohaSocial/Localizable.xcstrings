@@ -2,7 +2,15 @@
   "sourceLanguage" : "en",
   "strings" : {
     "New Post" : {
-      "comment" : "Menu item"
+      "comment" : "Menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Beitrag"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

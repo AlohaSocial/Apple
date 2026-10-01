@@ -2,16 +2,48 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Images on your server have to be under %@." : {
-      "comment" : "Upload too large"
+      "comment" : "Upload too large",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilder müssen auf deinem Server kleiner als %@ sein."
+          }
+        }
+      }
     },
     "This will be converted before it's posted." : {
-      "comment" : "Upload pre-flight notice"
+      "comment" : "Upload pre-flight notice",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei wird vor dem Veröffentlichen konvertiert."
+          }
+        }
+      }
     },
     "Videos on your server have to be under %@." : {
-      "comment" : "Upload too large"
+      "comment" : "Upload too large",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Videos müssen auf deinem Server kleiner als %@ sein."
+          }
+        }
+      }
     },
     "Your server doesn't accept this kind of file." : {
-      "comment" : "Upload unsupported type"
+      "comment" : "Upload unsupported type",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server akzeptiert diesen Dateityp nicht."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

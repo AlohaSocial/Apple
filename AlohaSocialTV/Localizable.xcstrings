@@ -1,0 +1,193 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Code" : {
+      "comment" : "tvOS code field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "comment" : "tvOS sign-in action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
+          }
+        }
+      }
+    },
+    "Continue watching" : {
+      "comment" : "tvOS shelf",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiterschauen"
+          }
+        }
+      }
+    },
+    "Couldn't reach that server." : {
+      "comment" : "tvOS sign-in error",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server ist nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Everywhere" : {
+      "comment" : "tvOS shelf",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überall"
+          }
+        }
+      }
+    },
+    "Following" : {
+      "comment" : "tvOS shelf",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folge ich"
+          }
+        }
+      }
+    },
+    "No shorts yet" : {
+      "comment" : "tvOS empty shorts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Shorts"
+          }
+        }
+      }
+    },
+    "On your phone, open this address and sign in:" : {
+      "comment" : "tvOS out-of-band instruction",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne diese Adresse auf deinem Smartphone und melde dich an:"
+          }
+        }
+      }
+    },
+    "Short vertical clips appear here." : {
+      "comment" : "tvOS empty shorts detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurze Hochformat-Clips erscheinen hier."
+          }
+        }
+      }
+    },
+    "Shorts" : {
+      "comment" : "tvOS tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shorts"
+          }
+        }
+      }
+    },
+    "Sign in" : {
+      "comment" : "tvOS sign-in action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelden"
+          }
+        }
+      }
+    },
+    "Sign in to Aloha Social" : {
+      "comment" : "tvOS sign-in title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei Aloha Social anmelden"
+          }
+        }
+      }
+    },
+    "That code didn't work. Try again." : {
+      "comment" : "tvOS sign-in error",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Code hat nicht funktioniert. Versuch es noch einmal."
+          }
+        }
+      }
+    },
+    "That doesn't look like a server address." : {
+      "comment" : "tvOS sign-in error",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das sieht nicht nach einer Serveradresse aus."
+          }
+        }
+      }
+    },
+    "Then type the code it gives you:" : {
+      "comment" : "tvOS out-of-band instruction",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib dann den Code ein, den du dort erhältst:"
+          }
+        }
+      }
+    },
+    "Video" : {
+      "comment" : "tvOS tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video"
+          }
+        }
+      }
+    },
+    "Your server" : {
+      "comment" : "tvOS sign-in field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.1"
+}
