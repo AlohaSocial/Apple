@@ -10,16 +10,23 @@ import Foundation
 public enum AppGroup {
     public static let identifier = "group.com.nextcloud.alohasocial"
 
+    /// Personal-development signing cannot claim Nextcloud's production app
+    /// group. Each shipped target opts in through its Info.plist only when the
+    /// matching entitlement is actually present.
+    public static let isEnabled =
+        Bundle.main.object(forInfoDictionaryKey: "AlohaAppGroupEnabled") as? Bool ?? true
+
     /// Falls back to `.standard` where the entitlement is missing — an unsigned
     /// local build — so the app still works alone even though sharing does not.
     /// `UserDefaults` is thread-safe by contract; the compiler cannot see
     /// that, hence the annotation rather than a lock.
     nonisolated(unsafe) public static let defaults: UserDefaults =
-        UserDefaults(suiteName: identifier) ?? .standard
+        isEnabled ? (UserDefaults(suiteName: identifier) ?? .standard) : .standard
 
     /// The Keychain access group. Must be passed to every `CredentialStore`,
     /// or an extension cannot read what the app wrote.
-    public static let keychainAccessGroup = "com.nextcloud.alohasocial"
+    public static let keychainAccessGroup: String? =
+        isEnabled ? "com.nextcloud.alohasocial" : nil
 
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"

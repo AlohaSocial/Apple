@@ -230,7 +230,7 @@ public struct ProfileView: View {
     private func header(_ account: Account) -> some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
             ZStack(alignment: .bottomLeading) {
-                RemoteImage(url: account.header) {
+                RemoteImage(url: account.preferredHeaderURL) {
                     // No banner: a gradient in the person's own colour rather
                     // than an empty grey band.
                     LinearGradient(

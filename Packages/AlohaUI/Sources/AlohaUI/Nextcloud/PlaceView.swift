@@ -130,7 +130,7 @@ public struct PlaceView: View {
             onAction(.openMedia(status: status.displayed, index: 0))
         } label: {
             RemoteImage(
-                url: first?.previewURL ?? first?.url, blurhash: first?.blurhash,
+                url: first?.displayImageURL, blurhash: first?.blurhash,
                 accessibilityText: first?.description
             )
             .aspectRatio(1, contentMode: .fill)

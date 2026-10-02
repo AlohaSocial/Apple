@@ -59,7 +59,13 @@ public struct ShortsView: View {
                 key: TimelineKey(mode: .shorts, source: Feed.forYou.source), session: session))
     }
 
-    private var shorts: [Status] { model.rows.compactMap(\.status) }
+    private var shorts: [Status] {
+        // `only_video` is not implemented consistently by all compatible
+        // servers. Never render an image or audio status as a Short.
+        model.rows.compactMap(\.status).filter { status in
+            status.displayed.mediaAttachments.contains(where: { $0.isVideo })
+        }
+    }
 
     public var body: some View {
         GeometryReader { proxy in
@@ -204,11 +210,12 @@ public struct ShortsView: View {
 
     private func page(_ status: Status, isCurrent: Bool, insets: EdgeInsets) -> some View {
         ZStack {
-            if let attachment = status.displayed.mediaAttachments.first {
+            if let attachment = status.displayed.mediaAttachments.first(where: { $0.isVideo }) {
                 ShortPlayer(
                     attachment: attachment,
                     statusID: status.displayed.id,
                     apiBase: session.capabilities.apiBase,
+                    session: session,
                     isCurrent: isCurrent,
                     isMuted: isMuted,
                     isPaused: isPaused,
@@ -505,6 +512,7 @@ struct ShortPlayer: View {
     let attachment: MediaAttachment
     let statusID: String
     let apiBase: URL
+    let session: AccountSession?
     let isCurrent: Bool
     let isMuted: Bool
     let isPaused: Bool
@@ -515,8 +523,10 @@ struct ShortPlayer: View {
     let onWatched: (Double, Double) async -> Void
 
     @State private var player: AVPlayer?
+    @State private var isReady = false
     @State private var looper: Any?
     @State private var ticker: Any?
+    @State private var watcher: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -532,11 +542,13 @@ struct ShortPlayer: View {
                     }
                     .foregroundStyle(.white)
                 }
-            } else if let player {
-                PlayerSurface(player: player, showsControls: false)
             } else {
-                RemoteImage(
-                    url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fill)
+                if let player, isReady {
+                    PlayerSurface(player: player, showsControls: false)
+                } else {
+                    RemoteImage(
+                        url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fill)
+                }
             }
         }
         .task(id: isCurrent) { await manage() }
@@ -553,14 +565,55 @@ struct ShortPlayer: View {
             teardown()
             return
         }
+        teardown()
 
         let sources = VideoSourceResolver.sources(
             for: attachment, statusID: statusID, apiBase: apiBase,
             isRemote: VideoSourceResolver.isRemote(attachment))
-        guard let first = sources.first else { return }
 
-        let item = AVPlayerItem(url: first.url)
-        let newPlayer = AVPlayer(playerItem: item)
+        // Every rung is judged before anything is shown: a pager full of
+        // players bound to items that never became playable is a pager full
+        // of black rectangles, and the poster behind each one is the honest
+        // answer until a source actually works.
+        for source in sources {
+            guard !Task.isCancelled, isCurrent else { return }
+            let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
+            switch await PlaybackReadiness.open(url: source.url, headers: headers) {
+            case .playable(let newPlayer, let item, let ready):
+                guard !Task.isCancelled, isCurrent else { return }
+                isReady = ready
+                watch(item)
+                await start(newPlayer, item: item)
+                return
+            case .rejected(let reason):
+                PlaybackLog.logger.error("short rung rejected: \(reason, privacy: .public)")
+            }
+        }
+    }
+
+    /// Lifts the poster the moment there is a frame behind it — a rung can
+    /// open before it has parsed far enough to draw — and drops the player if
+    /// the file collapses after having opened.
+    private func watch(_ item: AVPlayerItem) {
+        watcher = Task { @MainActor in
+            for await status in PlaybackReadiness.statuses(item) {
+                guard !Task.isCancelled else { return }
+                switch status {
+                case .readyToPlay:
+                    isReady = true
+                case .failed:
+                    PlaybackLog.logger.error(
+                        "short failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
+                    teardown()
+                    return
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func start(_ newPlayer: AVPlayer, item: AVPlayerItem) async {
         newPlayer.isMuted = isMuted
         newPlayer.actionAtItemEnd = loops ? .none : .pause
         player = newPlayer
@@ -587,7 +640,7 @@ struct ShortPlayer: View {
         if autoplay, !isPaused { newPlayer.play() }
 
         // Report as it goes, coalesced well inside the server's 600-a-minute.
-        while !Task.isCancelled, isCurrent {
+        while !Task.isCancelled, isCurrent, player != nil {
             try? await Task.sleep(for: .seconds(WatchPositionRules.reportInterval))
             let position = newPlayer.currentTime().seconds
             let duration = item.duration.seconds
@@ -598,10 +651,13 @@ struct ShortPlayer: View {
     }
 
     private func teardown() {
+        watcher?.cancel()
+        watcher = nil
         if let ticker { player?.removeTimeObserver(ticker) }
         ticker = nil
         player?.pause()
         player = nil
+        isReady = false
         if let looper { NotificationCenter.default.removeObserver(looper) }
         looper = nil
     }

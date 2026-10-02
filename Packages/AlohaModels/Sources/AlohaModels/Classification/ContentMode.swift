@@ -26,8 +26,8 @@ public enum FeedMode: String, Codable, Sendable, Hashable, CaseIterable, Identif
     public var symbolName: String {
         switch self {
         case .home: "house"
-        case .photos: "photo.stack"
-        case .video: "film"
+        case .photos: "square.grid.2x2"
+        case .video: "play.rectangle"
         // Portrait on portrait: a short is a tall video, and the icon says so.
         case .shorts: "rectangle.portrait.on.rectangle.portrait"
         case .news: "newspaper"

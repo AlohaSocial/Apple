@@ -572,7 +572,7 @@ struct QuotedStatusCard: View {
 
                 if let first = status.mediaAttachments.first {
                     RemoteImage(
-                        url: first.previewURL ?? first.url, blurhash: first.blurhash,
+                        url: first.displayImageURL, blurhash: first.blurhash,
                         accessibilityText: first.description
                     )
                     .aspectRatio(16 / 9, contentMode: .fill)

@@ -1,123 +1,40 @@
 // SPDX-License-Identifier: MIT
 //
-// Draws the Aloha Social mark — two speech bubbles, one behind the other —
-// and writes every icon the app needs.
+// Writes every icon the app needs from the artwork in `tools/logo/`.
 //
 //   swift tools/make-icons.swift
 //
-// Kept as source rather than checked-in binaries alone so the mark can be
-// changed in one place; the PNGs it writes are committed because Xcode needs
-// them at build time.
+// The three 1024 PNGs there are the official Aloha Social mark, rasterised
+// from the SVGs in github.com/AlohaSocial/Logos: the everyday icon on sand,
+// the dark-appearance icon on deep sea, and the tinted mark alone on
+// transparency. Everything below is derived from those three, so the mark
+// itself is never redrawn here — the SVGs upstream are the single source.
 
 import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-struct Colourway {
+/// The alternate app icons: the same flower in the accent each one is named
+/// for, so picking an icon still picks a colour the settings screen shows.
+struct Alternate {
     let name: String
-    let top: (Double, Double, Double)
-    let bottom: (Double, Double, Double)
+    let red: Double
+    let green: Double
+    let blue: Double
 }
 
-let colourways = [
-    Colourway(name: "Aloha", top: (0.98, 0.50, 0.27), bottom: (0.85, 0.27, 0.16)),
-    Colourway(name: "Ocean", top: (0.24, 0.62, 0.90), bottom: (0.08, 0.38, 0.70)),
-    Colourway(name: "Forest", top: (0.26, 0.66, 0.44), bottom: (0.09, 0.42, 0.27)),
-    Colourway(name: "Grape", top: (0.60, 0.42, 0.88), bottom: (0.38, 0.22, 0.66)),
-    Colourway(name: "Rose", top: (0.92, 0.38, 0.58), bottom: (0.74, 0.17, 0.38)),
-    Colourway(name: "Slate", top: (0.46, 0.52, 0.60), bottom: (0.25, 0.30, 0.37)),
+let alternates = [
+    Alternate(name: "Ocean", red: 0.11, green: 0.47, blue: 0.78),
+    Alternate(name: "Forest", red: 0.13, green: 0.50, blue: 0.33),
+    Alternate(name: "Grape", red: 0.47, green: 0.29, blue: 0.75),
+    Alternate(name: "Rose", red: 0.82, green: 0.24, blue: 0.45),
+    Alternate(name: "Slate", red: 0.33, green: 0.38, blue: 0.45),
 ]
 
-/// A speech bubble: a rounded rectangle with a tail on its lower-left.
-///
-/// Both shapes are filled rather than stroked. A stroked bubble needs one
-/// continuous outline or the tail's base draws a line straight through the
-/// body, which is exactly what the first attempt did.
-///
-/// Body and tail come back separately and are filled in two passes. Combined
-/// into one path they wind in opposite directions, and the non-zero fill rule
-/// then punches the tail straight through the bubble.
-func bubblePaths(in rect: CGRect, radius: CGFloat) -> (body: CGPath, tail: CGPath) {
-    let body = CGMutablePath()
-    body.addRoundedRect(in: rect, cornerWidth: radius, cornerHeight: radius)
-
-    // The base sits well inside the body, not on its edge: a base flush with a
-    // rounded corner leaves a notch where the curve pulls away.
-    let tail = CGMutablePath()
-    tail.move(to: CGPoint(x: rect.minX + rect.width * 0.20, y: rect.minY + rect.height * 0.34))
-    tail.addLine(to: CGPoint(x: rect.minX + rect.width * 0.48, y: rect.minY + rect.height * 0.04))
-    tail.addLine(to: CGPoint(x: rect.minX + rect.width * 0.12, y: rect.minY - rect.height * 0.26))
-    tail.closeSubpath()
-
-    return (body, tail)
-}
-
-func fillBubble(_ context: CGContext, in rect: CGRect, radius: CGFloat, colour: CGColor) {
-    let (body, tail) = bubblePaths(in: rect, radius: radius)
-    context.setFillColor(colour)
-    context.addPath(tail)
-    context.fillPath()
-    context.addPath(body)
-    context.fillPath()
-}
-
-func drawIcon(size: CGFloat, colourway: Colourway, background: Bool = true) -> CGImage? {
-    let space = CGColorSpaceCreateDeviceRGB()
-    guard
-        let context = CGContext(
-            data: nil, width: Int(size), height: Int(size), bitsPerComponent: 8,
-            bytesPerRow: 0, space: space,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-    else { return nil }
-
-    if background {
-        let colours =
-            [
-                CGColor(
-                    red: colourway.top.0, green: colourway.top.1, blue: colourway.top.2, alpha: 1),
-                CGColor(
-                    red: colourway.bottom.0, green: colourway.bottom.1, blue: colourway.bottom.2,
-                    alpha: 1),
-            ] as CFArray
-        if let gradient = CGGradient(colorsSpace: space, colors: colours, locations: [0, 1]) {
-            context.drawLinearGradient(
-                gradient, start: CGPoint(x: 0, y: size), end: CGPoint(x: size, y: 0),
-                options: [])
-        }
-    }
-
-    // Back bubble: translucent, up and to the left, so the overlap reads as
-    // depth rather than as two shapes touching.
-    let backRect = CGRect(
-        x: size * 0.15, y: size * 0.44, width: size * 0.45, height: size * 0.32)
-    fillBubble(
-        context, in: backRect, radius: size * 0.11,
-        colour: CGColor(red: 1, green: 1, blue: 1, alpha: 0.42))
-
-    // Front bubble: solid, down and to the right, with two lines of "text".
-    let frontRect = CGRect(
-        x: size * 0.38, y: size * 0.27, width: size * 0.47, height: size * 0.33)
-    fillBubble(
-        context, in: frontRect, radius: size * 0.11,
-        colour: CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-
-    context.setFillColor(
-        CGColor(
-            red: colourway.bottom.0, green: colourway.bottom.1, blue: colourway.bottom.2, alpha: 1))
-    for (index, width) in [0.28, 0.21].enumerated() {
-        let bar = CGRect(
-            x: frontRect.minX + size * 0.075,
-            y: frontRect.midY + size * (index == 0 ? 0.022 : -0.052),
-            width: size * width, height: size * 0.040)
-        context.addPath(
-            CGPath(
-                roundedRect: bar, cornerWidth: size * 0.019, cornerHeight: size * 0.019,
-                transform: nil))
-    }
-    context.fillPath()
-
-    return context.makeImage()
+func read(_ url: URL) -> CGImage? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    return CGImageSourceCreateImageAtIndex(source, 0, nil)
 }
 
 func write(_ image: CGImage, to url: URL) {
@@ -129,46 +46,82 @@ func write(_ image: CGImage, to url: URL) {
     CGImageDestinationFinalize(destination)
 }
 
+/// The image drawn at `size`, whatever size it was authored at.
+func scaled(_ image: CGImage, to size: Int) -> CGImage? {
+    if image.width == size && image.height == size { return image }
+    guard
+        let context = CGContext(
+            data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return nil }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: size, height: size))
+    return context.makeImage()
+}
+
+/// The flower in another colour, with the sand ground and the white glyph
+/// left exactly as they are: only pixels saturated enough to be the coral
+/// are touched, which is what keeps the `@` and its halo clean.
+func recoloured(_ image: CGImage, to red: Double, green: Double, blue: Double) -> CGImage? {
+    guard
+        let context = CGContext(
+            data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
+            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return nil }
+    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    guard let data = context.data else { return nil }
+    let bytes = data.assumingMemoryBound(to: UInt8.self)
+    let count = image.width * image.height
+
+    for index in 0..<count {
+        let offset = index * 4
+        let r = Double(bytes[offset]) / 255
+        let g = Double(bytes[offset + 1]) / 255
+        let b = Double(bytes[offset + 2]) / 255
+        let high = max(r, g, b)
+        let low = min(r, g, b)
+        let chroma = high - low
+        guard high > 0, chroma / high >= 0.45 else { continue }
+        bytes[offset] = UInt8(max(0, min(255, red * 255)))
+        bytes[offset + 1] = UInt8(max(0, min(255, green * 255)))
+        bytes[offset + 2] = UInt8(max(0, min(255, blue * 255)))
+    }
+    return context.makeImage()
+}
+
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+let logo = root.appending(path: "tools/logo")
 let iconSet = root.appending(path: "AlohaSocial/Assets.xcassets/AppIcon.appiconset")
-let alternates = root.appending(path: "AlohaSocial/AlternateIcons")
-try? FileManager.default.createDirectory(at: alternates, withIntermediateDirectories: true)
+let catalog = root.appending(path: "AlohaSocial/Assets.xcassets")
 
-let aloha = colourways[0]
+guard
+    let everyday = read(logo.appending(path: "icon-default-1024.png")),
+    let dark = read(logo.appending(path: "icon-dark-1024.png")),
+    let tinted = read(logo.appending(path: "icon-tinted-1024.png"))
+else {
+    FileHandle.standardError.write(
+        Data("tools/logo: the three 1024 PNGs are missing\n".utf8))
+    exit(1)
+}
 
-// The primary icon, in the three appearances iOS asks for, plus macOS sizes.
-if let image = drawIcon(size: 1024, colourway: aloha) {
-    write(image, to: iconSet.appending(path: "icon-1024.png"))
-}
-// Dark: the same mark on a deeper ground, which is what the dark appearance is
-// for — not a different drawing.
-if let image = drawIcon(
-    size: 1024,
-    colourway: Colourway(name: "Dark", top: (0.34, 0.14, 0.09), bottom: (0.16, 0.07, 0.05)))
-{
-    write(image, to: iconSet.appending(path: "icon-1024-dark.png"))
-}
-// Tinted: the system supplies the colour, so the mark is drawn in greys.
-if let image = drawIcon(
-    size: 1024,
-    colourway: Colourway(name: "Tinted", top: (0.30, 0.30, 0.30), bottom: (0.12, 0.12, 0.12)))
-{
-    write(image, to: iconSet.appending(path: "icon-1024-tinted.png"))
-}
+// The primary icon, in the three appearances iOS asks for.
+write(everyday, to: iconSet.appending(path: "icon-1024.png"))
+write(dark, to: iconSet.appending(path: "icon-1024-dark.png"))
+write(tinted, to: iconSet.appending(path: "icon-1024-tinted.png"))
 
 for scale in [1, 2] {
     for size in [16, 32, 128, 256, 512] {
-        let pixels = CGFloat(size * scale)
-        guard let image = drawIcon(size: pixels, colourway: aloha) else { continue }
+        let pixels = size * scale
+        guard let image = scaled(everyday, to: pixels) else { continue }
         let suffix = scale == 1 ? "" : "@2x"
         write(image, to: iconSet.appending(path: "mac-\(size)\(suffix).png"))
     }
 }
 
-// Alternates are their own icon sets in the same catalog, which is what
-// `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` expects; loose PNGs at the
-// bundle root are the older shape and need their own Info.plist entries.
-let catalog = root.appending(path: "AlohaSocial/Assets.xcassets")
+/// Every alternate is its own icon set in the same catalog, which is what
+/// `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` expects.
 let alternateContents = """
     {
       "images" : [
@@ -186,14 +139,47 @@ let alternateContents = """
     }
     """
 
-for colourway in colourways.dropFirst() {
-    let set = catalog.appending(path: "AlohaIcon-\(colourway.name).appiconset")
+/// Previews for the picker in Settings. An alternate icon lives in the
+/// catalog as an icon, which `UIImage(named:)` will not hand back, so the
+/// same artwork is also written as an ordinary image the picker can show.
+func writePreview(_ image: CGImage?, named name: String) {
+    guard let image, let small = scaled(image, to: 180) else { return }
+    let folder = catalog.appending(path: "AppIconPreviews")
+    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    try? """
+        { "info" : { "author" : "xcode", "version" : 1 } }
+        """.write(
+        to: folder.appending(path: "Contents.json"), atomically: true, encoding: .utf8)
+    let set = folder.appending(path: "\(name).imageset")
+    try? FileManager.default.createDirectory(at: set, withIntermediateDirectories: true)
+    let contents = """
+        {
+          "images" : [
+            { "filename" : "\(name).png", "idiom" : "universal", "scale" : "1x" },
+            { "filename" : "\(name).png", "idiom" : "universal", "scale" : "2x" },
+            { "filename" : "\(name).png", "idiom" : "universal", "scale" : "3x" }
+          ],
+          "info" : { "author" : "xcode", "version" : 1 }
+        }
+        """
+    try? contents.write(
+        to: set.appending(path: "Contents.json"), atomically: true, encoding: .utf8)
+    write(small, to: set.appending(path: "\(name).png"))
+}
+
+writePreview(everyday, named: "Aloha")
+
+for alternate in alternates {
+    let set = catalog.appending(path: "AlohaIcon-\(alternate.name).appiconset")
     try? FileManager.default.createDirectory(at: set, withIntermediateDirectories: true)
     try? alternateContents.write(
         to: set.appending(path: "Contents.json"), atomically: true, encoding: .utf8)
-    if let image = drawIcon(size: 1024, colourway: colourway) {
-        write(image, to: set.appending(path: "icon-1024.png"))
+    let recolouredImage = recoloured(
+        everyday, to: alternate.red, green: alternate.green, blue: alternate.blue)
+    if let recolouredImage {
+        write(recolouredImage, to: set.appending(path: "icon-1024.png"))
     }
+    writePreview(recolouredImage, named: "AlohaIcon-\(alternate.name)")
 }
 
 print("icons written")

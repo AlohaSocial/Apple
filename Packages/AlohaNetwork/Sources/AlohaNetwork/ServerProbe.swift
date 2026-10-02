@@ -33,6 +33,7 @@ public struct ServerProbe: Sendable {
     /// Accepts `cloud.example.com`, `https://cloud.example.com/`,
     /// `cloud.example.com/nextcloud` and `@alice@cloud.example.com`.
     public struct ServerAddress: Sendable, Hashable {
+        public var scheme: String
         public var host: String
         public var pathHint: String?
 
@@ -57,23 +58,25 @@ public struct ServerProbe: Sendable {
                 host.contains(".") || host == "localhost"
             else { return nil }
 
-            // ATS is left at its defaults and no exception is shipped, so an
-            // instance without HTTPS cannot be added (docs/11 §3).
-            if let scheme = components.scheme, scheme != "https", host != "localhost" {
+            guard let scheme = components.scheme?.lowercased(),
+                scheme == "http" || scheme == "https"
+            else {
                 return nil
             }
 
+            self.scheme = scheme
             self.host = host
             let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             self.pathHint = path.isEmpty ? nil : path
         }
 
-        public init(host: String, pathHint: String? = nil) {
+        public init(scheme: String = "https", host: String, pathHint: String? = nil) {
+            self.scheme = scheme
             self.host = host
             self.pathHint = pathHint
         }
 
-        var origin: String { "https://\(host)" }
+        var origin: String { "\(scheme)://\(host)" }
     }
 
     // MARK: - Candidates

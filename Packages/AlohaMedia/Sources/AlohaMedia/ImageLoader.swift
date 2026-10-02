@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 import CoreGraphics
+import CryptoKit
+import AlohaNetwork
 import Foundation
 import ImageIO
 import OSLog
@@ -27,9 +29,12 @@ public actor ImageLoader {
         self.diskCeiling = diskCeiling
         memory.totalCostLimit = 96 * 1024 * 1024
 
-        let base =
-            FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: "group.com.nextcloud.alohasocial")
+        let groupBase =
+            AppGroup.isEnabled
+            ? FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: AppGroup.identifier)
+            : nil
+        let base = groupBase
             ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
 
         diskDirectory = base?.appending(path: "ImageCache")
@@ -57,7 +62,7 @@ public actor ImageLoader {
                 prefetching[key] == nil
             else { continue }
 
-            prefetching[key] = Task { [weak self] in
+            prefetching[key] = Task(priority: .utility) { [weak self] in
                 _ = await self?.image(for: url, targetSize: targetSize)
                 await self?.finishPrefetch(key)
             }
@@ -100,15 +105,23 @@ public actor ImageLoader {
         }
 
         do {
-            let (data, response) = try await session.data(from: url)
+            var request = URLRequest(url: url)
+            request.setValue("image/avif,image/webp,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+            request.timeoutInterval = 20
+            let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode)
             else { return nil }
 
-            writeToDisk(data, key: key)
             guard let image = downsample(data, to: targetSize) else { return nil }
+            // Only persist bytes ImageIO actually accepted. Error pages and
+            // mislabeled media otherwise poison the custom cache until it is
+            // manually cleared.
+            writeToDisk(data, key: key)
             store(image, forKey: key)
             return image
         } catch {
+            logger.debug(
+                "image request failed for \(url.host() ?? "unknown", privacy: .public): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -140,7 +153,12 @@ public actor ImageLoader {
     }
 
     private func cacheKey(url: URL, targetSize: CGSize) -> String {
-        "\(url.absoluteString.hashValue)-\(Int(targetSize.width))x\(Int(targetSize.height))"
+        // Swift's Hashable seed intentionally changes for every process. A
+        // SHA-256 filename stays valid after the next app launch.
+        let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return "\(digest)-\(Int(targetSize.width.rounded(.up)))x\(Int(targetSize.height.rounded(.up)))"
     }
 
     // MARK: - Disk
@@ -213,7 +231,8 @@ extension URLSessionConfiguration {
         configuration.waitsForConnectivity = true
         configuration.requestCachePolicy = .returnCacheDataElseLoad
         configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0)
-        configuration.httpMaximumConnectionsPerHost = 6
+        configuration.httpMaximumConnectionsPerHost = 8
+        configuration.timeoutIntervalForRequest = 20
         return configuration
     }
 }

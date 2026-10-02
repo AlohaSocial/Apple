@@ -52,10 +52,16 @@ public struct LocalNotifier: Sendable {
         showAccountName: Bool
     ) async -> [String] {
         let enabled = session.settings.localNotificationKinds
+        let eligible = notifications.filter { enabled.contains($0.kind.rawValue) }
+        let authorization = await center.notificationSettings().authorizationStatus
+        guard authorization == .authorized || authorization == .provisional else {
+            // Do not retry the same historical rows on every poll or flood the
+            // person if they enable notifications later.
+            return eligible.map(\.serverID)
+        }
         var announced: [String] = []
 
-        for notification in notifications {
-            guard enabled.contains(notification.kind.rawValue) else { continue }
+        for notification in eligible {
             // During quiet hours the badge still updates; only the alert is
             // withheld, and the row is marked so it is not re-raised later.
             guard !isQuiet else {

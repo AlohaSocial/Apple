@@ -90,6 +90,12 @@ public struct MediaPreparer: Sendable {
         public var data: Data
         public var filename: String
         public var mimeType: String
+
+        public init(data: Data, filename: String, mimeType: String) {
+            self.data = data
+            self.filename = filename
+            self.mimeType = mimeType
+        }
     }
 
     public enum Quality: String, Sendable, CaseIterable, Identifiable {

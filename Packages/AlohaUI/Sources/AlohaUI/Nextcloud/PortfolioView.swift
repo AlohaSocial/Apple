@@ -343,7 +343,7 @@ struct PortfolioPageView: View {
                     ForEach(pictures) { post in
                         if let picture = post.picture {
                             RemoteImage(
-                                url: picture.previewURL ?? picture.url, blurhash: picture.blurhash,
+                                url: picture.displayImageURL, blurhash: picture.blurhash,
                                 accessibilityText: picture.description
                             )
                             .aspectRatio(1, contentMode: .fill)

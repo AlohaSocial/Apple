@@ -29,7 +29,7 @@ public struct AltTextEditor: View {
         NavigationStack {
             VStack(spacing: 0) {
                 RemoteImage(
-                    url: attachment.previewURL ?? attachment.url,
+                    url: attachment.displayImageURL,
                     blurhash: attachment.blurhash, contentMode: .fit
                 )
                 .frame(maxHeight: 220)
@@ -136,7 +136,7 @@ public struct AltTextEditor: View {
         isGenerating = true
         defer { isGenerating = false }
 
-        guard let url = attachment.previewURL ?? attachment.url,
+        guard let url = attachment.displayImageURL,
             let (data, _) = try? await URLSession.shared.data(from: url)
         else {
             errorMessage = String(

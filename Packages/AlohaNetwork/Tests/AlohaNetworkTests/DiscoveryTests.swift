@@ -14,6 +14,7 @@ struct ServerAddressTests {
     func acceptedForms() throws {
         #expect(Address(typed: "cloud.example.com")?.host == "cloud.example.com")
         #expect(Address(typed: "https://cloud.example.com/")?.host == "cloud.example.com")
+        #expect(Address(typed: "http://192.168.178.162/apps/social/")?.scheme == "http")
         #expect(Address(typed: "  CLOUD.Example.COM ")?.host == "cloud.example.com")
         #expect(Address(typed: "@alice@cloud.example.com")?.host == "cloud.example.com")
         #expect(Address(typed: "alice@cloud.example.com")?.host == "cloud.example.com")
@@ -26,13 +27,11 @@ struct ServerAddressTests {
         #expect(address.pathHint == "nextcloud")
     }
 
-    @Test("Nonsense and plain HTTP are refused")
+    @Test("Nonsense and unsupported schemes are refused")
     func rejectedForms() {
         #expect(Address(typed: "") == nil)
         #expect(Address(typed: "not a host") == nil)
-        // ATS is left at its defaults and no exception ships, so an instance
-        // without HTTPS cannot be added (docs/11 §3).
-        #expect(Address(typed: "http://cloud.example.com") == nil)
+        #expect(Address(typed: "ftp://cloud.example.com") == nil)
     }
 }
 

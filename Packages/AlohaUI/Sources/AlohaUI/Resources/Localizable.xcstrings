@@ -3019,7 +3019,7 @@
     "That didn't fit." : {
       "comment" : "Rewrite too long"
     },
-    "That doesn't look like a server address. Try something like cloud.example.com — it has to be https." : {
+    "That doesn't look like a server address. Try cloud.example.com, https://cloud.example.com or http://192.168.1.10." : {
       "comment" : "Sign-in validation failure"
     },
     "That file could not be read." : {
@@ -3168,6 +3168,9 @@
     },
     "This server keeps no record of earlier versions." : {
       "comment" : "Edit history empty detail"
+    },
+    "This video could not be played." : {
+      "comment" : "Video playback failure"
     },
     "This week" : {
       "comment" : "Memories section"

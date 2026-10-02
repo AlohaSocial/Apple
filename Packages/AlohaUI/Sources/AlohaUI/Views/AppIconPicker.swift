@@ -64,24 +64,22 @@ import SwiftUI
         }
     }
 
-    /// The mark, drawn small: gradient ground, two bubbles.
+    /// The artwork itself: the same flower the Home Screen gets, at the size
+    /// the row shows it.
     private struct IconPreview: View {
         let accent: AlohaIconVariant
         let isSelected: Bool
 
+        private var imageName: String {
+            accent == .aloha ? "Aloha" : "AlohaIcon-\(accent.rawValue.capitalized)"
+        }
+
         var body: some View {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [accent.swatch.mix(with: .white, by: 0.18), accent.swatch],
-                        startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
                 .frame(width: 60, height: 60)
-                .overlay {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(.white)
-                }
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(

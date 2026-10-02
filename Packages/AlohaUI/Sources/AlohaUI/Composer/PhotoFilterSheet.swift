@@ -25,7 +25,7 @@ struct PhotoFilterSheet: View {
         NavigationStack {
             VStack(spacing: AlohaMetrics.space4) {
                 choice.preview(
-                    RemoteImage(url: attachment.previewURL ?? attachment.url)
+                    RemoteImage(url: attachment.displayImageURL)
                         .aspectRatio(contentMode: .fit)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
@@ -39,7 +39,7 @@ struct PhotoFilterSheet: View {
                             } label: {
                                 VStack(spacing: AlohaMetrics.space1) {
                                     filter.preview(
-                                        RemoteImage(url: attachment.previewURL ?? attachment.url)
+                                        RemoteImage(url: attachment.displayImageURL)
                                     )
                                     .frame(width: 64, height: 64)
                                     .clipShape(

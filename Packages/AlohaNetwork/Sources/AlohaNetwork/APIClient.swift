@@ -46,6 +46,13 @@ public actor APIClient {
     /// rewrite rules (docs/03 §2).
     public func updateAPIBase(_ base: URL) { apiBase = base.normalisedAsAPIBase }
 
+    /// Headers for an AVFoundation asset hosted by this account's server.
+    /// A token is never sent to a federated or otherwise different origin.
+    public func mediaRequestHeaders(for url: URL) -> [String: String] {
+        guard url.originURL == apiBase.originURL, let accessToken else { return [:] }
+        return ["Authorization": "Bearer \(accessToken)"]
+    }
+
     // MARK: - Requests
 
     @discardableResult
@@ -226,6 +233,16 @@ public struct EmptyResponse: Codable, Sendable, Hashable {
 }
 
 extension URL {
+    /// The scheme, host and port used to reach a server, without its API path.
+    public var originURL: URL? {
+        guard let scheme, let host = host() else { return nil }
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        components.port = port
+        return components.url
+    }
+
     /// An API base always ends in `/`, so `appending(path:)` composes rather
     /// than replacing the last component.
     public var normalisedAsAPIBase: URL {
