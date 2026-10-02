@@ -99,7 +99,10 @@ public actor ImageLoader {
     }
 
     private func load(url: URL, targetSize: CGSize, key: String) async -> CGImage? {
-        if let data = readFromDisk(key: key), let image = downsample(data, to: targetSize) {
+        // Original bytes are independent of the display size. A prefetched
+        // image can therefore serve both an avatar and a larger profile view.
+        let diskKey = resourceKey(url)
+        if let data = readFromDisk(key: diskKey), let image = downsample(data, to: targetSize) {
             store(image, forKey: key)
             return image
         }
@@ -116,7 +119,7 @@ public actor ImageLoader {
             // Only persist bytes ImageIO actually accepted. Error pages and
             // mislabeled media otherwise poison the custom cache until it is
             // manually cleared.
-            writeToDisk(data, key: key)
+            writeToDisk(data, key: diskKey)
             store(image, forKey: key)
             return image
         } catch {
@@ -153,12 +156,15 @@ public actor ImageLoader {
     }
 
     private func cacheKey(url: URL, targetSize: CGSize) -> String {
+        "\(resourceKey(url))-\(Int(targetSize.width.rounded(.up)))x\(Int(targetSize.height.rounded(.up)))"
+    }
+
+    private func resourceKey(_ url: URL) -> String {
         // Swift's Hashable seed intentionally changes for every process. A
         // SHA-256 filename stays valid after the next app launch.
-        let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
+        SHA256.hash(data: Data(url.absoluteString.utf8))
             .map { String(format: "%02x", $0) }
             .joined()
-        return "\(digest)-\(Int(targetSize.width.rounded(.up)))x\(Int(targetSize.height.rounded(.up)))"
     }
 
     // MARK: - Disk
