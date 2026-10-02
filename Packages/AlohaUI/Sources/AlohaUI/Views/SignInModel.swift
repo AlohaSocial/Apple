@@ -50,7 +50,7 @@ public final class SignInModel {
                 Failure(
                     message: String(
                         localized:
-                            "That doesn't look like a server address. Try something like cloud.example.com — it has to be https.",
+                            "That doesn't look like a server address. Try cloud.example.com, https://cloud.example.com or http://192.168.1.10.",
                         comment: "Sign-in validation failure"),
                     attempted: [], offersServerSnippet: false))
             return

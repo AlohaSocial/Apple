@@ -151,7 +151,7 @@ public struct PhotosModeView: View {
         } label: {
             ZStack(alignment: .topTrailing) {
                 RemoteImage(
-                    url: first?.previewURL ?? first?.url,
+                    url: first?.displayImageURL,
                     blurhash: first?.blurhash,
                     accessibilityText: first?.description
                 )
@@ -473,7 +473,7 @@ public struct PhotoPostCard: View {
     private func picture(_ attachment: MediaAttachment) -> some View {
         ZStack(alignment: .topTrailing) {
             RemoteImage(
-                url: attachment.previewURL ?? attachment.url,
+                url: attachment.displayImageURL,
                 blurhash: attachment.blurhash,
                 contentMode: .fill,
                 accessibilityText: attachment.description)
@@ -786,7 +786,8 @@ public struct StoryPlayer: View {
     @ViewBuilder
     private func media(_ story: Story) -> some View {
         if story.type.isPlayable, let url = story.url {
-            StoryVideoSurface(url: url, isPaused: isPaused)
+            StoryVideoSurface(
+                url: url, preview: story.previewURL, isPaused: isPaused, session: session)
                 .ignoresSafeArea()
         } else {
             RemoteImage(url: story.url, contentMode: .fit)
@@ -1061,29 +1062,57 @@ public struct StoryPlayer: View {
 /// A video story: plays on appear, pauses while held, no controls.
 struct StoryVideoSurface: View {
     let url: URL
+    let preview: URL?
     let isPaused: Bool
+    let session: AccountSession
 
     @State private var player: AVPlayer?
+    @State private var isReady = false
+    @State private var watcher: Task<Void, Never>?
 
     var body: some View {
-        Group {
-            if let player {
+        ZStack {
+            if let player, isReady {
                 PlayerSurface(player: player, showsControls: false)
             } else {
-                Color.black
+                // The story's own still, held until there is a frame behind
+                // it. A black rectangle in this window is the thing people
+                // read as "the video is broken".
+                // Never hand the video bytes to the image loader when the
+                // server omitted a poster frame.
+                RemoteImage(url: preview, contentMode: .fit)
             }
         }
         .task(id: url) {
-            let newPlayer = AVPlayer(url: url)
-            player = newPlayer
-            newPlayer.play()
+            player = nil
+            isReady = false
+            watcher?.cancel()
+            watcher = nil
+            let headers = await session.client.mediaRequestHeaders(for: url)
+            switch await PlaybackReadiness.open(url: url, headers: headers) {
+            case .playable(let newPlayer, let item, let ready):
+                player = newPlayer
+                isReady = ready
+                if !isPaused { newPlayer.play() }
+                watcher = Task { @MainActor in
+                    for await status in PlaybackReadiness.statuses(item) {
+                        guard !Task.isCancelled else { return }
+                        if status == .readyToPlay { isReady = true }
+                    }
+                }
+            case .rejected(let reason):
+                PlaybackLog.logger.error("story rung rejected: \(reason, privacy: .public)")
+            }
         }
         .onChange(of: isPaused) { _, paused in
             if paused { player?.pause() } else { player?.play() }
         }
         .onDisappear {
+            watcher?.cancel()
+            watcher = nil
             player?.pause()
             player = nil
+            isReady = false
         }
     }
 }

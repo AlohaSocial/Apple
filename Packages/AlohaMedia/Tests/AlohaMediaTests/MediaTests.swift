@@ -36,10 +36,10 @@ struct VideoSourceTests {
         #expect(sources.map(\.kind) == [.progressive])
     }
 
-    /// The player must never contact the origin host: the CSP forbids it, and
-    /// it would announce every viewer to a server they never chose.
-    @Test("A federated video is proxied, never played from its origin")
-    func remoteVideoIsProxied() {
+    /// A direct URL on the chosen instance remains private and works on Social
+    /// servers that do not implement the optional playlist proxy route.
+    @Test("A federated video prefers its local instance file")
+    func remoteVideoPrefersLocalFile() {
         let attachment = MediaAttachment(
             id: "m", type: .video,
             url: URL(string: "https://cloud.example/media/stream/9"),
@@ -48,12 +48,37 @@ struct VideoSourceTests {
         let sources = VideoSourceResolver.sources(
             for: attachment, statusID: "9", apiBase: base, isRemote: true)
 
-        #expect(sources.first?.kind == .proxiedPlaylist)
+        #expect(sources.map(\.kind) == [.progressive])
+        #expect(sources.first?.url.absoluteString == "https://cloud.example/media/stream/9")
+        // Nothing in the ladder points at the origin.
+        #expect(sources.allSatisfy { $0.url.host() == "cloud.example" })
+    }
+
+    @Test("A federated video without a local file falls back to the proxy")
+    func remoteVideoWithoutLocalFileUsesProxy() {
+        let attachment = MediaAttachment(
+            id: "m", type: .video,
+            remoteURL: URL(string: "https://peertube.elsewhere/videos/xyz.mp4"))
+
+        let sources = VideoSourceResolver.sources(
+            for: attachment, statusID: "9", apiBase: base, isRemote: true)
+
+        #expect(sources.map(\.kind) == [.proxiedPlaylist])
         #expect(
             sources.first?.url.absoluteString
                 == "https://cloud.example/index.php/apps/social/media/playlist/9")
-        // Nothing in the ladder points at the origin.
-        #expect(sources.allSatisfy { $0.url.host() == "cloud.example" })
+    }
+
+    @Test("A JPEG poster is never passed to the video player")
+    func imageURLIsNotVideoSource() {
+        let attachment = MediaAttachment(
+            id: "m", type: .video,
+            url: URL(string: "https://cloud.example/media/poster.jpeg"))
+
+        let sources = VideoSourceResolver.sources(
+            for: attachment, statusID: "9", apiBase: base, isRemote: false)
+
+        #expect(sources.isEmpty)
     }
 
     @Test("remote_url is what marks an attachment as federated")

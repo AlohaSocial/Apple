@@ -4,6 +4,9 @@ import AVKit
 import AlohaDesign
 import AlohaMedia
 import AlohaModels
+import AlohaNetwork
+import Combine
+import OSLog
 import SwiftUI
 
 /// One component, used from every mode and from the thread view. It knows
@@ -16,6 +19,7 @@ public struct MediaViewer: View {
     private let statusID: String
     private let apiBase: URL
     private let autoplay: Bool
+    private let session: AccountSession?
 
     @State private var index: Int
     @State private var zoom: CGFloat = 1
@@ -26,12 +30,13 @@ public struct MediaViewer: View {
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
-        apiBase: URL, autoplay: Bool
+        apiBase: URL, autoplay: Bool, session: AccountSession? = nil
     ) {
         self.attachments = attachments
         self.statusID = statusID
         self.apiBase = apiBase
         self.autoplay = autoplay
+        self.session = session
         _index = State(initialValue: startIndex)
     }
 
@@ -77,10 +82,11 @@ public struct MediaViewer: View {
     private func page(_ attachment: MediaAttachment) -> some View {
         if attachment.type.isPlayable {
             VideoAttachmentPlayer(
-                attachment: attachment, statusID: statusID, apiBase: apiBase, autoplay: autoplay)
+                attachment: attachment, statusID: statusID, apiBase: apiBase, autoplay: autoplay,
+                session: session)
         } else {
             RemoteImage(
-                url: attachment.url ?? attachment.previewURL,
+                url: attachment.displayImageURL,
                 blurhash: attachment.blurhash,
                 contentMode: .fit,
                 accessibilityText: attachment.description
@@ -206,24 +212,34 @@ public struct VideoAttachmentPlayer: View {
     private let apiBase: URL
     private let autoplay: Bool
     private let startsMuted: Bool
+    private let session: AccountSession?
     /// Set to a position in seconds to jump there; cleared once done. How a
     /// chapter list reaches the player without owning it.
     @Binding private var seekRequest: Double?
 
     @State private var player: AVPlayer?
     @State private var sourceIndex = 0
+    @State private var playbackError: String?
+    @State private var ticker: Any?
+    @State private var watcher: Task<Void, Never>?
+    /// Whether there is a frame behind the poster yet. The player can be
+    /// alive and loading long before it has anything to draw, and a picture
+    /// of a rectangle in that window is what "black video" looks like.
+    @State private var isRevealed = false
 
     /// Autoplay never starts unmuted (docs/06 §4); a watch page the person
     /// chose to open is the one place sound is on from the start.
     public init(
         attachment: MediaAttachment, statusID: String, apiBase: URL, autoplay: Bool,
-        startsMuted: Bool = true, seekRequest: Binding<Double?> = .constant(nil)
+        startsMuted: Bool = true, seekRequest: Binding<Double?> = .constant(nil),
+        session: AccountSession? = nil
     ) {
         self.attachment = attachment
         self.statusID = statusID
         self.apiBase = apiBase
         self.autoplay = autoplay
         self.startsMuted = startsMuted
+        self.session = session
         _seekRequest = seekRequest
     }
 
@@ -234,12 +250,21 @@ public struct VideoAttachmentPlayer: View {
     }
 
     public var body: some View {
-        Group {
+        ZStack {
             if let player {
                 PlayerSurface(player: player)
-            } else {
+            }
+            if !isRevealed {
                 RemoteImage(
                     url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fit)
+            }
+            if let playbackError {
+                Text(playbackError)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(10)
+                    .background(.black.opacity(0.7), in: Capsule())
             }
         }
         .task(id: sourceIndex) { await prepare() }
@@ -247,7 +272,11 @@ public struct VideoAttachmentPlayer: View {
             guard let position else { return }
             seek(to: position)
         }
-        .onDisappear { player?.pause() }
+        .onDisappear {
+            player?.pause()
+            stopTicking()
+            stopWatching()
+        }
     }
 
     /// Jumps to a chapter and plays from there; a paused player that seeks
@@ -269,27 +298,120 @@ public struct VideoAttachmentPlayer: View {
     }
 
     private func prepare() async {
-        guard sources.indices.contains(sourceIndex) else { return }
-        let source = sources[sourceIndex]
-        let item = AVPlayerItem(url: source.url)
+        stopWatching()
+        stopTicking()
+        player = nil
+        isRevealed = false
+        playbackError = nil
 
-        // A 404 on a master playlist means no ladder exists, and the right
-        // answer is to play the plain file — never to report a broken video.
-        let newPlayer = AVPlayer(playerItem: item)
-        newPlayer.isMuted = startsMuted
-        player = newPlayer
+        var rejected: [String] = []
+        for index in sourceIndex..<sources.count {
+            guard !Task.isCancelled else { return }
+            let source = sources[index]
+            let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
+            PlaybackLog.logger.info(
+                "opening video rung \(index) \(source.url.absoluteString, privacy: .public)")
 
-        if autoplay { newPlayer.play() }
-        if let pending = seekRequest { seek(to: pending) }
-
-        // Watch for a failed item and fall to the next rung at the same point.
-        for await status in item.publisher(for: \.status).values {
-            if status == .failed, sourceIndex + 1 < sources.count {
-                sourceIndex += 1
+            switch await PlaybackReadiness.open(url: source.url, headers: headers) {
+            case .playable(let newPlayer, let item, let isReady):
+                guard !Task.isCancelled else {
+                    newPlayer.replaceCurrentItem(with: nil)
+                    return
+                }
+                newPlayer.isMuted = startsMuted
+                player = newPlayer
+                isRevealed = isReady
+                if autoplay { newPlayer.play() }
+                if let pending = seekRequest { seek(to: pending) }
+                startTicking(newPlayer, item: item)
+                watch(item, at: index)
+                PlaybackLog.logger.notice(
+                    "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .public)")
                 return
+            case .rejected(let reason):
+                PlaybackLog.logger.error("video rung rejected: \(reason, privacy: .public)")
+                rejected.append(reason)
             }
-            if status == .readyToPlay { return }
         }
+
+        let detail = rejected.last
+        playbackError =
+            detail.map { "This video could not be played. — \($0)" }
+            ?? String(localized: "This video could not be played.", comment: "Video playback failure")
+    }
+
+    /// A rung that opens can still collapse later — a master playlist that
+    /// answers 200 and a variant that then 404s — so the ladder keeps its
+    /// place and moves on rather than freezing on a poster. The same stream
+    /// is what lifts the poster the moment there is a frame to show.
+    private func watch(_ item: AVPlayerItem, at rung: Int) {
+        watcher = Task { @MainActor in
+            for await status in PlaybackReadiness.statuses(item) {
+                guard !Task.isCancelled else { return }
+                switch status {
+                case .readyToPlay:
+                    isRevealed = true
+                case .failed:
+                    PlaybackLog.logger.error(
+                        "video failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
+                    stopTicking()
+                    player?.pause()
+                    player = nil
+                    isRevealed = false
+                    if rung + 1 < sources.count {
+                        sourceIndex = rung + 1
+                    } else {
+                        playbackError =
+                            String(
+                                localized: "This video could not be played.",
+                                comment: "Video playback failure")
+                    }
+                    return
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func stopWatching() {
+        watcher?.cancel()
+        watcher = nil
+    }
+
+    // MARK: - Watch positions
+
+    /// Reports as the video goes, coalesced well inside the server's
+    /// 600-a-minute, so the Continue Watching shelf has something to show.
+    private func startTicking(_ player: AVPlayer, item: AVPlayerItem) {
+        guard let session, session.capabilities.watchPositions else { return }
+        ticker = player.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: WatchPositionRules.reportInterval, preferredTimescale: 600),
+            queue: .main
+        ) { time in
+            let duration = item.duration.seconds
+            guard duration.isFinite, duration > 0, time.seconds.isFinite else { return }
+            _ = MainActor.assumeIsolated {
+                Task { await Self.report(session, statusID: statusID, position: time.seconds, duration: duration) }
+            }
+        }
+    }
+
+    private func stopTicking() {
+        if let ticker, let player { player.removeTimeObserver(ticker) }
+        ticker = nil
+    }
+
+    static func report(
+        _ session: AccountSession, statusID: String, position: Double, duration: Double
+    ) async {
+        guard session.capabilities.watchPositions,
+            WatchPositionRules.shouldReport(position: position, duration: duration)
+        else { return }
+        try? await session.supportStore.recordWatchPosition(
+            accountID: session.id, statusID: statusID, position: position, duration: duration)
+        _ = try? await session.client.send(
+            Endpoint.video.reportWatched(statusID, position: position, duration: duration))
     }
 }
 

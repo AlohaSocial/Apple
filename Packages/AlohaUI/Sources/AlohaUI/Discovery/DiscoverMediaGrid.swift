@@ -82,7 +82,7 @@ struct DiscoverMediaGrid: View {
         } label: {
             ZStack(alignment: .topTrailing) {
                 RemoteImage(
-                    url: first?.previewURL ?? first?.url,
+                    url: first?.displayImageURL,
                     blurhash: first?.blurhash,
                     accessibilityText: first?.description
                 )

@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>AlohaAppGroupEnabled</key>
+	<false/>
 	<!-- INFOPLIST_KEY_NSExtensionPointIdentifier is not a generated-plist key
 	     and was silently ignored, which left every extension without this
 	     dictionary and made the app uninstallable on iOS. -->

@@ -24,17 +24,13 @@ struct TimelineSourceToggle: View {
     ]
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(Self.options, id: \.source) { option in
-                button(for: option.source, title: Text(option.title))
+        GlassEffectContainer(spacing: 4) {
+            HStack(spacing: 4) {
+                ForEach(Self.options, id: \.source) { option in
+                    button(for: option.source, title: Text(option.title))
+                }
             }
         }
-        .padding(3)
-        // Opaque, not material: a timeline scrolls underneath this, and text
-        // passing behind a translucent capsule fails contrast against it.
-        .background(palette.surface, in: Capsule())
-        .overlay(Capsule().strokeBorder(palette.separator.opacity(0.6), lineWidth: 0.5))
-        .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
         .padding(.bottom, AlohaMetrics.space2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Timeline source", comment: "Accessibility label"))
@@ -54,16 +50,13 @@ struct TimelineSourceToggle: View {
                 .foregroundStyle(isSelected ? palette.onAccent : palette.label)
                 .padding(.horizontal, AlohaMetrics.space4)
                 .padding(.vertical, AlohaMetrics.space2)
-                .background {
-                    if isSelected {
-                        Capsule()
-                            .fill(palette.accent)
-                            .matchedGeometryEffect(id: "selected", in: indicator)
-                    }
-                }
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .glassEffect(
+            .regular.tint(isSelected ? palette.accent : nil).interactive(),
+            in: Capsule())
+        .glassEffectID(option, in: indicator)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

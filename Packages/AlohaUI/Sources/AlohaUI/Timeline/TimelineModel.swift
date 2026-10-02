@@ -125,9 +125,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
-            await Self.warmRichText(harvest.statuses)
             let filtered = applyFilters(to: merged)
-            await session.latchCapabilities(observing: harvest.statuses)
 
             if direction == .cold || rows.isEmpty {
                 rows = filtered
@@ -146,6 +144,12 @@ public final class TimelineModel {
                     rows = filtered
                 }
             }
+
+            // Painting the rows is the user-visible critical path. Parsing
+            // rich text and promoting optional capabilities can finish just
+            // behind it without holding the whole first screen hostage.
+            Task { await Self.warmRichText(harvest.statuses) }
+            await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
         }
@@ -162,7 +166,9 @@ public final class TimelineModel {
         case .photos:
             guard status.mediaAttachments.contains(where: { $0.type == .image }) else { return }
         case .video, .shorts:
-            guard status.mediaAttachments.contains(where: { $0.type == .video }) else { return }
+            // The server-side only_video filter is best-effort on older
+            // Social versions, so enforce the contract locally as well.
+            guard status.mediaAttachments.contains(where: { $0.isVideo }) else { return }
         case .news, .audio: return
         }
         _ = try? await session.timelineStore.apply(
@@ -193,9 +199,9 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
-            await Self.warmRichText(harvest.statuses)
             rows = applyFilters(to: merged)
             nextCursor = harvest.nextCursor
+            Task { await Self.warmRichText(harvest.statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
@@ -323,8 +329,8 @@ public final class TimelineModel {
     private static func previewURLs(_ row: TimelineRow) -> [URL] {
         guard let status = row.status else { return [] }
         let target = status.displayed
-        var urls = target.mediaAttachments.compactMap { $0.previewURL ?? $0.url }
-        if let avatar = target.account.avatar { urls.append(avatar) }
+        var urls = target.mediaAttachments.compactMap(\.displayImageURL)
+        if let avatar = target.account.preferredAvatarURL { urls.append(avatar) }
         if let card = target.card?.image { urls.append(card) }
         return urls
     }

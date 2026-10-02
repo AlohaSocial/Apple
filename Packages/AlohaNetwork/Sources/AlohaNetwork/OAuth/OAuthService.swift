@@ -66,11 +66,18 @@ public struct OAuthService: Sendable {
         else { return fallback }
 
         return Endpoints(
-            authorization: metadata.authorizationEndpoint ?? fallback.authorization,
-            token: metadata.tokenEndpoint ?? fallback.token,
-            revocation: metadata.revocationEndpoint ?? fallback.revocation,
+            authorization: endpoint(metadata.authorizationEndpoint, fallback: fallback.authorization),
+            token: endpoint(metadata.tokenEndpoint, fallback: fallback.token),
+            revocation: endpoint(metadata.revocationEndpoint, fallback: fallback.revocation),
             supportsPKCE: metadata.supportsPKCE
         )
+    }
+
+    /// Reverse proxies sometimes advertise an unreachable private backend.
+    /// OAuth must remain on the origin which supplied the API connection.
+    private func endpoint(_ advertised: URL?, fallback: URL) -> URL {
+        guard let advertised, advertised.originURL == fallback.originURL else { return fallback }
+        return advertised
     }
 
     // MARK: - Registration

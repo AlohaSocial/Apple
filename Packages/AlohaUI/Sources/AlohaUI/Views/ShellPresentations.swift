@@ -100,7 +100,8 @@ struct ShellSheets: ViewModifier {
                     statusID: presentation.statusID,
                     apiBase: environment.activeSession?.capabilities.apiBase
                         ?? URL(string: "https://invalid.invalid/")!,
-                    autoplay: environment.activeSession?.settings.autoplayVideo ?? true
+                    autoplay: true,
+                    session: environment.activeSession
                 )
                 // The photograph grows out of the cell that was tapped and
                 // shrinks back into it, rather than cutting.

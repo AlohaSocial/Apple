@@ -98,8 +98,8 @@ public actor AccountStore {
             settings: settings,
             sortIndex: nextIndex
         )
-        record.avatarURLString = account.avatar?.absoluteString
-        record.headerURLString = account.header?.absoluteString
+        record.avatarURLString = account.preferredAvatarURL?.absoluteString
+        record.headerURLString = account.preferredHeaderURL?.absoluteString
         modelContext.insert(record)
         try modelContext.save()
         return Self.snapshot(record)
@@ -122,8 +122,8 @@ public actor AccountStore {
         guard let record = try record(id: id) else { return }
         record.handle = account.acct
         record.displayName = account.bestDisplayName
-        record.avatarURLString = account.avatar?.absoluteString
-        record.headerURLString = account.header?.absoluteString
+        record.avatarURLString = account.preferredAvatarURL?.absoluteString
+        record.headerURLString = account.preferredHeaderURL?.absoluteString
         record.serverAccountID = account.id
         try modelContext.save()
     }

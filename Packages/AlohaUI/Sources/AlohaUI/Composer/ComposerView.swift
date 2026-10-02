@@ -465,7 +465,7 @@ public struct ComposerView: View {
             HStack(spacing: AlohaMetrics.space2) {
                 ForEach(model.attachments) { attachment in
                     ZStack(alignment: .bottomTrailing) {
-                        RemoteImage(url: attachment.previewURL ?? attachment.url)
+                        RemoteImage(url: attachment.displayImageURL)
                             .frame(width: 96, height: 96)
                             .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
 

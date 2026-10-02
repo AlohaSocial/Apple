@@ -104,7 +104,7 @@ struct TaggedGrid: View {
         } label: {
             ZStack(alignment: .topTrailing) {
                 RemoteImage(
-                    url: first?.previewURL ?? first?.url,
+                    url: first?.displayImageURL,
                     blurhash: first?.blurhash,
                     accessibilityText: first?.description ?? target.account.bestDisplayName
                 )

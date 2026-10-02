@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import Foundation
+import AlohaNetwork
 import OSLog
 import SwiftData
 
@@ -70,7 +71,7 @@ public enum StoreContainer {
         if inMemory {
             return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         }
-        if let groupURL = FileManager.default.containerURL(
+        if AppGroup.isEnabled, let groupURL = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier)
         {
             return ModelConfiguration(

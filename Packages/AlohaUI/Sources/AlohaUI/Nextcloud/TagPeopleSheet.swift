@@ -67,7 +67,7 @@ public struct TagPeopleSheet: View {
                 if let first = status.mediaAttachments.first {
                     Section {
                         RemoteImage(
-                            url: first.previewURL ?? first.url, blurhash: first.blurhash,
+                            url: first.displayImageURL, blurhash: first.blurhash,
                             accessibilityText: first.description
                         )
                         .aspectRatio(first.displayAspectRatio, contentMode: .fit)
