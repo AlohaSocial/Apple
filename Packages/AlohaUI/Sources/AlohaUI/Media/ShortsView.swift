@@ -395,13 +395,14 @@ public struct ShortsView: View {
                     comment: "Accessibility label for an avatar button"))
 
             railButton(
-                symbol: "heart.fill", tint: displayed.favourited ? palette.favourite : .white,
+                symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
+                tint: displayed.favourited ? palette.favourite : .white,
                 count: displayed.favouritesCount,
                 label: Text("Favourite", comment: "Shorts action")
             ) { onAction(.favourite(status)) }
 
             railButton(
-                symbol: "ellipsis.bubble.fill", tint: .white, count: displayed.repliesCount,
+                symbol: AlohaSymbol.reply, tint: .white, count: displayed.repliesCount,
                 label: Text("Reply", comment: "Shorts action")
             ) { onAction(.open(status)) }
 
@@ -412,13 +413,14 @@ public struct ShortsView: View {
             ) { onAction(.boost(status)) }
 
             railButton(
-                symbol: "bookmark.fill", tint: displayed.bookmarked ? palette.bookmark : .white,
+                symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
+                tint: displayed.bookmarked ? palette.bookmark : .white,
                 count: nil,
                 label: Text("Bookmark", comment: "Shorts action")
             ) { onAction(.bookmark(status)) }
 
             railButton(
-                symbol: "arrowshape.turn.up.right.fill", tint: .white, count: nil,
+                symbol: AlohaSymbol.share, tint: .white, count: nil,
                 label: Text("Share", comment: "Shorts action")
             ) { onAction(.share(status)) }
 
@@ -444,7 +446,7 @@ public struct ShortsView: View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: symbol)
-                    .font(.system(size: 30))
+                    .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(tint)
                 if let count, count > 0 {
                     Text(count, format: .number.notation(.compactName))
