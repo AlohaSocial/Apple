@@ -45,7 +45,7 @@ public struct ShortsView: View {
     @State private var feed: Feed = .forYou
     @State private var model: TimelineModel
     @State private var currentID: String?
-    @State private var isMuted = true
+    @AppStorage("aloha.shorts.muted") private var isMuted = true
     @State private var isPaused = false
     @State private var progress: Double = 0
     @State private var hearted: String?

@@ -17,11 +17,34 @@ struct PlayerSurface: View {
     var showsControls = true
 
     var body: some View {
+        Group {
         #if os(macOS)
             MacPlayerView(player: player, showsControls: showsControls)
         #else
             VideoPlayer(player: player)
                 .disabled(!showsControls)
+        #endif
+        }
+        // AVPlayer's mute control is independent from the system audio
+        // session. Activate audible playback only when sound is requested;
+        // silent previews must not interrupt somebody else's music.
+        .onReceive(player.publisher(for: \.isMuted).removeDuplicates().receive(on: DispatchQueue.main)) { muted in
+            if !muted { PlaybackAudioSession.activate() }
+        }
+    }
+}
+
+@MainActor
+enum PlaybackAudioSession {
+    static func activate() {
+        #if os(iOS) || os(tvOS) || os(visionOS)
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, mode: .moviePlayback)
+                try session.setActive(true)
+            } catch {
+                PlaybackLog.logger.error("Audio session activation failed: \(error.localizedDescription, privacy: .public)")
+            }
         #endif
     }
 }
