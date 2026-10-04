@@ -20,6 +20,7 @@ import SwiftUI
 public struct ShortsView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -105,8 +106,9 @@ public struct ShortsView: View {
         }
         .background { Color.black.ignoresSafeArea() }
         .task { await start() }
-        .task(id: "\(currentID ?? ""): \(preloader.allowsPrefetch):\(shorts.count)") {
-            guard let currentID, let index = shorts.firstIndex(where: { $0.id == currentID })
+        .task(id: "\(currentID ?? ""): \(preloader.allowsPrefetch):\(shorts.count):\(scenePhase)") {
+            guard scenePhase == .active, let currentID,
+                let index = shorts.firstIndex(where: { $0.id == currentID })
             else { preloader.cancel(); return }
             guard shorts.indices.contains(index + 1) else {
                 preloader.retainCurrent(statusID: shorts[index].displayed.id, accountID: session.id)
