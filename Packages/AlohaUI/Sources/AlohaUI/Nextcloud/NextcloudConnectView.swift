@@ -109,9 +109,13 @@ public struct NextcloudConnectView: View {
                 Button {
                     startConnection()
                 } label: {
-                    Text(
-                        "Connect \(session.snapshot.instanceHost)",
-                        comment: "Nextcloud connect action")
+                    if isStarting {
+                        ProgressView()
+                    } else {
+                        Text(
+                            "Connect \(session.snapshot.instanceHost)",
+                            comment: "Nextcloud connect action")
+                    }
                 }
                 .buttonStyle(.glassProminent)
                 .disabled(isStarting)
@@ -154,8 +158,6 @@ public struct NextcloudConnectView: View {
                 } label: {
                     Text("Connected as", comment: "Nextcloud connect state")
                 }
-                .buttonStyle(.glass)
-                .disabled(isDisconnecting)
                 LabeledContent {
                     Text(credentials.server.host() ?? "")
                 } label: {
@@ -171,8 +173,14 @@ public struct NextcloudConnectView: View {
                 Button(role: .destructive) {
                     Task { await disconnect(credentials) }
                 } label: {
-                    Text("Disconnect", comment: "Nextcloud connect action")
+                    if isDisconnecting {
+                        ProgressView()
+                    } else {
+                        Text("Disconnect", comment: "Nextcloud connect action")
+                    }
                 }
+                .buttonStyle(.glass)
+                .disabled(isDisconnecting)
             } footer: {
                 Text(
                     "This revokes the app password on your Nextcloud too.",
