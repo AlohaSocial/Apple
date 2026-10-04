@@ -27,6 +27,11 @@ public struct InterestsView: View {
     @State private var isStateLoaded = false
     @State private var errorMessage: String?
     @State private var hiddenIDs: Set<String> = []
+    @State private var refreshID = UUID()
+
+    private var visibleStatuses: [Status] {
+        statuses.filter { !hiddenIDs.contains($0.displayed.id) }
+    }
 
     enum Face: Hashable {
         case feed, settings
@@ -91,7 +96,7 @@ public struct InterestsView: View {
                 learningOffNotice
             }
 
-            ForEach(statuses.filter { !hiddenIDs.contains($0.id) }) { status in
+            ForEach(visibleStatuses) { status in
                 StatusRow(
                     status: status,
                     policy: session.settings.sensitiveMediaPolicy,
@@ -115,7 +120,7 @@ public struct InterestsView: View {
                     }
                 }
                 .onAppear {
-                    if status.id == statuses.last?.id {
+                    if status.id == visibleStatuses.last?.id {
                         Task { await loadOlder() }
                     }
                 }
@@ -202,26 +207,35 @@ public struct InterestsView: View {
     }
 
     private func refresh() async {
+        let request = UUID()
+        refreshID = request
         isLoading = true
-        defer { isLoading = false }
+        isPagingOlder = false
+        errorMessage = nil
+        defer { if refreshID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.interests.timeline(limit: 20), limit: 20)
+            guard !Task.isCancelled, refreshID == request else { return }
             statuses = page.value.elements
             nextPage = page.link.next
             mayHaveMore = page.mayHaveMore
             errorMessage = nil
             await session.latchCapabilities(observing: statuses)
         } catch {
+            guard !Task.isCancelled, refreshID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, refreshID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Your interests feed could not be loaded. Please try again.")
         }
     }
 
     private func loadOlder() async {
         guard mayHaveMore, !isPagingOlder, !isLoading else { return }
+        let request = refreshID
         isPagingOlder = true
-        defer { isPagingOlder = false }
+        defer { if refreshID == request { isPagingOlder = false } }
         do {
             let page: Paginated<LossyArray<Status>>
             if let nextPage {
@@ -235,20 +249,32 @@ public struct InterestsView: View {
             } else {
                 return
             }
+            guard !Task.isCancelled, refreshID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }
             self.nextPage = page.link.next
             mayHaveMore = page.mayHaveMore && !page.value.elements.isEmpty
         } catch {
+            guard !Task.isCancelled, refreshID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, refreshID == request else { return }
+            errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "More posts could not be loaded. Please try again.")
         }
     }
 
     /// Hides the row at once; the server call is what makes it stick.
     private func showFewer(like status: Status) async {
-        withAnimation { _ = hiddenIDs.insert(status.displayed.id) }
-        _ = try? await session.client.send(
-            Endpoint.interests.fewerLikeThis(status.displayed.id))
+        let id = status.displayed.id
+        guard hiddenIDs.insert(id).inserted else { return }
+        do {
+            _ = try await session.client.send(Endpoint.interests.fewerLikeThis(id))
+        } catch {
+            withAnimation { _ = hiddenIDs.remove(id) }
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Your feed preference could not be saved. Please try again.")
+        }
     }
 }
 
