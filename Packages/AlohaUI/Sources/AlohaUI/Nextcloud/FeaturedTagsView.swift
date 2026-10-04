@@ -36,24 +36,26 @@ public struct FeaturedTagsView: View {
                     }
                     .font(.footnote)
                     .foregroundStyle(palette.destructive)
+                    Button("Try again") { Task { await load() } }
+                        .buttonStyle(.glass)
                 }
             }
 
             Section {
                 ForEach(featured) { tag in
                     HStack(spacing: AlohaMetrics.space3) {
-                        Text(verbatim: "#\(tag.name)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(palette.hashtag)
-                            .padding(.horizontal, AlohaMetrics.space3)
-                            .padding(.vertical, AlohaMetrics.space1)
-                            .background(palette.hashtag.opacity(0.12), in: Capsule())
-                        Text(
-                            "^[\(tag.statusesCount) post](inflect: true)",
-                            comment: "Featured tag use count"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryLabel)
+                        VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                            Text(verbatim: "#\(tag.name)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(palette.hashtag)
+                                .lineLimit(1)
+                            Text(
+                                "^[\(tag.statusesCount) post](inflect: true)",
+                                comment: "Featured tag use count"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryLabel)
+                        }
                         Spacer()
                         Button(role: .destructive) {
                             Task { await remove(tag) }
@@ -62,12 +64,13 @@ public struct FeaturedTagsView: View {
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.glassProminent)
+                        .buttonStyle(.glass)
+                        .buttonBorderShape(.circle)
                         .accessibilityLabel(
                             Text("Stop featuring #\(tag.name)", comment: "Featured tag action"))
                     }
                 }
-                if featured.isEmpty && !isLoading {
+                if featured.isEmpty && !isLoading && errorMessage == nil {
                     Text(
                         "Featured hashtags appear at the top of your profile, so people see what you post about before they scroll.",
                         comment: "Featured tags empty state"
@@ -174,19 +177,24 @@ public struct FeaturedTagsView: View {
                 LossyArray<FeaturedTag>.self, from: Endpoint.featuredTags.all)
             async let suggested = session.client.decode(
                 LossyArray<FeaturedTagSuggestion>.self, from: Endpoint.featuredTags.suggestions)
-            featured = try await tags.elements
+            let latestTags = try await tags.elements
             // Suggestions are a nicety; their failure is nobody's problem.
-            suggestions = (try? await suggested.elements) ?? []
+            let latestSuggestions = (try? await suggested.elements) ?? []
+            guard !Task.isCancelled else { return }
+            featured = latestTags
+            suggestions = latestSuggestions
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Featured hashtags could not be loaded. Please try again.")
         }
     }
 
     private func add(_ raw: String) async {
         let name = normalised(raw)
-        guard isValid(name), featured.count < Self.limit else { return }
+        guard isValid(name), featured.count < Self.limit, !isSaving else { return }
+        let submittedDraft = draft
         isSaving = true
         defer { isSaving = false }
         do {
@@ -195,17 +203,17 @@ public struct FeaturedTagsView: View {
             // Featuring an already-featured tag replaces it, so replace here too.
             featured.removeAll { $0.name.lowercased() == tag.name.lowercased() }
             featured.append(tag)
-            draft = ""
+            if raw == submittedDraft, draft == submittedDraft { draft = "" }
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The hashtag could not be featured. Please try again.")
         }
     }
 
     private func remove(_ tag: FeaturedTag) async {
-        let previous = featured
-        featured.removeAll { $0.id == tag.id }
+        guard let index = featured.firstIndex(where: { $0.id == tag.id }) else { return }
+        featured.remove(at: index)
         do {
             _ = try await session.client.send(Endpoint.featuredTags.delete(tag.id))
             suggestions =
@@ -213,9 +221,11 @@ public struct FeaturedTagsView: View {
                     LossyArray<FeaturedTagSuggestion>.self, from: Endpoint.featuredTags.suggestions))?
                 .elements ?? suggestions
         } catch {
-            featured = previous
+            if !featured.contains(where: { $0.id == tag.id || $0.name.lowercased() == tag.name.lowercased() }) {
+                featured.insert(tag, at: min(index, featured.count))
+            }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The featured hashtag could not be removed. Please try again.")
         }
     }
 }
