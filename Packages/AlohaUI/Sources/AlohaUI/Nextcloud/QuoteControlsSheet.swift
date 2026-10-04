@@ -19,7 +19,10 @@ public struct QuoteControlsSheet: View {
     @State private var quotes: [Status] = []
     @State private var isLoading = true
     @State private var isSaving = false
+    @State private var revoking: Set<String> = []
     @State private var errorMessage: String?
+    @State private var retryPolicy: QuoteApprovalPolicy?
+    @State private var retryQuote: Status?
 
     public init(status: Status, session: AccountSession) {
         self.status = status
@@ -33,7 +36,13 @@ public struct QuoteControlsSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Picker(selection: $policy) {
+                    Picker(selection: Binding(get: { policy }, set: { new in
+                        guard !isLoading, !isSaving, revoking.isEmpty, new != policy else { return }
+                        let previous = policy
+                        policy = new
+                        isSaving = true
+                        Task { await save(new, revertingTo: previous) }
+                    })) {
                         Text("Anybody", comment: "Quote policy").tag(QuoteApprovalPolicy.public)
                         Text("People who follow me", comment: "Quote policy")
                             .tag(QuoteApprovalPolicy.followers)
@@ -44,8 +53,7 @@ public struct QuoteControlsSheet: View {
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
-                    .disabled(isSaving)
-                    .onChange(of: policy) { _, new in Task { await save(new) } }
+                    .disabled(isLoading || isSaving || !revoking.isEmpty)
                 } header: {
                     Text("Who may quote this", comment: "Quote controls section")
                 } footer: {
@@ -59,11 +67,15 @@ public struct QuoteControlsSheet: View {
                         Text(errorMessage)
                             .font(.footnote)
                             .foregroundStyle(palette.destructive)
+                        Button("Try again") { retry() }
+                            .buttonStyle(.glass)
+                            .disabled(isLoading || isSaving || !revoking.isEmpty)
                     }
                     ForEach(quotes) { quote in
                         row(quote)
                     }
-                    if quotes.isEmpty && !isLoading {
+                    if isLoading && quotes.isEmpty { ProgressView() }
+                    if quotes.isEmpty && !isLoading && errorMessage == nil {
                         Text("Nobody has quoted this yet.", comment: "Quote controls empty state")
                             .font(.footnote)
                             .foregroundStyle(palette.tertiaryLabel)
@@ -84,9 +96,11 @@ public struct QuoteControlsSheet: View {
                     } label: {
                         Text("Done", comment: "Sheet action")
                     }
+                    .disabled(isSaving || !revoking.isEmpty)
                 }
             }
             .task { await load() }
+            .interactiveDismissDisabled(isSaving || !revoking.isEmpty)
         }
     }
 
@@ -110,6 +124,8 @@ public struct QuoteControlsSheet: View {
                     .font(.footnote.weight(.semibold))
                     .frame(minHeight: 44)
             }
+            .buttonStyle(.glass)
+            .disabled(isLoading || isSaving || revoking.contains(quote.id))
             .accessibilityLabel(
                 Text(
                     "Detach the quote by \(quote.account.bestDisplayName)",
@@ -125,43 +141,82 @@ public struct QuoteControlsSheet: View {
     }
 
     private func load() async {
+        guard !isSaving, revoking.isEmpty else { return }
         isLoading = true
+        errorMessage = nil
+        retryPolicy = nil
+        retryQuote = nil
         defer { isLoading = false }
         do {
-            quotes = try await session.client.decode(
+            let response = try await session.client.decode(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.quotes(status.id)
             ).elements
+            guard !Task.isCancelled else { return }
+            quotes = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Quotes could not be loaded. Please try again.")
         }
     }
 
-    private func save(_ new: QuoteApprovalPolicy) async {
+    private func save(_ new: QuoteApprovalPolicy, revertingTo previous: QuoteApprovalPolicy) async {
         isSaving = true
+        errorMessage = nil
+        retryPolicy = nil
+        retryQuote = nil
         defer { isSaving = false }
         do {
             let updated = try await session.client.decode(
                 Status.self, from: Endpoint.statusExtras.setQuotePolicy(status.id, new))
+            policy = updated.quoteApprovalPolicy.flatMap { QuoteApprovalPolicy(rawValue: $0) } ?? new
             try? await session.timelineStore.updateStatus(accountID: session.id, status: updated)
             errorMessage = nil
         } catch {
+            policy = previous
+            retryPolicy = new
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The quote setting could not be saved. Please try again.")
         }
     }
 
     private func revoke(_ quote: Status) async {
-        let before = quotes
+        guard !isLoading, !isSaving,
+            let index = quotes.firstIndex(where: { $0.id == quote.id }),
+            revoking.insert(quote.id).inserted else { return }
+        defer { revoking.remove(quote.id) }
+        errorMessage = nil
+        retryPolicy = nil
+        retryQuote = nil
         quotes.removeAll { $0.id == quote.id }
         do {
             _ = try await session.client.send(
                 Endpoint.statusExtras.revokeQuote(status.id, quoting: quote.id))
         } catch {
-            quotes = before
+            retryQuote = quote
+            if !quotes.contains(where: { $0.id == quote.id }) {
+                quotes.insert(quote, at: min(index, quotes.count))
+            }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The quote could not be detached. Please try again.")
+        }
+    }
+
+    private func retry() {
+        guard !isLoading, !isSaving, revoking.isEmpty else { return }
+        if let new = retryPolicy {
+            let previous = policy
+            policy = new
+            isSaving = true
+            Task { await save(new, revertingTo: previous) }
+        } else if let quote = retryQuote {
+            Task { await revoke(quote) }
+        } else {
+            Task { await load() }
         }
     }
 }
