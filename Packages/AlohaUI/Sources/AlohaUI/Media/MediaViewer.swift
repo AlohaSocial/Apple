@@ -270,7 +270,7 @@ public struct VideoAttachmentPlayer: View {
                     }
                     .buttonStyle(.glass)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(20)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
                 .padding()
