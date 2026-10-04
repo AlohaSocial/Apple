@@ -621,12 +621,20 @@ public struct ComposerView: View {
         VStack(spacing: AlohaMetrics.space2) {
             ForEach(model.pollOptions.indices, id: \.self) { index in
                 TextField(
-                    text: $model.pollOptions[index],
+                    text: Binding(
+                        get: { model.pollOptions.indices.contains(index) ? model.pollOptions[index] : "" },
+                        set: { value in
+                            guard model.pollOptions.indices.contains(index) else { return }
+                            model.pollOptions[index] = value
+                        }),
                     prompt: Text("Choice \(index + 1)", comment: "Poll option placeholder")
                 ) {
                     Text("Choice", comment: "Poll option label")
                 }
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, AlohaMetrics.space3)
+                .frame(minHeight: 44)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
             }
 
             HStack {
@@ -636,6 +644,7 @@ public struct ComposerView: View {
                     Text("Add choice", comment: "Poll action")
                 }
                 .disabled(model.pollOptions.count >= model.limits.maxPollOptions)
+                .buttonStyle(.glass)
 
                 Spacer()
 
@@ -929,7 +938,12 @@ public struct ComposerView: View {
                         .foregroundStyle(palette.tertiaryLabel)
                         .padding(.top, 6)
                     TextField(
-                        text: $model.threadSegments[index],
+                        text: Binding(
+                            get: { model.threadSegments.indices.contains(index) ? model.threadSegments[index] : "" },
+                            set: { value in
+                                guard model.threadSegments.indices.contains(index) else { return }
+                                model.threadSegments[index] = value
+                            }),
                         prompt: Text("Continue the thread…", comment: "Thread segment placeholder"),
                         axis: .vertical
                     ) {
