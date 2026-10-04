@@ -176,6 +176,11 @@ public struct PortfolioView: View {
                                 .font(.footnote)
                                 .foregroundStyle(palette.secondaryLabel)
                         }
+                        if !PortfolioPreview.canSave(settings) {
+                            Text("Choose an album before publishing your portfolio.")
+                                .font(.footnote)
+                                .foregroundStyle(palette.secondaryLabel)
+                        }
                     }
                 } header: {
                     Text("Pictures", comment: "Portfolio section")
@@ -213,7 +218,7 @@ public struct PortfolioView: View {
                         }
                     }
                     .buttonStyle(.glassProminent)
-                    .disabled(isSaving || !hasChanges)
+                    .disabled(isSaving || !hasChanges || !PortfolioPreview.canSave(settings))
                 }
             }
             .disabled(isLoading || isSaving || loaded == nil)
@@ -311,7 +316,8 @@ public struct PortfolioView: View {
     }
 
     private func save() async {
-        guard !isSaving, !isLoading, loaded != nil, hasChanges else { return }
+        guard !isSaving, !isLoading, loaded != nil, hasChanges,
+            PortfolioPreview.canSave(settings) else { return }
         isSaving = true
         previewID = UUID()
         errorMessage = nil
