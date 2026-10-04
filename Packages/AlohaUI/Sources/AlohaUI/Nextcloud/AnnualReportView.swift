@@ -20,6 +20,7 @@ import SwiftUI
 /// screen should work against Mastodon too.
 public struct AnnualReportView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -28,6 +29,7 @@ public struct AnnualReportView: View {
     @State private var selectedYear: Int?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -47,19 +49,19 @@ public struct AnnualReportView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
                 if let errorMessage {
-                    HStack(spacing: AlohaMetrics.space2) {
-                        Image(systemName: AlohaSymbol.warning)
-                            .accessibilityHidden(true)
-                        Text(errorMessage).font(.footnote)
-                        Spacer()
+                    VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                        Label(errorMessage, systemImage: AlohaSymbol.warning)
+                            .font(.footnote)
+                            .foregroundStyle(palette.destructive)
                         Button {
                             Task { await load() }
                         } label: {
                             Text("Retry", comment: "Annual report retry action")
                         }
                         .font(.footnote.weight(.semibold))
+                        .buttonStyle(.glass)
+                        .disabled(isLoading)
                     }
-                    .foregroundStyle(palette.destructive)
                 }
 
                 if reports.count > 1 { yearPicker }
@@ -92,7 +94,16 @@ public struct AnnualReportView: View {
 
     // MARK: - Sections
 
+    @ViewBuilder
     private var yearPicker: some View {
+        if reports.count <= 4 && !dynamicTypeSize.isAccessibilitySize {
+            yearSelection.pickerStyle(.segmented).labelsHidden()
+        } else {
+            yearSelection.pickerStyle(.menu)
+        }
+    }
+
+    private var yearSelection: some View {
         Picker(selection: Binding(get: { report?.year ?? 0 }, set: { selectedYear = $0 })) {
             ForEach(reports) { report in
                 Text(verbatim: String(report.year)).tag(report.year)
@@ -100,8 +111,6 @@ public struct AnnualReportView: View {
         } label: {
             Text("Year", comment: "Annual report year picker")
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
     }
 
     private func headline(_ report: AnnualReport) -> some View {
@@ -114,7 +123,8 @@ public struct AnnualReportView: View {
                 .font(AlohaType.section)
                 .foregroundStyle(palette.label)
 
-            HStack(spacing: AlohaMetrics.space5) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space3) {
                 figure(report.data.totalStatuses, Text("Posts", comment: "Annual report figure"))
                 figure(
                     report.data.totalFollowers,
@@ -296,21 +306,35 @@ public struct AnnualReportView: View {
     // MARK: - Data
 
     private func load() async {
-        defer { isLoading = false }
+        let request = UUID()
+        loadID = request
+        isLoading = true
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         // The server answers instantly and changes nothing; Mastodon needs it.
         _ = try? await session.client.send(
             Endpoint.annualReports.generate(Self.lastCompleteYear))
+        guard !Task.isCancelled, loadID == request else { return }
         do {
-            wrapped = try await session.client.decode(
+            let response = try await session.client.decode(
                 WrappedAnnualReports.self, from: Endpoint.annualReports.all)
+            guard !Task.isCancelled, loadID == request else { return }
+            wrapped = response
+            if let selectedYear, !response.annualReports.contains(where: { $0.year == selectedYear }) {
+                self.selectedYear = nil
+            }
             errorMessage = nil
         } catch APIError.notFound {
+            guard !Task.isCancelled, loadID == request else { return }
             // A server without the feature is not a broken screen.
             wrapped = WrappedAnnualReports()
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Your annual report could not be loaded. Please try again.")
         }
     }
 
