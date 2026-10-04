@@ -226,8 +226,14 @@ public struct PortfolioView: View {
 
     @ViewBuilder
     private var previewPage: some View {
-        if let page = preview ?? draftPage {
+        if let page = hasChanges ? draftPage : (preview ?? draftPage) {
             ScrollView {
+                if let loaded, settings.source != loaded.source || settings.collectionID != loaded.collectionID {
+                    Text("Save your changes to preview photos from the newly selected source.")
+                        .font(.footnote)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .padding()
+                }
                 PortfolioPageView(page: page, showsAvatarFallback: session.snapshot.avatarURL)
             }
             .refreshable { await loadPreview() }
@@ -247,6 +253,10 @@ public struct PortfolioView: View {
     /// The page as the settings describe it, from the pictures the server
     /// sent along with them — so a draft can be looked at before publishing.
     private var draftPage: PortfolioPage? {
+        if let preview {
+            return PortfolioPreview.applying(settings, to: preview,
+                fallbackTitle: session.snapshot.bestDisplayName)
+        }
         let source = loaded ?? settings
         guard !source.posts.isEmpty else { return nil }
         return PortfolioPage(
