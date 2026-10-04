@@ -17,6 +17,7 @@ public struct DeliverySheet: View {
     @State private var report: DeliveryReport?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
 
     public init(status: Status, session: AccountSession) {
         self.status = status
@@ -78,19 +79,19 @@ public struct DeliverySheet: View {
     }
 
     private func errorRow(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-                .accessibilityHidden(true)
-            Text(message).font(.footnote)
-            Spacer()
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
             Button {
                 Task { await load() }
             } label: {
                 Text("Retry", comment: "Delivery retry action")
             }
             .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading)
         }
-        .foregroundStyle(palette.destructive)
         .padding(.vertical, AlohaMetrics.space2)
     }
 
@@ -104,7 +105,8 @@ public struct DeliverySheet: View {
             )
             .font(.subheadline.weight(.semibold))
 
-            HStack(spacing: AlohaMetrics.space3) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space2) {
                 if report.sending > 0 {
                     count(report.sending, state: .sending)
                 }
@@ -187,14 +189,21 @@ public struct DeliverySheet: View {
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            report = try await session.client.decode(
+            let response = try await session.client.decode(
                 DeliveryReport.self, from: Endpoint.statusExtras.delivery(status.id))
+            guard !Task.isCancelled, loadID == request else { return }
+            report = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "Couldn't load delivery.", comment: "Delivery error")
