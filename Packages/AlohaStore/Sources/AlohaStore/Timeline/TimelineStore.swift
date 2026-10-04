@@ -6,6 +6,12 @@ import Foundation
 import OSLog
 import SwiftData
 
+public struct TimelineStatusUpdate: Sendable {
+    public static let notification = Notification.Name("aloha.timelineStatusUpdate")
+    public let accountID: UUID
+    public let status: Status
+}
+
 /// Every write to the store goes through here, on a background context.
 /// Views never touch a `ModelContext`.
 @ModelActor
@@ -134,6 +140,9 @@ public actor TimelineStore {
     public func updateStatus(accountID: UUID, status: Status) throws {
         try upsert(status: status, accountID: accountID)
         try modelContext.save()
+        NotificationCenter.default.post(
+            name: TimelineStatusUpdate.notification,
+            object: TimelineStatusUpdate(accountID: accountID, status: status.displayed))
     }
 
     /// A delete over streaming, or a 404 on refetch: the status goes, and so

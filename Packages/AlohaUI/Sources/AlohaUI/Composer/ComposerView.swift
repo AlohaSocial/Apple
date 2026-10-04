@@ -15,6 +15,7 @@ public struct ComposerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var didSend = false
     @State private var showsCardOptions = false
+    @State private var isShowingPollEditor = false
 
     @State private var model: ComposerModel
     @State private var pickedItems: [PhotosPickerItem] = []
@@ -95,7 +96,15 @@ public struct ComposerView: View {
                 if let scheduledAt = model.scheduledAt { scheduleBanner(scheduledAt) }
                 if !model.attachments.isEmpty { mediaStrip }
                 if !model.threadSegments.isEmpty { threadEditor }
-                if model.hasPoll { pollEditor }
+                if model.hasPoll {
+                    Button {
+                        isShowingPollEditor = true
+                    } label: {
+                        Label("Edit poll", systemImage: AlohaSymbol.poll)
+                    }
+                    .buttonStyle(.glass)
+                    .padding(AlohaMetrics.space2)
+                }
 
                 toolbar
             }
@@ -158,6 +167,24 @@ public struct ComposerView: View {
             )
             .onChange(of: pickedItems) { _, items in
                 Task { await ingest(items) }
+            }
+            .sheet(isPresented: $isShowingPollEditor) {
+                NavigationStack {
+                    ScrollView { pollEditor }
+                        .navigationTitle("Poll")
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { isShowingPollEditor = false }
+                            }
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Remove poll", role: .destructive) {
+                                    model.pollOptions = []
+                                    isShowingPollEditor = false
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $isShowingSchedule) {
                 SchedulePicker(scheduledAt: $model.scheduledAt)
@@ -620,6 +647,7 @@ public struct ComposerView: View {
     private var pollEditor: some View {
         VStack(spacing: AlohaMetrics.space2) {
             ForEach(model.pollOptions.indices, id: \.self) { index in
+                HStack {
                 TextField(
                     text: Binding(
                         get: { model.pollOptions.indices.contains(index) ? model.pollOptions[index] : "" },
@@ -635,6 +663,18 @@ public struct ComposerView: View {
                 .padding(.horizontal, AlohaMetrics.space3)
                 .frame(minHeight: 44)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                    Button(role: .destructive) {
+                        guard model.pollOptions.count > 2,
+                              model.pollOptions.indices.contains(index) else { return }
+                        model.pollOptions.remove(at: index)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.glass)
+                    .disabled(model.pollOptions.count <= 2)
+                    .accessibilityLabel(Text("Remove choice"))
+                }
             }
 
             HStack {
@@ -708,7 +748,8 @@ public struct ComposerView: View {
         .accessibilityLabel(Text("Add media", comment: "Composer action"))
 
         Button {
-            model.togglePoll()
+            if !model.hasPoll { model.togglePoll() }
+            isShowingPollEditor = true
         } label: {
             Image(systemName: AlohaSymbol.poll)
         }
