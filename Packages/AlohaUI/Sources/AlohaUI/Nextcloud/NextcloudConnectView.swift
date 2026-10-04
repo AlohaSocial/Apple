@@ -22,6 +22,10 @@ public struct NextcloudConnectView: View {
 
     @State private var phase: Phase = .idle
     @State private var errorMessage: String?
+    @State private var connectionTask: Task<Void, Never>?
+    @State private var connectionID = UUID()
+    @State private var isStarting = false
+    @State private var isDisconnecting = false
 
     enum Phase {
         case idle
@@ -60,9 +64,12 @@ public struct NextcloudConnectView: View {
                     } label: {
                         Text("Close", comment: "Sheet action")
                     }
+                    .disabled(isDisconnecting)
                 }
             }
             .task { phase = existingPhase }
+            .interactiveDismissDisabled(isDisconnecting)
+            .onDisappear { cancelConnection(resetPhase: false) }
         }
     }
 
@@ -100,12 +107,14 @@ public struct NextcloudConnectView: View {
 
             Section {
                 Button {
-                    Task { await begin() }
+                    startConnection()
                 } label: {
                     Text(
                         "Connect \(session.snapshot.instanceHost)",
                         comment: "Nextcloud connect action")
                 }
+                .buttonStyle(.glassProminent)
+                .disabled(isStarting)
             }
         }
     }
@@ -123,9 +132,10 @@ public struct NextcloudConnectView: View {
             } label: {
                 Text("Open the approval page again", comment: "Nextcloud connect action")
             }
+            .buttonStyle(.glass)
 
             Button(role: .cancel) {
-                phase = .idle
+                cancelConnection()
             } label: {
                 Text("Cancel", comment: "Nextcloud connect action")
             }
@@ -144,6 +154,8 @@ public struct NextcloudConnectView: View {
                 } label: {
                     Text("Connected as", comment: "Nextcloud connect state")
                 }
+                .buttonStyle(.glass)
+                .disabled(isDisconnecting)
                 LabeledContent {
                     Text(credentials.server.host() ?? "")
                 } label: {
@@ -171,17 +183,44 @@ public struct NextcloudConnectView: View {
 
     // MARK: - Actions
 
-    private func begin() async {
+    private func startConnection() {
+        guard !isStarting, connectionTask == nil else { return }
+        let request = UUID()
+        connectionID = request
+        isStarting = true
+        connectionTask = Task { await begin(request: request) }
+    }
+
+    private func cancelConnection(resetPhase: Bool = true) {
+        connectionID = UUID()
+        connectionTask?.cancel()
+        connectionTask = nil
+        isStarting = false
+        if resetPhase { phase = .idle }
+    }
+
+    private func begin(request: UUID) async {
+        defer {
+            if connectionID == request {
+                connectionTask = nil
+                isStarting = false
+            }
+        }
         errorMessage = nil
         let flow = NextcloudLoginFlow(transport: environment.transport)
-        let server = URL(string: "https://\(session.snapshot.instanceHost)")!
+        guard let server = URL(string: "https://\(session.snapshot.instanceHost)") else {
+            errorMessage = String(localized: "The server address is invalid.")
+            return
+        }
 
         do {
             let start = try await flow.begin(server: server)
+            guard !Task.isCancelled, connectionID == request else { return }
             phase = .waiting(start)
             openURL(start.loginURL)
 
             let credentials = try await flow.awaitApproval(start)
+            guard !Task.isCancelled, connectionID == request else { return }
             try environment.credentials.setNextcloudCredentials(credentials, for: session.id)
             await session.setNextcloudConnection(credentials)
             phase = .connected(credentials)
@@ -190,6 +229,7 @@ public struct NextcloudConnectView: View {
             // than waiting for the next launch.
             await environment.registerForNextcloudPush(session: session)
         } catch NextcloudLoginFlow.FlowError.unsupported {
+            guard !Task.isCancelled, connectionID == request else { return }
             // A plain Mastodon server, which is a normal answer.
             errorMessage = String(
                 localized:
@@ -197,11 +237,13 @@ public struct NextcloudConnectView: View {
                 comment: "Nextcloud connect unsupported")
             phase = .idle
         } catch NextcloudLoginFlow.FlowError.timedOut {
+            guard !Task.isCancelled, connectionID == request else { return }
             errorMessage = String(
                 localized: "That took too long. Try again when you're ready.",
                 comment: "Nextcloud connect timeout")
             phase = .idle
         } catch {
+            guard !Task.isCancelled, connectionID == request else { return }
             errorMessage = String(
                 localized: "Couldn't connect to your Nextcloud.",
                 comment: "Nextcloud connect failure")
@@ -210,6 +252,10 @@ public struct NextcloudConnectView: View {
     }
 
     private func disconnect(_ credentials: NextcloudLoginFlow.Credentials) async {
+        guard !isDisconnecting else { return }
+        isDisconnecting = true
+        errorMessage = nil
+        defer { isDisconnecting = false }
         await environment.unregisterNextcloudPush(session: session)
         await NextcloudLoginFlow(transport: environment.transport).revoke(credentials)
         try? environment.credentials.removeNextcloudCredentials(for: session.id)
