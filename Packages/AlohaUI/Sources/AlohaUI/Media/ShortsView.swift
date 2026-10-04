@@ -20,7 +20,6 @@ import SwiftUI
 public struct ShortsView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -46,7 +45,6 @@ public struct ShortsView: View {
     @State private var feed: Feed = .forYou
     @State private var model: TimelineModel
     @State private var currentID: String?
-    @State private var preloader = NextVideoPreloader()
     @AppStorage("aloha.shorts.muted") private var isMuted = true
     @State private var isPaused = false
     @State private var progress: Double = 0
@@ -106,18 +104,6 @@ public struct ShortsView: View {
         }
         .background { Color.black.ignoresSafeArea() }
         .task { await start() }
-        .task(id: "\(currentID ?? ""): \(preloader.allowsPrefetch):\(shorts.count):\(scenePhase)") {
-            guard scenePhase == .active, let currentID,
-                let index = shorts.firstIndex(where: { $0.id == currentID })
-            else { preloader.cancel(); return }
-            guard shorts.indices.contains(index + 1) else {
-                preloader.retainCurrent(statusID: shorts[index].displayed.id, accountID: session.id)
-                return
-            }
-            await preloader.prepare(status: shorts[index + 1], keeping: shorts[index].displayed.id,
-                session: session)
-        }
-        .onDisappear { preloader.cancel() }
         .onChange(of: feed) { _, newFeed in
             model = TimelineModel(
                 key: TimelineKey(mode: .shorts, source: newFeed.source), session: session)
@@ -226,7 +212,6 @@ public struct ShortsView: View {
         ZStack {
             if let attachment = status.displayed.mediaAttachments.first(where: { $0.isVideo }) {
                 ShortPlayer(
-                    preloader: preloader,
                     attachment: attachment,
                     statusID: status.displayed.id,
                     apiBase: session.capabilities.apiBase,
@@ -526,7 +511,6 @@ public struct ShortsView: View {
 
 /// One short's player. At most three live instances exist across the pager.
 struct ShortPlayer: View {
-    let preloader: NextVideoPreloader
     let attachment: MediaAttachment
     let statusID: String
     let apiBase: URL
@@ -545,6 +529,14 @@ struct ShortPlayer: View {
     @State private var looper: Any?
     @State private var ticker: Any?
     @State private var watcher: Task<Void, Never>?
+    @State private var sourceIndex = 0
+    @State private var retryCount = 0
+    @State private var playbackFailed = false
+
+    private var sources: [VideoSource] {
+        VideoSourceResolver.sources(for: attachment, statusID: statusID, apiBase: apiBase,
+            isRemote: VideoSourceResolver.isRemote(attachment))
+    }
 
     var body: some View {
         ZStack {
@@ -568,8 +560,26 @@ struct ShortPlayer: View {
                         url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fill)
                 }
             }
+            if isCurrent && !isCovered && !isReady {
+                if playbackFailed {
+                    VStack(spacing: AlohaMetrics.space2) {
+                        Text("This video could not be played.")
+                            .font(.callout)
+                        Button("Try again") {
+                            sourceIndex = 0
+                            retryCount += 1
+                        }
+                        .buttonStyle(.glass)
+                    }
+                    .foregroundStyle(.primary)
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                } else {
+                    ProgressView().tint(.white)
+                }
+            }
         }
-        .task(id: isCurrent) { await manage() }
+        .task(id: "\(isCurrent):\(isCovered):\(sourceIndex):\(retryCount)") { await manage() }
         .onChange(of: isMuted) { _, muted in player?.isMuted = muted }
         .onChange(of: isPaused) { _, paused in
             guard isCurrent, autoplay else { return }
@@ -581,48 +591,42 @@ struct ShortPlayer: View {
     private func manage() async {
         guard isCurrent, !isCovered else {
             teardown()
+            sourceIndex = 0
             return
         }
         teardown()
-
-        if let session, let (prepared, item) = preloader.take(key: NextVideoPreloader.key(
-            accountID: session.id, statusID: statusID, attachmentID: attachment.id)) {
-            isReady = item.status == .readyToPlay
-            item.preferredPeakBitRate = 0
-            item.preferredForwardBufferDuration = 0
-            watch(item)
-            await start(prepared, item: item)
-            return
-        }
-
-        let sources = VideoSourceResolver.sources(
-            for: attachment, statusID: statusID, apiBase: apiBase,
-            isRemote: VideoSourceResolver.isRemote(attachment))
+        playbackFailed = false
 
         // Every rung is judged before anything is shown: a pager full of
         // players bound to items that never became playable is a pager full
         // of black rectangles, and the poster behind each one is the honest
         // answer until a source actually works.
-        for source in sources {
+        for index in sourceIndex..<sources.count {
+            let source = sources[index]
             guard !Task.isCancelled, isCurrent else { return }
             let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
             switch await PlaybackReadiness.open(url: source.url, headers: headers) {
             case .playable(let newPlayer, let item, let ready):
-                guard !Task.isCancelled, isCurrent else { return }
+                guard !Task.isCancelled, isCurrent else {
+                    newPlayer.replaceCurrentItem(with: nil)
+                    return
+                }
                 isReady = ready
-                watch(item)
+                watch(item, at: index)
                 await start(newPlayer, item: item)
                 return
             case .rejected(let reason):
                 PlaybackLog.logger.error("short rung rejected: \(reason, privacy: .public)")
             }
         }
+        guard !Task.isCancelled else { return }
+        playbackFailed = true
     }
 
     /// Lifts the poster the moment there is a frame behind it — a rung can
     /// open before it has parsed far enough to draw — and drops the player if
     /// the file collapses after having opened.
-    private func watch(_ item: AVPlayerItem) {
+    private func watch(_ item: AVPlayerItem, at rung: Int) {
         watcher = Task { @MainActor in
             for await status in PlaybackReadiness.statuses(item) {
                 guard !Task.isCancelled else { return }
@@ -633,6 +637,11 @@ struct ShortPlayer: View {
                     PlaybackLog.logger.error(
                         "short failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
                     teardown()
+                    if rung + 1 < sources.count {
+                        sourceIndex = rung + 1
+                    } else {
+                        playbackFailed = true
+                    }
                     return
                 default:
                     break
