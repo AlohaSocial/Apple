@@ -131,7 +131,7 @@ public struct PortfolioView: View {
                 } label: {
                     Text("Layout", comment: "Portfolio field")
                 }
-                .pickerStyle(.inline)
+                .pickerStyle(.menu)
                 .labelsHidden()
             } header: {
                 Text("Layout", comment: "Portfolio section")
@@ -146,7 +146,7 @@ public struct PortfolioView: View {
                 } label: {
                     Text("Pictures", comment: "Portfolio field")
                 }
-                .pickerStyle(.inline)
+                .pickerStyle(.menu)
                 .labelsHidden()
 
                 if settings.source == .collection {
@@ -203,10 +203,12 @@ public struct PortfolioView: View {
                         Spacer()
                     }
                 }
+                .buttonStyle(.alohaProminent)
                 .disabled(isSaving || !hasChanges)
             }
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
     }
 
     // MARK: - Preview
@@ -313,6 +315,7 @@ struct PortfolioPageView: View {
                     RemoteImage(url: avatar)
                         .frame(width: 88, height: 88)
                         .clipShape(Circle())
+                        .accessibilityHidden(true)
                 }
                 Text(page.title)
                     .font(AlohaType.display)

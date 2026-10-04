@@ -9,6 +9,7 @@ import SwiftUI
 /// packs without resolving anybody; opening one does the resolution.
 public struct StarterPacksView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -27,10 +28,7 @@ public struct StarterPacksView: View {
     public var body: some View {
         ScrollView {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
-                    .padding(AlohaMetrics.space3)
+                errorStrip(errorMessage)
             }
 
             LazyVGrid(columns: columns, spacing: AlohaMetrics.space3) {
@@ -43,10 +41,12 @@ public struct StarterPacksView: View {
                 }
             }
             .padding(AlohaMetrics.space3)
+            // The last row should not end where the bar at the foot begins.
+            .padding(.bottom, AlohaMetrics.space4)
 
             if isLoading && packs.isEmpty {
                 ProgressView().padding(.top, AlohaMetrics.space6)
-            } else if packs.isEmpty {
+            } else if packs.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No starter packs", comment: "Empty starter packs")
                 } description: {
@@ -63,6 +63,22 @@ public struct StarterPacksView: View {
         .refreshable { await load() }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Starter packs reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(AlohaMetrics.space3)
+    }
+
     private func card(_ pack: StarterPack) -> some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
             Image(systemName: "person.3.fill")
@@ -70,7 +86,9 @@ public struct StarterPacksView: View {
                 .foregroundStyle(palette.accent)
             Text(pack.name)
                 .font(AlohaType.name)
-                .lineLimit(2)
+                // A name the reader asked to be bigger is not a name to cut
+                // in half.
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .multilineTextAlignment(.leading)
             if !pack.description.isEmpty {
                 Text(pack.description)

@@ -16,6 +16,7 @@ import SwiftUI
 /// endpoint in 3.0, so on newer servers it also returned nothing at all.
 public struct ConversationsView: View {
     @Environment(\.alohaPalette) private var palette
+    @Namespace private var filterGlass
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -62,9 +63,7 @@ public struct ConversationsView: View {
         List {
             Section {
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
                 ForEach(visible) { conversation in
@@ -74,6 +73,7 @@ public struct ConversationsView: View {
                         row(conversation)
                     }
                     .buttonStyle(.plain)
+                    .listRowBackground(palette.background)
                     .listRowInsets(
                         EdgeInsets(
                             top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
@@ -92,12 +92,13 @@ public struct ConversationsView: View {
                     }
                 }
 
-                if visible.isEmpty && !isLoading { emptyState }
+                if visible.isEmpty && !isLoading && errorMessage == nil { emptyState }
             } header: {
                 filterBar
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
         .overlay {
             if isLoading && conversations.isEmpty {
                 ProgressView("Loading messages…")
@@ -177,19 +178,44 @@ public struct ConversationsView: View {
     // MARK: - Pieces
 
     private var filterBar: some View {
-        Picker(selection: $filter) {
-            Text("All", comment: "Conversations filter").tag(Filter.all)
-            Text("Unread (\(unreadCount))", comment: "Conversations filter with count")
-                .tag(Filter.unread)
-        } label: {
-            Text("Filter", comment: "Conversations filter picker")
+        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            Picker(selection: $filter) {
+                Text("All", comment: "Conversations filter").tag(Filter.all)
+                Text("Unread (\(unreadCount))", comment: "Conversations filter with count")
+                    .tag(Filter.unread)
+            } label: {
+                Text("Filter", comment: "Conversations filter picker")
+            }
+            .pickerStyle(.segmented)
+            // The bar sits over the rows rather than on a band of its own, so
+            // the control keeps its own opaque track and the labels stay as
+            // high-contrast as the system's.
+            .textCase(nil)
+            .labelsHidden()
+            .accessibilityLabel(Text("Filter", comment: "Conversations filter picker"))
+            .glassEffect(.regular.interactive(), in: Capsule())
+            .glassEffectID(filter, in: filterGlass)
         }
-        .pickerStyle(.segmented)
-        .textCase(nil)
         .padding(.horizontal, AlohaMetrics.space3)
-        .padding(.vertical, AlohaMetrics.space1)
+        .padding(.vertical, AlohaMetrics.space2)
         .listRowInsets(EdgeInsets())
-        .background(palette.background)
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Conversations reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private func row(_ conversation: Conversation) -> some View {
@@ -261,6 +287,7 @@ public struct ConversationsView: View {
                 .buttonStyle(.borderedProminent)
             }
         }
+        .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }
 
@@ -345,7 +372,8 @@ public struct ConversationsView: View {
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
     }
@@ -386,6 +414,7 @@ struct NewMessageView: View {
     @State private var query = ""
     @State private var results: [Account] = []
     @State private var isSearching = false
+    @State private var errorMessage: String?
     /// Mutual follows, which is who most messages go to. Offered before a
     /// search rather than after it: making somebody search for a person the
     /// app could have listed is a step that answers its own question.
@@ -408,17 +437,24 @@ struct NewMessageView: View {
                     }
                 }
 
-                if results.isEmpty && !query.isEmpty && !isSearching {
-                    Text("Nobody found.", comment: "New message empty search")
-                        .font(.footnote)
-                        .foregroundStyle(palette.tertiaryLabel)
+                // Waiting, failing and empty are three different answers, and
+                // the last of them waits for a query worth answering.
+                if isSearching {
+                    loadingRow
+                } else if let errorMessage {
+                    errorStrip(errorMessage)
+                } else if results.isEmpty && query.count >= 2 {
+                    ContentUnavailableView {
+                        Text("Nobody found.", comment: "New message empty search")
+                    }
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
                 } else if results.isEmpty && mutuals.isEmpty {
-                    Text(
-                        "Search for someone to write to.",
-                        comment: "New message search hint"
-                    )
-                    .font(.footnote)
-                    .foregroundStyle(palette.tertiaryLabel)
+                    ContentUnavailableView {
+                        Text("Search for someone to write to.", comment: "New message search hint")
+                    }
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
                 }
 
                 ForEach(results) { account in
@@ -443,10 +479,12 @@ struct NewMessageView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .listRowBackground(palette.background)
                     .accessibilityLabel(Text(account.bestDisplayName))
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .searchable(
                 text: $query,
                 prompt: Text("Search people", comment: "New message search prompt")
@@ -498,24 +536,69 @@ struct NewMessageView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .listRowBackground(palette.background)
         .accessibilityLabel(Text(account.bestDisplayName))
+    }
+
+    private var loadingRow: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+            Spacer()
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await search() }
+            } label: {
+                Text("Retry", comment: "New message search retry")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private func search() async {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else {
+            isSearching = false
             results = []
+            errorMessage = nil
             return
         }
+        // The spinner starts with the debounce, so a query never sits on
+        // "nobody found" while the answer is still coming.
+        isSearching = true
+        // Only the search still matching what is on screen may put the
+        // spinner down; a newer one owns it from here.
+        defer { if query == trimmed { isSearching = false } }
         // Wait for typing to settle before every keystroke becomes a request.
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }
-        isSearching = true
-        defer { isSearching = false }
-        let found = try? await session.client.decode(
-            SearchResults.self,
-            from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
-        guard !Task.isCancelled else { return }
-        results = (found?.accounts ?? []).filter { $0.id != session.snapshot.serverAccountID }
+        do {
+            let found = try await session.client.decode(
+                SearchResults.self,
+                from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
+            guard !Task.isCancelled else { return }
+            results = (found.accounts).filter { $0.id != session.snapshot.serverAccountID }
+            errorMessage = nil
+        } catch {
+            // A superseded search is not a failure; it just stops here.
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Search could not be run. Try again.", comment: "Search failure")
+        }
     }
 }

@@ -650,7 +650,9 @@ public struct ComposerView: View {
 
     private var pollEditor: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
-            Text("Add at least two choices. People can vote after you publish the post.")
+            Text(
+                "Add at least two choices. People can vote after you publish the post.",
+                comment: "Poll editor guidance")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             ForEach(model.pollOptions.indices, id: \.self) { index in
@@ -680,7 +682,7 @@ public struct ComposerView: View {
                     }
                     .buttonStyle(.glass)
                     .disabled(model.pollOptions.count <= 2)
-                    .accessibilityLabel(Text("Remove choice"))
+                    .accessibilityLabel(Text("Remove choice", comment: "Poll editor action"))
                 }
             }
 
@@ -740,7 +742,10 @@ public struct ComposerView: View {
                 Image(systemName: "rectangle.on.rectangle")
             }
             .accessibilityLabel(Text("Post it as a card", comment: "Composer card section"))
-            .accessibilityValue(showsCardOptions ? Text("Expanded") : Text("Collapsed"))
+            .accessibilityValue(
+                showsCardOptions
+                    ? Text("Expanded", comment: "Accessibility state")
+                    : Text("Collapsed", comment: "Accessibility state"))
         }
         Button {
             model.isShowingMediaPicker = true

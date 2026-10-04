@@ -26,6 +26,10 @@ public struct ConversationThreadView: View {
     @State private var isLoading = true
     @State private var isSending = false
     @State private var errorMessage: String?
+    /// A message that did not go out is a different problem from a thread
+    /// that did not load, and it belongs next to the field that still holds
+    /// the text.
+    @State private var sendError: String?
     @FocusState private var isFieldFocused: Bool
 
     public init(
@@ -57,13 +61,6 @@ public struct ConversationThreadView: View {
                         ProgressView().padding(.top, AlohaMetrics.space6)
                     }
 
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(palette.destructive)
-                            .padding(AlohaMetrics.space3)
-                    }
-
                     if messages.isEmpty && !isLoading { intro }
 
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
@@ -86,7 +83,7 @@ public struct ConversationThreadView: View {
             #if !os(visionOS)
                 .scrollDismissesKeyboard(.interactively)
             #endif
-            .onChange(of: messages.count) { _, _ in
+            .onChange(of: messages.last?.id) { _, _ in
                 scrollToBottom(proxy)
             }
             .task {
@@ -94,8 +91,19 @@ public struct ConversationThreadView: View {
                 scrollToBottom(proxy, animated: false)
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                if let sendError {
+                    failureStrip(sendError, retry: .send)
+                } else if let errorMessage {
+                    failureStrip(errorMessage, retry: .load)
+                }
+                composer
+            }
+        }
+        // After the inset, so the field sits on the palette rather than on
+        // whatever is behind the window — glass needs that to blur.
         .background(palette.background)
-        .safeAreaInset(edge: .bottom, spacing: 0) { composer }
         .navigationTitle(Text(title))
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -126,6 +134,9 @@ public struct ConversationThreadView: View {
             }
         }
         .buttonStyle(.plain)
+        // With nobody else in the thread there is no profile to open, and a
+        // control that does nothing is worse than no control at all.
+        .disabled(others.isEmpty)
         .accessibilityLabel(
             Text("Private conversation with \(title)", comment: "Conversation header label"))
     }
@@ -338,8 +349,41 @@ public struct ConversationThreadView: View {
 
     // MARK: - Composer
 
+    /// Which of the two things that can fail is being reported, so the
+    /// retry runs that one.
+    private enum Retry { case load, send }
+
+    /// The failure sits above the field, not at the head of a scroll that
+    /// has already moved on to the newest message.
+    private func failureStrip(_ message: String, retry: Retry) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await perform(retry) }
+            } label: {
+                Text("Retry", comment: "Conversation reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.horizontal, AlohaMetrics.space3)
+        .padding(.vertical, AlohaMetrics.space2)
+        .overlay(alignment: .top) {
+            Rectangle().fill(palette.separator).frame(height: 0.5)
+        }
+    }
+
+    private func perform(_ retry: Retry) async {
+        switch retry {
+        case .load: await load()
+        case .send: await send()
+        }
+    }
+
     private var composer: some View {
-        VStack(spacing: 0) {
+        GlassEffectContainer(spacing: AlohaMetrics.space2) {
             HStack(alignment: .bottom, spacing: AlohaMetrics.space2) {
                 Button {
                     // The full composer, for attachments, polls and a content
@@ -348,7 +392,7 @@ public struct ConversationThreadView: View {
                     if let last = messages.last { onAction(.reply(last)) }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(palette.secondaryLabel)
                         .frame(width: 44, height: 44)
                 }
@@ -368,14 +412,19 @@ public struct ConversationThreadView: View {
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
                 .frame(minHeight: 44)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22))
+                .glassEffect(.regular, in: Capsule())
                 .accessibilityLabel(Text("Message", comment: "Conversation field label"))
+                .onChange(of: draft) { _, _ in
+                    // Editing the text means the last failure no longer
+                    // describes what is about to be sent.
+                    sendError = nil
+                }
 
                 Button {
                     Task { await send() }
                 } label: {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(palette.onAccent)
                         .frame(width: 44, height: 44)
                 }
@@ -385,9 +434,9 @@ public struct ConversationThreadView: View {
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityLabel(Text("Send", comment: "Conversation composer action"))
             }
-            .padding(.horizontal, AlohaMetrics.space3)
-            .padding(.vertical, AlohaMetrics.space2)
         }
+        .padding(.horizontal, AlohaMetrics.space3)
+        .padding(.vertical, AlohaMetrics.space2)
     }
 
     private var canSend: Bool {
@@ -418,7 +467,8 @@ public struct ConversationThreadView: View {
             guard !Task.isCancelled else { return }
             merge([last])
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
     }
@@ -447,13 +497,17 @@ public struct ConversationThreadView: View {
                 Status.self, from: Endpoint.composing.post(post))
             // Preserve anything typed while the previous message was sending.
             if draft == submittedDraft { draft = "" }
-            errorMessage = nil
+            sendError = nil
             merge([sent])
             try? await session.timelineStore.updateStatus(accountID: session.id, status: sent)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
-                ?? String(localized: "Your message could not be sent. Your text has been kept; please try again.")
+            sendError =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized:
+                        "Your message could not be sent. Your text has been kept; please try again."
+                )
         }
     }
 
@@ -492,8 +546,10 @@ struct BubbleShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         let radii = RectangleCornerRadii(
-            topLeading: 18, bottomLeading: own ? 18 : 5,
-            bottomTrailing: own ? 5 : 18, topTrailing: 18)
+            topLeading: AlohaMetrics.cornerLarge,
+            bottomLeading: own ? AlohaMetrics.cornerLarge : AlohaMetrics.cornerSmall,
+            bottomTrailing: own ? AlohaMetrics.cornerSmall : AlohaMetrics.cornerLarge,
+            topTrailing: AlohaMetrics.cornerLarge)
         return UnevenRoundedRectangle(cornerRadii: radii, style: .continuous).path(in: rect)
     }
 }

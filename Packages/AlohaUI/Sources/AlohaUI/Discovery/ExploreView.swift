@@ -14,6 +14,7 @@ import SwiftUI
 /// are Mastodon's own.
 public struct ExploreView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -32,6 +33,9 @@ public struct ExploreView: View {
     @State private var found: [Account] = []
     @State private var foundElsewhere: DirectorySearchResults = DirectorySearchResults()
     @State private var isSearching = false
+    /// A search that did not reach the server is not a search that found
+    /// nobody, and the empty state must not say otherwise.
+    @State private var searchError: String?
     @State private var followGraph: FollowGraph?
     /// Remembered per device: somebody who likes the picture keeps it, and
     /// somebody who does not never sees it again.
@@ -53,6 +57,11 @@ public struct ExploreView: View {
     @State private var period = "1d"
 
     @State private var isLoading = true
+    /// The people and tags fetches are the ones whose failure would otherwise
+    /// be drawn as "nobody to suggest" and "nothing trending". Kept apart so
+    /// one succeeding cannot clear the other's failure.
+    @State private var peopleError: String?
+    @State private var trendsError: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -68,7 +77,7 @@ public struct ExploreView: View {
     public var body: some View {
         VStack(spacing: 0) {
             switcher
-            if !categories.isEmpty { categoryChips }
+            if section == .hashtags && !categories.isEmpty { categoryChips }
             Divider()
 
             Group {
@@ -88,23 +97,38 @@ public struct ExploreView: View {
         .navigationTitle(Text("Discover", comment: "Screen title"))
         .task { await load() }
         .task(id: directoryOrder) { await loadDirectory() }
-        .onChange(of: period) { _, _ in Task { await loadTrendingTags() } }
+        .task(id: period) { await loadTrendingTags() }
         .task(id: query) { await search() }
     }
 
     // MARK: - Chrome
 
     private var switcher: some View {
-        Picker(selection: $section) {
+        ScrollView(.horizontal) {
+          GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            HStack(spacing: AlohaMetrics.space2) {
             ForEach(sections) { option in
-                title(for: option).tag(option)
+                Button {
+                    section = option
+                } label: {
+                    title(for: option)
+                        .font(.subheadline.weight(section == option ? .semibold : .regular))
+                        .fixedSize()
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .frame(minHeight: 44)
+                        .foregroundStyle(section == option ? palette.onAccent : palette.label)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.tint(section == option ? palette.accent : nil).interactive(), in: Capsule())
+                .accessibilityAddTraits(section == option ? .isSelected : [])
             }
-        } label: {
-            Text("Section", comment: "Discover section picker")
+            }
+            .padding(.horizontal, AlohaMetrics.space3)
+            .padding(.vertical, AlohaMetrics.space2)
+          }
         }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, AlohaMetrics.space3)
-        .padding(.vertical, AlohaMetrics.space2)
+        .scrollIndicators(.hidden)
+        .accessibilityLabel(Text("Section", comment: "Discover section picker"))
     }
 
     private func title(for section: Section) -> Text {
@@ -180,6 +204,10 @@ public struct ExploreView: View {
 
     private var people: some View {
         List {
+            if let peopleError {
+                errorStrip(peopleError, retry: .people)
+            }
+
             SwiftUI.Section {
                 HStack(spacing: AlohaMetrics.space2) {
                     Image(systemName: AlohaSymbol.search)
@@ -193,7 +221,6 @@ public struct ExploreView: View {
                     .textFieldStyle(.plain)
                     #if os(iOS)
                         .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
                     #endif
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -215,15 +242,13 @@ public struct ExploreView: View {
                 }
                 .padding(.horizontal, AlohaMetrics.space3)
                 .frame(minHeight: 44)
-                .background(
-                    palette.surfaceRaised,
-                    in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
-                )
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge))
                 .listRowInsets(
                     EdgeInsets(
                         top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
                         bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space3)
                 )
+                .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
             } footer: {
                 if isNextcloud, !directories.isEmpty, query.isEmpty {
@@ -255,6 +280,7 @@ public struct ExploreView: View {
                             Text("Draw it as a constellation", comment: "Discover section option")
                                 .font(.footnote)
                         }
+                        .listRowBackground(palette.background)
                         ForEach(showsConstellation ? [] : followGraph.suggestions) { suggestion in
                             accountButton(suggestion.account) {
                                 if suggestion.count > 0 {
@@ -266,6 +292,7 @@ public struct ExploreView: View {
                                     .foregroundStyle(palette.tertiaryLabel)
                                 }
                             }
+                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Followed by people you follow", comment: "Discover section")
@@ -295,6 +322,7 @@ public struct ExploreView: View {
                                 .accessibilityLabel(
                                     Text("Not interested", comment: "Suggestion action"))
                             }
+                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("People to follow", comment: "Explore section")
@@ -305,6 +333,7 @@ public struct ExploreView: View {
                     SwiftUI.Section {
                         ForEach(popular) { account in
                             accountButton(account) { EmptyView() }
+                                .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Popular here", comment: "Discover section")
@@ -319,13 +348,22 @@ public struct ExploreView: View {
                             Text("Newest here", comment: "Directory order")
                                 .tag(Endpoint.search.DirectoryOrder.new)
                         } label: {
-                            Text("Order", comment: "Directory order picker")
+                            // A menu shows its label, so the label says which
+                            // order is in force rather than "Order".
+                            if directoryOrder == .active {
+                                Text("Recently active", comment: "Directory order")
+                            } else {
+                                Text("Newest here", comment: "Directory order")
+                            }
                         }
-                        .pickerStyle(.segmented)
+                        .pickerStyle(.menu)
+                        .accessibilityLabel(Text("Order", comment: "Directory order picker"))
+                        .listRowBackground(palette.background)
                         .listRowSeparator(.hidden)
 
                         ForEach(directory) { account in
                             accountButton(account) { EmptyView() }
+                                .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("The directory", comment: "Discover section")
@@ -336,21 +374,27 @@ public struct ExploreView: View {
                     }
                 }
 
-                if !isLoading, followGraph?.suggestions.isEmpty ?? true, suggestions.isEmpty,
+                if followGraph?.suggestions.isEmpty ?? true, suggestions.isEmpty,
                     popular.isEmpty, directory.isEmpty
                 {
-                    ContentUnavailableView {
-                        Text("Nobody to suggest yet", comment: "Empty Discover people")
-                    } description: {
-                        Text(
-                            "Follow a few people and the server will find more like them.",
-                            comment: "Empty Discover people detail")
+                    if isLoading {
+                        loadingRow
+                    } else if peopleError == nil {
+                        ContentUnavailableView {
+                            Text("Nobody to suggest yet", comment: "Empty Discover people")
+                        } description: {
+                            Text(
+                                "Follow a few people and the server will find more like them.",
+                                comment: "Empty Discover people detail")
+                        }
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
                     }
-                    .listRowSeparator(.hidden)
                 }
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
         // Unavailable on visionOS, where there is no keyboard over the
         // content to dismiss.
         #if !os(visionOS)
@@ -360,10 +404,21 @@ public struct ExploreView: View {
 
     @ViewBuilder
     private var searchResults: some View {
+        // Drawn through the debounce as well as the request, so a query never
+        // sits on "nothing found" while the answer is still coming.
+        if let searchError {
+            errorStrip(searchError, retry: .search)
+        }
+
+        if isSearching, found.isEmpty, foundElsewhere.accounts.isEmpty {
+            loadingRow
+        }
+
         if !found.isEmpty {
             SwiftUI.Section {
                 ForEach(found) { account in
                     accountButton(account) { EmptyView() }
+                        .listRowBackground(palette.background)
                 }
             } header: {
                 Text("Found", comment: "Discover search section")
@@ -374,6 +429,7 @@ public struct ExploreView: View {
             SwiftUI.Section {
                 ForEach(foundElsewhere.accounts) { account in
                     accountButton(account) { EmptyView() }
+                        .listRowBackground(palette.background)
                 }
             } header: {
                 Text("On other servers", comment: "Discover search section")
@@ -387,9 +443,52 @@ public struct ExploreView: View {
             }
         }
 
-        if !isSearching, found.isEmpty, foundElsewhere.accounts.isEmpty {
+        if !isSearching, query.count >= 2, found.isEmpty, foundElsewhere.accounts.isEmpty,
+            searchError == nil
+        {
             ContentUnavailableView.search(text: query)
+                .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
+        }
+    }
+
+    /// One row of the three states a plain list has between content: waiting.
+    private var loadingRow: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+            Spacer()
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    /// What a failed read was, so the retry runs that read rather than
+    /// carrying a closure across a task boundary.
+    private enum Retry { case people, trends, search }
+
+    private func errorStrip(_ message: String, retry: Retry) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await perform(retry) }
+            } label: {
+                Text("Retry", comment: "Discover reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func perform(_ retry: Retry) async {
+        switch retry {
+        case .people: await load()
+        case .trends: await loadTrendingTags()
+        case .search: await search()
         }
     }
 
@@ -402,7 +501,9 @@ public struct ExploreView: View {
             VStack(alignment: .leading, spacing: 2) {
                 AccountRow(account: account, localHost: session.snapshot.instanceHost)
                 detail()
-                    .padding(.leading, 40 + AlohaMetrics.space3)
+                    // Under the avatar and its gap, at whatever size the
+                    // density has set the avatar to.
+                    .padding(.leading, metrics.avatarSize + AlohaMetrics.space3)
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -437,6 +538,10 @@ public struct ExploreView: View {
 
     private var hashtags: some View {
         List {
+            if let trendsError {
+                errorStrip(trendsError, retry: .trends)
+            }
+
             if !trendingTags.isEmpty {
                 SwiftUI.Section {
                     ForEach(trendingTags) { tag in tagRow(tag) }
@@ -477,26 +582,36 @@ public struct ExploreView: View {
                 SwiftUI.Section {
                     ForEach(Array(trendingLinks.enumerated()), id: \.offset) { _, card in
                         LinkCardView(card: card) { onAction(.openCard(card)) }
-                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: AlohaMetrics.space2, leading: AlohaMetrics.space4,
+                                    bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space4)
+                            )
+                            .listRowBackground(palette.background)
                     }
                 } header: {
                     Text("Trending links", comment: "Explore section")
                 }
             }
 
-            if !isLoading && trendingTags.isEmpty && elsewhereTags.isEmpty && trendingLinks.isEmpty
-            {
-                ContentUnavailableView {
-                    Text("Nothing trending", comment: "Empty Explore")
-                } description: {
-                    Text(
-                        "Your server hasn't seen enough activity to rank anything yet.",
-                        comment: "Empty Explore detail")
+            if trendingTags.isEmpty && elsewhereTags.isEmpty && trendingLinks.isEmpty {
+                if isLoading {
+                    loadingRow
+                } else if trendsError == nil {
+                    ContentUnavailableView {
+                        Text("Nothing trending", comment: "Empty Explore")
+                    } description: {
+                        Text(
+                            "Your server hasn't seen enough activity to rank anything yet.",
+                            comment: "Empty Explore detail")
+                    }
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
                 }
-                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
     }
 
     private func tagRow(_ tag: Tag) -> some View {
@@ -509,18 +624,20 @@ public struct ExploreView: View {
                 name: tag.name
             ) { await toggleFollow(tag) }
         }
+        .listRowBackground(palette.background)
     }
 
     // MARK: - Loading
 
     private func load() async {
         isLoading = true
+        peopleError = nil
+        trendsError = nil
         defer { isLoading = false }
         async let categoriesTask: Void = loadCategories()
         async let peopleTask: Void = loadPeople()
-        async let tagsTask: Void = loadTrendingTags()
         async let restTask: Void = loadTagExtras()
-        _ = await (categoriesTask, peopleTask, tagsTask, restTask)
+        _ = await (categoriesTask, peopleTask, restTask)
     }
 
     private func loadCategories() async {
@@ -531,9 +648,22 @@ public struct ExploreView: View {
     }
 
     private func loadPeople() async {
-        suggestions =
-            (try? await session.client.decode(
-                LossyArray<Suggestion>.self, from: Endpoint.search.suggestions))?.elements ?? []
+        do {
+            suggestions = try await session.client.decode(
+                LossyArray<Suggestion>.self, from: Endpoint.search.suggestions
+            ).elements
+        } catch {
+            // An empty suggestion list is a real answer; a failed request is
+            // not, and must not be drawn as "nobody to suggest yet".
+            await session.handle(error)
+            peopleError =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "People could not be loaded. Pull down to try again.",
+                    comment: "Discover people load failure")
+            return
+        }
+        peopleError = nil
         guard isNextcloud else { return }
         directories =
             (try? await session.client.decode(
@@ -547,7 +677,7 @@ public struct ExploreView: View {
         // there are enough follows for it to be worth the requests.
         let status = try? await session.client.decode(
             FollowGraphStatus.self, from: Endpoint.discovery.followGraphStatus)
-        if status?.isWorthwhile ?? true {
+        if status?.isWorthwhile ?? false {
             followGraph = try? await session.client.decode(
                 FollowGraph.self, from: Endpoint.discovery.followGraph)
         }
@@ -566,10 +696,23 @@ public struct ExploreView: View {
     private func loadTrendingTags() async {
         // Nextcloud Social accepts 1h, 12h, 1d, 3d and 10d; anything else falls
         // back to the default rather than failing.
-        trendingTags =
-            (try? await session.client.decode(
+        do {
+            let response = try await session.client.decode(
                 LossyArray<Tag>.self,
-                from: Endpoint.search.trendingTags(limit: 20, period: period)))?.elements ?? []
+                from: Endpoint.search.trendingTags(limit: 20, period: period)
+            ).elements
+            guard !Task.isCancelled else { return }
+            trendingTags = response
+            trendsError = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            trendsError =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Trends could not be loaded. Pull down to try again.",
+                    comment: "Discover trends load failure")
+        }
     }
 
     private func loadTagExtras() async {
@@ -591,33 +734,51 @@ public struct ExploreView: View {
     private func search() async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
+            isSearching = false
             found = []
             foundElsewhere = DirectorySearchResults()
+            searchError = nil
             return
         }
+        // The spinner starts with the debounce rather than after it, so a
+        // query never sits on an empty result while the answer is coming.
+        isSearching = true
+        // Only the search still matching what is on screen may put the
+        // spinner down; a newer one owns it from here.
+        defer { if query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed { isSearching = false } }
         // Wait for typing to settle before every keystroke becomes a request.
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }
-        isSearching = true
-        defer { isSearching = false }
+        searchError = nil
 
-        async let local = session.client.decode(
-            SearchResults.self,
-            from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
-        async let elsewhere: DirectorySearchResults? =
-            isNextcloud
-            ? try? await session.client.decode(
-                DirectorySearchResults.self, from: Endpoint.discovery.directorySearch(trimmed))
-            : nil
-        let localResults = try? await local
-        let elsewhereResults = await elsewhere
-        guard !Task.isCancelled else { return }
-        found = localResults?.accounts ?? []
-        // Somebody found locally need not appear again from a directory.
-        let seen = Set(found.map { $0.acct.lowercased() })
-        var remote = elsewhereResults ?? DirectorySearchResults()
-        remote.accounts.removeAll { seen.contains($0.acct.lowercased()) }
-        foundElsewhere = remote
+        do {
+            async let local = session.client.decode(
+                SearchResults.self,
+                from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
+            async let elsewhere: DirectorySearchResults? =
+                isNextcloud
+                ? try? await session.client.decode(
+                    DirectorySearchResults.self, from: Endpoint.discovery.directorySearch(trimmed))
+                : nil
+            let localResults = try await local
+            let elsewhereResults = await elsewhere
+            guard !Task.isCancelled else { return }
+            found = localResults.accounts
+            // Somebody found locally need not appear again from a directory.
+            let seen = Set(found.map { $0.acct.lowercased() })
+            var remote = elsewhereResults ?? DirectorySearchResults()
+            remote.accounts.removeAll { seen.contains($0.acct.lowercased()) }
+            foundElsewhere = remote
+        } catch {
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            guard !Task.isCancelled else { return }
+            found = []
+            foundElsewhere = DirectorySearchResults()
+            searchError =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The search could not be run.", comment: "Search failure")
+        }
     }
 
     private func dismiss(_ suggestion: Suggestion) async {
@@ -649,6 +810,7 @@ public struct ExploreView: View {
 /// Follow or unfollow a hashtag from wherever it is listed.
 struct HashtagFollowButton: View {
     @Environment(\.alohaPalette) private var palette
+    @State private var isWorking = false
 
     let isFollowing: Bool
     let name: String
@@ -656,7 +818,12 @@ struct HashtagFollowButton: View {
 
     var body: some View {
         Button {
-            Task { await action() }
+            guard !isWorking else { return }
+            isWorking = true
+            Task {
+                await action()
+                isWorking = false
+            }
         } label: {
             Image(systemName: isFollowing ? "checkmark" : "plus")
                 .font(.footnote.weight(.semibold))
@@ -670,6 +837,7 @@ struct HashtagFollowButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .disabled(isWorking)
         .accessibilityLabel(
             isFollowing
                 ? Text("Unfollow #\(name)", comment: "Hashtag follow button")

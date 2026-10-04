@@ -107,6 +107,7 @@ public struct DeleteAccountView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Delete account", comment: "Screen title"))
         .confirmationDialog(
             Text("Delete \(handle)?", comment: "Delete account confirmation title"),

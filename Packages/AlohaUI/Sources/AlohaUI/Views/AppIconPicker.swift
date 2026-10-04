@@ -67,6 +67,8 @@ import SwiftUI
     /// The artwork itself: the same flower the Home Screen gets, at the size
     /// the row shows it.
     private struct IconPreview: View {
+        @Environment(\.alohaPalette) private var palette
+
         let accent: AlohaIconVariant
         let isSelected: Bool
 
@@ -79,13 +81,18 @@ import SwiftUI
                 .resizable()
                 .scaledToFill()
                 .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .clipShape(
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                )
+                // Drawn inside the frame: a ring that hung outside the tile
+                // overlapped its neighbour at the spacing this row uses.
                 .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(
-                            isSelected ? Color.primary : Color.clear, lineWidth: 2.5
+                    if isSelected {
+                        RoundedRectangle(
+                            cornerRadius: AlohaMetrics.cornerMedium, style: .continuous
                         )
-                        .padding(-3)
+                        .strokeBorder(palette.label, lineWidth: 2.5)
+                    }
                 }
         }
     }

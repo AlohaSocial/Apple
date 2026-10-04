@@ -24,9 +24,7 @@ public struct ChannelsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(channels) { channel in
@@ -38,6 +36,7 @@ public struct ChannelsView: View {
                             .font(.title3)
                             .foregroundStyle(palette.accent)
                             .frame(width: 32)
+                            .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(channel.name.isEmpty ? channel.handle : channel.name)
                                 .font(AlohaType.name)
@@ -68,7 +67,7 @@ public struct ChannelsView: View {
                 .accessibilityHint(Text("Edits the channel", comment: "Accessibility hint"))
             }
 
-            if channels.isEmpty && !isLoading {
+            if channels.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No channels yet", comment: "Empty channels")
                 } description: {
@@ -78,6 +77,7 @@ public struct ChannelsView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Video channels", comment: "Screen title"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -102,6 +102,22 @@ public struct ChannelsView: View {
         }
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Channels retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
     }
 
     private func load() async {
@@ -187,6 +203,7 @@ struct ChannelEditor: View {
                             .textInputAutocapitalization(.never)
                         #endif
                         .autocorrectionDisabled()
+                        .accessibilityLabel(Text("Handle", comment: "Channel field"))
                     } else {
                         LabeledContent {
                             Text("@\(draft.handle)")
@@ -197,12 +214,14 @@ struct ChannelEditor: View {
                     TextField(
                         String(localized: "Name", comment: "Channel name placeholder"),
                         text: $draft.name)
+                    .accessibilityLabel(Text("Name", comment: "Channel field"))
                     TextField(
                         String(
                             localized: "Description", comment: "Channel description placeholder"),
                         text: $draft.description, axis: .vertical
                     )
                     .lineLimit(2...6)
+                    .accessibilityLabel(Text("Description", comment: "Channel field"))
                 } footer: {
                     if isNew {
                         Text(
@@ -220,6 +239,7 @@ struct ChannelEditor: View {
                 }
             }
             .formStyle(.grouped)
+            .alohaGround(palette)
             .navigationTitle(
                 isNew
                     ? Text("New channel", comment: "Screen title")

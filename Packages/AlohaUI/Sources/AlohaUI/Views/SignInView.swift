@@ -37,7 +37,11 @@ public struct SignInView: View {
                 }
             }
             .formStyle(.grouped)
+            .alohaGround(palette)
             .navigationTitle(Text("Add account", comment: "Sign-in screen title"))
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

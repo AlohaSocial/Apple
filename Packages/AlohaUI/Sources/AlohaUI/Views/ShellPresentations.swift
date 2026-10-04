@@ -58,13 +58,13 @@ struct ShellSheets: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $isPresentingSignIn) { SignInView() }
-            .sheet(item: $composing) { request in
+            .sheet(item: whenSignedIn($composing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(
                         session: session, replyTo: request.replyTo, quoting: request.quoting)
                 }
             }
-            .sheet(item: $sheet) { sheet in
+            .sheet(item: whenSignedIn($sheet)) { sheet in
                 if let session = environment.activeSession {
                     switch sheet {
                     case .delivery(let status):
@@ -82,12 +82,12 @@ struct ShellSheets: ViewModifier {
                     }
                 }
             }
-            .sheet(item: $reportTarget) { target in
+            .sheet(item: whenSignedIn($reportTarget)) { target in
                 if let session = environment.activeSession {
                     ReportView(session: session, account: target.account, status: target.status)
                 }
             }
-            .sheet(item: $editing) { request in
+            .sheet(item: whenSignedIn($editing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(
                         session: session, editing: request.status, source: request.source)
@@ -110,6 +110,19 @@ struct ShellSheets: ViewModifier {
                         ?? presentation.statusID,
                     in: mediaTransition)
             }
+    }
+
+    /// A sheet builds its content from the active session, so with none there
+    /// is nothing to show: the item reads back as `nil` and no sheet goes up
+    /// at all, rather than one whose closure draws an empty body.
+    private func whenSignedIn<Item: Identifiable>(_ binding: Binding<Item?>) -> Binding<Item?> {
+        // Read while the modifier's body is being evaluated, not when the
+        // binding fires: an environment read from a stored closure can be a
+        // view update behind.
+        let hasSession = environment.activeSession != nil
+        return Binding(
+            get: { hasSession ? binding.wrappedValue : nil },
+            set: { newValue in binding.wrappedValue = hasSession ? newValue : nil })
     }
 }
 

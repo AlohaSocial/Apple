@@ -35,7 +35,7 @@ public struct FiltersView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             Section {
@@ -59,7 +59,7 @@ public struct FiltersView: View {
                     }
                 }
 
-                if filters.isEmpty && !isLoading {
+                if filters.isEmpty && !isLoading && errorMessage == nil {
                     Text("Nothing filtered yet.", comment: "Empty filters")
                         .font(.footnote)
                         .foregroundStyle(palette.secondaryLabel)
@@ -82,6 +82,10 @@ public struct FiltersView: View {
                     comment: "Filters explanation")
             }
         }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && filters.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Filtered words", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
@@ -92,7 +96,24 @@ public struct FiltersView: View {
         }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.caption)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Error strip action")
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+    }
+
     private func load() async {
+        isLoading = true
         defer { isLoading = false }
         do {
             filters = try await session.client.decode(
@@ -102,7 +123,7 @@ public struct FiltersView: View {
             try? await session.supportStore.replaceFilters(filters, accountID: session.id)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
@@ -454,6 +475,7 @@ struct FilterEditorView: View {
                         comment: "Filter action explanation")
                 }
             }
+            .alohaGround(palette)
             .navigationTitle(
                 isNew
                     ? Text("New filter", comment: "Screen title")
@@ -538,7 +560,7 @@ struct FilterEditorView: View {
             dismiss()
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

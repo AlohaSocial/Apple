@@ -61,10 +61,11 @@ public struct ModerationView: View {
                             if let openReports, openReports > 0 {
                                 Text(openReports, format: .number)
                                     .font(AlohaType.micro)
-                                    .foregroundStyle(palette.onAccent)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2)
-                                    .background(palette.destructive, in: Capsule())
+                                    .foregroundStyle(palette.destructive)
+                                    .padding(.horizontal, AlohaMetrics.space2)
+                                    .padding(.vertical, AlohaMetrics.space1)
+                                    .background(
+                                        palette.destructive.opacity(0.12), in: Capsule())
                             }
                         }
                     }
@@ -91,6 +92,7 @@ public struct ModerationView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Moderation", comment: "Screen title"))
         .task { await probe() }
     }
@@ -135,7 +137,7 @@ public struct ModerationReportsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             Picker(selection: $showsResolved) {
@@ -145,7 +147,6 @@ public struct ModerationReportsView: View {
                 Text("Show", comment: "Reports filter")
             }
             .pickerStyle(.segmented)
-            .listRowBackground(palette.background)
 
             ForEach(reports) { report in
                 NavigationLink(value: Route.moderationReport(id: report.id)) {
@@ -153,7 +154,11 @@ public struct ModerationReportsView: View {
                 }
             }
 
-            if reports.isEmpty && !isLoading {
+            if isLoading && reports.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AlohaMetrics.space5)
+            } else if reports.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     Text(
                         showsResolved
@@ -166,9 +171,25 @@ public struct ModerationReportsView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Reports", comment: "Screen title"))
         .refreshable { await load() }
         .task(id: showsResolved) { await load() }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Reports reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
     }
 
     private func load() async {
@@ -255,6 +276,7 @@ public struct ModerationReportView: View {
     @State private var report: AdminReport?
     @State private var note = ""
     @State private var isWorking = false
+    @State private var isLoading = true
     @State private var errorMessage: String?
 
     public init(
@@ -268,7 +290,7 @@ public struct ModerationReportView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             if let report {
@@ -342,9 +364,27 @@ public struct ModerationReportView: View {
                 decisions(report)
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Report", comment: "Screen title"))
-        .overlay { if report == nil { ProgressView() } }
+        // Only while the request runs: a failure used to leave the spinner
+        // over an empty screen with nothing to do about it.
+        .overlay { if isLoading && report == nil { ProgressView() } }
         .task { await load() }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Report reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
     }
 
     @ViewBuilder
@@ -414,13 +454,18 @@ public struct ModerationReportView: View {
     }
 
     private func load() async {
+        isLoading = true
+        defer { isLoading = false }
         do {
             report = try await session.client.decode(
                 AdminReport.self, from: Endpoint.moderation.report(reportID))
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The report could not be opened.", comment: "Report load failure")
         }
     }
 

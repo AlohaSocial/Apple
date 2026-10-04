@@ -23,25 +23,24 @@ public struct AuthorizedAppsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(apps) { app in
                 row(app)
             }
 
-            if apps.isEmpty && !isLoading {
+            if apps.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No apps", comment: "Empty authorized apps")
                 } description: {
                     Text(
-                        "Nothing but this app has been let into your account.",
+                        "No authorized applications were returned by your server.",
                         comment: "Empty authorized apps detail")
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Authorized apps", comment: "Screen title"))
         .overlay {
             if isLoading && apps.isEmpty { ProgressView() }
@@ -67,9 +66,25 @@ public struct AuthorizedAppsView: View {
             }
         } message: {
             Text(
-                "The app loses its key at once and has to be signed in again to get another.",
+                "This app will lose access to your account. You can authorize it again by signing in.",
                 comment: "Revoke app confirmation detail")
         }
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Authorized apps retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
     }
 
     private func row(_ app: AuthorizedApp) -> some View {
@@ -141,20 +156,23 @@ public struct AuthorizedAppsView: View {
             ).elements
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Authorized apps could not be loaded. Please try again.")
         }
     }
 
     private func revoke(_ app: AuthorizedApp) async {
-        let previous = apps
-        apps.removeAll { $0.id == app.id }
+        guard let index = apps.firstIndex(where: { $0.id == app.id }) else { return }
+        apps.remove(at: index)
         do {
             _ = try await session.client.send(Endpoint.authorizedApps.revoke(app.id))
         } catch {
-            apps = previous
+            if !apps.contains(where: { $0.id == app.id }) {
+                apps.insert(app, at: min(index, apps.count))
+            }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Access could not be revoked. Please try again.")
         }
     }
 }

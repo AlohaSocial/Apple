@@ -27,16 +27,14 @@ public struct HeldPostsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(held) { post in
                 row(post)
             }
 
-            if held.isEmpty && !isLoading {
+            if held.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Nothing of yours is waiting.", comment: "Empty held posts")
                 } description: {
@@ -44,9 +42,15 @@ public struct HeldPostsView: View {
                         "When a moderator has to look at a post before it goes out, it waits here until they do.",
                         comment: "Held posts explanation")
                 }
+                .listRowSeparator(.hidden)
+                .listRowBackground(palette.background)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && held.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Waiting to be looked at", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
@@ -124,6 +128,26 @@ public struct HeldPostsView: View {
             }
         }
         .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Held posts retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {

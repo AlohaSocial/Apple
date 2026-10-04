@@ -27,9 +27,7 @@ public struct MemoriesView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             Section {
@@ -57,7 +55,7 @@ public struct MemoriesView: View {
                     MemoryRow(status: status) { onAction(.open(status)) }
                 }
 
-                if memories.isEmpty && !isLoading {
+                if memories.isEmpty && !isLoading && errorMessage == nil {
                     Text(
                         "Nothing from this day in earlier years.",
                         comment: "Empty on this day"
@@ -69,26 +67,49 @@ public struct MemoriesView: View {
                 Text("On this day", comment: "Memories section")
             }
         }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && memories.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Looking back", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
     }
 
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Memories retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+        async let memoriesTask = session.client.decode(
+            LossyArray<Status>.self, from: Endpoint.memories.onThisDay)
+        async let recapTask = session.client.decode(
+            WeeklyRecap.self, from: Endpoint.memories.recap)
         do {
-            async let memoriesTask = session.client.decode(
-                LossyArray<Status>.self, from: Endpoint.memories.onThisDay)
-            async let recapTask = session.client.decode(
-                WeeklyRecap.self, from: Endpoint.memories.recap)
             memories = try await memoriesTask.elements.sorted { $0.createdAt > $1.createdAt }
-            recap = try await recapTask
             errorMessage = nil
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
         }
+        // A server without the recap route has no recap; the rest of the
+        // screen still loads.
+        recap = try? await recapTask
     }
 
     private func setRecap(enabled: Bool) async {
@@ -123,7 +144,7 @@ struct MemoryRow: View {
                 Text(yearsAgo)
                     .font(AlohaType.meta.weight(.semibold))
                     .foregroundStyle(palette.secondaryLabel)
-                    .frame(width: 84, alignment: .leading)
+                    .frame(minWidth: 84, alignment: .leading)
                 Text(excerpt)
                     .font(.footnote)
                     .foregroundStyle(palette.label)

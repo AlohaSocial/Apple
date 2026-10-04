@@ -34,6 +34,10 @@ public struct SettingsView: View {
         ("Sound & touch", "sound touch haptics vibrate vibration audio chime tick senses silent"),
         ("Moderation", "moderation moderator reports admin administrator suspend silence trends"),
         (
+            "Delete account",
+            "delete account erase remove deactivate close"
+        ),
+        (
             "About",
             "about licence license version source code developer contact server peers activity federation keyboard shortcuts year wrapped"
         ),
@@ -47,6 +51,27 @@ public struct SettingsView: View {
 
     private var hasAnyMatch: Bool {
         Self.searchTerms.contains { shows($0.title, $0.keywords) }
+    }
+
+    /// The host comes from the server, so the string is not ours to trust: a
+    /// name the URL parser refuses is a link with nowhere to go, and there is
+    /// no forced URL that could be asked for one.
+    private func serverDestination(_ session: AccountSession) -> URL? {
+        guard
+            let url = URL(string: "https://\(session.snapshot.instanceHost)"),
+            url.host != nil
+        else { return nil }
+        return url
+    }
+
+    /// The shell's sheets carry the same guard: with no active account there
+    /// is no session to build the next screen from, so the presentation reads
+    /// back as not presented rather than going up with an empty body.
+    private func whenSignedIn(_ binding: Binding<Bool>) -> Binding<Bool> {
+        let hasSession = environment.activeSession != nil
+        return Binding(
+            get: { hasSession && binding.wrappedValue },
+            set: { binding.wrappedValue = hasSession && $0 })
     }
 
     private let onAddAccount: () -> Void
@@ -65,27 +90,31 @@ public struct SettingsView: View {
             if shows("Accounts", "account accounts add sign switch remove") {
                 Section {
                     ForEach(environment.sessions) { session in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(session.snapshot.bestDisplayName).font(.body)
-                                Text(session.snapshot.qualifiedHandle)
-                                    .font(.caption)
-                                    .foregroundStyle(palette.secondaryLabel)
+                        Button {
+                            environment.setActiveAccount(session.id)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(session.snapshot.bestDisplayName).font(.body)
+                                    Text(session.snapshot.qualifiedHandle)
+                                        .font(.caption)
+                                        .foregroundStyle(palette.secondaryLabel)
+                                }
+                                Spacer()
+                                if session.needsReauthentication {
+                                    Text("Sign in again", comment: "Account state")
+                                        .font(.caption)
+                                        .foregroundStyle(palette.destructive)
+                                }
+                                if session.id == environment.activeSession?.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(palette.accent)
+                                        .accessibilityHidden(true)
+                                }
                             }
-                            Spacer()
-                            if session.needsReauthentication {
-                                Text("Sign in again", comment: "Account state")
-                                    .font(.caption)
-                                    .foregroundStyle(palette.destructive)
-                            }
-                            if session.id == environment.activeSession?.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(palette.accent)
-                                    .accessibilityHidden(true)
-                            }
+                            .contentShape(Rectangle())
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture { environment.setActiveAccount(session.id) }
+                        .buttonStyle(.plain)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(accountLabel(session))
                         .accessibilityAddTraits(
@@ -268,7 +297,10 @@ public struct SettingsView: View {
                 moderationSection(session)
             }
 
-            if let session = environment.activeSession {
+            if let session = environment.activeSession,
+                shows("Delete account", "delete account erase remove deactivate close"),
+                session.capabilities.isNextcloudSocial || serverDestination(session) != nil
+            {
                 Section {
                     if session.capabilities.isNextcloudSocial {
                         // Nextcloud Social can do this over the API, so the
@@ -278,11 +310,8 @@ public struct SettingsView: View {
                             Text("Delete my Social account", comment: "Settings action")
                                 .foregroundStyle(palette.destructive)
                         }
-                    } else {
-                        // Everywhere else the account belongs to the server and
-                        // there is no route for it.
-                        Link(destination: URL(string: "https://\(session.snapshot.instanceHost)")!)
-                        {
+                    } else if let serverURL = serverDestination(session) {
+                        Link(destination: serverURL) {
                             Text("Delete my account on this server", comment: "Settings action")
                         }
                     }
@@ -342,6 +371,7 @@ public struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
         .searchable(
             text: $settingsQuery,
             placement: .automatic,
@@ -349,7 +379,7 @@ public struct SettingsView: View {
         )
         .navigationTitle(Text("Settings", comment: "Screen title"))
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
-        .sheet(isPresented: $isShowingNextcloudConnect) {
+        .sheet(isPresented: whenSignedIn($isShowingNextcloudConnect)) {
             if let session = environment.activeSession {
                 NextcloudConnectView(session: session)
             }
@@ -421,21 +451,29 @@ public struct SettingsView: View {
     /// about the phone or the Mac in front of the reader.
     private var sensesSection: some View {
         Section {
+            Toggle(
+                isOn: Binding(
+                    get: { Senses.shared.soundsEnabled },
+                    set: { Senses.shared.soundsEnabled = $0 })
+            ) {
+                Text("Play sounds", comment: "Settings item")
+            }
+
+            // Its own row rather than a neighbour inside the switch's: in the
+            // switch's row VoiceOver read the preview as part of the toggle,
+            // and a tap anywhere on the row flipped the setting instead.
             HStack {
-                Toggle(
-                    isOn: Binding(
-                        get: { Senses.shared.soundsEnabled },
-                        set: { Senses.shared.soundsEnabled = $0 })
-                ) {
-                    Text("Play sounds", comment: "Settings item")
-                }
+                Spacer(minLength: 0)
                 Button {
                     Senses.shared.play(.like)
                 } label: {
-                    Image(systemName: AlohaSymbol.play)
+                    Label {
+                        Text("Listen", comment: "Settings action")
+                    } icon: {
+                        Image(systemName: AlohaSymbol.play)
+                    }
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(Text("Listen", comment: "Settings action"))
             }
 
             Toggle(

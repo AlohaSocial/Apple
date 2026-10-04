@@ -50,6 +50,7 @@ public struct SubscriptionsView: View {
             feedsSection
             entriesSection
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Subscriptions", comment: "Screen title"))
         .refreshable {
             await loadFeeds()
@@ -155,10 +156,16 @@ public struct SubscriptionsView: View {
                 feedRow(feed)
             }
             .onDelete { offsets in
-                Task { await unfollow(at: offsets) }
+                // The rows are read off the array here, where the indexes
+                // still mean what they say: the request runs later, and a
+                // reload can move everything underneath it by then.
+                let targets = offsets.map { feeds[$0] }
+                let previous = feeds
+                feeds.remove(atOffsets: offsets)
+                Task { await unfollow(targets, restoring: previous) }
             }
 
-            if feeds.isEmpty {
+            if feeds.isEmpty && errorMessage == nil {
                 Text("You follow no feeds yet.", comment: "Empty subscriptions")
                     .font(.footnote)
                     .foregroundStyle(palette.secondaryLabel)
@@ -209,20 +216,8 @@ public struct SubscriptionsView: View {
             }
 
             Spacer(minLength: 0)
-
-            Button {
-                Task { await unfollow(feed) }
-            } label: {
-                Image(systemName: "minus.circle")
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(palette.secondaryLabel)
-            .accessibilityLabel(
-                Text("Unfollow \(feed.displayTitle)", comment: "Subscription action"))
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var entriesSection: some View {
@@ -339,17 +334,26 @@ public struct SubscriptionsView: View {
         }
     }
 
-    private func unfollow(at offsets: IndexSet) async {
-        let targets = offsets.map { feeds[$0] }
-        feeds.remove(atOffsets: offsets)
+    /// The rows are already gone from the screen; a refusal puts them back
+    /// rather than leaving a follow that silently survived.
+    private func unfollow(_ targets: [SubscriptionFeed], restoring previous: [SubscriptionFeed])
+        async
+    {
+        var refused = false
         for feed in targets {
-            _ = try? await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+            do {
+                _ = try await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+            } catch {
+                refused = true
+                await session.handle(error)
+            }
         }
-    }
-
-    private func unfollow(_ feed: SubscriptionFeed) async {
-        feeds.removeAll { $0.id == feed.id }
-        _ = try? await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+        if refused {
+            feeds = previous
+            errorMessage = String(
+                localized: "That feed could not be unfollowed.",
+                comment: "Subscriptions unfollow failed")
+        }
     }
 
     private func importTakeout(from url: URL) async {
@@ -375,10 +379,18 @@ public struct SubscriptionsView: View {
     }
 
     private func loadFeeds() async {
-        if let page = try? await session.client.decode(
-            FeedsPage.self, from: Endpoint.subscriptions.feeds)
-        {
-            feeds = page.feeds
+        do {
+            feeds = try await session.client.decode(
+                FeedsPage.self, from: Endpoint.subscriptions.feeds
+            ).feeds
+            errorMessage = nil
+        } catch {
+            // A server that will not answer is an error, not an empty list.
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Couldn't load your feeds.", comment: "Subscriptions feeds failed")
         }
     }
 

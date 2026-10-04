@@ -21,7 +21,7 @@ public struct InterestsView: View {
     @State private var statuses: [Status] = []
     @State private var nextPage: URL?
     @State private var mayHaveMore = true
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var isPagingOlder = false
     @State private var state = InterestsState()
     @State private var isStateLoaded = false
@@ -70,10 +70,21 @@ public struct InterestsView: View {
     private var feed: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
-                    .listRowBackground(palette.background)
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: AlohaSymbol.warning)
+                        .accessibilityHidden(true)
+                    Text(errorMessage).font(.footnote)
+                    Spacer()
+                    Button {
+                        Task { await refresh() }
+                    } label: {
+                        Text("Retry", comment: "Interests retry action")
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+                .foregroundStyle(palette.destructive)
+                .padding(.vertical, AlohaMetrics.space2)
+                .listRowBackground(palette.background)
             }
 
             if isStateLoaded && !state.settings.learning {
@@ -120,14 +131,17 @@ public struct InterestsView: View {
                 .listRowSeparator(.hidden)
             }
 
-            if statuses.isEmpty && !isLoading {
+            if statuses.isEmpty && !isLoading && errorMessage == nil {
                 emptyState
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && statuses.isEmpty { ProgressView() }
+        }
         .refreshable { await refresh() }
     }
 
@@ -259,9 +273,19 @@ struct InterestsSettingsView: View {
     var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: AlohaSymbol.warning)
+                        .accessibilityHidden(true)
+                    Text(errorMessage).font(.footnote)
+                    Spacer()
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Text("Retry", comment: "Interests retry action")
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+                .foregroundStyle(palette.destructive)
             }
 
             learningSection
@@ -270,6 +294,7 @@ struct InterestsSettingsView: View {
             languagesSection
             resetSection
         }
+        .alohaGround(palette)
         .task { if !isLoaded { await load() } }
         .refreshable { await load() }
         .alert(
@@ -370,26 +395,26 @@ struct InterestsSettingsView: View {
                             .font(.title2)
                             .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(canAdd ? palette.accent : palette.tertiaryLabel)
+                    .buttonStyle(.glassProminent)
                     .disabled(!canAdd || isAdding)
                     .accessibilityLabel(Text("Add interest", comment: "Interests add action"))
                 }
 
                 if !suggestions.isEmpty {
                     ScrollView(.horizontal) {
-                        HStack(spacing: AlohaMetrics.space2) {
-                            ForEach(suggestions) { tag in
-                                Button {
-                                    Task { await add(tag.name) }
-                                } label: {
-                                    Text(verbatim: "#\(tag.name)")
-                                        .font(.footnote)
-                                        .padding(.horizontal, AlohaMetrics.space3)
-                                        .frame(minHeight: 32)
-                                        .background(palette.surfaceRaised, in: Capsule())
+                        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                            HStack(spacing: AlohaMetrics.space2) {
+                                ForEach(suggestions) { tag in
+                                    Button {
+                                        Task { await add(tag.name) }
+                                    } label: {
+                                        Text(verbatim: "#\(tag.name)")
+                                            .font(.footnote)
+                                            .padding(.horizontal, AlohaMetrics.space3)
+                                            .frame(minHeight: 32)
+                                    }
+                                    .buttonStyle(.glass)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -471,8 +496,7 @@ struct InterestsSettingsView: View {
                         .font(.title2)
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(isLanguageDraftValid ? palette.accent : palette.tertiaryLabel)
+                .buttonStyle(.glassProminent)
                 .disabled(!isLanguageDraftValid)
                 .accessibilityLabel(Text("Add language", comment: "Interests language add action"))
             }
@@ -602,62 +626,62 @@ struct InterestCloud: View {
     private var maximum: Double { max(tags.map(\.score).max() ?? 1, 0.001) }
 
     var body: some View {
-        FlowLayout(spacing: AlohaMetrics.space2) {
-            ForEach(tags) { tag in
-                HStack(spacing: AlohaMetrics.space1) {
-                    if tag.pinned {
-                        Image(systemName: "pin.fill")
-                            .font(.caption2)
-                            .accessibilityLabel(Text("Pinned", comment: "Interest pinned state"))
-                    }
-                    Text(verbatim: "#\(tag.tag)")
-                        .font(
-                            .system(size: size(for: tag), weight: tag.pinned ? .semibold : .regular)
-                        )
-                    Button {
-                        onRemove(tag)
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2.weight(.bold))
-                            .frame(width: 28, height: 28)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .accessibilityLabel(
-                        Text("Remove \(tag.tag)", comment: "Interest remove action"))
-                }
-                .padding(.leading, AlohaMetrics.space3)
-                .padding(.trailing, AlohaMetrics.space1)
-                .frame(minHeight: 36)
-                .background(
-                    tag.pinned ? palette.accentMuted : palette.surfaceRaised, in: Capsule()
-                )
-                .contextMenu {
-                    Button {
-                        onTogglePin(tag)
-                    } label: {
+        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            FlowLayout(spacing: AlohaMetrics.space2) {
+                ForEach(tags) { tag in
+                    HStack(spacing: AlohaMetrics.space1) {
                         if tag.pinned {
-                            Label {
-                                Text("Unpin", comment: "Interest action")
-                            } icon: {
-                                Image(systemName: "pin.slash")
-                            }
-                        } else {
-                            Label {
-                                Text("Pin", comment: "Interest action")
-                            } icon: {
-                                Image(systemName: "pin")
+                            Image(systemName: "pin.fill")
+                                .font(.caption2)
+                                .accessibilityLabel(Text("Pinned", comment: "Interest pinned state"))
+                        }
+                        Text(verbatim: "#\(tag.tag)")
+                            .font(font(for: tag))
+                        Button {
+                            onRemove(tag)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption2.weight(.bold))
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.glassProminent)
+                        .accessibilityLabel(
+                            Text("Remove \(tag.tag)", comment: "Interest remove action"))
+                    }
+                    .padding(.leading, AlohaMetrics.space3)
+                    .padding(.trailing, AlohaMetrics.space1)
+                    .frame(minHeight: 44)
+                    .background {
+                        if tag.pinned { Capsule().fill(palette.accentMuted) }
+                    }
+                    .glassEffect(.regular, in: Capsule())
+                    .contextMenu {
+                        Button {
+                            onTogglePin(tag)
+                        } label: {
+                            if tag.pinned {
+                                Label {
+                                    Text("Unpin", comment: "Interest action")
+                                } icon: {
+                                    Image(systemName: "pin.slash")
+                                }
+                            } else {
+                                Label {
+                                    Text("Pin", comment: "Interest action")
+                                } icon: {
+                                    Image(systemName: "pin")
+                                }
                             }
                         }
-                    }
-                    Button(role: .destructive) {
-                        onRemove(tag)
-                    } label: {
-                        Label {
-                            Text("Remove", comment: "Interest action")
-                        } icon: {
-                            Image(systemName: "xmark")
+                        Button(role: .destructive) {
+                            onRemove(tag)
+                        } label: {
+                            Label {
+                                Text("Remove", comment: "Interest action")
+                            } icon: {
+                                Image(systemName: "xmark")
+                            }
                         }
                     }
                 }
@@ -666,36 +690,43 @@ struct InterestCloud: View {
         .padding(.vertical, AlohaMetrics.space1)
     }
 
-    /// 13pt for the faintest interest, 22pt for the strongest.
-    private func size(for tag: InterestTag) -> Double {
-        13 + 9 * min(max(tag.score / maximum, 0), 1)
+    /// The cloud's weight as Dynamic Type styles, so it grows with the
+    /// reader's own text size rather than clipping at a fixed point size.
+    private func font(for tag: InterestTag) -> Font {
+        let weight = min(max(tag.score / maximum, 0), 1)
+        let base: Font
+        if weight < 0.25 { base = .caption }
+        else if weight < 0.5 { base = .footnote }
+        else if weight < 0.75 { base = .subheadline }
+        else { base = .title3 }
+        return tag.pinned ? base.weight(.semibold) : base
     }
 }
 
 /// Candidates as plain chips with one action.
 struct InterestChips: View {
-    @Environment(\.alohaPalette) private var palette
-
     let tags: [InterestTag]
     let symbol: String
     let onTap: (InterestTag) -> Void
 
     var body: some View {
-        FlowLayout(spacing: AlohaMetrics.space2) {
-            ForEach(tags) { tag in
-                Button {
-                    onTap(tag)
-                } label: {
-                    HStack(spacing: AlohaMetrics.space1) {
-                        Image(systemName: symbol).font(.caption)
-                        Text(verbatim: "#\(tag.tag)").font(.footnote)
+        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            FlowLayout(spacing: AlohaMetrics.space2) {
+                ForEach(tags) { tag in
+                    Button {
+                        onTap(tag)
+                    } label: {
+                        HStack(spacing: AlohaMetrics.space1) {
+                            Image(systemName: symbol).font(.caption)
+                            Text(verbatim: "#\(tag.tag)").font(.footnote)
+                        }
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .frame(minHeight: 36)
                     }
-                    .padding(.horizontal, AlohaMetrics.space3)
-                    .frame(minHeight: 36)
-                    .background(palette.surfaceRaised, in: Capsule())
+                    .buttonStyle(.glass)
+                    .accessibilityLabel(
+                        Text("Add \(tag.tag)", comment: "Interest candidate action"))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Add \(tag.tag)", comment: "Interest candidate action"))
             }
         }
         .padding(.vertical, AlohaMetrics.space1)

@@ -30,9 +30,7 @@ public struct QuotesView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(quotes) { quote in
@@ -52,19 +50,42 @@ public struct QuotesView: View {
                 }
             }
 
-            if quotes.isEmpty && !isLoading {
+            if quotes.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No quotes yet", comment: "Empty quotes")
                 } description: {
                     Text("Posts that quote this one appear here.", comment: "Quotes empty detail")
                 }
                 .listRowSeparator(.hidden)
+                .listRowBackground(palette.background)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && quotes.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Quotes", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Quotes retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {
@@ -86,12 +107,17 @@ public struct QuotesView: View {
         guard let next, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        guard
-            let page = try? await session.client.page(
+        do {
+            let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
-        else { return }
-        let known = Set(quotes.map(\.id))
-        quotes += page.value.elements.filter { !known.contains($0.id) }
-        self.next = page.mayHaveMore ? page.link.next : nil
+            let known = Set(quotes.map(\.id))
+            quotes += page.value.elements.filter { !known.contains($0.id) }
+            self.next = page.mayHaveMore ? page.link.next : nil
+            errorMessage = nil
+        } catch {
+            // The cursor is left where it was, so the next scroll tries again.
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+        }
     }
 }

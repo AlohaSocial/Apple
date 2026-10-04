@@ -47,7 +47,19 @@ public struct AnnualReportView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
                 if let errorMessage {
-                    Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                    HStack(spacing: AlohaMetrics.space2) {
+                        Image(systemName: AlohaSymbol.warning)
+                            .accessibilityHidden(true)
+                        Text(errorMessage).font(.footnote)
+                        Spacer()
+                        Button {
+                            Task { await load() }
+                        } label: {
+                            Text("Retry", comment: "Annual report retry action")
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(palette.destructive)
                 }
 
                 if reports.count > 1 { yearPicker }
@@ -57,7 +69,7 @@ public struct AnnualReportView: View {
                     monthlyChart(report)
                     hashtags(report)
                     bestPosts(report)
-                } else if !isLoading {
+                } else if !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("No year to look back on yet", comment: "Annual report empty")
                     } description: {
@@ -95,7 +107,7 @@ public struct AnnualReportView: View {
     private func headline(_ report: AnnualReport) -> some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
             Text(verbatim: String(report.year))
-                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .foregroundStyle(palette.accent)
 
             Text(Self.archetypeLine(report.data.archetype))
@@ -150,6 +162,7 @@ public struct AnnualReportView: View {
                 }
                 .frame(height: 180)
                 .chartYAxis { AxisMarks(position: .leading) }
+                .accessibilityLabel(Text("Month by month", comment: "Annual report section"))
 
                 if months.contains(where: { $0.followers > 0 }) {
                     Text("Who arrived", comment: "Annual report section").font(AlohaType.section)
@@ -169,6 +182,7 @@ public struct AnnualReportView: View {
                     }
                     .frame(height: 140)
                     .chartYAxis { AxisMarks(position: .leading) }
+                    .accessibilityLabel(Text("Who arrived", comment: "Annual report section"))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

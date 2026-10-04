@@ -51,6 +51,7 @@ public struct NextcloudConnectView: View {
                 }
             }
             .formStyle(.grouped)
+            .alohaGround(palette)
             .navigationTitle(Text("Connect your Nextcloud", comment: "Screen title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -62,7 +62,7 @@ public struct FeaturedTagsView: View {
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.glassProminent)
                         .accessibilityLabel(
                             Text("Stop featuring #\(tag.name)", comment: "Featured tag action"))
                     }
@@ -104,7 +104,7 @@ public struct FeaturedTagsView: View {
                                 Image(systemName: "checkmark.circle.fill")
                             }
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.glassProminent)
                         .disabled(!isValid(draft) || isSaving)
                         .accessibilityLabel(
                             Text("Feature this hashtag", comment: "Featured tag action"))
@@ -141,6 +141,7 @@ public struct FeaturedTagsView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Featured hashtags", comment: "Screen title"))
         .overlay {
             if isLoading && featured.isEmpty { ProgressView() }
