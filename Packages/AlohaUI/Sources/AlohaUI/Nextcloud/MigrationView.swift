@@ -48,6 +48,7 @@ public struct MigrationView: View {
     @State private var instagramHandles: [String] = []
     @State private var lookup: [MigrationLookup.Entry] = []
     @State private var followed: Set<String> = []
+    @State private var didLookup = false
     @State private var errorMessage: String?
 
     public init(session: AccountSession) {
@@ -322,7 +323,8 @@ public struct MigrationView: View {
                 let handles = try await session.client.decode(MigrationHandles.self, from: endpoint)
                 instagramHandles = handles.handles
                 lookup = []
-                if !handles.handles.isEmpty { await findPeople() }
+                didLookup = false
+                if !handles.handles.isEmpty, !(await findPeople()) { return }
             } else {
                 reports[kind.id] = try await session.client.decode(
                     MigrationReport.self, from: endpoint)
@@ -518,7 +520,11 @@ public struct MigrationView: View {
                 }
             }
 
-            if !instagramHandles.isEmpty && lookup.isEmpty && !busy.contains("find") {
+            if !instagramHandles.isEmpty && !didLookup && !busy.contains("find") {
+                Button("Try again") { Task { await findPeople() } }
+                    .buttonStyle(.glass)
+            }
+            if !instagramHandles.isEmpty && didLookup && !lookup.contains(where: { $0.found }) && !busy.contains("find") {
                 Text(
                     "^[\(instagramHandles.count) handle](inflect: true) found in the archive, none of them on the fediverse yet.",
                     comment: "Migration Instagram no matches"
@@ -544,14 +550,18 @@ public struct MigrationView: View {
                         Button {
                             Task { await follow(account) }
                         } label: {
+                            if busy.contains("follow.\(account.id)") {
+                                ProgressView()
+                            } else {
                             (followed.contains(account.id)
                                 ? Text("Following", comment: "Migration follow state")
                                 : Text("Follow", comment: "Migration follow action"))
                                 .font(.footnote.weight(.semibold))
+                            }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .disabled(followed.contains(account.id))
+                        .disabled(followed.contains(account.id) || busy.contains("follow.\(account.id)"))
                     }
                 }
             }
@@ -564,26 +574,41 @@ public struct MigrationView: View {
         }
     }
 
-    private func findPeople() async {
-        busy.insert("find")
+    @discardableResult
+    private func findPeople() async -> Bool {
+        guard busy.insert("find").inserted else { return false }
+        let handles = instagramHandles
+        errorMessage = nil
         defer { busy.remove("find") }
         do {
-            lookup = try await session.client.decode(
-                MigrationLookup.self, from: Endpoint.migration.findPeople(instagramHandles)
+            let response = try await session.client.decode(
+                MigrationLookup.self, from: Endpoint.migration.findPeople(handles)
             ).entries
+            guard !Task.isCancelled, instagramHandles == handles else { return false }
+            lookup = response
+            didLookup = true
+            return true
         } catch {
+            guard !Task.isCancelled, instagramHandles == handles else { return false }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "People could not be looked up. Please try again.")
+            return false
         }
     }
 
     private func follow(_ account: Account) async {
+        let key = "follow.\(account.id)"
+        guard !followed.contains(account.id), busy.insert(key).inserted else { return }
+        defer { busy.remove(key) }
+        errorMessage = nil
         do {
             _ = try await session.client.send(Endpoint.accounts.follow(account.id))
             followed.insert(account.id)
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The account could not be followed. Please try again.")
         }
     }
 }
