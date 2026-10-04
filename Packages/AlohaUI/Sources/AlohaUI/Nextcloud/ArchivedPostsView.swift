@@ -18,6 +18,8 @@ public struct ArchivedPostsView: View {
     @State private var next: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var restoring: Set<String> = []
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -52,13 +54,21 @@ public struct ArchivedPostsView: View {
                         }
                     }
                     .tint(palette.accent)
+                    .disabled(isLoading || restoring.contains(status.id))
                 }
                 .onAppear {
                     if status.id == statuses.last?.id { Task { await loadMore() } }
                 }
             }
 
-            if statuses.isEmpty && !isLoading && errorMessage == nil {
+            if (isLoading && !statuses.isEmpty) || !restoring.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+
+            if statuses.isEmpty && !isLoading && restoring.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Nothing archived", comment: "Empty archived posts")
                 } description: {
@@ -81,53 +91,66 @@ public struct ArchivedPostsView: View {
     }
 
     private func errorRow(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-                .accessibilityHidden(true)
-            Text(message).font(.footnote)
-            Spacer()
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
             Button {
                 Task { await load() }
             } label: {
                 Text("Retry", comment: "Archived posts retry action")
             }
             .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading || !restoring.isEmpty)
         }
-        .foregroundStyle(palette.destructive)
         .padding(.vertical, AlohaMetrics.space2)
         .listRowBackground(palette.background)
     }
 
     private func load() async {
+        guard restoring.isEmpty else { return }
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.archived(), limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             statuses = page.value.elements.map(marked)
             next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Archived posts could not be loaded. Please try again.")
         }
     }
 
     private func loadMore() async {
-        guard let next, !isLoading else { return }
+        guard let next, !isLoading, restoring.isEmpty else { return }
+        let request = loadID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }.map(marked)
             self.next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
             // The cursor is left where it was, so the next scroll tries again.
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "More archived posts could not be loaded. Please try again.")
         }
     }
 
@@ -139,7 +162,10 @@ public struct ArchivedPostsView: View {
     }
 
     private func unarchive(_ status: Status) async {
-        let previous = statuses
+        guard !isLoading, let index = statuses.firstIndex(where: { $0.id == status.id }),
+            restoring.insert(status.id).inserted else { return }
+        defer { restoring.remove(status.id) }
+        errorMessage = nil
         statuses.removeAll { $0.id == status.id }
         do {
             _ = try await session.client.send(Endpoint.statusExtras.unarchive(status.displayed.id))
@@ -148,9 +174,12 @@ public struct ArchivedPostsView: View {
             try? await session.timelineStore.updateStatus(accountID: session.id, status: updated)
             errorMessage = nil
         } catch {
-            statuses = previous
+            if !statuses.contains(where: { $0.id == status.id }) {
+                statuses.insert(status, at: min(index, statuses.count))
+            }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The post could not be restored. Please try again.")
         }
     }
 }
