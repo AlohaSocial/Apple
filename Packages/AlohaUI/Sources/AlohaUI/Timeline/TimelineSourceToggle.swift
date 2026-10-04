@@ -4,6 +4,51 @@ import AlohaDesign
 import AlohaModels
 import SwiftUI
 
+/// Keep the feed unobstructed until the person scrolls. A toolbar menu
+/// remains available on empty feeds and for keyboard/accessibility users.
+struct ScrollRevealedTimelineSource: ViewModifier {
+    @Binding var source: TimelineSource
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isVisible = false
+    @State private var isScrolling = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollPhaseChange { _, phase in
+                isScrolling = phase.isScrolling
+                if phase.isScrolling { isVisible = true }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if isVisible {
+                    TimelineSourceToggle(source: $source)
+                        .transition(.opacity)
+                }
+            }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isVisible)
+            .task(id: isScrolling) {
+                guard !isScrolling, isVisible else { return }
+                do { try await Task.sleep(for: .seconds(4)) } catch { return }
+                guard !Task.isCancelled else { return }
+                isVisible = false
+            }
+            .toolbar {
+                ToolbarItem(placement: .secondaryAction) {
+                    Menu {
+                        Picker(selection: $source) {
+                            Text("My feed", comment: "Timeline source").tag(TimelineSource.home)
+                            Text("Local", comment: "Timeline source").tag(TimelineSource.local)
+                            Text("Global", comment: "Timeline source").tag(TimelineSource.federated)
+                        } label: {
+                            Text("Timeline source", comment: "Accessibility label")
+                        }
+                    } label: {
+                        Label("Timeline source", systemImage: "line.3.horizontal.decrease")
+                    }
+                }
+            }
+    }
+}
+
 /// Which of the three timelines you are reading, as a toggle you can see.
 ///
 /// This used to be a menu behind a filter glyph in the toolbar: two taps, and

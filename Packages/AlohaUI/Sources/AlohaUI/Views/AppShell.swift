@@ -368,9 +368,7 @@ public struct AppShell: View {
             // old model, and the timeline never changed. This is why the
             // source picker has never worked, in either of its forms.
             .id(selectedSource)
-            .safeAreaInset(edge: .bottom) {
-                TimelineSourceToggle(source: $selectedSource)
-            }
+            .modifier(ScrollRevealedTimelineSource(source: $selectedSource))
             #if os(iOS)
                 .toolbar {
                     // Only on the phone: the split shell carries both of these

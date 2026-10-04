@@ -98,6 +98,11 @@ public struct ConversationsView: View {
             }
         }
         .listStyle(.plain)
+        .overlay {
+            if isLoading && conversations.isEmpty {
+                ProgressView("Loading messages…")
+            }
+        }
         .searchable(
             text: $query,
             prompt: Text("Search conversations", comment: "Conversations search prompt")
@@ -338,8 +343,10 @@ public struct ConversationsView: View {
             conversations = page.elements
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
     }
 }

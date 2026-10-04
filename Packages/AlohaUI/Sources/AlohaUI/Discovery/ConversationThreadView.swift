@@ -405,6 +405,7 @@ public struct ConversationThreadView: View {
             messages = []
             return
         }
+        if messages.isEmpty { merge([last]) }
         do {
             async let statusTask = session.client.decode(
                 Status.self, from: Endpoint.statuses.status(last.id))
@@ -416,9 +417,11 @@ public struct ConversationThreadView: View {
             errorMessage = nil
         } catch {
             // The last message is still worth showing on its own.
+            guard !Task.isCancelled else { return }
             merge([last])
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
     }
 
@@ -433,6 +436,7 @@ public struct ConversationThreadView: View {
     }
 
     private func send() async {
+        let submittedDraft = draft
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isSending else { return }
         isSending = true
@@ -443,13 +447,15 @@ public struct ConversationThreadView: View {
         do {
             let sent = try await session.client.decode(
                 Status.self, from: Endpoint.composing.post(post))
-            draft = ""
+            // Preserve anything typed while the previous message was sending.
+            if draft == submittedDraft { draft = "" }
             errorMessage = nil
             merge([sent])
             try? await session.timelineStore.updateStatus(accountID: session.id, status: sent)
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Your message could not be sent. Your text has been kept; please try again.")
         }
     }
 
