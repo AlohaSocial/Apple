@@ -103,6 +103,17 @@ enum PlaybackReadiness {
         let item = AVPlayerItem(asset: asset)
         let player = AVPlayer(playerItem: item)
 
+        // Active playback must not wait for a readiness deadline before it
+        // gets a surface and a play request. The caller observes the item
+        // and advances to the next source if it fails while loading.
+        if deadline <= .zero {
+            if item.status == .failed {
+                player.replaceCurrentItem(with: nil)
+                return .rejected(describe(url: url, error: item.error))
+            }
+            return .playable(player, item: item, isReady: item.status == .readyToPlay)
+        }
+
         switch await verdict(of: item, deadline: deadline) {
         case .ready:
             return .playable(player, item: item, isReady: true)
