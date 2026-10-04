@@ -44,7 +44,7 @@ public struct ListMembershipSheet: View {
                 }
 
                 if let errorMessage {
-                    Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
                 Section {
@@ -111,7 +111,7 @@ public struct ListMembershipSheet: View {
                             ProgressView()
                             Spacer()
                         }
-                    } else if lists.isEmpty {
+                    } else if lists.isEmpty && errorMessage == nil {
                         Text(
                             "You have no lists yet. Make one to put \(account.bestDisplayName) on it.",
                             comment: "Empty lists in membership sheet"
@@ -127,6 +127,7 @@ public struct ListMembershipSheet: View {
                         comment: "List membership explanation")
                 }
             }
+            .alohaGround(palette)
             .navigationTitle(Text("Add to list", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -144,15 +145,40 @@ public struct ListMembershipSheet: View {
         }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.caption)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Error strip action")
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
-        async let allTask = session.client.decode(
-            LossyArray<AccountList>.self, from: Endpoint.lists.all)
-        async let containingTask = session.client.decode(
-            LossyArray<AccountList>.self, from: Endpoint.profile.listsContaining(account.id))
-        lists = (try? await allTask)?.elements ?? []
-        memberOf = Set(((try? await containingTask)?.elements ?? []).map(\.id))
+        do {
+            async let allTask = session.client.decode(
+                LossyArray<AccountList>.self, from: Endpoint.lists.all)
+            async let containingTask = session.client.decode(
+                LossyArray<AccountList>.self,
+                from: Endpoint.profile.listsContaining(account.id))
+            let all = try await allTask
+            let containing = try await containingTask
+            lists = all.elements
+            memberOf = Set(containing.elements.map(\.id))
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     /// The checkmark moves at once and comes back if the server refuses.

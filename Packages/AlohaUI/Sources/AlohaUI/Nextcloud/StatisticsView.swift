@@ -35,8 +35,6 @@ public struct StatisticsView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
-                windowPicker
-
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
@@ -61,7 +59,7 @@ public struct StatisticsView: View {
                     )
                     partners(statistics)
                     media(statistics)
-                } else if !isLoading {
+                } else if !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("Nothing to count yet", comment: "Statistics empty")
                     } description: {
@@ -70,6 +68,15 @@ public struct StatisticsView: View {
                 }
             }
             .padding(AlohaMetrics.space4)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                windowPicker
+                    .padding(.horizontal, AlohaMetrics.space4)
+                    .padding(.vertical, AlohaMetrics.space2)
+                    .glassEffect(
+                        .regular, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
+            }
         }
         .background(palette.background)
         .navigationTitle(Text("Statistics", comment: "Screen title"))
@@ -281,6 +288,8 @@ public struct StatisticsView: View {
                     ])
                     .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.caption2) } }
                     .frame(height: 170)
+                    .accessibilityLabel(
+                        Text("Posts, replies and boosts", comment: "Statistics section"))
                 }
                 .card(palette)
             }
@@ -305,7 +314,7 @@ public struct StatisticsView: View {
                             format: .percent.precision(.fractionLength(0))
                         )
                         .foregroundStyle(palette.tertiaryLabel)
-                        .frame(width: 44, alignment: .trailing)
+                        .frame(minWidth: 44, alignment: .trailing)
                     }
                     .font(.footnote)
                 }
@@ -537,6 +546,7 @@ private struct ExportShareSheet: View {
         VStack(spacing: AlohaMetrics.space4) {
             Image(systemName: "tablecells")
                 .font(.largeTitle)
+                .accessibilityHidden(true)
             Text(url.lastPathComponent)
                 .font(AlohaType.name)
             ShareLink(item: url) {

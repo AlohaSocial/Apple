@@ -24,6 +24,7 @@ struct StoryViewersSheet: View {
                     Text(errorMessage)
                         .font(.footnote)
                         .foregroundStyle(palette.destructive)
+                        .listRowBackground(palette.background)
                 }
                 ForEach(viewers) { account in
                     accountRow(account)
@@ -32,9 +33,11 @@ struct StoryViewersSheet: View {
                     Text("Nobody has watched this yet.", comment: "Empty story viewers")
                         .font(.footnote)
                         .foregroundStyle(palette.tertiaryLabel)
+                        .listRowBackground(palette.background)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .navigationTitle(Text("Seen by", comment: "Story viewers title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -69,6 +72,7 @@ struct StoryViewersSheet: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {
@@ -105,6 +109,7 @@ struct StoryReactionsSheet: View {
                     Text(errorMessage)
                         .font(.footnote)
                         .foregroundStyle(palette.destructive)
+                        .listRowBackground(palette.background)
                 }
                 ForEach(reactions) { reaction in
                     row(reaction)
@@ -113,9 +118,11 @@ struct StoryReactionsSheet: View {
                     Text("No reactions yet.", comment: "Empty story reactions")
                         .font(.footnote)
                         .foregroundStyle(palette.tertiaryLabel)
+                        .listRowBackground(palette.background)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .navigationTitle(Text("Reactions", comment: "Story reactions title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -163,6 +170,7 @@ struct StoryReactionsSheet: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {

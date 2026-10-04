@@ -8,6 +8,7 @@ import SwiftUI
 
 public struct NotificationsView: View {
     @Environment(\.alohaPalette) private var palette
+    @Namespace private var chipIndicator
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -17,7 +18,9 @@ public struct NotificationsView: View {
     @State private var accounts: [String: Account] = [:]
     @State private var statuses: [String: Status] = [:]
     @State private var selectedKinds: Set<NotificationKind> = []
-    @State private var isLoading = false
+    /// Begins in the loading state, so the first paint cannot flash "Nothing
+    /// yet" before the request that would say otherwise has been sent.
+    @State private var isLoading = true
     @State private var errorMessage: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
@@ -27,29 +30,48 @@ public struct NotificationsView: View {
 
     public var body: some View {
         List {
-            filterChips
-
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             if session.capabilities.groupedNotifications {
                 ForEach(visibleGroups) { group in
                     groupRow(group)
+                        .listRowBackground(palette.background)
                 }
             } else {
                 ForEach(visibleFlat) { notification in
                     flatRow(notification)
+                        .listRowBackground(palette.background)
                 }
             }
 
-            if !isLoading && groups.isEmpty && flat.isEmpty {
+            if !isLoading && errorMessage == nil && groups.isEmpty && flat.isEmpty {
                 emptyState
+            } else if !isLoading && errorMessage == nil && visibleGroups.isEmpty && visibleFlat.isEmpty {
+                ContentUnavailableView {
+                    Text("No matching activities")
+                } description: {
+                    Text("Choose another filter to see more activities.")
+                } actions: {
+                    Button("Show all") { selectedKinds = [] }
+                        .buttonStyle(.glass)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(palette.background)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            filterChips
+                .padding(.horizontal, AlohaMetrics.space3)
+                .padding(.vertical, AlohaMetrics.space2)
+                .background(palette.background)
+        }
+        .overlay {
+            if isLoading && groups.isEmpty && flat.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Activities", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
@@ -65,20 +87,33 @@ public struct NotificationsView: View {
 
     private var filterChips: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: AlohaMetrics.space2) {
-                chip(nil, label: String(localized: "All", comment: "Notification filter"))
-                chip(.mention, label: String(localized: "Mentions", comment: "Notification filter"))
-                chip(.reblog, label: String(localized: "Boosts", comment: "Notification filter"))
-                chip(
-                    .favourite,
-                    label: String(localized: "Favourites", comment: "Notification filter"))
-                chip(.follow, label: String(localized: "Follows", comment: "Notification filter"))
-                chip(.poll, label: String(localized: "Polls", comment: "Notification filter"))
+            GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                HStack(spacing: AlohaMetrics.space2) {
+                    chip(nil, label: String(localized: "All", comment: "Notification filter"))
+                    chip(
+                        .mention,
+                        label: String(localized: "Mentions", comment: "Notification filter"))
+                    chip(
+                        .reblog,
+                        label: String(localized: "Boosts", comment: "Notification filter"))
+                    chip(
+                        .favourite,
+                        label: String(localized: "Favourites", comment: "Notification filter"))
+                    chip(
+                        .follow,
+                        label: String(localized: "Follows", comment: "Notification filter"))
+                    chip(.poll, label: String(localized: "Polls", comment: "Notification filter"))
+                }
+                .padding(.vertical, AlohaMetrics.space1)
             }
-            .padding(.vertical, AlohaMetrics.space1)
         }
         .scrollIndicators(.hidden)
         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+        // Chrome, not content: the strip is pinned under the title, and the
+        // hairline the plain list draws under it read as a divider between
+        // the chips and the row they belong to.
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private func chip(_ kind: NotificationKind?, label: String) -> some View {
@@ -96,13 +131,35 @@ public struct NotificationsView: View {
         } label: {
             Text(label)
                 .font(.footnote.weight(isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? palette.onAccent : palette.label)
                 .padding(.horizontal, AlohaMetrics.space3)
-                .padding(.vertical, AlohaMetrics.space1)
-                .background(
-                    isSelected ? palette.accentMuted.opacity(0.35) : palette.surfaceRaised,
-                    in: Capsule())
+                .frame(minHeight: 44)
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .glassEffect(
+            .regular.tint(isSelected ? palette.accent : nil).interactive(),
+            in: Capsule())
+        .glassEffectID(label, in: chipIndicator)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.caption)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Error strip action")
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     /// A group renders as one row: "Alice, Bob and 34 others favourited your
@@ -111,82 +168,90 @@ public struct NotificationsView: View {
         let sample = group.sampleAccountIDs.compactMap { accounts[$0] }
         let status = group.statusID.flatMap { statuses[$0] }
 
-        return VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
-            HStack(spacing: AlohaMetrics.space2) {
-                Image(systemName: symbol(for: group.type))
-                    .foregroundStyle(tint(for: group.type))
-                    .font(.footnote)
-
-                HStack(spacing: -8) {
-                    ForEach(sample.prefix(4), id: \.id) { account in
-                        AvatarView(account: account, size: 26)
-                    }
-                }
-
-                Text(summary(for: group, sample: sample))
-                    .font(.footnote)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Spacer(minLength: 0)
-            }
-
-            if let status {
-                Text(
-                    status.displayed.spoilerText.isEmpty
-                        ? plainPreview(status) : status.displayed.spoilerText
-                )
-                .font(.caption)
-                .foregroundStyle(palette.secondaryLabel)
-                .lineLimit(2)
-            }
-        }
-        .padding(.vertical, AlohaMetrics.space2)
-        .contentShape(Rectangle())
-        .onTapGesture {
+        return Button {
             if let status {
                 onAction(.open(status))
             } else if let account = sample.first {
                 onAction(.openProfile(account))
             }
-        }
-    }
-
-    private func flatRow(_ notification: MastodonNotification) -> some View {
-        HStack(alignment: .top, spacing: AlohaMetrics.space3) {
-            Image(systemName: symbol(for: notification.type))
-                .foregroundStyle(tint(for: notification.type))
-                .font(.footnote)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+        } label: {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 HStack(spacing: AlohaMetrics.space2) {
-                    AvatarView(account: notification.account, size: 26)
-                    Text(summary(for: notification))
+                    Image(systemName: symbol(for: group.type))
+                        .foregroundStyle(tint(for: group.type))
+                        .font(.footnote)
+                        .accessibilityHidden(true)
+
+                    HStack(spacing: -8) {
+                        ForEach(sample.prefix(4), id: \.id) { account in
+                            AvatarView(account: account, size: 26)
+                                .overlay(
+                                    Circle().strokeBorder(palette.background, lineWidth: 1.5))
+                        }
+                    }
+
+                    Text(summary(for: group, sample: sample))
                         .font(.footnote)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Spacer(minLength: 0)
                 }
-                if let status = notification.status {
-                    Text(plainPreview(status))
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryLabel)
-                        .lineLimit(2)
+
+                if let status {
+                    Text(
+                        status.displayed.spoilerText.isEmpty
+                            ? plainPreview(status) : status.displayed.spoilerText
+                    )
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryLabel)
+                    .lineLimit(2)
                 }
             }
-            Spacer(minLength: 0)
+            .padding(.vertical, AlohaMetrics.space2)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, AlohaMetrics.space2)
-        .contentShape(Rectangle())
-        .onTapGesture {
+        .buttonStyle(.plain)
+    }
+
+    private func flatRow(_ notification: MastodonNotification) -> some View {
+        Button {
             if let status = notification.status {
                 onAction(.open(status))
             } else {
                 onAction(.openProfile(notification.account))
             }
+        } label: {
+            HStack(alignment: .top, spacing: AlohaMetrics.space3) {
+                Image(systemName: symbol(for: notification.type))
+                    .foregroundStyle(tint(for: notification.type))
+                    .font(.footnote)
+                    .frame(width: 20)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                    HStack(spacing: AlohaMetrics.space2) {
+                        AvatarView(account: notification.account, size: 26)
+                        Text(summary(for: notification))
+                            .font(.footnote)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let status = notification.status {
+                        Text(plainPreview(status))
+                            .font(.caption)
+                            .foregroundStyle(palette.secondaryLabel)
+                            .lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, AlohaMetrics.space2)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
@@ -197,6 +262,7 @@ public struct NotificationsView: View {
                 "Replies, boosts and favourites land here.",
                 comment: "Empty notifications detail")
         )
+        .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }
 
@@ -222,8 +288,9 @@ public struct NotificationsView: View {
             }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 

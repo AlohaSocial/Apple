@@ -40,11 +40,20 @@ public struct PlaceView: View {
             VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
                 header
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
-                        .padding(.horizontal, AlohaMetrics.space3)
+                if let errorMessage, !isLoading {
+                    VStack(spacing: AlohaMetrics.space2) {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(palette.destructive)
+                        Button {
+                            Task { await load() }
+                        } label: {
+                            Text("Retry", comment: "Place retry action")
+                                .font(.footnote.weight(.semibold))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, AlohaMetrics.space3)
                 }
 
                 if !withMedia.isEmpty {
@@ -75,7 +84,7 @@ public struct PlaceView: View {
                     }
                 }
 
-                if statuses.isEmpty && !isLoading {
+                if statuses.isEmpty && !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("Nothing from here yet", comment: "Empty place")
                     } description: {
@@ -88,12 +97,22 @@ public struct PlaceView: View {
             }
         }
         .background(palette.background)
-        .navigationTitle(place?.name ?? "")
+        .overlay {
+            if isLoading && statuses.isEmpty { ProgressView() }
+        }
+        .navigationTitle(title)
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    /// The fetched name, and the screen's own word for a place when the
+    /// fetch has not answered — never an empty bar.
+    private var title: Text {
+        if let name = place?.name, !name.isEmpty { return Text(verbatim: name) }
+        return Text("Place", comment: "Place fallback title")
     }
 
     private var header: some View {
@@ -103,6 +122,7 @@ public struct PlaceView: View {
                 .foregroundStyle(palette.accent)
                 .frame(width: 44, height: 44)
                 .background(palette.surfaceRaised, in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(place?.name ?? String(localized: "Place", comment: "Place fallback title"))
                     .font(AlohaType.display)
@@ -131,7 +151,7 @@ public struct PlaceView: View {
         } label: {
             RemoteImage(
                 url: first?.displayImageURL, blurhash: first?.blurhash,
-                accessibilityText: first?.description
+                accessibilityText: isCovered ? nil : first?.description
             )
             .aspectRatio(1, contentMode: .fill)
             .overlay { if isCovered { Rectangle().fill(.ultraThinMaterial) } }
@@ -164,12 +184,17 @@ public struct PlaceView: View {
         guard let next, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        guard
-            let page = try? await session.client.page(
+        do {
+            let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
-        else { return }
-        let known = Set(statuses.map(\.id))
-        statuses += page.value.elements.filter { !known.contains($0.id) }
-        self.next = page.mayHaveMore ? page.link.next : nil
+            let known = Set(statuses.map(\.id))
+            statuses += page.value.elements.filter { !known.contains($0.id) }
+            self.next = page.mayHaveMore ? page.link.next : nil
+            errorMessage = nil
+        } catch {
+            // The cursor is left where it was, so the next scroll tries again.
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+        }
     }
 }

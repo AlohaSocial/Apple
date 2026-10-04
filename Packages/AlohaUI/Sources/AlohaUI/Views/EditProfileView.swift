@@ -54,9 +54,22 @@ public struct EditProfileView: View {
         Form {
             if let errorMessage {
                 Section {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    // A failed first load leaves `original` nil, which makes
+                    // Save impossible for as long as it stands: the way back
+                    // has to be on screen, not assumed.
+                    HStack(spacing: AlohaMetrics.space2) {
+                        Image(systemName: AlohaSymbol.warning)
+                        Text(errorMessage)
+                            .font(.footnote)
+                        Spacer()
+                        Button {
+                            Task { await load() }
+                        } label: {
+                            Text("Retry", comment: "Error strip action")
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(palette.destructive)
                 }
             }
 
@@ -80,6 +93,7 @@ public struct EditProfileView: View {
             postingSection
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
         .navigationTitle(Text("Edit profile", comment: "Screen title"))
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -126,6 +140,9 @@ public struct EditProfileView: View {
                 }
                 .frame(width: 64, height: 64)
                 .clipShape(Circle())
+                // The buttons beside it carry the meaning; a preview read on
+                // its own is a picture with no way to act on it.
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                     Text("Picture", comment: "Profile editing field")
@@ -167,6 +184,7 @@ public struct EditProfileView: View {
                 .frame(maxWidth: .infinity)
                 .clipShape(
                     RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+                .accessibilityHidden(true)
 
                 HStack(spacing: AlohaMetrics.space3) {
                     Text("Banner", comment: "Profile editing field")
@@ -210,16 +228,26 @@ public struct EditProfileView: View {
     private var fieldsSection: some View {
         Section {
             ForEach(fields.indices, id: \.self) { index in
-                HStack(spacing: AlohaMetrics.space2) {
+                // One field per row. Side by side with a fixed 110-point
+                // label column they collided as soon as the reader raised
+                // their type size.
+                Grid(
+                    alignment: .leading,
+                    horizontalSpacing: AlohaMetrics.space3,
+                    verticalSpacing: AlohaMetrics.space2
+                ) {
                     TextField(
                         String(localized: "Label", comment: "Profile field name placeholder"),
                         text: $fields[index].name
                     )
-                    .frame(maxWidth: 110)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     TextField(
                         String(localized: "Content", comment: "Profile field value placeholder"),
-                        text: $fields[index].value)
+                        text: $fields[index].value
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .onDelete { offsets in fields.remove(atOffsets: offsets) }
 
@@ -364,7 +392,7 @@ public struct EditProfileView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
@@ -463,7 +491,7 @@ public struct EditProfileView: View {
             apply(saved)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 

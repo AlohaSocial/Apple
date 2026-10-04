@@ -17,7 +17,9 @@ public struct SearchView: View {
     @State private var recents: [String] = []
     @State private var isSearching = false
     @State private var isFieldPresented = false
+    @State private var errorMessage: String?
     @State private var searchTask: Task<Void, Never>?
+    @State private var searchID = UUID()
 
     /// A query carried in from somewhere else — the sidebar's field, a deep
     /// link, a shared URL. `Route.search(query:)` has always carried one; this
@@ -33,15 +35,30 @@ public struct SearchView: View {
 
     public var body: some View {
         List {
+            if let errorMessage {
+                errorStrip(errorMessage)
+            }
+
             if query.isEmpty {
                 recentsSection
             } else {
+                if isSearching, results.isEmpty {
+                    loadingRow
+                }
+
                 if !results.accounts.isEmpty {
                     Section {
                         ForEach(results.accounts) { account in
-                            AccountRow(account: account, localHost: session.snapshot.instanceHost)
+                            Button {
+                                onAction(.openProfile(account))
+                            } label: {
+                                AccountRow(
+                                    account: account, localHost: session.snapshot.instanceHost
+                                )
                                 .contentShape(Rectangle())
-                                .onTapGesture { onAction(.openProfile(account)) }
+                            }
+                            .buttonStyle(.plain)
+                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("People", comment: "Search results section")
@@ -54,6 +71,7 @@ public struct SearchView: View {
                             NavigationLink(value: Route.hashtag(tag.name)) {
                                 HashtagRow(tag: tag)
                             }
+                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Hashtags", comment: "Search results section")
@@ -68,14 +86,18 @@ public struct SearchView: View {
                                 policy: session.settings.sensitiveMediaPolicy,
                                 localHost: session.snapshot.instanceHost,
                                 showActions: false,
-                                onAction: onAction)
+                                onAction: onAction
+                            )
+                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Posts", comment: "Search results section")
                     }
                 }
 
-                if results.isEmpty && !isSearching {
+                // One character is still typing, not searching: the empty
+                // state waits for a query worth answering.
+                if !isSearching, results.isEmpty, errorMessage == nil, query.count >= 2 {
                     ContentUnavailableView {
                         Text("Nothing found", comment: "Empty search")
                     } description: {
@@ -83,10 +105,13 @@ public struct SearchView: View {
                             "Try a handle, a hashtag, or paste a link to a post.",
                             comment: "Empty search hint")
                     }
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
                 }
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
         #if os(iOS)
             .searchable(
                 text: $query, isPresented: $isFieldPresented,
@@ -109,6 +134,11 @@ public struct SearchView: View {
         .onChange(of: query) { _, value in schedule(value) }
         .onSubmit(of: .search) { remember(query) }
         .task { recents = SearchHistory.load() }
+        .onDisappear {
+            searchTask?.cancel()
+            searchID = UUID()
+            isSearching = false
+        }
     }
 
     private var recentsSection: some View {
@@ -121,6 +151,8 @@ public struct SearchView: View {
                         "People, hashtags, posts — or paste a link and it will open here.",
                         comment: "Search placeholder detail")
                 }
+                .listRowBackground(palette.background)
+                .listRowSeparator(.hidden)
             } else {
                 Section {
                     ForEach(recents, id: \.self) { recent in
@@ -134,6 +166,7 @@ public struct SearchView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .listRowBackground(palette.background)
                     }
                 } header: {
                     HStack {
@@ -152,33 +185,87 @@ public struct SearchView: View {
         }
     }
 
-    private func schedule(_ value: String) {
+    private var loadingRow: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+            Spacer()
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                schedule(query, immediately: true)
+            } label: {
+                Text("Retry", comment: "Search reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func schedule(_ value: String, immediately: Bool = false) {
         searchTask?.cancel()
-        guard value.count >= 2 else {
+        let id = UUID()
+        searchID = id
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            isSearching = false
             results = SearchResults()
+            errorMessage = nil
             return
         }
+        isSearching = true
+        errorMessage = nil
         searchTask = Task {
-            try? await Task.sleep(for: .milliseconds(300))
+            if !immediately { try? await Task.sleep(for: .milliseconds(300)) }
             guard !Task.isCancelled else { return }
-            await search(value)
+            await search(trimmed, id: id)
         }
     }
 
-    private func search(_ value: String) async {
+    private func search(_ value: String, id: UUID) async {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            isSearching = false
+            results = SearchResults()
+            errorMessage = nil
+            return
+        }
         isSearching = true
-        defer { isSearching = false }
+        // Only the search still matching what is on screen may put the
+        // spinner down; a newer one owns it from here.
+        defer { if searchID == id { isSearching = false } }
 
         // A URL or a handle is resolved through the reading account's own
         // server, so a remote post opens with working action buttons.
-        let looksRemote = value.hasPrefix("http") || value.contains("@")
+        let looksRemote = trimmed.hasPrefix("http") || trimmed.contains("@")
 
         do {
-            results = try await session.client.decode(
+            let response = try await session.client.decode(
                 SearchResults.self,
-                from: Endpoint.search.search(value, resolve: looksRemote, limit: 20))
+                from: Endpoint.search.search(trimmed, resolve: looksRemote, limit: 20))
+            guard !Task.isCancelled, searchID == id else { return }
+            results = response
+            errorMessage = nil
         } catch {
+            // Superseded by the next keystroke, not a failure.
+            guard !Task.isCancelled, searchID == id else { return }
             await session.handle(error)
+            guard !Task.isCancelled, searchID == id else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Search could not be run. Try again.",
+                    comment: "Search failure")
         }
     }
 
@@ -213,6 +300,7 @@ enum SearchHistory {
 
 public struct AccountRow: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
 
     private let account: Account
     private let localHost: String?
@@ -224,7 +312,7 @@ public struct AccountRow: View {
 
     public var body: some View {
         HStack(spacing: AlohaMetrics.space3) {
-            AvatarView(account: account, size: 40)
+            AvatarView(account: account, size: metrics.avatarSize)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: AlohaMetrics.space1) {
                     Text(account.bestDisplayName)

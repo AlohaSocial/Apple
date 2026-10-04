@@ -27,9 +27,7 @@ public struct ArchivedPostsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(statuses) { status in
@@ -60,7 +58,7 @@ public struct ArchivedPostsView: View {
                 }
             }
 
-            if statuses.isEmpty && !isLoading {
+            if statuses.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Nothing archived", comment: "Empty archived posts")
                 } description: {
@@ -69,12 +67,35 @@ public struct ArchivedPostsView: View {
                         comment: "Archived posts explanation")
                 }
                 .listRowSeparator(.hidden)
+                .listRowBackground(palette.background)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && statuses.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Archived posts", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Archived posts retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {
@@ -96,13 +117,18 @@ public struct ArchivedPostsView: View {
         guard let next, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        guard
-            let page = try? await session.client.page(
+        do {
+            let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
-        else { return }
-        let known = Set(statuses.map(\.id))
-        statuses += page.value.elements.filter { !known.contains($0.id) }.map(marked)
-        self.next = page.mayHaveMore ? page.link.next : nil
+            let known = Set(statuses.map(\.id))
+            statuses += page.value.elements.filter { !known.contains($0.id) }.map(marked)
+            self.next = page.mayHaveMore ? page.link.next : nil
+            errorMessage = nil
+        } catch {
+            // The cursor is left where it was, so the next scroll tries again.
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+        }
     }
 
     /// The list route does not say so on each row; this screen knows.
@@ -113,7 +139,18 @@ public struct ArchivedPostsView: View {
     }
 
     private func unarchive(_ status: Status) async {
+        let previous = statuses
         statuses.removeAll { $0.id == status.id }
-        await StatusActions.perform(.archive(status), session: session)
+        do {
+            _ = try await session.client.send(Endpoint.statusExtras.unarchive(status.displayed.id))
+            var updated = status.displayed
+            updated.archived = false
+            try? await session.timelineStore.updateStatus(accountID: session.id, status: updated)
+            errorMessage = nil
+        } catch {
+            statuses = previous
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+        }
     }
 }

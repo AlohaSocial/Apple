@@ -34,6 +34,9 @@ public struct MigrationView: View {
     }
 
     @State private var pendingImport: ImportKind?
+    /// What the open picker is for, held outside `pendingImport` because the
+    /// presentation binding drops that as soon as the picker closes.
+    @State private var importKind: ImportKind?
     @State private var busy: Set<String> = []
     @State private var exported: [String: URL] = [:]
     @State private var reports: [String: MigrationReport] = [:]
@@ -71,13 +74,17 @@ public struct MigrationView: View {
             instagramSection
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
         .navigationTitle(Text("Migration", comment: "Screen title"))
         .fileImporter(
             isPresented: Binding(
                 get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),
             allowedContentTypes: allowedTypes
         ) { result in
-            guard let kind = pendingImport else { return }
+            // Dismissing the picker clears `pendingImport` before this runs,
+            // so the kind it was opened for is held separately.
+            guard let kind = importKind else { return }
+            importKind = nil
             pendingImport = nil
             if case .success(let url) = result {
                 Task { await upload(kind, from: url) }
@@ -248,6 +255,7 @@ public struct MigrationView: View {
                     ProgressView()
                 } else {
                     Button {
+                        importKind = kind
                         pendingImport = kind
                     } label: {
                         Text("Choose file…", comment: "Migration import action")
@@ -369,15 +377,17 @@ public struct MigrationView: View {
                         Image(systemName: "arrow.triangle.branch")
                     }
                     Spacer()
+                }
+                .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         Task { await removeAlias(alias) }
                     } label: {
-                        Image(systemName: "minus.circle")
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+                        Label {
+                            Text("Remove alias \(alias)", comment: "Migration action")
+                        } icon: {
+                            Image(systemName: "minus.circle")
+                        }
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(Text("Remove alias \(alias)", comment: "Migration action"))
                 }
             }
 
@@ -466,6 +476,7 @@ public struct MigrationView: View {
                     ProgressView()
                 } else {
                     Button {
+                        importKind = .instagram
                         pendingImport = .instagram
                     } label: {
                         Text("Choose file…", comment: "Migration import action")

@@ -50,16 +50,16 @@ public struct ThreadView: View {
                         ProgressView()
                         Spacer()
                     }
+                    .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                 }
 
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
             .task {
                 await load()
@@ -83,8 +83,37 @@ public struct ThreadView: View {
             onAction: onAction
         )
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-        .listRowBackground(isFocused ? palette.surface : palette.background)
+        // Raised card plus the accent rail the timeline uses for keyboard
+        // focus: `surface` and `background` are the same black in the Black
+        // theme, so the old pair marked nothing there.
+        .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
         .font(isFocused ? .body : nil)
+        .overlay(alignment: .leading) {
+            if isFocused {
+                Capsule()
+                    .fill(palette.accent)
+                    .frame(width: 3)
+                    .padding(.vertical, 4)
+                    .padding(.leading, -8)
+            }
+        }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.caption)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Error strip action")
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
     }
 
     /// Indentation is capped at five levels; anything deeper reads as a flat

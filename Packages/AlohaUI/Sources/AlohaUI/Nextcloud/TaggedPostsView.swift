@@ -53,10 +53,20 @@ struct TaggedGrid: View {
     var body: some View {
         LazyVStack(spacing: 0) {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
-                    .padding(AlohaMetrics.space3)
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: AlohaSymbol.warning)
+                        .accessibilityHidden(true)
+                    Text(errorMessage).font(.footnote)
+                    Spacer()
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Text("Retry", comment: "Tagged photos retry action")
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+                .foregroundStyle(palette.destructive)
+                .padding(AlohaMetrics.space3)
             }
 
             LazyVGrid(
@@ -74,7 +84,7 @@ struct TaggedGrid: View {
 
             if isLoading {
                 ProgressView().padding(AlohaMetrics.space4)
-            } else if statuses.isEmpty {
+            } else if statuses.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Not tagged anywhere", comment: "Empty tagged photos")
                 } description: {
@@ -106,7 +116,8 @@ struct TaggedGrid: View {
                 RemoteImage(
                     url: first?.displayImageURL,
                     blurhash: first?.blurhash,
-                    accessibilityText: first?.description ?? target.account.bestDisplayName
+                    accessibilityText:
+                        isCovered ? nil : (first?.description ?? target.account.bestDisplayName)
                 )
                 .aspectRatio(1, contentMode: .fill)
                 .overlay { if isCovered { Rectangle().fill(.ultraThinMaterial) } }
@@ -114,9 +125,9 @@ struct TaggedGrid: View {
                 if target.mediaAttachments.count > 1 {
                     Image(systemName: "square.on.square.fill")
                         .font(.caption)
-                        .foregroundStyle(.white)
-                        .padding(6)
-                        .shadow(radius: 2)
+                        .foregroundStyle(palette.label)
+                        .padding(AlohaMetrics.space2)
+                        .background(.regularMaterial, in: Capsule())
                         .accessibilityHidden(true)
                 }
             }
@@ -178,14 +189,17 @@ struct TaggedGrid: View {
         guard let nextPage, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        if let page = try? await session.client.page(
-            LossyArray<Status>.self, following: nextPage, limit: 40)
-        {
+        do {
+            let page = try await session.client.page(
+                LossyArray<Status>.self, following: nextPage, limit: 40)
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }
             self.nextPage = page.mayHaveMore ? page.link.next : nil
-        } else {
-            self.nextPage = nil
+            errorMessage = nil
+        } catch {
+            // The cursor is left where it was, so the next scroll tries again.
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
         }
     }
 

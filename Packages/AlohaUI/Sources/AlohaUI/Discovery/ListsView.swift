@@ -17,7 +17,9 @@ public struct ListsView: View {
     @State private var followedTags: [Tag] = []
     @State private var newListTitle = ""
     @State private var isCreating = false
+    @State private var isSavingNewList = false
     @State private var editing: AccountList?
+    @State private var isLoading = true
     @State private var errorMessage: String?
 
     public init(session: AccountSession) {
@@ -27,15 +29,16 @@ public struct ListsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             Section {
                 ForEach(lists) { list in
-                    NavigationLink(
-                        value: Route.timeline(TimelineKey(mode: .home, source: .list(id: list.id)))
-                    ) {
-                        HStack {
+                    HStack {
+                        NavigationLink(
+                            value: Route.timeline(
+                                TimelineKey(mode: .home, source: .list(id: list.id)))
+                        ) {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(list.title)
@@ -48,19 +51,24 @@ public struct ListsView: View {
                             } icon: {
                                 Image(systemName: AlohaSymbol.list)
                             }
-                            Spacer()
-                            Button {
-                                editing = list
-                            } label: {
-                                Image(systemName: "info.circle")
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(palette.accent)
-                            .accessibilityLabel(
-                                Text("Edit \(list.title)", comment: "List settings button"))
+                            // The link keeps the whole row apart from the info
+                            // button, so the gap between them still navigates.
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        // Outside the link: a button inside a NavigationLink's
+                        // label is one tap target, and the info button would
+                        // open the timeline instead of the settings.
+                        Button {
+                            editing = list
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(palette.accent)
+                        .accessibilityLabel(
+                            Text("Edit \(list.title)", comment: "List settings button"))
                     }
                     .contextMenu {
                         Button {
@@ -147,13 +155,21 @@ public struct ListsView: View {
                     }
                 }
                 .onDelete { offsets in
-                    Task { await unfollowTags(at: offsets) }
+                    // Read the targets here, on the spot: inside the task the
+                    // array has already shrunk from the first swipe, and a
+                    // second one would index past its end.
+                    let targets = offsets.compactMap { offset in
+                        followedTags.indices.contains(offset) ? followedTags[offset] : nil
+                    }
+                    followedTags.remove(atOffsets: offsets)
+                    Task { await unfollowTags(targets) }
                 }
 
-                if followedTags.isEmpty {
-                    Text("None yet", comment: "Empty followed hashtags")
-                        .font(.footnote)
-                        .foregroundStyle(palette.secondaryLabel)
+                if followedTags.isEmpty && !isLoading && errorMessage == nil {
+                    ContentUnavailableView {
+                        Text("None yet", comment: "Empty followed hashtags")
+                    }
+                    .listRowSeparator(.hidden)
                 }
             } header: {
                 Text("Followed hashtags", comment: "Lists section")
@@ -161,6 +177,12 @@ public struct ListsView: View {
                 Text(
                     "Following a hashtag puts its public posts into your home timeline.",
                     comment: "Followed hashtags explanation")
+            }
+        }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && lists.isEmpty && followedTags.isEmpty {
+                ProgressView()
             }
         }
         .navigationTitle(Text("Your lists", comment: "Screen title"))
@@ -177,18 +199,48 @@ public struct ListsView: View {
         }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Lists reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .listRowSeparator(.hidden)
+    }
+
     private func load() async {
-        lists =
-            (try? await session.client.decode(
-                LossyArray<AccountList>.self, from: Endpoint.lists.all))?.elements ?? []
-        followedTags =
-            (try? await session.client.decode(
-                LossyArray<Tag>.self, from: Endpoint.tags.followed(limit: 50)))?.elements ?? []
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let all = session.client.decode(
+                LossyArray<AccountList>.self, from: Endpoint.lists.all)
+            async let tags = session.client.decode(
+                LossyArray<Tag>.self, from: Endpoint.tags.followed(limit: 50))
+            lists = try await all.elements
+            followedTags = try await tags.elements
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Your lists could not be loaded. Pull down to try again.",
+                    comment: "Lists load failure")
+        }
     }
 
     private func create() async {
         let title = newListTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
+        // Cleared only once the request is on its way, and put back if it
+        // fails — a title somebody typed is not the thing to lose here.
         newListTitle = ""
         isCreating = false
 
@@ -198,8 +250,14 @@ public struct ListsView: View {
             lists.append(created)
             errorMessage = nil
         } catch {
+            newListTitle = title
+            isCreating = true
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That list could not be created. Try again.",
+                    comment: "List create failure")
         }
     }
 
@@ -213,12 +271,19 @@ public struct ListsView: View {
         }
     }
 
-    private func unfollowTags(at offsets: IndexSet) async {
-        let targets = offsets.map { followedTags[$0] }
-        followedTags.remove(atOffsets: offsets)
+    private func unfollowTags(_ targets: [Tag]) async {
+        var failed = false
         for tag in targets {
-            _ = try? await session.client.send(Endpoint.tags.unfollow(tag.name))
+            do {
+                _ = try await session.client.send(Endpoint.tags.unfollow(tag.name))
+            } catch {
+                await session.handle(error)
+                failed = true
+            }
         }
+        // A tag left followed after saying it was unfollowed would be worse
+        // than the round trip: put the list back the way the server has it.
+        if failed { await load() }
     }
 }
 

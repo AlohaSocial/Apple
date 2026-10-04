@@ -27,16 +27,18 @@ public struct EditHistorySheet: View {
         NavigationStack {
             List {
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
-                ForEach(Array(edits.enumerated()), id: \.offset) { index, edit in
+                // Identity is the server's timestamp, not the position: an
+                // index changes whenever a reload shuffles the array, which
+                // makes SwiftUI think every row is a different row.
+                ForEach(Array(edits.enumerated()), id: \.element.createdAt) { index, edit in
                     version(edit, isCurrent: index == 0, number: edits.count - index)
+                        .listRowBackground(palette.background)
                 }
 
-                if edits.isEmpty && !isLoading {
+                if edits.isEmpty && !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("No history", comment: "Empty edit history")
                     } description: {
@@ -44,10 +46,15 @@ public struct EditHistorySheet: View {
                             "This server keeps no record of earlier versions.",
                             comment: "Edit history empty detail")
                     }
+                    .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
+            .overlay {
+                if isLoading && edits.isEmpty { ProgressView() }
+            }
             .navigationTitle(Text("Edit history", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -111,6 +118,24 @@ public struct EditHistorySheet: View {
         .padding(.vertical, AlohaMetrics.space2)
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.caption)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Error strip action")
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -122,7 +147,7 @@ public struct EditHistorySheet: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

@@ -84,9 +84,13 @@ public struct FollowConstellationView: View {
                     }
             )
         }
-        .frame(height: 420)
-        .clipped()
+        // A square sized from the room there is: narrow phones get the width
+        // they have, and a wide screen does not get a wall.
+        .aspectRatio(1, contentMode: .fit)
         .background(palette.surface, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge))
+        .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge))
+        .frame(maxWidth: 460)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             Text(
@@ -100,9 +104,8 @@ public struct FollowConstellationView: View {
                 } label: {
                     Image(systemName: "scope")
                         .padding(AlohaMetrics.space2)
-                        .background(palette.surfaceRaised, in: Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glass)
                 .padding(AlohaMetrics.space3)
                 .accessibilityLabel(Text("Centre again", comment: "Constellation action"))
             }
@@ -173,7 +176,9 @@ public struct FollowConstellationView: View {
             List {
                 Section {
                     AccountRow(
-                        account: suggestion.account, localHost: session.snapshot.instanceHost)
+                        account: suggestion.account, localHost: session.snapshot.instanceHost
+                    )
+                    .listRowBackground(palette.background)
                     if suggestion.count > 0 {
                         Text(
                             "^[\(suggestion.count) person](inflect: true) you follow follows them.",
@@ -181,6 +186,7 @@ public struct FollowConstellationView: View {
                         )
                         .font(.footnote)
                         .foregroundStyle(palette.secondaryLabel)
+                        .listRowBackground(palette.background)
                     }
                 }
 
@@ -188,6 +194,7 @@ public struct FollowConstellationView: View {
                     Section {
                         ForEach(suggestion.via) { account in
                             AccountRow(account: account, localHost: session.snapshot.instanceHost)
+                                .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Through", comment: "Constellation star section")
@@ -205,6 +212,7 @@ public struct FollowConstellationView: View {
                         }
                     }
                     .disabled(following.contains(suggestion.account.id))
+                    .listRowBackground(palette.background)
 
                     Button {
                         selected = nil
@@ -212,8 +220,11 @@ public struct FollowConstellationView: View {
                     } label: {
                         Text("Open profile", comment: "Constellation action")
                     }
+                    .listRowBackground(palette.background)
                 }
             }
+            .listStyle(.plain)
+            .alohaGround(palette)
             .navigationTitle(Text(suggestion.account.bestDisplayName))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

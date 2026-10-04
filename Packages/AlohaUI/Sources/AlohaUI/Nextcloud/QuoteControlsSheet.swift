@@ -72,6 +72,7 @@ public struct QuoteControlsSheet: View {
                     Text("Quotes so far", comment: "Quote controls section")
                 }
             }
+            .alohaGround(palette)
             .navigationTitle(Text("Quotes", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

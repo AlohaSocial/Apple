@@ -329,4 +329,21 @@ extension View {
     ) -> some View {
         modifier(AlohaThemeModifier(theme: theme, metrics: metrics, accent: accent))
     }
+
+    /// The app's own ground beneath a scrolling container.
+    ///
+    /// `List` and `Form` paint the system's grouped background over whatever is
+    /// behind them — a cool grey under a theme whose ground is warm cream — so
+    /// every screen built on one looked like a different app from the timelines
+    /// it sat next to. Hiding that and painting `palette.background` is what
+    /// puts the grouped screens back in the same theme.
+    ///
+    /// The cards themselves are left alone: the system's grouped card colour
+    /// already tracks the scheme, and the one theme where a palette surface
+    /// would swallow them (`black`, where surface and ground are both black)
+    /// is the one that would break.
+    public func alohaGround(_ palette: AlohaPalette) -> some View {
+        scrollContentBackground(.hidden)
+            .background(palette.background)
+    }
 }

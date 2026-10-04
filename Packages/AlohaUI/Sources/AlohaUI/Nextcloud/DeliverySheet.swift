@@ -26,6 +26,10 @@ public struct DeliverySheet: View {
     public var body: some View {
         NavigationStack {
             List {
+                if let errorMessage {
+                    errorRow(errorMessage)
+                }
+
                 if let report {
                     Section {
                         summary(report)
@@ -34,7 +38,7 @@ public struct DeliverySheet: View {
                         ForEach(report.instances) { instance in
                             row(instance)
                         }
-                        if report.instances.isEmpty {
+                        if report.instances.isEmpty && errorMessage == nil {
                             Text("No servers to deliver to yet.", comment: "Delivery empty state")
                                 .font(.footnote)
                                 .foregroundStyle(palette.tertiaryLabel)
@@ -52,12 +56,9 @@ public struct DeliverySheet: View {
                         ProgressView()
                         Spacer()
                     }
-                } else if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
                 }
             }
+            .alohaGround(palette)
             .navigationTitle(Text("Delivery", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -74,6 +75,23 @@ public struct DeliverySheet: View {
             .task { await load() }
             .refreshable { await load() }
         }
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Delivery retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .padding(.vertical, AlohaMetrics.space2)
     }
 
     // MARK: - Pieces
@@ -160,9 +178,10 @@ public struct DeliverySheet: View {
 
     private func colour(_ state: DeliveryInstance.State) -> Color {
         switch state {
-        case .delivered: .green
-        case .sending, .waiting: .orange
-        case .failing: .orange.opacity(0.7)
+        case .delivered: palette.boost
+        case .sending: palette.favourite
+        case .waiting: palette.secondaryLabel
+        case .failing: palette.favourite.opacity(0.7)
         case .abandoned: palette.destructive
         }
     }
