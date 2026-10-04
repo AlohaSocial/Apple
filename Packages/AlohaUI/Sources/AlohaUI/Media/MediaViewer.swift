@@ -283,9 +283,8 @@ public struct VideoAttachmentPlayer: View {
             seek(to: position)
         }
         .onDisappear {
-            player?.pause()
-            stopTicking()
             stopWatching()
+            releasePlayer()
         }
     }
 
@@ -302,6 +301,7 @@ public struct VideoAttachmentPlayer: View {
             _ = await player.seek(
                 to: CMTime(seconds: position, preferredTimescale: 600),
                 toleranceBefore: .zero, toleranceAfter: .zero)
+            guard !Task.isCancelled, self.player === player else { return }
             player.play()
             seekRequest = nil
         }
@@ -309,8 +309,7 @@ public struct VideoAttachmentPlayer: View {
 
     private func prepare() async {
         stopWatching()
-        stopTicking()
-        player = nil
+        releasePlayer()
         isRevealed = false
         playbackError = nil
 
@@ -359,9 +358,7 @@ public struct VideoAttachmentPlayer: View {
                 case .failed:
                     PlaybackLog.logger.error(
                         "video failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
-                    stopTicking()
-                    player?.pause()
-                    player = nil
+                    releasePlayer()
                     isRevealed = false
                     if rung + 1 < sources.count {
                         sourceIndex = rung + 1
@@ -382,6 +379,13 @@ public struct VideoAttachmentPlayer: View {
     private func stopWatching() {
         watcher?.cancel()
         watcher = nil
+    }
+
+    private func releasePlayer() {
+        stopTicking()
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
     }
 
     // MARK: - Watch positions
