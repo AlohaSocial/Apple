@@ -18,6 +18,8 @@ public struct MemoriesView: View {
     @State private var recap: WeeklyRecap?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var isSaving = false
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -41,7 +43,7 @@ public struct MemoriesView: View {
                 ) {
                     Text("Weekly recap", comment: "Memories setting")
                 }
-                .disabled(recap == nil)
+                .disabled(recap == nil || isLoading || isSaving)
             } header: {
                 Text("This week", comment: "Memories section")
             } footer: {
@@ -77,56 +79,71 @@ public struct MemoriesView: View {
     }
 
     private func errorRow(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-                .accessibilityHidden(true)
-            Text(message).font(.footnote)
-            Spacer()
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
             Button {
                 Task { await load() }
             } label: {
                 Text("Retry", comment: "Memories retry action")
             }
             .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading || isSaving)
         }
-        .foregroundStyle(palette.destructive)
         .padding(.vertical, AlohaMetrics.space2)
     }
 
     private func load() async {
+        guard !isSaving else { return }
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         async let memoriesTask = session.client.decode(
             LossyArray<Status>.self, from: Endpoint.memories.onThisDay)
         async let recapTask = session.client.decode(
             WeeklyRecap.self, from: Endpoint.memories.recap)
         do {
-            memories = try await memoriesTask.elements.sorted { $0.createdAt > $1.createdAt }
+            let response = try await memoriesTask.elements.sorted { $0.createdAt > $1.createdAt }
+            guard !Task.isCancelled, loadID == request else { return }
+            memories = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Memories could not be loaded. Please try again.")
         }
         // A server without the recap route has no recap; the rest of the
         // screen still loads.
-        recap = try? await recapTask
+        let loadedRecap = try? await recapTask
+        guard !Task.isCancelled, loadID == request else { return }
+        recap = loadedRecap
     }
 
     private func setRecap(enabled: Bool) async {
-        let previous = recap
-        recap = WeeklyRecap(
-            enabled: enabled, thisWeek: recap?.thisWeek ?? 0, lastWeek: recap?.lastWeek ?? 0)
+        guard !isSaving, !isLoading, let previous = recap else { return }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
         do {
             _ = try await session.client.send(Endpoint.memories.setRecap(enabled: enabled))
-            // The counts only come once it is on.
+            recap = WeeklyRecap(enabled: enabled, thisWeek: previous.thisWeek, lastWeek: previous.lastWeek)
+            // A failed count refresh must not undo a setting already saved by the server.
             if enabled {
-                recap = try await session.client.decode(
-                    WeeklyRecap.self, from: Endpoint.memories.recap)
+                if let refreshed = try? await session.client.decode(
+                    WeeklyRecap.self, from: Endpoint.memories.recap) {
+                    recap = refreshed
+                }
             }
         } catch {
-            recap = previous
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The weekly recap setting could not be saved. Please try again.")
         }
     }
 }
@@ -140,17 +157,15 @@ struct MemoryRow: View {
 
     var body: some View {
         Button(action: onOpen) {
-            HStack(alignment: .firstTextBaseline, spacing: AlohaMetrics.space3) {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                 Text(yearsAgo)
                     .font(AlohaType.meta.weight(.semibold))
                     .foregroundStyle(palette.secondaryLabel)
-                    .frame(minWidth: 84, alignment: .leading)
                 Text(excerpt)
-                    .font(.footnote)
+                    .font(.subheadline)
                     .foregroundStyle(palette.label)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
