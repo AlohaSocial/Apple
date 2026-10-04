@@ -4,6 +4,20 @@ import Testing
 
 @Suite("Portfolio draft preview")
 struct PortfolioPreviewTests {
+    @Test("Publishing an album portfolio requires an album identifier")
+    func publishingValidation() {
+        for id in [nil, "", "  \n"] as [String?] {
+            #expect(!PortfolioPreview.canSave(PortfolioSettings(active: true, source: .collection, collectionID: id)))
+        }
+        #expect(PortfolioPreview.canSave(PortfolioSettings(active: true, source: .collection, collectionID: "42")))
+        #expect(PortfolioPreview.canSave(PortfolioSettings(active: true, source: .recent)))
+    }
+
+    @Test("An incomplete draft cannot block unpublishing")
+    func unpublishing() {
+        #expect(PortfolioPreview.canSave(PortfolioSettings(active: false, source: .collection)))
+    }
+
     @Test("Unsaved presentation changes replace the published presentation")
     func draftSettings() {
         let published = PortfolioPage(title: "Published", intro: "Old", handle: "@alice")
