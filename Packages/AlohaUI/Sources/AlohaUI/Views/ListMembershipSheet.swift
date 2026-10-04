@@ -20,6 +20,7 @@ public struct ListMembershipSheet: View {
     @State private var isLoading = true
     @State private var newListTitle = ""
     @State private var isCreating = false
+    @State private var isSaving = false
     @State private var errorMessage: String?
 
     public init(account: Account, session: AccountSession) {
@@ -91,7 +92,8 @@ public struct ListMembershipSheet: View {
                             } label: {
                                 Text("Add", comment: "New list action")
                             }
-                            .disabled(newListTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .buttonStyle(.glass)
+                            .disabled(isSaving || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     } else {
                         Button {
@@ -183,6 +185,7 @@ public struct ListMembershipSheet: View {
 
     /// The checkmark moves at once and comes back if the server refuses.
     private func toggle(_ list: AccountList) async {
+        guard !busy.contains(list.id) else { return }
         let wasMember = memberOf.contains(list.id)
         busy.insert(list.id)
         defer { busy.remove(list.id) }
@@ -196,23 +199,28 @@ public struct ListMembershipSheet: View {
         } catch {
             if wasMember { memberOf.insert(list.id) } else { memberOf.remove(list.id) }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "List membership could not be updated. Please try again.")
         }
     }
 
     private func create() async {
-        let title = newListTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-        newListTitle = ""
-        isCreating = false
+        let submittedTitle = newListTitle
+        let title = submittedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         do {
             let created = try await session.client.decode(
                 AccountList.self, from: Endpoint.lists.create(title: title))
             lists.append(created)
+            if newListTitle == submittedTitle {
+                newListTitle = ""
+                isCreating = false
+            }
             await toggle(created)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The list could not be created. Your text has been kept; please try again.")
         }
     }
 }
