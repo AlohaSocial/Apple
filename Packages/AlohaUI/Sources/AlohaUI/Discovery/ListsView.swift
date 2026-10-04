@@ -17,6 +17,7 @@ public struct ListsView: View {
     @State private var followedTags: [Tag] = []
     @State private var newListTitle = ""
     @State private var isCreating = false
+    @State private var isSaving = false
     @State private var isSavingNewList = false
     @State private var editing: AccountList?
     @State private var isLoading = true
@@ -127,7 +128,8 @@ public struct ListsView: View {
                         } label: {
                             Text("Add", comment: "New list action")
                         }
-                        .disabled(newListTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .buttonStyle(.glass)
+                        .disabled(isSaving || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 } else {
                     Button {
@@ -237,21 +239,22 @@ public struct ListsView: View {
     }
 
     private func create() async {
-        let title = newListTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-        // Cleared only once the request is on its way, and put back if it
-        // fails — a title somebody typed is not the thing to lose here.
-        newListTitle = ""
-        isCreating = false
+        let submittedTitle = newListTitle
+        let title = submittedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
 
         do {
             let created = try await session.client.decode(
                 AccountList.self, from: Endpoint.lists.create(title: title))
             lists.append(created)
+            if newListTitle == submittedTitle {
+                newListTitle = ""
+                isCreating = false
+            }
             errorMessage = nil
         } catch {
-            newListTitle = title
-            isCreating = true
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription
@@ -262,12 +265,16 @@ public struct ListsView: View {
     }
 
     private func delete(_ list: AccountList) async {
-        lists.removeAll { $0.id == list.id }
+        guard let index = lists.firstIndex(where: { $0.id == list.id }) else { return }
+        lists.remove(at: index)
         do {
             _ = try await session.client.send(Endpoint.lists.delete(list.id))
         } catch {
+            if !lists.contains(where: { $0.id == list.id }) {
+                lists.insert(list, at: min(index, lists.count))
+            }
             await session.handle(error)
-            await load()
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The list could not be deleted. Please try again.")
         }
     }
 
@@ -306,6 +313,8 @@ struct ListEditorView: View {
     @State private var members: [Account] = []
     @State private var query = ""
     @State private var results: [Account] = []
+    @State private var isLoadingMembers = true
+    @State private var memberLoadError: String?
     @State private var isSaving = false
     @State private var isConfirmingDelete = false
     @State private var errorMessage: String?
@@ -434,7 +443,15 @@ struct ListEditorView: View {
                             }
                         }
                     }
-                    if members.isEmpty {
+                    if isLoadingMembers {
+                        ProgressView()
+                    } else if let memberLoadError {
+                        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                            Text(memberLoadError).font(.footnote)
+                            Button("Try again") { Task { await loadMembers() } }
+                                .buttonStyle(.glass)
+                        }
+                    } else if members.isEmpty {
                         Text("Nobody on this list yet.", comment: "Empty list members")
                             .font(.footnote)
                             .foregroundStyle(palette.secondaryLabel)
@@ -451,6 +468,7 @@ struct ListEditorView: View {
                     }
                 }
             }
+            .alohaGround(palette)
             .navigationTitle(Text(list.title))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -496,9 +514,19 @@ struct ListEditorView: View {
     }
 
     private func loadMembers() async {
-        members =
-            (try? await session.client.decode(
-                LossyArray<Account>.self, from: Endpoint.lists.accounts(list.id)))?.elements ?? []
+        isLoadingMembers = true
+        defer { isLoadingMembers = false }
+        do {
+            let response = try await session.client.decode(
+                LossyArray<Account>.self, from: Endpoint.lists.accounts(list.id))
+            guard !Task.isCancelled else { return }
+            members = response.elements
+            memberLoadError = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            memberLoadError = (error as? APIError)?.errorDescription ?? String(localized: "List members could not be loaded. Please try again.")
+        }
     }
 
     private func search() async {
@@ -517,6 +545,7 @@ struct ListEditorView: View {
     }
 
     private func save() async {
+        guard !isSaving else { return }
         isSaving = true
         defer { isSaving = false }
         do {
