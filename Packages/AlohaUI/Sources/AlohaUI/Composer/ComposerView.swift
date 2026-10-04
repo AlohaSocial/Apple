@@ -96,17 +96,10 @@ public struct ComposerView: View {
                 if !model.threadSegments.isEmpty { threadEditor }
                 if model.hasPoll { pollEditor }
 
-                Divider()
                 toolbar
             }
             .background(palette.background)
             .sensoryFeedback(.success, trigger: didSend)
-            // A translucent bar over an arbitrary screen has arbitrary
-            // contrast; the composer's own chrome is opaque.
-            #if os(iOS)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarBackground(palette.surface, for: .navigationBar)
-            #endif
             .navigationTitle(model.title)
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -127,19 +120,12 @@ public struct ComposerView: View {
                         if model.isPosting {
                             ProgressView()
                         } else {
-                            // Filled rather than glass: the send button is the
-                            // one control on this screen that must always read.
                             Text("Post", comment: "Composer action")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(palette.onAccent)
-                                .padding(.horizontal, AlohaMetrics.space3)
-                                .padding(.vertical, AlohaMetrics.space1 + 2)
-                                .background(
-                                    palette.accent.opacity(model.canPost ? 1 : 0.4),
-                                    in: Capsule())
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassProminent)
+                    .tint(palette.accent)
                     .disabled(!model.canPost)
                     .keyboardShortcut(.return, modifiers: .command)
                 }
@@ -671,6 +657,9 @@ public struct ComposerView: View {
                 HStack(spacing: AlohaMetrics.space4) {
                     toolbarButtons
                 }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .controlSize(.large)
                 .padding(.vertical, 2)
             }
             .scrollIndicators(.hidden)
@@ -689,7 +678,6 @@ public struct ComposerView: View {
         .font(.title3)
         .padding(.horizontal, AlohaMetrics.space4)
         .padding(.vertical, AlohaMetrics.space3)
-        .background(palette.surface)
     }
 
     @ViewBuilder
