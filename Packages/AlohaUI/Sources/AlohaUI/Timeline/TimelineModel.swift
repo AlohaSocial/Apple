@@ -38,14 +38,20 @@ public final class TimelineModel {
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key
         self.session = session
-        statusUpdates = NotificationCenter.default.publisher(for: TimelineStatusUpdate.notification)
-            .sink { [weak self] notification in
+        statusUpdates = Self.observeStatusUpdates { [weak self] update in
+            guard let self, update.accountID == self.session.id else { return }
+            self.rows = Self.replacing(update.status, in: self.rows)
+            self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
+        }
+    }
+
+    nonisolated static func observeStatusUpdates(
+        _ receive: @escaping @MainActor @Sendable (TimelineStatusUpdate) -> Void
+    ) -> AnyCancellable {
+        NotificationCenter.default.publisher(for: TimelineStatusUpdate.notification)
+            .sink { @Sendable notification in
                 guard let update = notification.object as? TimelineStatusUpdate else { return }
-                Task { @MainActor [weak self] in
-                    guard let self, update.accountID == self.session.id else { return }
-                    self.rows = Self.replacing(update.status, in: self.rows)
-                    self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
-                }
+                Task { @MainActor in receive(update) }
             }
     }
 
