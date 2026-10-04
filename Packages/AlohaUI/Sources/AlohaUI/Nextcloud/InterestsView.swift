@@ -196,6 +196,7 @@ public struct InterestsView: View {
             let loaded = try? await session.client.decode(
                 InterestsState.self, from: Endpoint.interests.state)
         else { return }
+        guard !Task.isCancelled, !isStateLoaded else { return }
         state = loaded
         isStateLoaded = true
     }
@@ -269,6 +270,8 @@ struct InterestsSettingsView: View {
     @State private var isConfirmingReset = false
     @State private var errorMessage: String?
     @State private var languageDraft = ""
+    @State private var isWorking = false
+    @State private var isLoadingState = false
 
     var body: some View {
         List {
@@ -284,17 +287,23 @@ struct InterestsSettingsView: View {
                         Text("Retry", comment: "Interests retry action")
                     }
                     .font(.footnote.weight(.semibold))
+                    .buttonStyle(.glass)
+                    .disabled(isWorking || isLoadingState)
                 }
                 .foregroundStyle(palette.destructive)
             }
 
-            learningSection
-            cloudSection
-            if !state.candidates.isEmpty { candidatesSection }
-            languagesSection
-            resetSection
+            Group {
+                learningSection
+                cloudSection
+                if !state.candidates.isEmpty { candidatesSection }
+                languagesSection
+                resetSection
+            }
+            .disabled(!isLoaded || isWorking || isLoadingState)
         }
         .alohaGround(palette)
+        .overlay { if isLoadingState && !isLoaded { ProgressView() } }
         .task { if !isLoaded { await load() } }
         .refreshable { await load() }
         .alert(
@@ -530,30 +539,51 @@ struct InterestsSettingsView: View {
     }
 
     private func load() async {
+        guard !isWorking, !isLoadingState else { return }
+        isLoadingState = true
+        errorMessage = nil
+        defer { isLoadingState = false }
         do {
-            state = try await session.client.decode(
+            let response = try await session.client.decode(
                 InterestsState.self, from: Endpoint.interests.state)
+            guard !Task.isCancelled else { return }
+            state = response
             isLoaded = true
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Interests could not be loaded. Please try again.")
         }
     }
 
     /// Every write answers with the whole state, so one handler fits all.
-    private func apply(_ endpoint: Endpoint) async {
+    @discardableResult
+    private func apply(_ endpoint: Endpoint) async -> Bool {
+        guard isLoaded, !isWorking, !isLoadingState else { return false }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
         do {
             state = try await session.client.decode(InterestsState.self, from: endpoint)
             errorMessage = nil
+            return true
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Your interests could not be updated. Please try again.")
+            return false
         }
     }
 
-    private func save(learning: Bool? = nil, paused: Bool? = nil, languages: [String]? = nil) async
+    @discardableResult
+    private func save(learning: Bool? = nil, paused: Bool? = nil, languages: [String]? = nil) async -> Bool
     {
+        guard isLoaded, !isWorking, !isLoadingState else { return false }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
         // Settings answer with the settings object alone; reload for the rest.
         do {
             _ = try await session.client.send(
@@ -563,19 +593,24 @@ struct InterestsSettingsView: View {
             if let paused { state.settings.paused = paused }
             if let languages { state.settings.languages = languages }
             errorMessage = nil
+            return true
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Interest settings could not be saved. Please try again.")
+            return false
         }
     }
 
     private func add(_ raw: String) async {
-        guard let tag = Tag.normalise(raw) else { return }
+        guard !isAdding, !isWorking, let tag = Tag.normalise(raw) else { return }
+        let submittedDraft = newTag
         isAdding = true
         defer { isAdding = false }
-        await apply(Endpoint.interests.add(tag))
-        newTag = ""
-        suggestions = []
+        if await apply(Endpoint.interests.add(tag)), newTag == submittedDraft {
+            newTag = ""
+            suggestions = []
+        }
     }
 
     private func remove(_ tag: InterestTag) async {
@@ -592,10 +627,15 @@ struct InterestsSettingsView: View {
     }
 
     private func addLanguage() {
-        guard isLanguageDraftValid else { return }
+        guard isLanguageDraftValid, !isWorking, !isLoadingState else { return }
+        let submittedDraft = languageDraft
         let code = languageDraft.trimmingCharacters(in: .whitespaces).lowercased()
-        languageDraft = ""
-        Task { await save(languages: state.settings.languages + [code]) }
+        let languages = state.settings.languages + [code]
+        Task {
+            if await save(languages: languages), languageDraft == submittedDraft {
+                languageDraft = ""
+            }
+        }
     }
 
     private func suggest() async {
