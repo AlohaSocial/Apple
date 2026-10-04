@@ -10,6 +10,10 @@ public struct TimelineStatusUpdate: Sendable {
     public static let notification = Notification.Name("aloha.timelineStatusUpdate")
     public let accountID: UUID
     public let status: Status
+    public init(accountID: UUID, status: Status) {
+        self.accountID = accountID
+        self.status = status
+    }
 }
 
 /// Every write to the store goes through here, on a background context.

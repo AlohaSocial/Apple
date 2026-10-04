@@ -185,6 +185,10 @@ public struct ComposerView: View {
                         }
                 }
                 .presentationDetents([.medium, .large])
+                .presentationBackground {
+                    Color.clear.glassEffect(.regular, in: Rectangle())
+                }
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isShowingSchedule) {
                 SchedulePicker(scheduledAt: $model.scheduledAt)
@@ -645,7 +649,10 @@ public struct ComposerView: View {
     }
 
     private var pollEditor: some View {
-        VStack(spacing: AlohaMetrics.space2) {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+            Text("Add at least two choices. People can vote after you publish the post.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             ForEach(model.pollOptions.indices, id: \.self) { index in
                 HStack {
                 TextField(
@@ -687,18 +694,14 @@ public struct ComposerView: View {
                 .buttonStyle(.glass)
 
                 Spacer()
-
+            }
+            .font(.footnote)
                 Toggle(isOn: $model.pollMultiple) {
                     Text("Multiple choice", comment: "Poll option")
                 }
                 .toggleStyle(.switch)
-                .labelsHidden()
-                Text("Multiple", comment: "Poll option short label").font(.caption)
-            }
-            .font(.footnote)
         }
         .padding(AlohaMetrics.space3)
-        .background(palette.surfaceRaised)
     }
 
     private var toolbar: some View {
