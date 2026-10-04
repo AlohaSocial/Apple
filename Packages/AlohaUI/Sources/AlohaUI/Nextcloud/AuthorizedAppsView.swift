@@ -15,6 +15,8 @@ public struct AuthorizedAppsView: View {
     @State private var isLoading = true
     @State private var revoking: AuthorizedApp?
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var pendingRevocation: String?
 
     public init(session: AccountSession) {
         self.session = session
@@ -72,19 +74,19 @@ public struct AuthorizedAppsView: View {
     }
 
     private func errorRow(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-                .accessibilityHidden(true)
-            Text(message).font(.footnote)
-            Spacer()
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
             Button {
                 Task { await load() }
             } label: {
                 Text("Retry", comment: "Authorized apps retry action")
             }
             .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading || pendingRevocation != nil)
         }
-        .foregroundStyle(palette.destructive)
     }
 
     private func row(_ app: AuthorizedApp) -> some View {
@@ -137,40 +139,53 @@ public struct AuthorizedAppsView: View {
             Button(role: .destructive) {
                 revoking = app
             } label: {
-                Text("Revoke", comment: "Authorized app action")
-                    .font(.footnote.weight(.semibold))
+                if pendingRevocation == app.id {
+                    ProgressView()
+                } else {
+                    Text("Revoke", comment: "Authorized app action")
+                        .font(.footnote.weight(.semibold))
+                }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.glass)
+            .disabled(isLoading || pendingRevocation != nil)
             .accessibilityLabel(Text("Revoke \(app.name)", comment: "Authorized app action"))
         }
         .padding(.vertical, AlohaMetrics.space1)
     }
 
     private func load() async {
+        guard pendingRevocation == nil else { return }
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            apps = try await session.client.decode(
+            let response = try await session.client.decode(
                 LossyArray<AuthorizedApp>.self, from: Endpoint.authorizedApps.all
             ).elements
+            guard !Task.isCancelled, loadID == request else { return }
+            apps = response
             errorMessage = nil
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Authorized apps could not be loaded. Please try again.")
         }
     }
 
     private func revoke(_ app: AuthorizedApp) async {
-        guard let index = apps.firstIndex(where: { $0.id == app.id }) else { return }
-        apps.remove(at: index)
+        guard pendingRevocation == nil, apps.contains(where: { $0.id == app.id }) else { return }
+        loadID = UUID()
+        isLoading = false
+        pendingRevocation = app.id
+        errorMessage = nil
+        defer { pendingRevocation = nil }
         do {
             _ = try await session.client.send(Endpoint.authorizedApps.revoke(app.id))
+            apps.removeAll { $0.id == app.id }
         } catch {
-            if !apps.contains(where: { $0.id == app.id }) {
-                apps.insert(app, at: min(index, apps.count))
-            }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Access could not be revoked. Please try again.")
         }
