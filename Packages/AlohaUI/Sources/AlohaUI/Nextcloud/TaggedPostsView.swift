@@ -46,6 +46,8 @@ struct TaggedGrid: View {
     @State private var nextPage: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var removing: Set<String> = []
 
     private static let gutter: Double = 1.5
     private var isOwn: Bool { accountID == session.snapshot.serverAccountID }
@@ -53,19 +55,19 @@ struct TaggedGrid: View {
     var body: some View {
         LazyVStack(spacing: 0) {
             if let errorMessage {
-                HStack(spacing: AlohaMetrics.space2) {
-                    Image(systemName: AlohaSymbol.warning)
-                        .accessibilityHidden(true)
-                    Text(errorMessage).font(.footnote)
-                    Spacer()
+                VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                    Label(errorMessage, systemImage: AlohaSymbol.warning)
+                        .font(.footnote)
+                        .foregroundStyle(palette.destructive)
                     Button {
                         Task { await load() }
                     } label: {
                         Text("Retry", comment: "Tagged photos retry action")
                     }
                     .font(.footnote.weight(.semibold))
+                    .buttonStyle(.glass)
+                    .disabled(isLoading || !removing.isEmpty)
                 }
-                .foregroundStyle(palette.destructive)
                 .padding(AlohaMetrics.space3)
             }
 
@@ -82,7 +84,7 @@ struct TaggedGrid: View {
                 }
             }
 
-            if isLoading {
+            if isLoading || !removing.isEmpty {
                 ProgressView().padding(AlohaMetrics.space4)
             } else if statuses.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
@@ -164,55 +166,76 @@ struct TaggedGrid: View {
                         Image(systemName: "tag.slash")
                     }
                 }
+                .disabled(isLoading || removing.contains(status.id))
             }
         }
         .mediaTransitionSource(id: first?.id ?? status.id, in: mediaTransition)
     }
 
     private func load() async {
+        guard removing.isEmpty else { return }
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.profile.tagged(accountID, limit: 40),
                 limit: 40)
+            guard !Task.isCancelled, loadID == request else { return }
             statuses = page.value.elements
             nextPage = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Tagged posts could not be loaded. Please try again.")
         }
     }
 
     private func loadMore() async {
-        guard let nextPage, !isLoading else { return }
+        guard let nextPage, !isLoading, removing.isEmpty else { return }
+        let request = loadID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, following: nextPage, limit: 40)
+            guard !Task.isCancelled, loadID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }
             self.nextPage = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
             // The cursor is left where it was, so the next scroll tries again.
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "More tagged posts could not be loaded. Please try again.")
         }
     }
 
-    /// The row goes at once; the server is told after. Nothing to undo if
-    /// the call fails but a refresh, which puts the photo back.
+    /// Optimistic removal rolls back only this row, preserving other results.
     private func untag(_ status: Status) async {
+        guard !isLoading, let index = statuses.firstIndex(where: { $0.id == status.id }),
+            removing.insert(status.id).inserted else { return }
+        defer { removing.remove(status.id) }
+        errorMessage = nil
         statuses.removeAll { $0.id == status.id }
         do {
             _ = try await session.client.send(
                 Endpoint.profile.untagMe(statusID: status.displayed.id))
         } catch {
+            if !statuses.contains(where: { $0.id == status.id }) {
+                statuses.insert(status, at: min(index, statuses.count))
+            }
             await session.handle(error)
-            await load()
+            errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Your tag could not be removed. Please try again.")
         }
     }
 }
