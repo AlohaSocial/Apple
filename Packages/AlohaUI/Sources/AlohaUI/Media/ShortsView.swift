@@ -45,6 +45,7 @@ public struct ShortsView: View {
     @State private var feed: Feed = .forYou
     @State private var model: TimelineModel
     @State private var currentID: String?
+    @State private var preloader = NextVideoPreloader()
     @AppStorage("aloha.shorts.muted") private var isMuted = true
     @State private var isPaused = false
     @State private var progress: Double = 0
@@ -104,6 +105,17 @@ public struct ShortsView: View {
         }
         .background { Color.black.ignoresSafeArea() }
         .task { await start() }
+        .task(id: "\(currentID ?? ""): \(preloader.allowsPrefetch):\(shorts.count)") {
+            guard let currentID, let index = shorts.firstIndex(where: { $0.id == currentID })
+            else { preloader.cancel(); return }
+            guard shorts.indices.contains(index + 1) else {
+                preloader.retainCurrent(statusID: shorts[index].displayed.id, accountID: session.id)
+                return
+            }
+            await preloader.prepare(status: shorts[index + 1], keeping: shorts[index].displayed.id,
+                session: session)
+        }
+        .onDisappear { preloader.cancel() }
         .onChange(of: feed) { _, newFeed in
             model = TimelineModel(
                 key: TimelineKey(mode: .shorts, source: newFeed.source), session: session)
@@ -212,6 +224,7 @@ public struct ShortsView: View {
         ZStack {
             if let attachment = status.displayed.mediaAttachments.first(where: { $0.isVideo }) {
                 ShortPlayer(
+                    preloader: preloader,
                     attachment: attachment,
                     statusID: status.displayed.id,
                     apiBase: session.capabilities.apiBase,
@@ -511,6 +524,7 @@ public struct ShortsView: View {
 
 /// One short's player. At most three live instances exist across the pager.
 struct ShortPlayer: View {
+    let preloader: NextVideoPreloader
     let attachment: MediaAttachment
     let statusID: String
     let apiBase: URL
@@ -568,6 +582,16 @@ struct ShortPlayer: View {
             return
         }
         teardown()
+
+        if let session, let (prepared, item) = preloader.take(key: NextVideoPreloader.key(
+            accountID: session.id, statusID: statusID, attachmentID: attachment.id)) {
+            isReady = item.status == .readyToPlay
+            item.preferredPeakBitRate = 0
+            item.preferredForwardBufferDuration = 0
+            watch(item)
+            await start(prepared, item: item)
+            return
+        }
 
         let sources = VideoSourceResolver.sources(
             for: attachment, statusID: statusID, apiBase: apiBase,
