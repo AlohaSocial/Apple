@@ -404,6 +404,7 @@ public struct MigrationView: View {
                             Image(systemName: "minus.circle")
                         }
                     }
+                    .disabled(busy.contains("alias") || busy.contains("alias-load"))
                 }
             }
 
@@ -427,9 +428,9 @@ public struct MigrationView: View {
                             .font(.footnote.weight(.semibold))
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
-                .disabled(busy.contains("alias") || !newAlias.contains("@"))
+                .disabled(busy.contains("alias") || busy.contains("alias-load") || !newAlias.contains("@"))
             }
         } header: {
             Text("Move", comment: "Migration section")
@@ -441,39 +442,53 @@ public struct MigrationView: View {
     }
 
     private func loadMove() async {
-        aliases =
-            (try? await session.client.decode(
-                MigrationAliases.self, from: Endpoint.migration.aliases))?.aliases ?? []
+        guard !busy.contains("alias"), busy.insert("alias-load").inserted else { return }
+        defer { busy.remove("alias-load") }
+        if let response = try? await session.client.decode(
+            MigrationAliases.self, from: Endpoint.migration.aliases) {
+            guard !Task.isCancelled else { return }
+            aliases = response.aliases
+        }
+        guard !Task.isCancelled else { return }
         announcement = try? await session.client.decode(
             MigrationAnnouncement.self, from: Endpoint.migration.announcement)
     }
 
     private func addAlias() async {
+        guard !busy.contains("alias"), !busy.contains("alias-load") else { return }
+        let submittedDraft = newAlias
         let alias = newAlias.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
         guard alias.contains("@") else { return }
         busy.insert("alias")
+        errorMessage = nil
         defer { busy.remove("alias") }
         do {
             aliases = try await session.client.decode(
                 MigrationAliases.self, from: Endpoint.migration.addAlias(alias)
             ).aliases
-            newAlias = ""
+            if newAlias == submittedDraft { newAlias = "" }
             errorMessage = nil
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The alias could not be added. Please try again.")
         }
     }
 
     private func removeAlias(_ alias: String) async {
+        guard !busy.contains("alias-load"), busy.insert("alias").inserted else { return }
+        errorMessage = nil
+        defer { busy.remove("alias") }
         do {
             aliases = try await session.client.decode(
                 MigrationAliases.self, from: Endpoint.migration.removeAlias(alias)
             ).aliases
+            errorMessage = nil
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The alias could not be removed. Please try again.")
         }
     }
 
