@@ -20,6 +20,8 @@ public struct StatisticsView: View {
     @State private var exportURL: URL?
     @State private var isExporting = false
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var loadedDays: Int?
 
     private static let windows: [(days: Int, title: LocalizedStringResource)] = [
         (30, LocalizedStringResource("30 days", comment: "Statistics window")),
@@ -41,7 +43,7 @@ public struct StatisticsView: View {
                         .foregroundStyle(palette.destructive)
                 }
 
-                if let statistics {
+                if let statistics, loadedDays == days {
                     hero(statistics)
                     engagement(statistics)
                     postsByMonth(statistics)
@@ -92,6 +94,7 @@ public struct StatisticsView: View {
                             Image(systemName: AlohaSymbol.refresh)
                         }
                     }
+                    .disabled(isLoading)
                     Button {
                         Task { await export() }
                     } label: {
@@ -101,7 +104,7 @@ public struct StatisticsView: View {
                             Image(systemName: AlohaSymbol.share)
                         }
                     }
-                    .disabled(isExporting)
+                    .disabled(isExporting || isLoading)
                 } label: {
                     Image(systemName: AlohaSymbol.more)
                 }
@@ -109,7 +112,7 @@ public struct StatisticsView: View {
             }
         }
         .overlay {
-            if isLoading && statistics == nil { ProgressView() }
+            if isLoading && (statistics == nil || loadedDays != days) { ProgressView() }
         }
         .sheet(item: Binding(get: { exportURL.map(ExportFile.init) }, set: { exportURL = $0?.url }))
         { file in
@@ -130,6 +133,7 @@ public struct StatisticsView: View {
             Text("Window", comment: "Statistics window picker")
         }
         .pickerStyle(.segmented)
+        .disabled(isExporting)
         .labelsHidden()
     }
 
@@ -146,7 +150,8 @@ public struct StatisticsView: View {
                     .foregroundStyle(palette.tertiaryLabel)
                 }
             }
-            HStack(spacing: AlohaMetrics.space4) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space3) {
                 stat(
                     Int(
                         statistics.posts["total"] ?? statistics.posts["count"]
@@ -499,34 +504,50 @@ public struct StatisticsView: View {
     // MARK: - Data
 
     private func load(fresh: Bool = false) async {
+        let request = UUID()
+        let requestedDays = days
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            statistics = try await session.client.decode(
-                AccountStatistics.self, from: Endpoint.statistics.overview(days: days, fresh: fresh)
+            let response = try await session.client.decode(
+                AccountStatistics.self, from: Endpoint.statistics.overview(days: requestedDays, fresh: fresh)
             )
+            guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
+            statistics = response
+            loadedDays = requestedDays
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Statistics could not be loaded. Please try again.")
         }
     }
 
     private func export() async {
+        guard !isExporting else { return }
+        let requestedDays = days
         isExporting = true
+        errorMessage = nil
         defer { isExporting = false }
         do {
-            let response = try await session.client.send(Endpoint.statistics.export(days: days))
-            let url = FileManager.default.temporaryDirectory
-                .appending(
-                    path:
-                        "social-statistics-\(Date.now.formatted(.iso8601.year().month().day())).csv"
-                )
+            let response = try await session.client.send(Endpoint.statistics.export(days: requestedDays))
+            guard !Task.isCancelled else { return }
+            let directory = FileManager.default.temporaryDirectory
+                .appending(path: "aloha-statistics-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let url = directory.appending(path:
+                "social-statistics-\(Date.now.formatted(.iso8601.year().month().day())).csv")
             try response.data.write(to: url, options: .atomic)
             exportURL = url
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Statistics could not be exported. Please try again.")
         }
     }
 }
@@ -556,12 +577,13 @@ private struct ExportShareSheet: View {
                     Image(systemName: AlohaSymbol.share)
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             Button {
                 dismiss()
             } label: {
                 Text("Done", comment: "Sheet action")
             }
+            .buttonStyle(.glass)
         }
         .padding(AlohaMetrics.space6)
         .presentationDetents([.medium])
