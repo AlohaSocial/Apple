@@ -16,7 +16,16 @@ struct ScrollRevealedTimelineSource: ViewModifier {
         content
             .onScrollPhaseChange { _, phase in
                 isScrolling = phase.isScrolling
-                if phase.isScrolling { isVisible = true }
+            }
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { previous, current in
+                guard isScrolling else { return }
+                if current <= 0 || current < previous {
+                    isVisible = false
+                } else if current > previous {
+                    isVisible = true
+                }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if isVisible {

@@ -340,7 +340,6 @@ public struct ConversationThreadView: View {
 
     private var composer: some View {
         VStack(spacing: 0) {
-            Divider()
             HStack(alignment: .bottom, spacing: AlohaMetrics.space2) {
                 Button {
                     // The full composer, for attachments, polls and a content
@@ -348,12 +347,13 @@ public struct ConversationThreadView: View {
                     // and addressed to everybody in the thread.
                     if let last = messages.last { onAction(.reply(last)) }
                 } label: {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "plus")
                         .font(.title2)
                         .foregroundStyle(palette.secondaryLabel)
                         .frame(width: 36, height: 36)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
                 .disabled(messages.isEmpty)
                 .accessibilityLabel(Text("Attach", comment: "Conversation composer action"))
 
@@ -367,21 +367,19 @@ public struct ConversationThreadView: View {
                 .accessibilityIdentifier("conversation.field")
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
-                .background(
-                    palette.surfaceRaised,
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                )
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22))
                 .accessibilityLabel(Text("Message", comment: "Conversation field label"))
 
                 Button {
                     Task { await send() }
                 } label: {
-                    Image(systemName: "arrow.up.circle.fill")
+                    Image(systemName: "arrow.up")
                         .font(.title)
-                        .foregroundStyle(canSend ? palette.accent : palette.tertiaryLabel)
                         .frame(width: 36, height: 36)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .tint(palette.accent)
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityLabel(Text("Send", comment: "Conversation composer action"))
@@ -389,7 +387,6 @@ public struct ConversationThreadView: View {
             .padding(.horizontal, AlohaMetrics.space3)
             .padding(.vertical, AlohaMetrics.space2)
         }
-        .background(palette.background)
     }
 
     private var canSend: Bool {

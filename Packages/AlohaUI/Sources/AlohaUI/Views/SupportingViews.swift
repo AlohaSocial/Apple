@@ -13,44 +13,70 @@ public struct WelcomeView: View {
     }
 
     public var body: some View {
-        VStack(spacing: AlohaMetrics.space5) {
-            Spacer()
+        ScrollView {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
 
-            VStack(spacing: AlohaMetrics.space3) {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
                 Image(systemName: "bubble.left.and.text.bubble.right")
-                    .font(.system(size: 56))
+                    .font(.system(size: 44, weight: .medium))
                     .foregroundStyle(palette.accent)
+                    .padding(.top, AlohaMetrics.space6)
 
                 Text("Aloha Social", comment: "App name")
                     .font(.largeTitle.weight(.bold))
 
                 Text(
-                    "Text, photos, video and shorts from across the fediverse — in one app.",
+                    "Your people. Your conversations.",
                     comment: "Welcome subtitle"
                 )
                 .font(.body)
                 .foregroundStyle(palette.secondaryLabel)
-                .multilineTextAlignment(.center)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: AlohaMetrics.space4) {
+                welcomeDetail(symbol: "person.2", title: "Keep up with your people",
+                    detail: "Read posts and share photos and videos from the accounts you follow.")
+                welcomeDetail(symbol: "bubble.left", title: "Join the conversation",
+                    detail: "Reply to a post or send a direct message.")
+                welcomeDetail(symbol: "server.rack", title: "Use your existing account",
+                    detail: "Connect your Nextcloud Social or Mastodon account using your server address.")
+            }
+            .padding(.vertical, AlohaMetrics.space3)
 
             Button(action: onAddAccount) {
                 Text("Add your account", comment: "Welcome action")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.alohaProminent)
+            .buttonStyle(.glassProminent)
+            .controlSize(.large)
+            .tint(palette.accent)
 
             Text(
-                "Works with Nextcloud Social, Mastodon, and anything else that speaks the Mastodon API.",
+                "You sign in on your server. Aloha Social connects to your account.",
                 comment: "Welcome footnote"
             )
             .font(.caption)
             .foregroundStyle(palette.tertiaryLabel)
-            .multilineTextAlignment(.center)
         }
         .padding(AlohaMetrics.space5)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+        }
         .background(palette.background)
+    }
+
+    private func welcomeDetail(symbol: String, title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: AlohaMetrics.space3) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(palette.accent)
+                .frame(width: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                Text(title).font(.headline)
+                Text(detail).font(.subheadline).foregroundStyle(palette.secondaryLabel)
+            }
+        }
     }
 }
 
