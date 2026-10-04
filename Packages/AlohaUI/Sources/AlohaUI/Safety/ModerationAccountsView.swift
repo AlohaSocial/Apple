@@ -24,6 +24,7 @@ public struct ModerationAccountsView: View {
     @State private var query = ""
     @State private var isLoading = true
     @State private var acting: AdminAccount?
+    @State private var loadID = UUID()
     @State private var errorMessage: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
@@ -123,26 +124,35 @@ public struct ModerationAccountsView: View {
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
+        defer { if loadID == requestID { isLoading = false } }
+        let requestedOrigin = origin
+        let requestedStanding = standing
+        let requestedUsername = query.trimmingCharacters(in: .whitespacesAndNewlines)
         // A keystroke should not be a request.
         if !query.isEmpty {
             try? await Task.sleep(for: .milliseconds(300))
             // A newer filter started while this one waited; it owns the
             // spinner now and will put it down.
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == requestID else { return }
         }
-        defer { isLoading = false }
         do {
-            accounts = try await session.client.decode(
+            let response = try await session.client.decode(
                 LossyArray<AdminAccount>.self,
                 from: Endpoint.moderation.accounts(
-                    origin: origin, standing: standing,
-                    username: query.trimmingCharacters(in: .whitespaces), limit: 40)
+                    origin: requestedOrigin, standing: requestedStanding,
+                    username: requestedUsername, limit: 40)
             ).elements
+            guard !Task.isCancelled, loadID == requestID else { return }
+            accounts = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard loadID == requestID else { return }
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Accounts could not be loaded. Please try again.")
         }
     }
 }
@@ -319,6 +329,7 @@ struct ModerationAccountSheet: View {
     }
 
     private func run(_ endpoint: Endpoint) async {
+        guard !isWorking else { return }
         isWorking = true
         defer { isWorking = false }
         do {
@@ -327,7 +338,7 @@ struct ModerationAccountSheet: View {
             dismiss()
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The account action could not be completed. Please try again.")
         }
     }
 }
