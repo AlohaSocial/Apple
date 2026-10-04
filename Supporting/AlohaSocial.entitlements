@@ -14,7 +14,7 @@
     <true/>
     <key>keychain-access-groups</key>
     <array>
-		<string>$(AppIdentifierPrefix)com.benedikt-schaechner.alohasocial</string>
+        <string>$(AppIdentifierPrefix)com.nextcloud.alohasocial</string>
     </array>
 </dict>
 </plist>

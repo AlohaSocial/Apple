@@ -83,7 +83,7 @@ public struct MediaViewer: View {
         if attachment.type.isPlayable {
             VideoAttachmentPlayer(
                 attachment: attachment, statusID: statusID, apiBase: apiBase, autoplay: autoplay,
-                session: session)
+                startsMuted: false, session: session)
         } else {
             RemoteImage(
                 url: attachment.displayImageURL,
@@ -220,6 +220,7 @@ public struct VideoAttachmentPlayer: View {
     @State private var player: AVPlayer?
     @State private var sourceIndex = 0
     @State private var playbackError: String?
+    @State private var retryCount = 0
     @State private var ticker: Any?
     @State private var watcher: Task<Void, Never>?
     /// Whether there is a frame behind the poster yet. The player can be
@@ -259,15 +260,23 @@ public struct VideoAttachmentPlayer: View {
                     url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fit)
             }
             if let playbackError {
-                Text(playbackError)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(10)
-                    .background(.black.opacity(0.7), in: Capsule())
+                VStack(spacing: 12) {
+                    Text(playbackError)
+                        .font(.callout)
+                        .multilineTextAlignment(.center)
+                    Button("Try again") {
+                        sourceIndex = 0
+                        retryCount += 1
+                    }
+                    .buttonStyle(.glass)
+                }
+                .foregroundStyle(.white)
+                .padding(20)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                .padding()
             }
         }
-        .task(id: sourceIndex) { await prepare() }
+        .task(id: "\(sourceIndex):\(retryCount)") { await prepare() }
         .onChange(of: seekRequest) { _, position in
             guard let position else { return }
             seek(to: position)
@@ -304,7 +313,6 @@ public struct VideoAttachmentPlayer: View {
         isRevealed = false
         playbackError = nil
 
-        var rejected: [String] = []
         for index in sourceIndex..<sources.count {
             guard !Task.isCancelled else { return }
             let source = sources[index]
@@ -330,14 +338,10 @@ public struct VideoAttachmentPlayer: View {
                 return
             case .rejected(let reason):
                 PlaybackLog.logger.error("video rung rejected: \(reason, privacy: .public)")
-                rejected.append(reason)
             }
         }
 
-        let detail = rejected.last
-        playbackError =
-            detail.map { "This video could not be played. — \($0)" }
-            ?? String(localized: "This video could not be played.", comment: "Video playback failure")
+        playbackError = String(localized: "This video could not be played. Please check your connection and try again.", comment: "Video playback failure")
     }
 
     /// A rung that opens can still collapse later — a master playlist that
