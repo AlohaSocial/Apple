@@ -693,6 +693,7 @@ struct ShortPlayer: View {
         if let ticker { player?.removeTimeObserver(ticker) }
         ticker = nil
         player?.pause()
+        player?.replaceCurrentItem(with: nil)
         player = nil
         isReady = false
         if let looper { NotificationCenter.default.removeObserver(looper) }
