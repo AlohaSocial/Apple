@@ -867,6 +867,9 @@
     "Connect your Nextcloud" : {
       "comment" : "Screen title"
     },
+    "Connect your Nextcloud Social or Mastodon account using your server address." : {
+
+    },
     "Connected" : {
       "comment" : "Nextcloud state"
     },
@@ -1552,6 +1555,9 @@
     "Its members are not unfollowed." : {
       "comment" : "Delete list detail"
     },
+    "Join the conversation" : {
+
+    },
     "Jumps the video there" : {
       "comment" : "Accessibility hint"
     },
@@ -1560,6 +1566,9 @@
     },
     "Keep members out of Home" : {
       "comment" : "List field"
+    },
+    "Keep up with your people" : {
+
     },
     "Kept out of Home" : {
       "comment" : "Exclusive list badge"
@@ -1670,6 +1679,9 @@
     "Load the posts in between" : {
       "comment" : "Timeline gap row"
     },
+    "Loading messages…" : {
+
+    },
     "Local" : {
       "comment" : "Timeline source"
     },
@@ -1732,6 +1744,9 @@
     },
     "Messages" : {
       "comment" : "Screen title\nTab title"
+    },
+    "Messages could not be loaded. Pull down to try again." : {
+
     },
     "Migration" : {
       "comment" : "Screen title\nSettings item"
@@ -2472,6 +2487,9 @@
     "Read fine, but it lists nothing" : {
       "comment" : "Subscription feed state"
     },
+    "Read posts and share photos and videos from the accounts you follow." : {
+
+    },
     "Read the full thread" : {
       "comment" : "Summary action"
     },
@@ -2552,6 +2570,9 @@
     },
     "Reply" : {
       "comment" : "Accessibility action\nComposer title\nNotification action\nShorts action\nStatus action"
+    },
+    "Reply to a post or send a direct message." : {
+
     },
     "Reply to story" : {
       "comment" : "Story reply label"
@@ -3001,9 +3022,6 @@
     "Text story: %@" : {
       "comment" : "Text story preview label"
     },
-    "Text, photos, video and shorts from across the fediverse — in one app." : {
-      "comment" : "Welcome subtitle"
-    },
     "That address couldn't be understood." : {
       "comment" : "Sign-in discovery failure"
     },
@@ -3300,6 +3318,9 @@
     "Use this name" : {
       "comment" : "Place picker action"
     },
+    "Use your existing account" : {
+
+    },
     "Username" : {
       "comment" : "Moderation account search prompt"
     },
@@ -3501,9 +3522,6 @@
     "Working on it…" : {
       "comment" : "Rewrite in progress"
     },
-    "Works with Nextcloud Social, Mastodon, and anything else that speaks the Mastodon API." : {
-      "comment" : "Welcome footnote"
-    },
     "Write a message…" : {
       "comment" : "Conversation field prompt"
     },
@@ -3544,6 +3562,9 @@
     "You have no lists yet. Make one to put %@ on it." : {
       "comment" : "Empty lists in membership sheet"
     },
+    "You sign in on your server. Aloha Social connects to your account." : {
+      "comment" : "Welcome footnote"
+    },
     "You will not see posts from that server, and its people cannot follow you." : {
       "comment" : "Domain block detail"
     },
@@ -3583,6 +3604,9 @@
     "Your lists" : {
       "comment" : "Migration list\nScreen title"
     },
+    "Your message could not be sent. Your text has been kept; please try again." : {
+
+    },
     "Your Nextcloud" : {
       "comment" : "Settings item"
     },
@@ -3600,6 +3624,9 @@
     },
     "Your note: %@. Edit" : {
       "comment" : "Private account note"
+    },
+    "Your people. Your conversations." : {
+      "comment" : "Welcome subtitle"
     },
     "Your post is with a moderator and will appear once it has been looked at. You can find it under Settings until then." : {
       "comment" : "Held for review detail"

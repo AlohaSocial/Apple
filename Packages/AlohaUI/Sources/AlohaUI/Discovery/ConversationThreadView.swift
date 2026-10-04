@@ -348,12 +348,12 @@ public struct ConversationThreadView: View {
                     if let last = messages.last { onAction(.reply(last)) }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.title2)
+                        .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(palette.secondaryLabel)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: Circle())
                 .disabled(messages.isEmpty)
                 .accessibilityLabel(Text("Attach", comment: "Conversation composer action"))
 
@@ -367,6 +367,7 @@ public struct ConversationThreadView: View {
                 .accessibilityIdentifier("conversation.field")
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
+                .frame(minHeight: 44)
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22))
                 .accessibilityLabel(Text("Message", comment: "Conversation field label"))
 
@@ -374,12 +375,12 @@ public struct ConversationThreadView: View {
                     Task { await send() }
                 } label: {
                     Image(systemName: "arrow.up")
-                        .font(.title)
-                        .frame(width: 36, height: 36)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(palette.onAccent)
+                        .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.circle)
-                .tint(palette.accent)
+                .buttonStyle(.plain)
+                .glassEffect(.regular.tint(palette.accent).interactive(), in: Circle())
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityLabel(Text("Send", comment: "Conversation composer action"))
