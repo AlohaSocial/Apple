@@ -605,7 +605,7 @@ struct ShortPlayer: View {
             let source = sources[index]
             guard !Task.isCancelled, isCurrent else { return }
             let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
-            switch await PlaybackReadiness.open(url: source.url, headers: headers) {
+            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero) {
             case .playable(let newPlayer, let item, let ready):
                 guard !Task.isCancelled, isCurrent else {
                     newPlayer.replaceCurrentItem(with: nil)

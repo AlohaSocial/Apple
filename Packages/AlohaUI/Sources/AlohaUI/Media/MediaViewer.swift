@@ -258,6 +258,7 @@ public struct VideoAttachmentPlayer: View {
             if !isRevealed {
                 RemoteImage(
                     url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fit)
+                if playbackError == nil { ProgressView() }
             }
             if let playbackError {
                 VStack(spacing: 12) {
@@ -320,7 +321,7 @@ public struct VideoAttachmentPlayer: View {
             PlaybackLog.logger.info(
                 "opening video rung \(index) \(source.url.absoluteString, privacy: .public)")
 
-            switch await PlaybackReadiness.open(url: source.url, headers: headers) {
+            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero) {
             case .playable(let newPlayer, let item, let isReady):
                 guard !Task.isCancelled else {
                     newPlayer.replaceCurrentItem(with: nil)
