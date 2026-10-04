@@ -14,6 +14,7 @@ public struct ComposerView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
     @State private var didSend = false
+    @State private var showsCardOptions = false
 
     @State private var model: ComposerModel
     @State private var pickedItems: [PhotosPickerItem] = []
@@ -82,7 +83,7 @@ public struct ComposerView: View {
                 editor
 
                 if !model.pendingGames.isEmpty { gamesHint }
-                if model.canBeCard { cardRow }
+                if model.canBeCard && (showsCardOptions || model.cardBackgroundID != nil) { cardRow }
 
                 if let place = model.place { placeChip(place) }
                 if model.isNextcloud && model.hasVideoAttachment { videoMetaFields }
@@ -654,12 +655,10 @@ public struct ComposerView: View {
     private var toolbar: some View {
         HStack(spacing: AlohaMetrics.space3) {
             ScrollView(.horizontal) {
-                HStack(spacing: AlohaMetrics.space4) {
+                HStack(spacing: 8) {
                     toolbarButtons
                 }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .controlSize(.large)
+                .buttonStyle(ComposerToolStyle())
                 .padding(.vertical, 2)
             }
             .scrollIndicators(.hidden)
@@ -682,6 +681,15 @@ public struct ComposerView: View {
 
     @ViewBuilder
     private var toolbarButtons: some View {
+        if model.canBeCard {
+            Button {
+                showsCardOptions.toggle()
+            } label: {
+                Image(systemName: "rectangle.on.rectangle")
+            }
+            .accessibilityLabel(Text("Post it as a card", comment: "Composer card section"))
+            .accessibilityValue(showsCardOptions ? Text("Expanded") : Text("Collapsed"))
+        }
         Button {
             model.isShowingMediaPicker = true
         } label: {
@@ -975,6 +983,18 @@ public struct ComposerView: View {
             await model.saveDraftIfNeeded()
             dismiss()
         }
+    }
+}
+
+private struct ComposerToolStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 18, weight: .medium))
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
+            .glassEffect(.regular.interactive(), in: Circle())
+            .opacity(!isEnabled ? 0.4 : (configuration.isPressed ? 0.65 : 1))
     }
 }
 

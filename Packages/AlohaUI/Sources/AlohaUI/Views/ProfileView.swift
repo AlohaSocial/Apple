@@ -161,14 +161,13 @@ public struct ProfileView: View {
                             .font(.subheadline.weight(tab == option ? .semibold : .regular))
                             .foregroundStyle(tab == option ? palette.onAccent : palette.label)
                             .padding(.horizontal, AlohaMetrics.space3)
-                            .frame(minHeight: 36)
-                            .background(
-                                tab == option ? palette.accent : palette.surfaceRaised,
-                                in: Capsule()
-                            )
+                            .frame(minHeight: 44)
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .glassEffect(
+                        .regular.tint(tab == option ? palette.accent : nil).interactive(),
+                        in: Capsule())
                     .accessibilityAddTraits(tab == option ? [.isButton, .isSelected] : .isButton)
                 }
             }
