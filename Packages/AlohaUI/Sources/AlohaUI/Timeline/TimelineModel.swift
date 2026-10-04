@@ -8,6 +8,7 @@ import AlohaStore
 import Foundation
 import OSLog
 import Observation
+import Combine
 
 /// Drives one timeline: cache-first paint, anchored paging, gap handling, and
 /// the client-side filtering a server without the narrowings forces.
@@ -30,12 +31,34 @@ public final class TimelineModel {
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
+    @ObservationIgnored private var statusUpdates: AnyCancellable?
 
     private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "timeline")
 
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key
         self.session = session
+        statusUpdates = NotificationCenter.default.publisher(for: TimelineStatusUpdate.notification)
+            .sink { [weak self] notification in
+                guard let update = notification.object as? TimelineStatusUpdate else { return }
+                Task { @MainActor [weak self] in
+                    guard let self, update.accountID == self.session.id else { return }
+                    self.rows = Self.replacing(update.status, in: self.rows)
+                    self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
+                }
+            }
+    }
+
+    nonisolated static func replacing(_ updated: Status, in rows: [TimelineRow]) -> [TimelineRow] {
+        rows.map { row in
+            guard var status = row.status else { return row }
+            if status.id == updated.id { return .status(updated) }
+            if status.reblog?.value.id == updated.id {
+                status.reblog = Box(updated)
+                return .status(status)
+            }
+            return row
+        }
     }
 
     private var storageKey: String { key.storageKey }
@@ -110,11 +133,12 @@ public final class TimelineModel {
         let plan = Self.refreshPlan(
             hasFetchedBefore: lastRefresh != nil,
             newestRowID: rows.compactMap(\.status).first?.id)
-        let anchor = plan.anchor
         let direction = plan.direction
 
         do {
-            let harvest = try await fetch(anchor: anchor)
+            // Fetch the head as well as new arrivals: since_id responses never
+            // include existing posts whose counts or interaction flags changed.
+            let harvest = try await fetch(anchor: .cold)
             errorMessage = nil
             isOffline = false
             lastRefresh = Date()
@@ -126,6 +150,12 @@ public final class TimelineModel {
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
             let filtered = applyFilters(to: merged)
+
+            // A new-post pill must not hold updated counts on existing rows
+            // hostage alongside the arrivals it is deliberately withholding.
+            for status in harvest.statuses {
+                rows = Self.replacing(status.displayed, in: rows)
+            }
 
             if direction == .cold || rows.isEmpty {
                 rows = filtered
