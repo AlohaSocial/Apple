@@ -20,6 +20,8 @@ public struct PlaceView: View {
     @State private var next: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var retryOlder = false
 
     public init(
         id: String, session: AccountSession,
@@ -46,11 +48,15 @@ public struct PlaceView: View {
                             .font(.footnote)
                             .foregroundStyle(palette.destructive)
                         Button {
-                            Task { await load() }
+                            Task {
+                                if retryOlder { await loadMore() } else { await load() }
+                            }
                         } label: {
                             Text("Retry", comment: "Place retry action")
                                 .font(.footnote.weight(.semibold))
                         }
+                        .buttonStyle(.glass)
+                        .disabled(isLoading)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, AlohaMetrics.space3)
@@ -93,6 +99,9 @@ public struct PlaceView: View {
                             comment: "Place empty detail")
                     }
                     .padding(.top, AlohaMetrics.space6)
+                }
+                if isLoading && !statuses.isEmpty {
+                    ProgressView().frame(maxWidth: .infinity).padding()
                 }
             }
         }
@@ -155,6 +164,17 @@ public struct PlaceView: View {
             )
             .aspectRatio(1, contentMode: .fill)
             .overlay { if isCovered { Rectangle().fill(.ultraThinMaterial) } }
+            .overlay(alignment: .bottomTrailing) {
+                if first?.isVideo == true && !isCovered {
+                    Image(systemName: "play.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(8)
+                        .background(.black.opacity(0.6), in: Circle())
+                        .padding(6)
+                        .accessibilityHidden(true)
+                }
+            }
             .clipped()
         }
         .buttonStyle(.plain)
@@ -162,39 +182,56 @@ public struct PlaceView: View {
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        retryOlder = false
+        defer { if loadID == request { isLoading = false } }
         async let placeTask = session.client.decode(
             Status.StatusPlace.self, from: Endpoint.statusExtras.place(id))
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.placeStatuses(id), limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             statuses = page.value.elements
             next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Posts from this place could not be loaded. Please try again.")
         }
         // The place itself is worth showing even when its posts failed.
-        place = try? await placeTask
+        let loadedPlace = try? await placeTask
+        guard !Task.isCancelled, loadID == request else { return }
+        place = loadedPlace
     }
 
     private func loadMore() async {
         guard let next, !isLoading else { return }
+        let request = loadID
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }
             self.next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
             // The cursor is left where it was, so the next scroll tries again.
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
+            retryOlder = true
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "More posts could not be loaded. Please try again.")
         }
     }
 }
