@@ -153,15 +153,14 @@ public struct StatisticsView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)],
                 alignment: .leading, spacing: AlohaMetrics.space3) {
                 stat(
-                    Int(
-                        statistics.posts["total"] ?? statistics.posts["count"]
-                            ?? Double(statistics.window?.counted ?? 0)),
+                    statistics.posts["total"] ?? statistics.posts["count"]
+                        ?? Double(statistics.window?.counted ?? 0),
                     Text("Posts", comment: "Statistics stat"))
                 stat(
-                    statistics.account?.followers ?? 0,
+                    Double(statistics.account?.followers ?? 0),
                     Text("Followers", comment: "Statistics stat"))
                 stat(
-                    statistics.account?.following ?? 0,
+                    Double(statistics.account?.following ?? 0),
                     Text("Following", comment: "Statistics stat"))
             }
             if let window = statistics.window, window.capped {
@@ -312,7 +311,7 @@ public struct StatisticsView: View {
                     HStack {
                         visibilityTitle(row.key)
                         Spacer()
-                        Text(Int(row.value), format: .number)
+                        Text(verbatim: StatisticsNumbers.count(row.value))
                             .fontWeight(.semibold)
                         Text(
                             (total > 0 ? row.value / total : 0),
@@ -443,9 +442,9 @@ public struct StatisticsView: View {
 
     // MARK: - Pieces
 
-    private func stat(_ value: Int, _ label: Text) -> some View {
+    private func stat(_ value: Double, _ label: Text) -> some View {
         HStack(spacing: 4) {
-            Text(value, format: .number.notation(.compactName))
+            Text(verbatim: StatisticsNumbers.count(value, compact: true))
                 .fontWeight(.semibold)
                 .fontDesign(.rounded)
             label.foregroundStyle(palette.secondaryLabel)
@@ -465,7 +464,7 @@ public struct StatisticsView: View {
                 } else if fraction {
                     Text(value, format: .number.precision(.fractionLength(1)))
                 } else {
-                    Text(Int(value), format: .number.notation(.compactName))
+                    Text(verbatim: StatisticsNumbers.count(value, compact: true))
                 }
             }
             .font(.title3.weight(.bold))
