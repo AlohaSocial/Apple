@@ -17,6 +17,8 @@ public struct QuotesView: View {
     @State private var next: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var retryOlder = false
 
     public init(
         statusID: String, session: AccountSession,
@@ -50,6 +52,13 @@ public struct QuotesView: View {
                 }
             }
 
+            if isLoading && !quotes.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+
             if quotes.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No quotes yet", comment: "Empty quotes")
@@ -71,53 +80,70 @@ public struct QuotesView: View {
     }
 
     private func errorRow(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-                .accessibilityHidden(true)
-            Text(message).font(.footnote)
-            Spacer()
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
             Button {
-                Task { await load() }
+                Task {
+                    if retryOlder { await loadMore() } else { await load() }
+                }
             } label: {
                 Text("Retry", comment: "Quotes retry action")
             }
             .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading)
         }
-        .foregroundStyle(palette.destructive)
         .padding(.vertical, AlohaMetrics.space2)
         .listRowBackground(palette.background)
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        retryOlder = false
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.quotes(statusID), limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             quotes = page.value.elements
             next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "Quotes could not be loaded. Please try again.")
         }
     }
 
     private func loadMore() async {
         guard let next, !isLoading else { return }
+        let request = loadID
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             let known = Set(quotes.map(\.id))
             quotes += page.value.elements.filter { !known.contains($0.id) }
             self.next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
             // The cursor is left where it was, so the next scroll tries again.
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
+            retryOlder = true
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "More quotes could not be loaded. Please try again.")
         }
     }
 }
