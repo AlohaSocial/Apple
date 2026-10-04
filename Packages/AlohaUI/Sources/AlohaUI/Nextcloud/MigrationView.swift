@@ -146,7 +146,7 @@ public struct MigrationView: View {
                     }
                     .font(.footnote.weight(.semibold))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
             } else {
                 Button {
@@ -155,7 +155,7 @@ public struct MigrationView: View {
                     Text("Prepare", comment: "Migration export action")
                         .font(.footnote.weight(.semibold))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
             }
         }
@@ -173,11 +173,14 @@ public struct MigrationView: View {
 
     /// Fetched into a temporary file, which is what the share sheet wants.
     private func download(id: String, endpoint: Endpoint, filename: String) async {
-        busy.insert(id)
+        guard busy.insert(id).inserted else { return }
+        errorMessage = nil
         defer { busy.remove(id) }
         do {
             let response = try await session.client.send(endpoint)
-            let folder = FileManager.default.temporaryDirectory.appending(path: "aloha-export")
+            guard !Task.isCancelled else { return }
+            let folder = FileManager.default.temporaryDirectory
+                .appending(path: "aloha-export-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let url = folder.appending(path: filename)
             try response.data.write(to: url, options: .atomic)
@@ -186,6 +189,7 @@ public struct MigrationView: View {
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The export could not be prepared. Please try again.")
         }
     }
 
@@ -288,11 +292,18 @@ public struct MigrationView: View {
     }
 
     private func upload(_ kind: ImportKind, from url: URL) async {
-        busy.insert(kind.id)
+        guard busy.insert(kind.id).inserted else { return }
+        let shouldFetchMedia = fetchMedia
+        errorMessage = nil
         defer { busy.remove(kind.id) }
         let didAccess = url.startAccessingSecurityScopedResource()
         defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else {
+        // Archives can be large. Do not block the UI while reading the file.
+        let result = await Task.detached(priority: .userInitiated) {
+            try Data(contentsOf: url)
+        }.result
+        guard !Task.isCancelled else { return }
+        guard case .success(let data) = result else {
             errorMessage = String(
                 localized: "That file couldn't be read.", comment: "Migration import failed")
             return
@@ -303,7 +314,7 @@ public struct MigrationView: View {
         case .archive: endpoint = .migration.importArchive(data, filename: filename)
         case .list(let list): endpoint = .migration.importList(list, csv: data, filename: filename)
         case .posts:
-            endpoint = .migration.importPosts(data, filename: filename, fetchMedia: fetchMedia)
+            endpoint = .migration.importPosts(data, filename: filename, fetchMedia: shouldFetchMedia)
         case .instagram: endpoint = .migration.instagramPeople(data, filename: filename)
         }
         do {
@@ -320,21 +331,26 @@ public struct MigrationView: View {
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The import could not be completed. Please try again.")
         }
     }
 
     private func importVideo() async {
-        busy.insert("video")
+        guard busy.insert("video").inserted else { return }
+        let submittedURL = videoURL
+        let shouldFetchMedia = fetchMedia
+        errorMessage = nil
         defer { busy.remove("video") }
         do {
             reports["video"] = try await session.client.decode(
                 MigrationReport.self,
-                from: Endpoint.migration.importVideo(url: videoURL, fetchMedia: fetchMedia))
-            videoURL = ""
+                from: Endpoint.migration.importVideo(url: submittedURL, fetchMedia: shouldFetchMedia))
+            if videoURL == submittedURL { videoURL = "" }
             errorMessage = nil
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+                ?? String(localized: "The video could not be imported. Please try again.")
         }
     }
 
