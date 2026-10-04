@@ -22,6 +22,7 @@ public struct NotificationsView: View {
     /// yet" before the request that would say otherwise has been sent.
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -78,11 +79,16 @@ public struct NotificationsView: View {
     }
 
     private var visibleGroups: [NotificationGroup] {
-        selectedKinds.isEmpty ? groups : groups.filter { selectedKinds.contains($0.type) }
+        groups.filter { Self.matches($0.type, selected: selectedKinds) }
     }
 
     private var visibleFlat: [MastodonNotification] {
-        selectedKinds.isEmpty ? flat : flat.filter { selectedKinds.contains($0.type) }
+        flat.filter { Self.matches($0.type, selected: selectedKinds) }
+    }
+
+    nonisolated static func matches(_ kind: NotificationKind, selected: Set<NotificationKind>) -> Bool {
+        selected.isEmpty || selected.contains(kind)
+            || (kind == .followRequest && selected.contains(.follow))
     }
 
     private var filterChips: some View {
@@ -191,8 +197,8 @@ public struct NotificationsView: View {
                     }
 
                     Text(summary(for: group, sample: sample))
-                        .font(.footnote)
-                        .lineLimit(2)
+                        .font(.subheadline)
+                        .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -207,6 +213,9 @@ public struct NotificationsView: View {
                     .font(.caption)
                     .foregroundStyle(palette.secondaryLabel)
                     .lineLimit(2)
+                }
+                if let date = group.latestPageNotificationAt {
+                    activityDate(date)
                 }
             }
             .padding(.vertical, AlohaMetrics.space2)
@@ -234,8 +243,8 @@ public struct NotificationsView: View {
                     HStack(spacing: AlohaMetrics.space2) {
                         AvatarView(account: notification.account, size: 26)
                         Text(summary(for: notification))
-                            .font(.footnote)
-                            .lineLimit(2)
+                            .font(.subheadline)
+                            .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -245,6 +254,7 @@ public struct NotificationsView: View {
                             .foregroundStyle(palette.secondaryLabel)
                             .lineLimit(2)
                     }
+                    activityDate(notification.createdAt)
                 }
                 Spacer(minLength: 0)
             }
@@ -266,16 +276,26 @@ public struct NotificationsView: View {
         .listRowSeparator(.hidden)
     }
 
+    private func activityDate(_ date: Date) -> some View {
+        Text(date, style: .relative)
+            .font(.caption)
+            .foregroundStyle(palette.tertiaryLabel)
+            .accessibilityLabel(Text(date, format: .dateTime.day().month().year().hour().minute()))
+    }
+
     // MARK: - Loading
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
 
         do {
             if session.capabilities.groupedNotifications {
                 let results = try await session.client.decode(
                     GroupedNotificationsResults.self, from: Endpoint.notifications.grouped())
+                guard !Task.isCancelled, loadID == requestID else { return }
                 groups = results.notificationGroups
                 accounts = Dictionary(
                     results.accounts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -284,12 +304,14 @@ public struct NotificationsView: View {
             } else {
                 let page = try await session.client.decode(
                     LossyArray<MastodonNotification>.self, from: Endpoint.notifications.flat())
+                guard !Task.isCancelled, loadID == requestID else { return }
                 flat = page.elements
             }
             errorMessage = nil
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
+            guard loadID == requestID else { return }
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
