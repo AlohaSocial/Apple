@@ -14,6 +14,7 @@ struct StoryViewersSheet: View {
     let session: AccountSession
 
     @State private var viewers: [Account] = []
+    @State private var loadID = UUID()
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -84,18 +85,22 @@ struct StoryViewersSheet: View {
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let response = try await session.client.decode(
                 LossyArray<Account>.self, from: Endpoint.storyExtras.viewers(story.id)
             ).elements
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == request else { return }
             viewers = response
             errorMessage = nil
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Story viewers could not be loaded. Please try again.")
         }
     }
@@ -110,6 +115,7 @@ struct StoryReactionsSheet: View {
     let session: AccountSession
 
     @State private var reactions: [StoryReaction] = []
+    @State private var loadID = UUID()
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -193,18 +199,22 @@ struct StoryReactionsSheet: View {
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let response = try await session.client.decode(
                 StoryReactionList.self, from: Endpoint.storyExtras.reactions(story.id)
             ).reactions
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == request else { return }
             reactions = response
             errorMessage = nil
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
             errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Story reactions could not be loaded. Please try again.")
         }
     }
