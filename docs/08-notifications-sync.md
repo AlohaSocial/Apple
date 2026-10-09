@@ -155,8 +155,31 @@ When `capabilities.webPushVAPIDKey != nil`:
   too, so a phone that is behind cannot un-read what an iPad has read.
 - The marker is what drives the "N new posts" pill, the unread dot in the
   sidebar, and the badge.
+- **Home timeline "You're caught up" divider** — on launch the home marker
+  (`home.last_read_id`) is read from the local store. If that post is in the
+  current timeline, a divider is inserted below it with the text "You're caught
+  up". When the reader scrolls past the divider (the first post below it
+  appears), the marker advances to that post locally and is synced to the
+  server. The notifications timeline has an identical divider driven by the
+  `notifications` marker (flat list only for now).
 
-## 8. Sync correctness rules
+## 8. Notification digests
+
+- **Per-account delivery mode**: "As they arrive" (immediate, default) or
+  "In a digest" at 1–4 configured hours (local time, minutes always zero).
+- **Digest times** are managed with add/remove steppers; up to 4 times.
+- **Quiet hours** (existing `quietHoursStart`/`End` fields, now exposed in
+  Settings) win over digest times: a digest time that falls within quiet hours
+  is skipped, and the badge updates at the next digest time.
+- **Direct messages and mentions from followed accounts** always break through
+  immediately, even in digest mode.
+- **LocalNotifier** schedules notifications at the next digest time using
+  `UNCalendarNotificationTrigger`; quiet hours are skipped (the next digest
+  time outside quiet hours is used). If all digest times fall in quiet hours,
+  the notification is delivered immediately.
+- The in-app Notifications list is unaffected — it stays real-time.
+
+## 9. Sync correctness rules
 
 1. **Never insert a status into a timeline without an anchor.** Every fetch is
    either `min_id` from the newest cached entry, `max_id` from the oldest, or a
