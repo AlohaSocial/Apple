@@ -107,6 +107,7 @@ public struct TimelineView: View {
                         filterWarning: model.filterWarning(for: status),
                         canReact: session.capabilities.emojiReactions,
                         isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))

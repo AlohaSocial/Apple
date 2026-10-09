@@ -126,9 +126,14 @@ public struct AnnualReportView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)],
                 alignment: .leading, spacing: AlohaMetrics.space3) {
                 figure(report.data.totalStatuses, Text("Posts", comment: "Annual report figure"))
-                figure(
-                    report.data.totalFollowers,
-                    Text("New followers", comment: "Annual report figure"))
+                // A year in review is one's own activity; the follower
+                // figures are not, and a reader who turned "Show numbers"
+                // off does not want to be compared (docs/05 §4).
+                if session.settings.showPopularityCounts {
+                    figure(
+                        report.data.totalFollowers,
+                        Text("New followers", comment: "Annual report figure"))
+                }
                 if let busiest = report.data.busiestMonth {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(Self.monthName(busiest.month))
@@ -174,7 +179,9 @@ public struct AnnualReportView: View {
                 .chartYAxis { AxisMarks(position: .leading) }
                 .accessibilityLabel(Text("Month by month", comment: "Annual report section"))
 
-                if months.contains(where: { $0.followers > 0 }) {
+                if session.settings.showPopularityCounts,
+                    months.contains(where: { $0.followers > 0 })
+                {
                     Text("Who arrived", comment: "Annual report section").font(AlohaType.section)
                     Chart {
                         ForEach(months) { month in

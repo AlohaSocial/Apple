@@ -38,6 +38,7 @@ public struct ArchivedPostsView: View {
                     policy: session.settings.sensitiveMediaPolicy,
                     localHost: session.snapshot.instanceHost,
                     isOwn: true,
+                    showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))

@@ -196,7 +196,10 @@ public struct NotificationsView: View {
                         }
                     }
 
-                    Text(summary(for: group, sample: sample))
+                    Text(summary(
+                        for: group, sample: sample,
+                        showsCounts: session.settings.showPopularityCounts
+                    ))
                         .font(.subheadline)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -341,7 +344,9 @@ public struct NotificationsView: View {
         }
     }
 
-    private func summary(for group: NotificationGroup, sample: [Account]) -> String {
+    private func summary(for group: NotificationGroup, sample: [Account], showsCounts: Bool = true)
+        -> String
+    {
         let name =
             sample.first?.bestDisplayName
             ?? String(
@@ -349,15 +354,19 @@ public struct NotificationsView: View {
         let others = max(0, group.notificationsCount - 1)
 
         let who: String
-        switch others {
-        case 0: who = name
-        case 1:
+        switch (others, showsCounts) {
+        case (0, _): who = name
+        case (1, true):
             who = String(
                 localized: "\(name) and 1 other", comment: "Grouped notification participants")
-        default:
+        case (_, true):
             who = String(
                 localized: "\(name) and \(others) others",
                 comment: "Grouped notification participants")
+        case (_, false):
+            // Names stay, the list still opens; only the crowd's size goes.
+            who = String(
+                localized: "\(name) and others", comment: "Grouped notification participants")
         }
 
         switch group.type {

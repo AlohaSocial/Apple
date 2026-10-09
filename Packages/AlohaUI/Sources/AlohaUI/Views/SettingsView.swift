@@ -338,11 +338,11 @@ public struct SettingsView: View {
                     } label: {
                         Text("Version", comment: "Settings item")
                     }
-                    Link(destination: URL(string: "https://github.com/nextcloud/AlohaSocial")!) {
+                    Link(destination: URL(string: "https://github.com/AlohaSocial/Apple")!) {
                         Text("Source code", comment: "Settings item")
                     }
                     Link(
-                        destination: URL(string: "https://github.com/nextcloud/AlohaSocial/issues")!
+                        destination: URL(string: "https://github.com/AlohaSocial/Apple/issues")!
                     ) {
                         Text("Contact the developer", comment: "Settings item")
                     }
@@ -566,6 +566,28 @@ public struct SettingsView: View {
                     })
             ) {
                 Text("Autoplay video", comment: "Settings item")
+            }
+
+            // Comparing oneself with others is the most consistent harm
+            // social media does, and the numbers feed it directly. They are
+            // on by default, because a count is sometimes just information —
+            // this is an option, not a default with a debate attached.
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.showPopularityCounts },
+                    set: { value in
+                        Task { await session.updateSettings { $0.showPopularityCounts = value } }
+                    })
+            ) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Show numbers", comment: "Settings item")
+                    Text(
+                        "Reply, boost and favourite counts, follower and post counts, and view counts.",
+                        comment: "Settings explanation"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
             }
 
             Toggle(

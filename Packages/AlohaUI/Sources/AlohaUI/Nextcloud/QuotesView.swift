@@ -42,6 +42,7 @@ public struct QuotesView: View {
                     localHost: session.snapshot.instanceHost,
                     canReact: session.capabilities.emojiReactions,
                     isOwn: quote.displayed.account.id == session.snapshot.serverAccountID,
+                    showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))

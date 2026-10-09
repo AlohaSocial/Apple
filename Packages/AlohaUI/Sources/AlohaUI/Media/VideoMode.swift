@@ -62,6 +62,7 @@ public struct VideoModeView: View {
                         localHost: session.snapshot.instanceHost,
                         progress: watched[status.displayed.id],
                         isEdgeToEdge: isCompact,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
                     .onAppear {
@@ -229,11 +230,13 @@ public struct VideoCard: View {
     private let localHost: String?
     private let progress: Double?
     private let isEdgeToEdge: Bool
+    private let showsCounts: Bool
     private let onAction: (StatusRowAction) -> Void
 
     public init(
         status: Status, policy: SensitiveMediaPolicy, localHost: String?,
         progress: Double?, isEdgeToEdge: Bool = false,
+        showsCounts: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -241,6 +244,7 @@ public struct VideoCard: View {
         self.localHost = localHost
         self.progress = progress
         self.isEdgeToEdge = isEdgeToEdge
+        self.showsCounts = showsCounts
         self.onAction = onAction
     }
 
@@ -349,7 +353,7 @@ public struct VideoCard: View {
     private var byline: Text {
         let name = Text(target.account.bestDisplayName)
         let age = Text(PostAge.short(target.createdAt))
-        if target.favouritesCount > 0 {
+        if showsCounts, target.favouritesCount > 0 {
             let count = Text(
                 "^[\(target.favouritesCount) favourite](inflect: true)",
                 comment: "Video byline count")

@@ -397,18 +397,19 @@ public struct ShortsView: View {
             railButton(
                 symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
                 tint: displayed.favourited ? palette.favourite : .white,
-                count: displayed.favouritesCount,
+                count: session.settings.showPopularityCounts ? displayed.favouritesCount : nil,
                 label: Text("Favourite", comment: "Shorts action")
             ) { onAction(.favourite(status)) }
 
             railButton(
-                symbol: AlohaSymbol.reply, tint: .white, count: displayed.repliesCount,
+                symbol: AlohaSymbol.reply, tint: .white,
+                count: session.settings.showPopularityCounts ? displayed.repliesCount : nil,
                 label: Text("Reply", comment: "Shorts action")
             ) { onAction(.open(status)) }
 
             railButton(
                 symbol: AlohaSymbol.boost, tint: displayed.reblogged ? palette.boost : .white,
-                count: displayed.reblogsCount,
+                count: session.settings.showPopularityCounts ? displayed.reblogsCount : nil,
                 label: Text("Boost", comment: "Shorts action")
             ) { onAction(.boost(status)) }
 

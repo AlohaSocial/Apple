@@ -80,6 +80,7 @@ public struct ThreadView: View {
             // every row was noise.
             showsContextLine: isFocused,
             canReact: session.capabilities.emojiReactions,
+            showsCounts: session.settings.showPopularityCounts,
             onAction: onAction
         )
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))

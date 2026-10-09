@@ -401,25 +401,30 @@ public struct ProfileView: View {
     }
 
     private func stats(_ account: Account) -> some View {
-        HStack(spacing: AlohaMetrics.space4) {
-            stat(account.statusesCount, Text("Posts", comment: "Profile stat"))
+        // The reader may prefer not to see the crowd's size; the lists stay
+        // navigable either way (docs/05 §4).
+        let showsCounts = session.settings.showPopularityCounts
+        return HStack(spacing: AlohaMetrics.space4) {
+            stat(showsCounts ? account.statusesCount : nil, Text("Posts", comment: "Profile stat"))
             NavigationLink(value: Route.following(accountID: accountID)) {
-                stat(account.followingCount, Text("Following", comment: "Profile stat"))
+                stat(showsCounts ? account.followingCount : nil, Text("Following", comment: "Profile stat"))
             }
             .buttonStyle(.plain)
             NavigationLink(value: Route.followers(accountID: accountID)) {
-                stat(account.followersCount, Text("Followers", comment: "Profile stat"))
+                stat(showsCounts ? account.followersCount : nil, Text("Followers", comment: "Profile stat"))
             }
             .buttonStyle(.plain)
         }
         .font(.footnote)
     }
 
-    private func stat(_ value: Int, _ label: Text) -> some View {
+    private func stat(_ value: Int?, _ label: Text) -> some View {
         HStack(spacing: 4) {
-            Text(value, format: .number.notation(.compactName))
-                .fontWeight(.semibold)
-                .fontDesign(.rounded)
+            if let value {
+                Text(value, format: .number.notation(.compactName))
+                    .fontWeight(.semibold)
+                    .fontDesign(.rounded)
+            }
             label.foregroundStyle(palette.secondaryLabel)
         }
         .frame(minHeight: 32)
@@ -975,6 +980,7 @@ struct ProfileStatusList: View {
                     filterWarning: model.filterWarning(for: status),
                     canReact: session.capabilities.emojiReactions,
                     isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
+                    showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
                 .padding(.horizontal, AlohaMetrics.space4)

@@ -86,6 +86,7 @@ public struct SearchView: View {
                                 policy: session.settings.sensitiveMediaPolicy,
                                 localHost: session.snapshot.instanceHost,
                                 showActions: false,
+                                showsCounts: session.settings.showPopularityCounts,
                                 onAction: onAction
                             )
                             .listRowBackground(palette.background)

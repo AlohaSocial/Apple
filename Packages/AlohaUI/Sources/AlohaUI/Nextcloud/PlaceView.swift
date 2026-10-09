@@ -80,6 +80,7 @@ public struct PlaceView: View {
                             policy: session.settings.sensitiveMediaPolicy,
                             localHost: session.snapshot.instanceHost,
                             canReact: session.capabilities.emojiReactions,
+                            showsCounts: session.settings.showPopularityCounts,
                             onAction: onAction
                         )
                         .padding(.horizontal, AlohaMetrics.space4)

@@ -24,6 +24,12 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     public var showReplies: Bool
     public var restoreTimelinePosition: Bool
     public var showNewPostsPill: Bool
+    /// Show the popularity numbers on posts, profiles and media: reply,
+    /// boost and favourite counts, follower and post counts, view and
+    /// seen counts, and the "and N others" tail of a grouped notification.
+    /// On by default, because a number is sometimes information — but
+    /// comparing oneself is the most consistent harm social media does.
+    public var showPopularityCounts: Bool
 
     // Modes
     public var enabledModes: [FeedMode]
@@ -63,6 +69,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         showReplies: Bool = true,
         restoreTimelinePosition: Bool = true,
         showNewPostsPill: Bool = true,
+        showPopularityCounts: Bool = true,
         enabledModes: [FeedMode] = FeedMode.defaultEnabled,
         localNotificationKinds: Set<String> = Set(
             [
@@ -87,6 +94,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         self.showReplies = showReplies
         self.restoreTimelinePosition = restoreTimelinePosition
         self.showNewPostsPill = showNewPostsPill
+        self.showPopularityCounts = showPopularityCounts
         self.enabledModes = enabledModes
         self.localNotificationKinds = localNotificationKinds
         self.pollFrequency = pollFrequency

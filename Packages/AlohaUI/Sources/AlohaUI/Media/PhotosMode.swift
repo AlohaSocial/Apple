@@ -97,6 +97,7 @@ public struct PhotosModeView: View {
                         status: status,
                         policy: session.settings.sensitiveMediaPolicy,
                         localHost: session.snapshot.instanceHost,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
                     .onAppear {
@@ -305,6 +306,7 @@ public struct PhotoPostCard: View {
     private let status: Status
     private let policy: SensitiveMediaPolicy
     private let localHost: String?
+    private let showsCounts: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var page = 0
@@ -314,11 +316,13 @@ public struct PhotoPostCard: View {
 
     public init(
         status: Status, policy: SensitiveMediaPolicy, localHost: String?,
+        showsCounts: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
         self.policy = policy
         self.localHost = localHost
+        self.showsCounts = showsCounts
         self.onAction = onAction
     }
 
@@ -585,7 +589,7 @@ public struct PhotoPostCard: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-            if displayed.favouritesCount > 0 {
+            if showsCounts, displayed.favouritesCount > 0 {
                 Text(
                     "^[\(displayed.favouritesCount) favourite](inflect: true)",
                     comment: "Photo post like count"
@@ -621,7 +625,9 @@ public struct PhotoPostCard: View {
                     onAction(.open(status))
                 } label: {
                     Text(
-                        "View all ^[\(displayed.repliesCount) reply](inflect: true)",
+                        showsCounts
+                            ? "View all ^[\(displayed.repliesCount) reply](inflect: true)"
+                            : "View all replies",
                         comment: "Photo post reply count link"
                     )
                     .font(.subheadline)
@@ -951,7 +957,7 @@ public struct StoryPlayer: View {
                 listSheet = .viewers(story)
             } label: {
                 Label {
-                    if let views = story.viewCount {
+                    if let views = story.viewCount, session.settings.showPopularityCounts {
                         Text("Seen by \(views)", comment: "Story viewers button")
                     } else {
                         Text("Seen by", comment: "Story viewers button")

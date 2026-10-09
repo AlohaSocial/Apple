@@ -288,11 +288,14 @@ public struct VideoWatchView: View {
     /// Counts and the date, as `Text` so the plural markup is resolved.
     private func meta(_ target: Status) -> Text {
         let date = Text(target.createdAt.formatted(date: .abbreviated, time: .omitted))
+        // A reader who turned "Show numbers" off sees the date, not the
+        // crowd's size (docs/05 §4).
+        let showsCounts = session.settings.showPopularityCounts
         let favourites = Text(
             "^[\(target.favouritesCount) favourite](inflect: true)", comment: "Watch page count")
         let boosts = Text(
             "^[\(target.reblogsCount) boost](inflect: true)", comment: "Watch page count")
-        switch (target.favouritesCount > 0, target.reblogsCount > 0) {
+        switch (showsCounts && target.favouritesCount > 0, showsCounts && target.reblogsCount > 0) {
         case (true, true):
             return Text("\(favourites) · \(boosts) · \(date)", comment: "Watch page meta line")
         case (true, false):

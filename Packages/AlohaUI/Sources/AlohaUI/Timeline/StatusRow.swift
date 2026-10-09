@@ -19,6 +19,7 @@ public struct StatusRow: View {
     private let showsContextLine: Bool
     private let canReact: Bool
     private let isOwn: Bool
+    private let showsCounts: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var isSpoilerRevealed = false
@@ -35,6 +36,10 @@ public struct StatusRow: View {
         showsContextLine: Bool = true,
         canReact: Bool = false,
         isOwn: Bool = false,
+        /// Whether popularity counts (reply, boost, favourite) are shown.
+        /// A reader who turned "Show numbers" off sees the actions, without
+        /// the crowd's size next to them.
+        showsCounts: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -45,6 +50,7 @@ public struct StatusRow: View {
         self.showsContextLine = showsContextLine
         self.canReact = canReact
         self.isOwn = isOwn
+        self.showsCounts = showsCounts
         self.onAction = onAction
     }
 
@@ -337,20 +343,20 @@ public struct StatusRow: View {
     private var actionRow: some View {
         HStack(spacing: 0) {
             StatusActionButton(
-                symbol: AlohaSymbol.reply, count: displayed.repliesCount,
+                symbol: AlohaSymbol.reply, count: showsCounts ? displayed.repliesCount : nil,
                 tint: palette.secondaryLabel, isOn: false, style: .plain,
                 label: Text("Reply", comment: "Status action")
             ) { onAction(.reply(status)) }
 
             StatusActionButton(
-                symbol: AlohaSymbol.boost, count: displayed.reblogsCount,
+                symbol: AlohaSymbol.boost, count: showsCounts ? displayed.reblogsCount : nil,
                 tint: palette.boost, isOn: displayed.reblogged, style: .spin,
                 label: Text("Boost", comment: "Status action")
             ) { onAction(.boost(status)) }
 
             StatusActionButton(
                 symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
-                count: displayed.favouritesCount, tint: palette.favourite,
+                count: showsCounts ? displayed.favouritesCount : nil, tint: palette.favourite,
                 isOn: displayed.favourited, style: .pop,
                 label: Text("Favourite", comment: "Status action")
             ) { onAction(.favourite(status)) }
@@ -371,7 +377,8 @@ public struct StatusRow: View {
             // every federated PeerTube video. A count that says what the wider
             // network thinks is worth showing; a button that cannot work is
             // not (docs/06 §3).
-            if displayed.mediaAttachments.contains(where: { $0.type.isPlayable }),
+            if showsCounts,
+                displayed.mediaAttachments.contains(where: { $0.type.isPlayable }),
                 displayed.dislikesCount > 0
             {
                 StatusMetric(
