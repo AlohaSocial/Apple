@@ -24,6 +24,8 @@ public enum Route: Codable, Hashable, Sendable {
     case safety
     case notificationRequests
     case followRequests
+    /// The notification policy screen (when the server supports it).
+    case notificationPolicy
     /// One direct-message thread. Carries the conversation because Mastodon
     /// has no endpoint to fetch one by id.
     case conversation(Conversation)

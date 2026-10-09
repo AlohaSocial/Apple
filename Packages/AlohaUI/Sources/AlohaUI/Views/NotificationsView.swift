@@ -23,6 +23,9 @@ public struct NotificationsView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var loadID = UUID()
+    /// Notification policy (when the server supports it) — carries the count
+    /// of filtered requests so we can show it at the top.
+    @State private var notificationPolicy: NotificationPolicy?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -33,6 +36,33 @@ public struct NotificationsView: View {
         List {
             if let errorMessage {
                 errorStrip(errorMessage)
+            }
+
+            // The notification policy header: a link to the policy screen and,
+            // when there are filtered requests, their count.
+            if session.capabilities.notificationPolicy {
+                Section {
+                    NavigationLink(value: Route.notificationPolicy) {
+                        Label {
+                            Text("Notification policy", comment: "Notifications header")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.shield)
+                        }
+                    }
+                    if let summary = notificationPolicy?.summary,
+                        summary.pendingRequestsCount > 0 {
+                        NavigationLink(value: Route.notificationRequests) {
+                            HStack {
+                                Image(systemName: AlohaSymbol.filter)
+                                Text("Filtered notifications")
+                                Spacer()
+                                Text("\(summary.pendingRequestsCount)")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(palette.accent)
+                            }
+                        }
+                    }
+                }
             }
 
             if session.capabilities.groupedNotifications {
@@ -170,23 +200,25 @@ public struct NotificationsView: View {
 
     /// A group renders as one row: "Alice, Bob and 34 others favourited your
     /// post", with a stacked avatar row.
-    private func groupRow(_ group: NotificationGroup) -> some View {
-        let sample = group.sampleAccountIDs.compactMap { accounts[$0] }
-        let status = group.statusID.flatMap { statuses[$0] }
+private func groupRow(_ group: NotificationGroup) -> some View {
+            let sample = group.sampleAccountIDs.compactMap { accounts[$0] }
+            let status = group.statusID.flatMap { statuses[$0] }
+            let canMuteConversation = status != nil &&
+                (group.type == .mention || group.type == .reply)
 
-        return Button {
-            if let status {
-                onAction(.open(status))
-            } else if let account = sample.first {
-                onAction(.openProfile(account))
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
-                HStack(spacing: AlohaMetrics.space2) {
-                    Image(systemName: symbol(for: group.type))
-                        .foregroundStyle(tint(for: group.type))
-                        .font(.footnote)
-                        .accessibilityHidden(true)
+            return Button {
+                if let status {
+                    onAction(.open(status))
+                } else if let account = sample.first {
+                    onAction(.openProfile(account))
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                    HStack(spacing: AlohaMetrics.space2) {
+                        Image(systemName: symbol(for: group.type))
+                            .foregroundStyle(tint(for: group.type))
+                            .font(.footnote)
+                            .accessibilityHidden(true)
 
                     HStack(spacing: -8) {
                         ForEach(sample.prefix(4), id: \.id) { account in
@@ -223,6 +255,19 @@ public struct NotificationsView: View {
             }
             .padding(.vertical, AlohaMetrics.space2)
             .contentShape(Rectangle())
+            .contextMenu {
+                if canMuteConversation, let status {
+                    Button {
+                        onAction(.muteConversation(status))
+                    } label: {
+                        Label(
+                            status.displayed.muted
+                                ? "Unmute conversation"
+                                : "Mute conversation",
+                            systemImage: AlohaSymbol.mute)
+                    }
+                }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -263,6 +308,21 @@ public struct NotificationsView: View {
             }
             .padding(.vertical, AlohaMetrics.space2)
             .contentShape(Rectangle())
+            .contextMenu {
+                let canMute = notification.status != nil &&
+                    (notification.type == .mention || notification.type == .reply)
+                if canMute, let status = notification.status {
+                    Button {
+                        onAction(.muteConversation(status))
+                    } label: {
+                        Label(
+                            status.displayed.muted
+                                ? "Unmute conversation"
+                                : "Mute conversation",
+                            systemImage: AlohaSymbol.mute)
+                    }
+                }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -309,6 +369,16 @@ public struct NotificationsView: View {
                     LossyArray<MastodonNotification>.self, from: Endpoint.notifications.flat())
                 guard !Task.isCancelled, loadID == requestID else { return }
                 flat = page.elements
+            }
+            // Fetch the notification policy when the server supports it; its
+            // summary carries the count of filtered requests we display at
+            // the top of the list.
+            if session.capabilities.notificationPolicy {
+                let useV2 = session.capabilities.notificationPolicy
+                let policy = try await session.client.decode(
+                    NotificationPolicy.self, from: Endpoint.notifications.policy(v2: useV2))
+                guard !Task.isCancelled, loadID == requestID else { return }
+                notificationPolicy = policy
             }
             errorMessage = nil
         } catch {

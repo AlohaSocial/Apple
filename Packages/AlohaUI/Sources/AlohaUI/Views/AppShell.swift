@@ -450,6 +450,8 @@ public struct AppShell: View {
             DraftsView(session: session)
         case .notificationRequests:
             NotificationRequestsView(session: session)
+        case .notificationPolicy:
+            NotificationPolicyView(session: session)
         case .followRequests:
             FollowRequestsView(session: session) { handle($0, session: session) }
         case .handle(let acct):

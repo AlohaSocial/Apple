@@ -247,11 +247,22 @@ public struct SettingsView: View {
                             Image(systemName: AlohaSymbol.block)
                         }
                     }
-                    NavigationLink(value: Route.notificationRequests) {
+NavigationLink(value: Route.notificationRequests) {
                         Label {
                             Text("Filtered notifications", comment: "Settings item")
                         } icon: {
-                            Image(systemName: AlohaSymbol.notifications)
+                            Image(systemName: AlohaSymbol.filter)
+                        }
+                    }
+                    // The notification policy screen is only shown when the server
+                    // supports it (Mastodon 4.3+ / Nextcloud Social with v2).
+                    if session.capabilities.notificationPolicy {
+                        NavigationLink(value: Route.notificationPolicy) {
+                            Label {
+                                Text("Notification policy", comment: "Settings item")
+                            } icon: {
+                                Image(systemName: AlohaSymbol.shield)
+                            }
                         }
                     }
                     NavigationLink(value: Route.drafts) {

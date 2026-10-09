@@ -32,14 +32,23 @@ public struct LocalNotifier: Sendable {
         let boost = UNNotificationAction(
             identifier: "boost",
             title: String(localized: "Boost", comment: "Notification action"), options: [])
+        // "Mute conversation" on mention/reply notifications (Issue #3).
+        let muteConversation = UNNotificationAction(
+            identifier: "muteConversation",
+            title: String(localized: "Mute conversation", comment: "Notification action"),
+            options: [.destructive])
 
         let mention = UNNotificationCategory(
-            identifier: "mention", actions: [reply, favourite, boost],
+            identifier: "mention", actions: [reply, favourite, boost, muteConversation],
+            intentIdentifiers: [], options: [])
+        // Replies use their own category so the mute action appears there too.
+        let replyCategory = UNNotificationCategory(
+            identifier: "reply", actions: [reply, favourite, boost, muteConversation],
             intentIdentifiers: [], options: [])
         let generic = UNNotificationCategory(
             identifier: "generic", actions: [], intentIdentifiers: [], options: [])
 
-        center.setNotificationCategories([mention, generic])
+        center.setNotificationCategories([mention, replyCategory, generic])
     }
 
     /// Returns the ids that were actually announced, so the caller can mark
@@ -75,7 +84,11 @@ public struct LocalNotifier: Sendable {
             content.title = title(for: notification, payload: payload)
             content.body = payload?.body ?? ""
             if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
-            content.categoryIdentifier = notification.kind == .mention ? "mention" : "generic"
+            content.categoryIdentifier = switch notification.kind {
+                case .mention: "mention"
+                case .reply: "reply"
+                default: "generic"
+            }
             // A mention or a DM is worth interrupting for; a favourite is not.
             content.interruptionLevel = notification.kind == .mention ? .active : .passive
             content.threadIdentifier = payload?.statusID ?? notification.serverID

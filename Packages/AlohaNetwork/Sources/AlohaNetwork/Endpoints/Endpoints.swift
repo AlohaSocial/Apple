@@ -413,6 +413,27 @@ extension Endpoint {
         public static func policy(v2: Bool) -> Endpoint {
             Endpoint(path: v2 ? "api/v2/notifications/policy" : "api/v1/notifications/policy")
         }
+
+        /// Updates the policy with the five `for_*` decision keys. The server
+        /// expects a PATCH with JSON; we translate unknown decisions back to
+        /// the default (`accept`) so the server never sees "__unknown".
+        public static func updatePolicy(v2: Bool, policy: NotificationPolicy) -> Endpoint {
+            func decision(_ d: NotificationPolicy.Decision) -> String {
+                d.isUnknown ? NotificationPolicy.Decision.accept.rawValue : d.rawValue
+            }
+            let payload: [String: String] = [
+                "for_not_following": decision(policy.forNotFollowing),
+                "for_not_followers": decision(policy.forNotFollowers),
+                "for_new_accounts": decision(policy.forNewAccounts),
+                "for_private_mentions": decision(policy.forPrivateMentions),
+                "for_limited_accounts": decision(policy.forLimitedAccounts),
+            ]
+            let data = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data("{}".utf8)
+            return Endpoint(
+                method: .patch,
+                path: v2 ? "api/v2/notifications/policy" : "api/v1/notifications/policy",
+                body: .json(data))
+        }
         public static var requests: Endpoint {
             Endpoint(
                 path: "api/v1/notifications/requests",
