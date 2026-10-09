@@ -194,6 +194,9 @@ public struct SettingsView: View {
                 if shows("Media", "media autoplay video sensitive blur mute loop data") {
                     mediaSection(session)
                 }
+                if shows("Notifications", "notifications push digest quiet hours delivery sounds") {
+                    notificationsSection(session)
+                }
                 if shows("Posting", "posting compose composer visibility language alt draft") {
                     composerSection(session)
                 }
@@ -631,6 +634,138 @@ NavigationLink(value: Route.notificationRequests) {
         } footer: {
             // The cost is stated in one line rather than hidden.
             Text("Videos play automatically, including on cellular.", comment: "Autoplay footnote")
+        }
+    }
+
+    // The cost is stated in one line rather than hidden.
+            Text("Videos play automatically, including on cellular.", comment: "Autoplay footnote")
+        }
+    }
+
+    private func notificationsSection(_ session: AccountSession) -> some View {
+        Section {
+            Picker(
+                selection: Binding(
+                    get: { session.settings.notificationDeliveryMode },
+                    set: { value in
+                        Task { await session.updateSettings { $0.notificationDeliveryMode = value } }
+                    })
+            ) {
+                Text("As they arrive", comment: "Notification delivery mode")
+                    .tag(AccountSettings.NotificationDeliveryMode.immediate)
+                Text("In a digest", comment: "Notification delivery mode")
+                    .tag(AccountSettings.NotificationDeliveryMode.digest)
+            } label: {
+                Text("Delivery", comment: "Notification delivery mode")
+            }
+
+            if session.settings.notificationDeliveryMode == .digest {
+                Section {
+                    ForEach(session.settings.digestTimes.indices, id: \.self) { idx in
+                        Stepper(
+                            value: Binding(
+                                get: { session.settings.digestTimes[idx] },
+                                set: { value in
+                                    Task {
+                                        await session.updateSettings {
+                                            var times = $0.digestTimes
+                                            times[idx] = max(0, min(23, value))
+                                        }
+                                    }
+                                }),
+                            in: 0...23
+                        ) {
+                            Text("Digest \(idx + 1): \(session.settings.digestTimes[idx]):00")
+                        }
+                    }
+
+                    Button {
+                        Task {
+                            await session.updateSettings { settings in
+                                if settings.digestTimes.count < 4 {
+                                    settings.digestTimes.append(
+                                        (settings.digestTimes.last ?? 8) + 2)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label {
+                            Text("Add digest time", comment: "Settings action")
+                        } icon: {
+                            Image(systemName: "plus")
+                        }
+                    }
+                    .disabled(session.settings.digestTimes.count >= 4)
+
+                    if session.settings.digestTimes.count > 1 {
+                        Button(role: .destructive) {
+                            Task {
+                                await session.updateSettings { settings in
+                                    if settings.digestTimes.count > 1 {
+                                        settings.digestTimes.removeLast()
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label {
+                                Text("Remove last digest time", comment: "Settings action")
+                            } icon: {
+                                Image(systemName: "minus")
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Digest times", comment: "Settings section")
+                } footer: {
+                    Text(
+                        "Notifications are grouped and delivered at these hours (local time). Direct messages and mentions from accounts you follow always come through immediately. Quiet hours override digest times.",
+                        comment: "Digest times explanation")
+                }
+            }
+
+            // Quiet hours (existing fields, now exposed)
+            Section {
+                HStack {
+                    Text("Quiet hours start", comment: "Settings item")
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { session.settings.quietHoursStart ?? 22 },
+                        set: { value in
+                            Task { await session.updateSettings { $0.quietHoursStart = value } }
+                    )) {
+                        ForEach(0..<24) { hour in
+                            Text("\(hour):00").tag(hour)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+                HStack {
+                    Text("Quiet hours end", comment: "Settings item")
+                    Spacer()
+                    Picker("", selection: Binding(
+                        get: { session.settings.quietHoursEnd ?? 7 },
+                        set: { value in
+                            Task { await session.updateSettings { $0.quietHoursEnd = value } }
+                    )) {
+                        ForEach(0..<24) { hour in
+                            Text("\(hour):00").tag(hour)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            } header: {
+                Text("Quiet hours", comment: "Settings section")
+            } footer: {
+                Text(
+                    "During quiet hours no notifications are delivered. Digest times that fall within quiet hours are skipped; the badge updates at the next digest time.",
+                    comment: "Quiet hours explanation")
+            }
+        } header: {
+            Text("Notifications", comment: "Settings section")
+        } footer: {
+            Text(
+                "\"As they arrive\" is the default. \"In a digest\" batches notifications at your chosen hours; DMs and mentions from people you follow always break through.",
+                comment: "Notifications section explanation")
         }
     }
 

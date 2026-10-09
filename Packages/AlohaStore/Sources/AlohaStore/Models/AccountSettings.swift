@@ -39,6 +39,18 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     public var pollFrequency: PollFrequency
     public var quietHoursStart: Int?
     public var quietHoursEnd: Int?
+    /// How local notifications are delivered.
+    public enum NotificationDeliveryMode: String, Codable, Sendable, Hashable, CaseIterable {
+        /// Each notification is posted as it arrives (default, today's behaviour).
+        case immediate
+        /// Notifications are batched and delivered at the configured digest times.
+        case digest
+    }
+    public var notificationDeliveryMode: NotificationDeliveryMode
+    /// The times at which a digest is delivered (up to 4). Hours are in the
+    /// user's local time zone; minutes are always zero. Empty array means
+    /// the default single digest at 08:00.
+    public var digestTimes: [Int]
 
     public enum PollFrequency: String, Codable, Sendable, Hashable, CaseIterable {
         case frequent, normal, batterySaver, manual
@@ -54,7 +66,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         }
     }
 
-    public init(
+public init(
         defaultVisibility: Visibility = .public,
         defaultLanguage: String? = nil,
         defaultSensitive: Bool = false,
@@ -73,12 +85,14 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         enabledModes: [FeedMode] = FeedMode.defaultEnabled,
         localNotificationKinds: Set<String> = Set(
             [
-                NotificationKind.mention, .reblog, .favourite, .follow, .followRequest,
-                .poll, .status, .update, .moderationWarning, .severedRelationships,
-            ].map(\.rawValue)),
+            NotificationKind.mention, .reblog, .favourite, .follow, .followRequest,
+            .poll, .status, .update, .moderationWarning, .severedRelationships,
+        ].map(\.rawValue)),
         pollFrequency: PollFrequency = .normal,
         quietHoursStart: Int? = nil,
-        quietHoursEnd: Int? = nil
+        quietHoursEnd: Int? = nil,
+        notificationDeliveryMode: NotificationDeliveryMode = .immediate,
+        digestTimes: [Int] = [8]
     ) {
         self.defaultVisibility = defaultVisibility
         self.defaultLanguage = defaultLanguage
@@ -100,6 +114,8 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         self.pollFrequency = pollFrequency
         self.quietHoursStart = quietHoursStart
         self.quietHoursEnd = quietHoursEnd
+        self.notificationDeliveryMode = notificationDeliveryMode
+        self.digestTimes = digestTimes
     }
 
     /// Adopts what the server says this account's own defaults are. A client

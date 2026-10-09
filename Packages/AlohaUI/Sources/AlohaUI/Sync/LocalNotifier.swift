@@ -64,15 +64,16 @@ public struct LocalNotifier: Sendable {
         let eligible = notifications.filter { enabled.contains($0.kind.rawValue) }
         let authorization = await center.notificationSettings().authorizationStatus
         guard authorization == .authorized || authorization == .provisional else {
-            // Do not retry the same historical rows on every poll or flood the
-            // person if they enable notifications later.
             return eligible.map(\.serverID)
         }
         var announced: [String] = []
 
+        let deliveryMode = session.settings.notificationDeliveryMode
+        let digestTimes = session.settings.digestTimes.isEmpty ? [8] : session.settings.digestTimes
+        let quietStart = session.settings.quietHoursStart
+        let quietEnd = session.settings.quietHoursEnd
+
         for notification in eligible {
-            // During quiet hours the badge still updates; only the alert is
-            // withheld, and the row is marked so it is not re-raised later.
             guard !isQuiet else {
                 announced.append(notification.serverID)
                 continue
@@ -89,7 +90,6 @@ public struct LocalNotifier: Sendable {
                 case .reply: "reply"
                 default: "generic"
             }
-            // A mention or a DM is worth interrupting for; a favourite is not.
             content.interruptionLevel = notification.kind == .mention ? .active : .passive
             content.threadIdentifier = payload?.statusID ?? notification.serverID
             content.userInfo = [
@@ -101,11 +101,25 @@ public struct LocalNotifier: Sendable {
                 content.sound = nil
             }
 
-            // The same request identifier per group, so a group that grows
-            // replaces its notification rather than adding another.
+            // Determine trigger based on delivery mode.
+            let trigger: UNNotificationTrigger?
+            if deliveryMode == .digest {
+                // Mentions and DMs from followed accounts always come through immediately.
+                let isBreaking = notification.kind == .mention ||
+                    (notification.kind == .followRequest && payload?.followsYou == true)
+                if isBreaking {
+                    trigger = nil
+                } else {
+                    trigger = nextDigestTrigger(
+                        times: digestTimes, quietStart: quietStart, quietEnd: quietEnd)
+                }
+            } else {
+                trigger = nil
+            }
+
             let request = UNNotificationRequest(
                 identifier: "\(session.id.uuidString)-\(notification.serverID)",
-                content: content, trigger: nil)
+                content: content, trigger: trigger)
 
             do {
                 try await center.add(request)
@@ -117,6 +131,64 @@ public struct LocalNotifier: Sendable {
             }
         }
         return announced
+    }
+
+    /// Returns the next digest trigger after now, skipping quiet hours.
+    /// If all digest times are in the past today, the first one tomorrow is used.
+    private func nextDigestTrigger(
+        times: [Int], quietStart: Int?, quietEnd: Int?
+    ) -> UNCalendarNotificationTrigger? {
+        let cal = Calendar.current
+        let now = Date()
+        let hour = cal.component(.hour, from: now)
+        let minute = cal.component(.minute, from: now)
+
+        // Find the next digest hour >= current hour (or tomorrow's first).
+        let candidateHours = times.sorted()
+        var nextHour: Int?
+        for h in candidateHours {
+            if h > hour || (h == hour && minute == 0) {
+                nextHour = h
+                break
+            }
+        }
+        if nextHour == nil { nextHour = candidateHours.first }
+
+        guard let nextHour else { return nil }
+
+        // Check quiet hours: if the digest hour falls in quiet hours, skip to next.
+        func inQuietHours(_ h: Int) -> Bool {
+            guard let start = quietStart, let end = quietEnd else { return false }
+            if start <= end {
+                return h >= start && h < end
+            } else { // wraps midnight
+                return h >= start || h < end
+            }
+        }
+
+        var h = nextHour
+        var checked = 0
+        while inQuietHours(h) && checked < times.count {
+            // Skip to next digest time
+            if let idx = times.firstIndex(of: h),
+               idx + 1 < times.count {
+                h = times[idx + 1]
+            } else {
+                h = times.first!
+            }
+            checked += 1
+        }
+        if inQuietHours(h) { return nil } // all digest times are in quiet hours
+
+        // Build date for the target hour (today or tomorrow).
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        if h < hour || (h == hour && minute > 0) {
+            comps.day = (comps.day ?? 1) + 1
+        }
+        comps.hour = h
+        comps.minute = 0
+        guard let date = cal.date(from: comps) else { return nil }
+        return UNCalendarNotificationTrigger(dateMatching: cal.dateComponents([.hour, .minute, .day, .month, .year], from: date), repeats: false)
     }
 
     private func title(
