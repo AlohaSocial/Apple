@@ -6,7 +6,7 @@ watchOS 27 / tvOS 27 and nothing older.
 
 Aloha Social speaks the Mastodon client API, so it works with Mastodon,
 GoToSocial, Akkoma and anything else that serves that protocol. Its primary
-target is [Nextcloud Social](https://github.com/nextcloud/social), and it goes
+target is [Nextcloud Social](https://github.com/AlohaSocial/social), and it goes
 further there: photo, video, short-video, news and story experiences built on
 the extensions that server publishes alongside the Mastodon surface.
 

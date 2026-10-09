@@ -49,5 +49,5 @@ extension URLSessionConfiguration {
 }
 
 public enum AlohaUserAgent {
-    public static let value = "AlohaSocial/1.0 (+https://github.com/nextcloud/AlohaSocial)"
+    public static let value = "AlohaSocial/1.0 (+https://github.com/AlohaSocial/Apple)"
 }

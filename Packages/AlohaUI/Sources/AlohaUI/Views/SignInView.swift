@@ -86,7 +86,7 @@ public struct SignInView: View {
                 Text(
                     "Aloha Social works with Nextcloud Social, Mastodon, and any server that speaks the Mastodon API.",
                     comment: "Sign-in explanation")
-                Link(destination: URL(string: "https://github.com/nextcloud/social")!) {
+                Link(destination: URL(string: "https://github.com/AlohaSocial/social")!) {
                     Text("What is Nextcloud Social?", comment: "Sign-in link")
                 }
             }
