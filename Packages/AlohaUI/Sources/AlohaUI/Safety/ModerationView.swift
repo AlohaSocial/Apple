@@ -278,6 +278,9 @@ public struct ModerationReportView: View {
     @State private var isWorking = false
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// Identifies the newest `load()` so a slow first response cannot
+    /// overwrite a newer one's data or error.
+    @State private var loadID = UUID()
 
     public init(
         reportID: String, session: AccountSession, onAction: @escaping (StatusRowAction) -> Void
@@ -454,14 +457,19 @@ public struct ModerationReportView: View {
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
         do {
             report = try await session.client.decode(
                 AdminReport.self, from: Endpoint.moderation.report(reportID))
+            guard !Task.isCancelled, loadID == requestID else { return }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
+            guard loadID == requestID else { return }
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(

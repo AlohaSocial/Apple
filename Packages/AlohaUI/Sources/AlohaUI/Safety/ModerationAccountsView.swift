@@ -128,6 +128,10 @@ public struct ModerationAccountsView: View {
         loadID = requestID
         isLoading = true
         defer { if loadID == requestID { isLoading = false } }
+        // The previous failure is not the current state: the strip would
+        // otherwise sit next to the spinner of the search that replaced it,
+        // and Retry would re-run whatever query is current.
+        errorMessage = nil
         let requestedOrigin = origin
         let requestedStanding = standing
         let requestedUsername = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -369,6 +373,12 @@ public struct ModerationTrendsView: View {
     /// Which decision failed, so the strip can take that one again rather
     /// than guessing at a reload.
     @State private var failedDecision: (id: String, approve: Bool)?
+    /// Rows with a decision in flight: their controls are disabled and the
+    /// request cannot be doubled by tapping both sides of one row.
+    @State private var decidingIDs: Set<String> = []
+    /// Identifies the newest `load()` so a slow first response cannot
+    /// overwrite a newer one's data or error.
+    @State private var loadID = UUID()
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -493,6 +503,7 @@ public struct ModerationTrendsView: View {
                     .font(AlohaType.micro)
                     .foregroundStyle(palette.secondaryLabel)
             } else {
+                let isDeciding = decidingIDs.contains(id)
                 HStack(spacing: AlohaMetrics.space3) {
                     Button {
                         Task { await decide(id: id, approve: true) }
@@ -501,6 +512,7 @@ public struct ModerationTrendsView: View {
                             .font(.footnote)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isDeciding)
 
                     Button(role: .destructive) {
                         Task { await decide(id: id, approve: false) }
@@ -509,6 +521,7 @@ public struct ModerationTrendsView: View {
                             .font(.footnote)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isDeciding)
                 }
             }
         }
@@ -516,6 +529,12 @@ public struct ModerationTrendsView: View {
     }
 
     private func decide(id: String, approve: Bool) async {
+        // Tapping both sides of one row before the first response lands
+        // would send two decisions and the last response to arrive would
+        // decide the row — with the badge already showing "Decided".
+        guard !decidingIDs.contains(id) else { return }
+        decidingIDs.insert(id)
+        defer { decidingIDs.remove(id) }
         let encoded =
             id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
         let endpoint =
@@ -535,8 +554,10 @@ public struct ModerationTrendsView: View {
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
         decided = []
         // Whatever failed before, this request is the one to answer for now.
         failedDecision = nil
@@ -555,9 +576,12 @@ public struct ModerationTrendsView: View {
                     LossyArray<Card>.self, from: Endpoint.moderation.trendingLinks()
                 ).elements
             }
+            guard !Task.isCancelled, loadID == requestID else { return }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
+            guard loadID == requestID else { return }
             errorMessage = (error as? APIError)?.errorDescription
         }
     }

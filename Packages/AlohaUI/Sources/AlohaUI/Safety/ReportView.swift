@@ -405,6 +405,10 @@ public struct SafetyListsView: View {
     /// Blocks and mutes take no cursor and send no `Link` header, so they are
     /// fetched by `limit` alone in a bounded loop (docs/02 §5).
     private func load() async {
+        // A load that lands mid-action would overwrite the optimistic list
+        // with the server's pre-action snapshot; the action's own outcome is
+        // the newer truth.
+        guard pendingIDs.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -432,16 +436,19 @@ public struct SafetyListsView: View {
         guard !pendingIDs.contains(account.id) else { return }
         pendingIDs.insert(account.id)
         defer { pendingIDs.remove(account.id) }
-        let previous = blocked
+        let index = blocked.firstIndex { $0.id == account.id } ?? blocked.endIndex
         blocked.removeAll { $0.id == account.id }
         do {
             _ = try await session.client.send(
                 Endpoint.accounts.simpleAction(account.id, "unblock"))
             errorMessage = nil
         } catch {
-            // The row comes back rather than staying gone for an action the
-            // server never took.
-            blocked = previous
+            // Only the refused row comes back — never a whole pre-action
+            // snapshot. Restoring that would resurrect rows whose actions
+            // succeeded while this one was still on the wire.
+            if !blocked.contains(where: { $0.id == account.id }) {
+                blocked.insert(account, at: min(index, blocked.endIndex))
+            }
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription
@@ -455,14 +462,16 @@ public struct SafetyListsView: View {
         guard !pendingIDs.contains(account.id) else { return }
         pendingIDs.insert(account.id)
         defer { pendingIDs.remove(account.id) }
-        let previous = muted
+        let index = muted.firstIndex { $0.id == account.id } ?? muted.endIndex
         muted.removeAll { $0.id == account.id }
         do {
             _ = try await session.client.send(
                 Endpoint.accounts.simpleAction(account.id, "unmute"))
             errorMessage = nil
         } catch {
-            muted = previous
+            if !muted.contains(where: { $0.id == account.id }) {
+                muted.insert(account, at: min(index, muted.endIndex))
+            }
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription
@@ -500,13 +509,15 @@ public struct SafetyListsView: View {
         guard !pendingIDs.contains(domain) else { return }
         pendingIDs.insert(domain)
         defer { pendingIDs.remove(domain) }
-        let previous = domains
+        let index = domains.firstIndex(of: domain) ?? domains.endIndex
         domains.removeAll { $0 == domain }
         do {
             _ = try await session.client.send(Endpoint.accounts.unblockDomain(domain))
             errorMessage = nil
         } catch {
-            domains = previous
+            if !domains.contains(domain) {
+                domains.insert(domain, at: min(index, domains.endIndex))
+            }
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription

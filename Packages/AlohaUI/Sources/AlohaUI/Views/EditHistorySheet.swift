@@ -30,10 +30,13 @@ public struct EditHistorySheet: View {
                     errorStrip(errorMessage)
                 }
 
-                // Identity is the server's timestamp, not the position: an
-                // index changes whenever a reload shuffles the array, which
-                // makes SwiftUI think every row is a different row.
-                ForEach(Array(edits.enumerated()), id: \.element.createdAt) { index, edit in
+                // Identity is the offset, which is always unique. The server's
+                // `created_at` is only second-resolution and two rapid edits
+                // can share it; duplicating a `ForEach` id crashes at runtime
+                // ("identifier is not unique"), which is worse than an index
+                // that shifts on reload. History is a static server-ordered
+                // list, so the offset does not actually reshuffle.
+                ForEach(Array(edits.enumerated()), id: \.offset) { index, edit in
                     version(edit, isCurrent: index == 0, number: edits.count - index)
                         .listRowBackground(palette.background)
                 }

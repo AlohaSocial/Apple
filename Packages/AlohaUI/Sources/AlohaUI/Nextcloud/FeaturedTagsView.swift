@@ -18,6 +18,12 @@ public struct FeaturedTagsView: View {
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var errorMessage: String?
+    /// Tags with a delete in flight: the row's control is disabled and the
+    /// request cannot be doubled by a second tap.
+    @State private var removingIDs: Set<String> = []
+    /// Identifies the newest `load()` so a response that arrives late cannot
+    /// commit over a refresh that started after it.
+    @State private var loadID = UUID()
 
     static let limit = 10
 
@@ -66,6 +72,7 @@ public struct FeaturedTagsView: View {
                         }
                         .buttonStyle(.glass)
                         .buttonBorderShape(.circle)
+                        .disabled(removingIDs.contains(tag.id))
                         .accessibilityLabel(
                             Text("Stop featuring #\(tag.name)", comment: "Featured tag action"))
                     }
@@ -170,6 +177,8 @@ public struct FeaturedTagsView: View {
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
         defer { isLoading = false }
         do {
@@ -180,12 +189,12 @@ public struct FeaturedTagsView: View {
             let latestTags = try await tags.elements
             // Suggestions are a nicety; their failure is nobody's problem.
             let latestSuggestions = (try? await suggested.elements) ?? []
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, requestID == loadID else { return }
             featured = latestTags
             suggestions = latestSuggestions
             errorMessage = nil
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, requestID == loadID else { return }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Featured hashtags could not be loaded. Please try again.")
         }
@@ -212,7 +221,14 @@ public struct FeaturedTagsView: View {
     }
 
     private func remove(_ tag: FeaturedTag) async {
-        guard let index = featured.firstIndex(where: { $0.id == tag.id }) else { return }
+        // A second tap on the same row would send a second delete for an
+        // already-deleted tag; the second one fails and the rollback would
+        // resurrect a tag the first request did remove.
+        guard !removingIDs.contains(tag.id),
+            let index = featured.firstIndex(where: { $0.id == tag.id })
+        else { return }
+        removingIDs.insert(tag.id)
+        defer { removingIDs.remove(tag.id) }
         featured.remove(at: index)
         do {
             _ = try await session.client.send(Endpoint.featuredTags.delete(tag.id))
