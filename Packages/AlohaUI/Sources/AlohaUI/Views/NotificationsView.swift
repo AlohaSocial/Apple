@@ -26,6 +26,10 @@ public struct NotificationsView: View {
     /// Notification policy (when the server supports it) — carries the count
     /// of filtered requests so we can show it at the top.
     @State private var notificationPolicy: NotificationPolicy?
+    /// The "caught up" marker for the notifications timeline — the last
+    /// notification ID the user had read. When present in the flat list, a
+    /// divider is inserted below it.
+    @State private var caughtUpNotificationID: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -71,10 +75,7 @@ public struct NotificationsView: View {
                         .listRowBackground(palette.background)
                 }
             } else {
-                ForEach(visibleFlat) { notification in
-                    flatRow(notification)
-                        .listRowBackground(palette.background)
-                }
+                flatRowsWithMarker
             }
 
             if !isLoading && errorMessage == nil && groups.isEmpty && flat.isEmpty {
@@ -114,6 +115,44 @@ public struct NotificationsView: View {
 
     private var visibleFlat: [MastodonNotification] {
         flat.filter { Self.matches($0.type, selected: selectedKinds) }
+    }
+
+    private var visibleFlat: [MastodonNotification] {
+        flat.filter { Self.matches($0.type, selected: selectedKinds) }
+    }
+
+    /// The flat list with an optional "caught up" divider inserted at the
+    /// marker position. When the marker notification is in the visible list,
+    /// a divider is inserted below it; the marker advances when the next
+    /// notification appears (handled in `flatRow`).
+    private var flatRowsWithMarker: some View {
+        let notifications = visibleFlat
+        guard let markerID = caughtUpNotificationID,
+            let markerIdx = notifications.firstIndex(where: { $0.id == markerID })
+        else {
+            return AnyView(ForEach(notifications) { notification in
+                flatRow(notification)
+                    .listRowBackground(palette.background)
+            })
+        }
+        // Insert divider after the marker
+        var rows: [AnyView] = []
+        for (idx, notification) in notifications.enumerated() {
+            rows.append(AnyView(
+                flatRow(notification)
+                    .listRowBackground(palette.background)
+            ))
+            if idx == markerIdx {
+                rows.append(AnyView(
+                    caughtUpDivider(after: markerID)
+                        .listRowBackground(palette.background)
+                ))
+            }
+        }
+        return AnyView(
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                row
+            })
     }
 
     nonisolated static func matches(_ kind: NotificationKind, selected: Set<NotificationKind>) -> Bool {
@@ -323,6 +362,16 @@ private func groupRow(_ group: NotificationGroup) -> some View {
                     }
                 }
             }
+            .onAppear {
+                // Advance the "caught up" marker when the first notification
+                // below the divider appears.
+                if let markerID = caughtUpNotificationID,
+                   let idx = visibleFlat.firstIndex(where: { $0.id == markerID }),
+                   idx + 1 < visibleFlat.count,
+                   visibleFlat[idx + 1].id == notification.id {
+                    advanceCaughtUpNotificationMarker(to: notification.id)
+                }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -380,6 +429,11 @@ private func groupRow(_ group: NotificationGroup) -> some View {
                 guard !Task.isCancelled, loadID == requestID else { return }
                 notificationPolicy = policy
             }
+            // Fetch the "caught up" marker for the notifications timeline.
+            let markers = try await session.client.decode(
+                MarkerSet.self, from: Endpoint.markers.read)
+            guard !Task.isCancelled, loadID == requestID else { return }
+            caughtUpNotificationID = markers.notifications?.lastReadID
             errorMessage = nil
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
@@ -470,5 +524,36 @@ private func groupRow(_ group: NotificationGroup) -> some View {
     private func plainPreview(_ status: Status) -> String {
         StatusHTMLParser().plainText(status.displayed.content)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func advanceCaughtUpNotificationMarker(to notificationID: String) {
+        guard caughtUpNotificationID != nil else { return }
+        caughtUpNotificationID = notificationID
+        do {
+            try session.supportStore.repositories.advanceMarker(
+                accountID: session.id, timeline: "notifications", to: notificationID)
+        } catch { }
+        Task {
+            let endpoint = Endpoint.markers.write(home: nil, notifications: notificationID)
+            do { _ = try await session.client.send(endpoint) } catch { }
+        }
+    }
+
+    private func caughtUpDivider(after notificationID: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Spacer()
+            VStack(spacing: AlohaMetrics.space1) {
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(height: 1)
+                Text("You're caught up", comment: "Notifications caught up divider")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(palette.tertiaryLabel)
+            }
+            Spacer()
+        }
+        .padding(.vertical, AlohaMetrics.space3)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 }
