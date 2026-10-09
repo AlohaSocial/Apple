@@ -111,7 +111,7 @@ public final class SignInModel {
             return
         }
 
-        let nodeInfo = await probe.fetchNodeInfo(origin: "https://\(url.host() ?? typedHost)")
+        let nodeInfo = await probe.fetchNodeInfo(origin: url.originString)
         let manual = ServerProbe.Outcome(
             apiBase: url, instance: instance, nodeInfo: nodeInfo,
             winningCandidate: ServerProbe.Candidate(

@@ -75,8 +75,20 @@ public struct OAuthService: Sendable {
 
     /// Reverse proxies sometimes advertise an unreachable private backend.
     /// OAuth must remain on the origin which supplied the API connection.
+    ///
+    /// "Same origin" is spelled case-insensitively and ignores a port that is
+    /// the scheme's default, so `https://host:443/oauth/token` is accepted
+    /// against `https://host`. An endpoint that really is off-origin is logged
+    /// when it is discarded: a silent discard is indistinguishable from a
+    /// server that never advertised anything.
     private func endpoint(_ advertised: URL?, fallback: URL) -> URL {
-        guard let advertised, advertised.originURL == fallback.originURL else { return fallback }
+        guard let advertised else { return fallback }
+        guard advertised.isSameOrigin(as: fallback) else {
+            logger.info(
+                "discarded off-origin OAuth endpoint \(advertised.absoluteString, privacy: .public) in favour of \(fallback.absoluteString, privacy: .public)"
+            )
+            return fallback
+        }
         return advertised
     }
 

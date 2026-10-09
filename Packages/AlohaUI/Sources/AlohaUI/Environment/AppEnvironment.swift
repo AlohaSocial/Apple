@@ -217,7 +217,8 @@ public final class AppEnvironment {
             return
         }
 
-        let nodeInfo = await probe.fetchNodeInfo(origin: "https://\(session.snapshot.instanceHost)")
+        let nodeInfo = await probe.fetchNodeInfo(
+            origin: session.capabilities.apiBase.originString)
         let detector = CapabilityDetector(transport: transport)
         let token = try? credentials.token(for: session.id)
         let capabilities = await detector.detect(
@@ -235,7 +236,8 @@ public final class AppEnvironment {
         lastReprobe[session.id] = now
 
         let probe = ServerProbe(transport: transport)
-        guard let address = ServerProbe.ServerAddress(typed: session.snapshot.instanceHost),
+        guard let address = ServerProbe.ServerAddress(
+                apiBase: session.capabilities.apiBase),
             let outcome = try? await probe.discover(address)
         else { return }
 

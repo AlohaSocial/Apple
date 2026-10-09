@@ -216,7 +216,7 @@ public struct NextcloudConnectView: View {
         }
         errorMessage = nil
         let flow = NextcloudLoginFlow(transport: environment.transport)
-        guard let server = URL(string: "https://\(session.snapshot.instanceHost)") else {
+        guard let server = URL(string: session.capabilities.apiBase.originString) else {
             errorMessage = String(localized: "The server address is invalid.")
             return
         }

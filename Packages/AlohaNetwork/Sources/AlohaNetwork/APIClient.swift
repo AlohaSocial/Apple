@@ -49,7 +49,10 @@ public actor APIClient {
     /// Headers for an AVFoundation asset hosted by this account's server.
     /// A token is never sent to a federated or otherwise different origin.
     public func mediaRequestHeaders(for url: URL) -> [String: String] {
-        guard url.originURL == apiBase.originURL, let accessToken else { return [:] }
+        // A positive same-origin check, not URL equality: two URLs that both
+        // fail to describe an origin must not compare equal and leak the
+        // token, and the comparison must survive casing and default ports.
+        guard url.isSameOrigin(as: apiBase), let accessToken else { return [:] }
         return ["Authorization": "Bearer \(accessToken)"]
     }
 
@@ -243,9 +246,48 @@ extension URL {
         return components.url
     }
 
+    /// Whether this URL is served by the same server as another.
+    ///
+    /// Hosts compare case-insensitively (RFC 3986), and an explicit port that
+    /// equals the scheme's default (443/80) is the same as none: a server that
+    /// advertises `https://host:443/oauth/token` against a base of
+    /// `https://host/api/` is still same-origin. `URL` equality alone is
+    /// byte-exact and would reject both spellings.
+    public func isSameOrigin(as other: URL) -> Bool {
+        guard let lhs = originURL, let rhs = other.originURL else { return false }
+        guard lhs.scheme?.lowercased() == rhs.scheme?.lowercased(),
+            lhs.host()?.lowercased() == rhs.host()?.lowercased()
+        else { return false }
+        return Self.normalisedPort(lhs) == Self.normalisedPort(rhs)
+    }
+
+    /// The port to compare: the explicit one, or the scheme default.
+    private static func normalisedPort(_ url: URL) -> Int? {
+        if let port = url.port { return port }
+        switch url.scheme?.lowercased() {
+        case "https": return 443
+        case "http": return 80
+        default: return nil
+        }
+    }
+
     /// An API base always ends in `/`, so `appending(path:)` composes rather
     /// than replacing the last component.
     public var normalisedAsAPIBase: URL {
         absoluteString.hasSuffix("/") ? self : URL(string: absoluteString + "/") ?? self
+    }
+
+    /// The origin as a string, port included when one was given.
+    ///
+    /// A stored `instanceHost` is only ever a bare host — handles are built
+    /// from it — so the scheme and a port survive only in a stored API base.
+    /// Anything that re-derives where a server lives (a re-probe, a NodeInfo
+    /// fetch, an "open in browser" link) must read them from there instead of
+    /// assuming `https`, or a private-network `http` account can no longer be
+    /// reached after the first launch.
+    public var originString: String {
+        var result = "\(scheme ?? "https")://\(host() ?? "")"
+        if let port { result += ":\(port)" }
+        return result
     }
 }

@@ -4,6 +4,7 @@ import AlohaDesign
 import AlohaIntelligence
 import AlohaMedia
 import AlohaModels
+import AlohaNetwork
 import SwiftUI
 
 public struct SettingsView: View {
@@ -55,10 +56,12 @@ public struct SettingsView: View {
 
     /// The host comes from the server, so the string is not ours to trust: a
     /// name the URL parser refuses is a link with nowhere to go, and there is
-    /// no forced URL that could be asked for one.
+    /// no forced URL that could be asked for one. The scheme and port are
+    /// read from the stored API base so a private-network `http` server opens
+    /// over `http` rather than a connection that can only fail.
     private func serverDestination(_ session: AccountSession) -> URL? {
         guard
-            let url = URL(string: "https://\(session.snapshot.instanceHost)"),
+            let url = URL(string: session.capabilities.apiBase.originString),
             url.host != nil
         else { return nil }
         return url
