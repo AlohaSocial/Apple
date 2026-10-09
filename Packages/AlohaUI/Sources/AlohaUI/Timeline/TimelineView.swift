@@ -129,11 +129,23 @@ public struct TimelineView: View {
                         if row.id == model.rows.last?.id {
                             Task { await model.loadOlder() }
                         }
+                        // Advance the "caught up" marker when the first post
+                        // below the divider appears.
+                        if case .caughtUpDivider(let after) = row,
+                           let idx = model.rows.firstIndex(of: row),
+                           idx + 1 < model.rows.count,
+                           case .status(let next) = model.rows[idx + 1] {
+                            model.advanceCaughtUpMarker(to: next.id)
+                        }
+                    }
                         model.prefetchMedia(around: row.id)
                     }
 
                 case .gap(let id):
                     gapRow(id: id)
+
+                case .caughtUpDivider(let after):
+                    caughtUpDivider(after: after)
                 }
             }
 
@@ -167,6 +179,25 @@ public struct TimelineView: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(palette.surfaceRaised)
+    }
+
+    /// A visual divider marking where the previous session ended.
+    private func caughtUpDivider(after statusID: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Spacer()
+            VStack(spacing: AlohaMetrics.space1) {
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(height: 1)
+                Text("You're caught up", comment: "Timeline caught up divider")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(palette.tertiaryLabel)
+            }
+            Spacer()
+        }
+        .padding(.vertical, AlohaMetrics.space3)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     /// New content never moves what the person is reading.

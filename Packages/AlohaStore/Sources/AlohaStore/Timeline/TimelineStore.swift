@@ -281,11 +281,14 @@ public actor TimelineStore {
 public enum TimelineRow: Sendable, Hashable, Identifiable {
     case status(Status)
     case gap(id: String)
+    /// A "You're caught up" divider placed below the given status ID.
+    case caughtUpDivider(after: String)
 
     public var id: String {
         switch self {
         case .status(let status): status.id
         case .gap(let id): id
+        case .caughtUpDivider(let after): "caughtUp-\(after)"
         }
     }
 

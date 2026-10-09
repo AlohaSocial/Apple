@@ -36,6 +36,13 @@ public final class TimelineModel {
     /// A page fetched *before* that moment carries the older copy and must
     /// not overwrite the confirmation again (see `performRefresh`).
     @ObservationIgnored private var confirmations: [String: Date] = [:]
+    /// The post ID that marks "you're caught up" on the home timeline.
+    /// Loaded from the local marker store; when the reader scrolls past the
+    /// divider below this post, the marker advances.
+    @ObservationIgnored private var caughtUpMarkerID: String?
+    /// Whether the marker has been advanced this session (to avoid
+    /// re-syncing on every appearance of the same row).
+    @ObservationIgnored private var markerAdvancedThisSession = false
 
     private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "timeline")
 
@@ -50,6 +57,62 @@ public final class TimelineModel {
             self.rows = Self.replacing(update.status, in: self.rows)
             self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
         }
+
+        // Load the "caught up" marker for the home timeline.
+        if key.mode == .home(), key.source == .home {
+            Task { await loadCaughtUpMarker() }
+        }
+    }
+
+    /// Loads the local marker for the home timeline. If found, the marker
+    /// ID is stored so a divider can be inserted below that post.
+    private func loadCaughtUpMarker() async {
+        do {
+            let markerID = try session.supportStore.repositories.marker(
+                accountID: session.id, timeline: "home")
+            if let markerID, !markerID.isEmpty {
+                caughtUpMarkerID = markerID
+            }
+        } catch {
+            logger.debug(
+                "could not load home marker: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// Advances the caught-up marker to the given post ID, both locally
+    /// and on the server (fire-and-forget).
+    private func advanceCaughtUpMarker(to statusID: String) {
+        guard !markerAdvancedThisSession else { return }
+        markerAdvancedThisSession = true
+        caughtUpMarkerID = statusID
+        // Local store
+        do {
+            try session.supportStore.repositories.advanceMarker(
+                accountID: session.id, timeline: "home", to: statusID)
+        } catch {
+            logger.debug(
+                "could not advance local home marker: \(String(describing: error), privacy: .public)")
+        }
+        // Server sync (fire-and-forget)
+        Task {
+            let endpoint = Endpoint.markers.write(home: statusID, notifications: nil)
+            do { _ = try await session.client.send(endpoint) } catch {
+                logger.debug(
+                    "could not sync home marker: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// Ensures the "caught up" divider is present in `rows` when the marker
+    /// ID is known and present in the timeline. Idempotent.
+    private func ensureCaughtUpDivider() {
+        guard let markerID = caughtUpMarkerID,
+            let idx = rows.firstIndex(where: { $0.status?.id == markerID })
+        else { return }
+        // Already present?
+        if rows.indices.contains(idx + 1),
+            case .caughtUpDivider = rows[idx + 1] { return }
+        rows.insert(.caughtUpDivider(after: markerID), at: idx + 1)
     }
 
     nonisolated static func observeStatusUpdates(
@@ -98,6 +161,7 @@ public final class TimelineModel {
                 accountID: session.id, timelineKey: storageKey)
             filters = (try? await session.supportStore.activeFilters(accountID: session.id)) ?? []
             rows = applyFilters(to: cached)
+            ensureCaughtUpDivider()
         } catch {
             logger.error("cache read failed: \(String(describing: error), privacy: .public)")
         }
@@ -187,11 +251,13 @@ public final class TimelineModel {
                     continue
                 }
                 rows = Self.replacing(status.displayed, in: rows)
+                ensureCaughtUpDivider()
             }
 
             if direction == .cold || rows.isEmpty {
                 rows = filtered
                 nextCursor = harvest.nextCursor
+                ensureCaughtUpDivider()
             } else {
                 // Hold new rows behind a pill rather than moving what the person
                 // is reading.
@@ -204,6 +270,7 @@ public final class TimelineModel {
                     pendingNewCount = arrivals.compactMap(\.status).count
                 } else {
                     rows = filtered
+                    ensureCaughtUpDivider()
                 }
             }
 
@@ -243,6 +310,7 @@ public final class TimelineModel {
     public func revealPendingRows() {
         guard !pendingRows.isEmpty else { return }
         rows = pendingRows
+        ensureCaughtUpDivider()
         pendingRows = []
         pendingNewCount = 0
     }
@@ -262,6 +330,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
             rows = applyFilters(to: merged)
+            ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
             Task { await Self.warmRichText(harvest.statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
@@ -281,6 +350,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
             rows = applyFilters(to: merged)
+            ensureCaughtUpDivider()
         } catch {
             await handle(error)
         }
