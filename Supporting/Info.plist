@@ -26,11 +26,23 @@
 			</array>
 		</dict>
 	</array>
+	<!-- A self-hosted Nextcloud on a private network is routinely reached
+	     over plain http from a bare IP (http://192.168.x.x[:port]). The
+	     sign-in screen accepts such addresses by design, and ATS has no
+	     wildcard that covers arbitrary addresses, so the exception has to
+	     be blanket. The token only travels in cleartext when the server
+	     itself was configured that way by its own user; every https URL is
+	     unaffected. See docs/11 §5. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- Declares up-front that the app uses only OS-provided (exempt)
+	     encryption, so App Store review does not stop on export
+	     compliance. HTTPS and OAuth are both exempt. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>com.nextcloud.alohasocial.viewingTimeline</string>

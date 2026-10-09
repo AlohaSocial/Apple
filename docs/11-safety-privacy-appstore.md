@@ -126,8 +126,14 @@ any future addition of analytics requires changing this document first.
 
 ### Network security
 
-- ATS left at its defaults. No exceptions, no arbitrary loads. An instance
-  without HTTPS cannot be added, and the sign-in screen says so plainly.
+- **ATS exception, deliberate.** Sign-in accepts plain `http` addresses,
+  because a Nextcloud on a private network is routinely reached that way
+  (`http://192.168.x.x[:port]`), and ATS has no wildcard that covers
+  arbitrary typed addresses. `NSAllowsArbitraryLoads` is therefore set in
+  the iOS, tvOS and watchOS plists, and only takes effect for the server the
+  person typed: an `https` account never uses it. The token travels in
+  cleartext only over the connection that account itself was configured
+  with.
 - No third-party analytics, ad, or attribution network can be added without
   amending this document.
 - Media is loaded from the instance's own host (and, for federated video, from
@@ -137,6 +143,12 @@ any future addition of analytics requires changing this document first.
 - Remote avatars and header images **are** loaded from their origin hosts,
   because Mastodon servers cache them and Nextcloud Social serves cached copies
   via `/document/get`. Prefer the local cache URL when the entity offers one.
+- The shared app group (`group.com.nextcloud.alohasocial`) is currently
+  **disabled** in `Supporting/*.plist` and the entitlement is withheld, because
+  a personal development signing identity cannot claim a production app group.
+  Each process then uses its own container; the flag and the entitlement must
+  be restored together before an upstream release (the `Info.plist` keys
+  `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` gate it).
 
 ## 4. Age rating
 

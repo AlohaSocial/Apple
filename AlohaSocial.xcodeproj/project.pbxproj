@@ -885,6 +885,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.watch;
@@ -907,6 +908,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.watch;
@@ -929,6 +931,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.tv;
@@ -951,6 +954,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.tv;
