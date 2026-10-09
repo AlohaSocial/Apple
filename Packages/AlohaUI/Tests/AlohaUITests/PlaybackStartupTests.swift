@@ -14,10 +14,14 @@ struct PlaybackStartupTests {
             url: URL(fileURLWithPath: "/aloha-missing-startup-test.mp4"),
             headers: [:], deadline: .zero)
         #expect(started.duration(to: clock.now) < .seconds(2))
-        if case .playable(let player, let item, _) = result {
-            #expect(player.currentItem === item)
-            #expect(player.rate == 0)
-            player.replaceCurrentItem(with: nil)
+        // The outcome itself is the subject of the test: if the handoff ever
+        // starts rejecting, the assertions below must fail, not be skipped.
+        guard case .playable(let player, let item, _) = result else {
+            Issue.record("expected a playable attempt, but the fast handoff rejected")
+            return
         }
+        #expect(player.currentItem === item)
+        #expect(player.rate == 0)
+        player.replaceCurrentItem(with: nil)
     }
 }

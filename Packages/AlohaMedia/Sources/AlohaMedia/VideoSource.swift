@@ -50,7 +50,13 @@ public enum VideoSourceResolver {
         // the optional `media/playlist` route (it returns 404 on older
         // servers), while this URL is what the status payload explicitly
         // advertises as playable.
-        if let url = attachment.url, isVideoResource(url) {
+        //
+        // Only a URL **on this instance** qualifies. A federated attachment
+        // that still carries the origin's URL in `url` must never reach the
+        // player: Nextcloud's CSP forbids it and it would disclose the viewer
+        // to a server they never chose to talk to (docs/06 §3).
+        if let url = attachment.url, isVideoResource(url),
+            !isRemote || isLocal(url, apiBase: apiBase) {
             sources.append(VideoSource(url: url, kind: .progressive))
         } else if isRemote, attachment.hlsURL == nil {
             // A federated PeerTube video with no local file needs the server
@@ -76,6 +82,18 @@ public enum VideoSourceResolver {
     private static func isVideoResource(_ url: URL) -> Bool {
         let imageExtensions: Set<String> = ["apng", "avif", "gif", "heic", "heif", "jpeg", "jpg", "png", "webp"]
         return !imageExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    /// Whether a URL is served by the instance the person signed in to.
+    ///
+    /// Hosts are compared case-insensitively per RFC 3986, and the port is
+    /// ignored: a server that advertises `https://cloud.example/media/…`
+    /// while the account is signed in as `https://cloud.example:443/…` (or
+    /// the other way round) is still the same instance.
+    private static func isLocal(_ url: URL, apiBase: URL) -> Bool {
+        guard let urlHost = url.host()?.lowercased(), let baseHost = apiBase.host()?.lowercased()
+        else { return false }
+        return urlHost == baseHost
     }
 }
 

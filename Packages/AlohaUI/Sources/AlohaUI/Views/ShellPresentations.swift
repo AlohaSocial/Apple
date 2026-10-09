@@ -100,7 +100,10 @@ struct ShellSheets: ViewModifier {
                     statusID: presentation.statusID,
                     apiBase: environment.activeSession?.capabilities.apiBase
                         ?? URL(string: "https://invalid.invalid/")!,
-                    autoplay: true,
+                    // The "Autoplay video" setting is the person's choice,
+                    // not the tap's: an explicitly opened viewer must not
+                    // override it either.
+                    autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
                     session: environment.activeSession
                 )
                 // The photograph grows out of the cell that was tapped and

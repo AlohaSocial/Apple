@@ -52,6 +52,43 @@ struct VideoSourceTests {
         #expect(sources.first?.url.absoluteString == "https://cloud.example/media/stream/9")
         // Nothing in the ladder points at the origin.
         #expect(sources.allSatisfy { $0.url.host() == "cloud.example" })
+        // The invariant, stated positively: no source is the origin itself.
+        #expect(sources.contains { $0.url.host() == "peertube.elsewhere" } == false)
+    }
+
+    /// The privacy invariant from docs/06 §3, restored: a federated attachment
+    /// whose `url` still carries the **origin's** address must never reach the
+    /// player, however the payload arrived. The proxy route is the only rung.
+    @Test("A federated video at the origin is proxied, never played directly")
+    func remoteVideoAtOriginUsesProxy() {
+        let attachment = MediaAttachment(
+            id: "m", type: .video,
+            url: URL(string: "https://peertube.elsewhere/videos/xyz.mp4"),
+            remoteURL: URL(string: "https://peertube.elsewhere/videos/xyz.mp4"))
+
+        let sources = VideoSourceResolver.sources(
+            for: attachment, statusID: "9", apiBase: base, isRemote: true)
+
+        #expect(sources.map(\.kind) == [.proxiedPlaylist])
+        #expect(
+            sources.first?.url.absoluteString
+                == "https://cloud.example/index.php/apps/social/media/playlist/9")
+    }
+
+    /// Host comparison must ignore letter case and an explicit default port:
+    /// `https://Cloud.Example:443/media/9.mp4` is the instance, not an origin.
+    @Test("A local-copy URL matches the instance regardless of case or port")
+    func localCopyURLMatchesInstanceHost() {
+        let attachment = MediaAttachment(
+            id: "m", type: .video,
+            url: URL(string: "https://Cloud.Example:443/media/stream/9"),
+            remoteURL: URL(string: "https://peertube.elsewhere/videos/xyz.mp4"))
+
+        let sources = VideoSourceResolver.sources(
+            for: attachment, statusID: "9", apiBase: base, isRemote: true)
+
+        #expect(sources.map(\.kind) == [.progressive])
+        #expect(sources.first?.url.absoluteString == "https://Cloud.Example:443/media/stream/9")
     }
 
     @Test("A federated video without a local file falls back to the proxy")
