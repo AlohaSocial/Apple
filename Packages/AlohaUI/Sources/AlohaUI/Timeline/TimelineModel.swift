@@ -32,6 +32,10 @@ public final class TimelineModel {
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
     @ObservationIgnored private var statusUpdates: AnyCancellable?
+    /// When the server last confirmed an interaction with a status, per id.
+    /// A page fetched *before* that moment carries the older copy and must
+    /// not overwrite the confirmation again (see `performRefresh`).
+    @ObservationIgnored private var confirmations: [String: Date] = [:]
 
     private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "timeline")
 
@@ -40,6 +44,9 @@ public final class TimelineModel {
         self.session = session
         statusUpdates = Self.observeStatusUpdates { [weak self] update in
             guard let self, update.accountID == self.session.id else { return }
+            let now = Date()
+            Self.pruneConfirmations(&self.confirmations, now: now)
+            self.confirmations[update.status.id] = now
             self.rows = Self.replacing(update.status, in: self.rows)
             self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
         }
@@ -65,6 +72,13 @@ public final class TimelineModel {
             }
             return row
         }
+    }
+
+    /// Interaction confirmations only have to outlive a page that was still
+    /// in flight when the confirmation landed, so they are time-boxed and
+    /// pruned on every store.
+    nonisolated static func pruneConfirmations(_ stamps: inout [String: Date], now: Date) {
+        stamps = stamps.filter { now.timeIntervalSince($0.value) < 60 }
     }
 
     private var storageKey: String { key.storageKey }
@@ -145,6 +159,10 @@ public final class TimelineModel {
             // Fetch the head as well as new arrivals: since_id responses never
             // include existing posts whose counts or interaction flags changed.
             let harvest = try await fetch(anchor: .cold)
+            // When this response arrived, not when the server produced it: a
+            // confirmation stamped after this instant is newer than anything
+            // the page can say about its status.
+            let harvestReceivedAt = Date()
             errorMessage = nil
             isOffline = false
             lastRefresh = Date()
@@ -159,7 +177,15 @@ public final class TimelineModel {
 
             // A new-post pill must not hold updated counts on existing rows
             // hostage alongside the arrivals it is deliberately withholding.
+            Self.pruneConfirmations(&confirmations, now: harvestReceivedAt)
             for status in harvest.statuses {
+                // ...unless the server confirmed an interaction with that
+                // status while this page was on the wire. That confirmation is
+                // newer than the page's copy; applying the copy again would
+                // visibly revert the like or boost until the next refresh.
+                if let confirmedAt = confirmations[status.id], confirmedAt > harvestReceivedAt {
+                    continue
+                }
                 rows = Self.replacing(status.displayed, in: rows)
             }
 
