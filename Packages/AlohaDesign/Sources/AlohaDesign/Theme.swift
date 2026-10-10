@@ -270,6 +270,23 @@ public struct AlohaMetrics: Sendable, Hashable {
     }
 }
 
+/// The one platform rule a full-bleed vertical surface needs.
+///
+/// Shorts is a phone-shaped thing: on a regular-width shell it stays a vertical
+/// column in the middle of the window, the way TikTok and Reels do on an iPad,
+/// rather than becoming a letterboxed sprawl across a Mac window. On a phone it
+/// takes the whole screen, which it already does.
+public enum PlatformBehavior {
+    /// How wide a vertical full-screen surface may grow.
+    public static var shortsColumnWidth: CGFloat? {
+        #if os(iOS)
+            return UIDevice.current.userInterfaceIdiom == .phone ? nil : 460
+        #else
+            return 460
+        #endif
+    }
+}
+
 public struct AlohaThemeModifier: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast

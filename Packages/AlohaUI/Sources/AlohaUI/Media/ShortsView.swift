@@ -90,6 +90,11 @@ public struct ShortsView: View {
                     .scrollPosition(id: $currentID)
                     .scrollIndicators(.hidden)
                     .ignoresSafeArea()
+                    // A short is a phone-shaped thing: on a regular-width
+                    // shell it stays a vertical column in the middle of the
+                    // window rather than becoming a letterboxed sprawl, the
+                    // way TikTok and Reels do on an iPad.
+                    .frame(maxWidth: PlatformBehavior.shortsColumnWidth)
                 }
 
                 topBar
