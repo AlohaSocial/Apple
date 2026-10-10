@@ -481,6 +481,62 @@ public struct ComposerView: View {
     private var mediaStrip: some View {
         ScrollView(.horizontal) {
             HStack(spacing: AlohaMetrics.space2) {
+                // Describing four pictures one sheet at a time is four round
+                // trips through the same editor (docs/10 §5); one button does
+                // the lot, sequentially, and says where it is.
+                if model.imagesAwaitingDescription > 0,
+                    environment.intelligence.availability.isAvailable
+                {
+                    if model.isDescribingAll {
+                        VStack(spacing: AlohaMetrics.space2) {
+                            ProgressView(value: progress)
+                                .progressViewStyle(.linear)
+                                .frame(width: 96)
+                            Text(
+                                "^[\(model.describedCount) of \(model.describeAllTotal)](inflect: false)",
+                                comment: "Alt text batch progress")
+                                .font(.caption2.monospacedDigit())
+                            Button(role: .cancel) {
+                                model.cancelDescribeAll()
+                            } label: {
+                                Text("Stop", comment: "Alt text batch cancel")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(palette.secondaryLabel)
+                        }
+                        .frame(width: 96, height: 96)
+                        .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
+                        .accessibilityLabel(
+                            Text(
+                                "Describing images: \(model.describedCount) of \(model.describeAllTotal) done",
+                                comment: "Alt text batch progress"))
+                    } else {
+                        Button {
+                            Task { await model.describeAllImages(environment: environment) }
+                        } label: {
+                            VStack(spacing: AlohaMetrics.space1) {
+                                Image(systemName: "text.badge.star")
+                                    .font(.title3)
+                                Text("Describe all", comment: "Alt text batch action")
+                                    .font(.caption2.weight(.semibold))
+                                Text(
+                                    "^[\(model.imagesAwaitingDescription) image](inflect: true)",
+                                    comment: "Alt text batch count")
+                                    .font(.caption2.monospacedDigit())
+                            }
+                            .foregroundStyle(palette.accent)
+                            .frame(width: 96, height: 96)
+                            .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            Text(
+                                "Describe all \(model.imagesAwaitingDescription) images",
+                                comment: "Alt text batch action"))
+                    }
+                }
+
                 ForEach(model.attachments) { attachment in
                     ZStack(alignment: .bottomTrailing) {
                         RemoteImage(url: attachment.displayImageURL)
@@ -567,6 +623,25 @@ public struct ComposerView: View {
         }
         .frame(height: 112)
         .scrollIndicators(.hidden)
+        .overlay(alignment: .bottom) {
+            // A failure in the batch is reported in place — one bad image does
+            // not undo the ones that succeeded, and it should not be surfaced
+            // as a modal the person has to dismiss to see their remaining work.
+            if let describeAllError = model.describeAllError, !model.isDescribingAll {
+                Text(describeAllError)
+                    .font(.caption2)
+                    .foregroundStyle(palette.destructive)
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .padding(.vertical, AlohaMetrics.space1)
+                    .background(.regularMaterial, in: Capsule())
+            }
+        }
+    }
+
+    /// The batch run's progress, for the strip's progress bar.
+    private var progress: Double {
+        guard model.describeAllTotal > 0 else { return 0 }
+        return Double(model.describedCount) / Double(model.describeAllTotal)
     }
 
     /// What `/dice`, `/flip` and `/pick` will do when this goes out. A hint
