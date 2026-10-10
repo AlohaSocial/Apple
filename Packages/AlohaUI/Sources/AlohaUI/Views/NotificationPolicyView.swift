@@ -97,6 +97,8 @@ public struct NotificationPolicyView: View {
         title: Text,
         policy: NotificationPolicy
     ) -> some View {
+        // The key path's string is the row's identity: it is what the
+        // in-flight guard uses, and what SwiftUI needs to tell the rows apart.
         let id = "\(key)"
         let isUpdating = updatingIDs.contains(id)
         return Picker(selection: Binding(
