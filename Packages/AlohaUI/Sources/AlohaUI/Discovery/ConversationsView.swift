@@ -16,6 +16,7 @@ import SwiftUI
 /// endpoint in 3.0, so on newer servers it also returned nothing at all.
 public struct ConversationsView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
     @Namespace private var filterGlass
 
     private let session: AccountSession
@@ -28,9 +29,20 @@ public struct ConversationsView: View {
     @State private var query = ""
     @State private var filter: Filter = .all
     @State private var isComposing = false
+    /// Guards a response from being committed over a newer request — a filter
+    /// change while the first load is still on the wire used to bring the old
+    /// list back.
+    @State private var loadID = UUID()
 
-    enum Filter: Hashable {
+    enum Filter: Hashable, CaseIterable {
         case all, unread
+
+        var title: String {
+            switch self {
+            case .all: String(localized: "All", comment: "Conversations filter")
+            case .unread: String(localized: "Unread", comment: "Conversations filter")
+            }
+        }
     }
 
     public init(
@@ -66,44 +78,49 @@ public struct ConversationsView: View {
                     errorStrip(errorMessage)
                 }
 
-                ForEach(visible) { conversation in
-                    Button {
-                        open(conversation)
-                    } label: {
-                        row(conversation)
+                // The shape of a list arriving, rather than a spinner that
+                // could be broken rather than working (docs/05 §4).
+                if isLoading {
+                    ForEach(0..<6, id: \.self) { _ in
+                        ConversationSkeletonRow()
+                            .listRowSeparator(.hidden)
                     }
-                    .buttonStyle(.plain)
-                    .listRowBackground(palette.background)
-                    .listRowInsets(
-                        EdgeInsets(
-                            top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
-                            bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space3)
-                    )
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            Task { await delete(conversation) }
+                } else {
+                    ForEach(visible) { conversation in
+                        Button {
+                            open(conversation)
                         } label: {
-                            Label {
-                                Text("Delete", comment: "Conversations action")
-                            } icon: {
-                                Image(systemName: AlohaSymbol.delete)
+                            row(conversation)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(
+                            EdgeInsets(
+                                top: metrics.space2, leading: metrics.space3,
+                                bottom: metrics.space2, trailing: metrics.space3)
+                        )
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Task { await delete(conversation) }
+                            } label: {
+                                Label {
+                                    Text("Delete", comment: "Conversations action")
+                                } icon: {
+                                    Image(systemName: AlohaSymbol.delete)
+                                }
                             }
                         }
                     }
-                }
 
-                if visible.isEmpty && !isLoading && errorMessage == nil { emptyState }
+                    if visible.isEmpty && !isLoading && errorMessage == nil { emptyState }
+                }
             } header: {
                 filterBar
             }
         }
         .listStyle(.plain)
         .alohaGround(palette)
-        .overlay {
-            if isLoading && conversations.isEmpty {
-                ProgressView("Loading messages…")
-            }
-        }
         .searchable(
             text: $query,
             prompt: Text("Search conversations", comment: "Conversations search prompt")
@@ -151,13 +168,17 @@ public struct ConversationsView: View {
     /// back — which is what the server's own docblock says it does, and worth
     /// saying because "delete" reads stronger than it is.
     private func delete(_ conversation: Conversation) async {
-        let previous = conversations
+        let index = conversations.firstIndex { $0.id == conversation.id } ?? conversations.endIndex
         conversations.removeAll { $0.id == conversation.id }
         do {
             _ = try await session.client.send(
                 Endpoint.timelines.deleteConversation(conversation.id))
         } catch {
-            conversations = previous
+            // Only this row comes back, never a pre-action snapshot: a snapshot
+            // would resurrect conversations deleted while it was away.
+            if !conversations.contains(where: { $0.id == conversation.id }) {
+                conversations.insert(conversation, at: min(index, conversations.endIndex))
+            }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
         }
@@ -362,20 +383,77 @@ public struct ConversationsView: View {
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
         do {
             let page = try await session.client.decode(
                 LossyArray<Conversation>.self, from: Endpoint.timelines.conversations())
+            guard !Task.isCancelled, loadID == requestID else { return }
             conversations = page.elements
             errorMessage = nil
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
+            guard loadID == requestID else { return }
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
+    }
+}
+
+/// The shape of a conversation list arriving, shimmering. A spinner over an
+/// empty screen reads as "broken"; six of these read as the app doing
+/// something (SkeletonRow's sibling).
+private struct ConversationSkeletonRow: View {
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var phase: Double = -1
+
+    var body: some View {
+        HStack(spacing: metrics.space3) {
+            Circle()
+                .fill(fill)
+                .frame(width: metrics.avatarSize, height: metrics.avatarSize)
+
+            VStack(alignment: .leading, spacing: metrics.space2) {
+                bar(width: 140, height: 12)
+                bar(width: nil, height: 10)
+                bar(width: 200, height: 10)
+            }
+        }
+        .padding(.vertical, metrics.space2)
+        .task {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) {
+                phase = 2
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func bar(width: CGFloat?, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(fill)
+            .frame(width: width, height: height)
+            .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
+    }
+
+    /// The sweep is a gradient moved across the shape rather than an opacity
+    /// pulse: it reads as light travelling, not as flicker.
+    private var fill: some ShapeStyle {
+        LinearGradient(
+            stops: [
+                .init(color: palette.surfaceRaised, location: 0),
+                .init(color: palette.separator.opacity(0.55), location: 0.5),
+                .init(color: palette.surfaceRaised, location: 1),
+            ],
+            startPoint: UnitPoint(x: phase, y: 0.5),
+            endPoint: UnitPoint(x: phase + 1, y: 0.5))
     }
 }
 
