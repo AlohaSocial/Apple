@@ -104,7 +104,7 @@ public struct NotificationPolicyView: View {
             set: { newValue in
                 guard !isUpdating else { return }
                 Task { await update(key: key, value: newValue) }
-        )) {
+            })) {
             ForEach(NotificationPolicy.Decision.allCases.filter { !$0.isUnknown }, id: \.self) { decision in
                 Text(decision.rawValue.capitalized, comment: "Policy decision").tag(decision)
             }
@@ -147,18 +147,8 @@ public struct NotificationPolicyView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.caption)
-            Spacer()
-            Button {
-                Task { await load() }
-            } label: {
-                Text("Retry", comment: "Error strip action")
-            }
-            .font(.caption.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
         }
-        .foregroundStyle(palette.destructive)
-        .padding(.vertical, AlohaMetrics.space2)
     }
 }

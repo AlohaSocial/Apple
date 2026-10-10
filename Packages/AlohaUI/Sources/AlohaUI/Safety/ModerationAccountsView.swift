@@ -109,18 +109,9 @@ public struct ModerationAccountsView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
-                Task { await load() }
-            } label: {
-                Text("Retry", comment: "Moderation accounts reload action")
-            }
-            .font(.footnote.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
         }
-        .foregroundStyle(palette.destructive)
     }
 
     private func load() async {
@@ -320,12 +311,7 @@ struct ModerationAccountSheet: View {
     /// No retry button: the actions that can fail are the buttons on this
     /// sheet, and pressing one again sends it with the note as it now stands.
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-        }
-        .foregroundStyle(palette.destructive)
+        AlohaErrorStrip(message: message)
     }
 
     private func act(_ action: AdminAccountAction) async {
