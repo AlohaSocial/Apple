@@ -11,6 +11,8 @@ import SwiftUI
 public struct MediaViewer: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+    @Environment(\.mediaTransition) private var mediaTransition
 
     private let attachments: [MediaAttachment]
     private let statusID: String
@@ -23,6 +25,7 @@ public struct MediaViewer: View {
     @State private var offset: CGSize = .zero
     @State private var dragOffset: CGSize = .zero
     @State private var isShowingAltText = false
+    @State private var isDragging = false
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -40,6 +43,7 @@ public struct MediaViewer: View {
             Color.black
                 .opacity(backdropOpacity)
                 .ignoresSafeArea()
+                .animation(.easeOut(duration: 0.2), value: backdropOpacity)
 
             TabView(selection: $index) {
                 ForEach(Array(attachments.enumerated()), id: \.element.id) { offset, attachment in
@@ -55,10 +59,8 @@ public struct MediaViewer: View {
         }
         .offset(dragOffset)
         .gesture(dismissGesture)
+        .gesture(zoomGesture)
         .sheet(isPresented: $isShowingAltText) { altTextSheet }
-        #if os(macOS)
-            .frame(minWidth: 640, minHeight: 480)
-        #endif
         .onKeyPress(.escape) {
             dismiss()
             return .handled
@@ -71,6 +73,17 @@ public struct MediaViewer: View {
             index = min(attachments.count - 1, index + 1)
             return .handled
         }
+        .onChange(of: index) { _, _ in
+            // Reset zoom/offset when swiping to next media
+            withAnimation(.spring(duration: 0.25)) {
+                zoom = 1
+                committedZoom = 1
+                offset = .zero
+            }
+        }
+        #if os(macOS)
+            .frame(minWidth: 640, minHeight: 480)
+        #endif
     }
 
     @ViewBuilder
@@ -85,11 +98,10 @@ public struct MediaViewer: View {
                 contentMode: .fit,
                 accessibilityText: attachment.description
             )
-            .scaleEffect(zoom)
+            .scaleEffect(zoom, anchor: .center)
             .offset(offset)
-            .gesture(zoomGesture)
             .onTapGesture(count: 2) {
-                withAnimation(.spring(duration: 0.25)) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     zoom = zoom > 1 ? 1 : 2.5
                     committedZoom = zoom
                     if zoom == 1 { offset = .zero }
@@ -107,7 +119,8 @@ public struct MediaViewer: View {
                     Image(systemName: "xmark")
                         .font(.body.weight(.semibold))
                         .padding(10)
-                        .background(.black.opacity(0.4), in: Circle())
+                        .background(.black.opacity(0.3), in: Circle())
+                        .unifiedGlass(.subtle, in: Circle())
                 }
                 .accessibilityLabel(Text("Close", comment: "Media viewer action"))
 
@@ -119,9 +132,9 @@ public struct MediaViewer: View {
                     } label: {
                         Text("ALT", comment: "Alt text button")
                             .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(.black.opacity(0.4), in: Capsule())
+                            .unifiedGlass(.regular, in: Capsule())
                     }
                     .accessibilityLabel(Text("Show description", comment: "Media viewer action"))
                 }
@@ -131,12 +144,13 @@ public struct MediaViewer: View {
                         Image(systemName: AlohaSymbol.share)
                             .font(.body.weight(.semibold))
                             .padding(10)
-                            .background(.black.opacity(0.4), in: Circle())
+                            .background(.black.opacity(0.3), in: Circle())
+                            .unifiedGlass(.subtle, in: Circle())
                     }
                 }
             }
             .foregroundStyle(.white)
-            .padding()
+            .padding(metrics.space3)
 
             Spacer()
         }
@@ -167,20 +181,22 @@ public struct MediaViewer: View {
     // MARK: - Gestures
 
     private var backdropOpacity: Double {
-        max(0.5, 1 - abs(dragOffset.height) / 400)
+        max(0.5, 1 - min(abs(dragOffset.height) / 400, 0.5))
     }
 
     private var dismissGesture: some Gesture {
-        DragGesture()
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
                 guard zoom <= 1 else { return }
+                isDragging = true
                 dragOffset = CGSize(width: 0, height: value.translation.height)
             }
             .onEnded { value in
-                if abs(value.translation.height) > 140 {
+                isDragging = false
+                if abs(value.translation.height) > 140 || (value.predictedEndTranslation.height > 200) {
                     dismiss()
                 } else {
-                    withAnimation(.spring(duration: 0.3)) { dragOffset = .zero }
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { dragOffset = .zero }
                 }
             }
     }
@@ -188,12 +204,13 @@ public struct MediaViewer: View {
     private var zoomGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                zoom = min(5, max(1, committedZoom * value.magnification))
+                let newZoom = min(5, max(1, committedZoom * value.magnification))
+                zoom = newZoom
             }
             .onEnded { _ in
                 committedZoom = zoom
                 if zoom <= 1 {
-                    withAnimation(.spring(duration: 0.2)) { offset = .zero }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { offset = .zero }
                 }
             }
     }
@@ -212,6 +229,8 @@ public struct VideoAttachmentPlayer: View {
 
     @State private var player: AVPlayer?
     @State private var sourceIndex = 0
+    @State private var showControls = true
+    @State private var controlsHideTask: Task<Void, Never>?
 
     /// Autoplay never starts unmuted (docs/06 §4); a watch page the person
     /// chose to open is the one place sound is on from the start.
@@ -233,14 +252,64 @@ public struct VideoAttachmentPlayer: View {
             isRemote: VideoSourceResolver.isRemote(attachment))
     }
 
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+
     public var body: some View {
-        Group {
-            if let player {
-                PlayerSurface(player: player)
-            } else {
-                RemoteImage(
-                    url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fit)
+        ZStack {
+            Group {
+                if let player {
+                    PlayerSurface(player: player)
+                        .gesture(
+                            TapGesture(count: 1)
+                                .onEnded { _ in
+                                    withAnimation(.easeInOut(duration: 0.2)) { showControls.toggle() }
+                                    scheduleControlsHide()
+                                }
+                        )
+                } else {
+                    RemoteImage(
+                        url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fit)
+                }
             }
+
+            // Controls overlay
+            if showControls {
+                VStack {
+                    HStack {
+                        Button {
+                            // Exit fullscreen / close handled by parent
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.body.weight(.semibold))
+                                .padding(10)
+                                .background(.black.opacity(0.3), in: Circle())
+                                .unifiedGlass(.subtle, in: Circle())
+                        }
+                        .accessibilityLabel(Text("Close", comment: "Video action"))
+
+                        Spacer()
+
+                        ShareLink(item: attachment.url ?? attachment.previewURL) {
+                            Image(systemName: AlohaSymbol.share)
+                                .font(.body.weight(.semibold))
+                                .padding(10)
+                                .background(.black.opacity(0.3), in: Circle())
+                                .unifiedGlass(.subtle, in: Circle())
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .padding(metrics.space3)
+
+                    Spacer()
+
+                    HStack {
+                        Spacer()
+                        // Play/pause, time, etc.
+                        VideoControlsOverlay(player: player)
+                    }
+                    .padding(metrics.space3)
+                }
         }
         .task(id: sourceIndex) { await prepare() }
         .onChange(of: seekRequest) { _, position in
@@ -250,15 +319,22 @@ public struct VideoAttachmentPlayer: View {
         .onDisappear { player?.pause() }
     }
 
+    private func scheduleControlsHide() {
+        controlsHideTask?.cancel()
+        controlsHideTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            if !Task.isCancelled {
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.3)) { showControls = false }
+                }
+            }
+        }
+    }
+
     /// Jumps to a chapter and plays from there; a paused player that seeks
     /// and stays paused looks like nothing happened.
     private func seek(to position: Double) {
         guard let player else { return }
-        // The `async` seek rather than the completion-handler one: that
-        // handler is a nonisolated `@Sendable` closure, and clearing
-        // `seekRequest` from inside it is a main-actor mutation off the main
-        // actor — a warning today and a data race whenever the callback lands
-        // on another thread.
         Task { @MainActor in
             _ = await player.seek(
                 to: CMTime(seconds: position, preferredTimescale: 600),
@@ -281,6 +357,7 @@ public struct VideoAttachmentPlayer: View {
 
         if autoplay { newPlayer.play() }
         if let pending = seekRequest { seek(to: pending) }
+        scheduleControlsHide()
 
         // Watch for a failed item and fall to the next rung at the same point.
         for await status in item.publisher(for: \.status).values {
@@ -289,6 +366,29 @@ public struct VideoAttachmentPlayer: View {
                 return
             }
             if status == .readyToPlay { return }
+        }
+    }
+}
+
+/// Minimal video controls overlay
+private struct VideoControlsOverlay: View {
+    let player: AVPlayer?
+    @Environment(\.alohaPalette) private var palette
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Button {
+                guard let player else { return }
+                if player.rate > 0 { player.pause() } else { player.play() }
+            } label: {
+                Image(systemName: player?.rate ?? 0 > 0 ? "pause.fill" : "play.fill")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(.black.opacity(0.3), in: Circle())
+                    .unifiedGlass(.subtle, in: Circle())
+            }
+            .buttonStyle(.plain)
         }
     }
 }

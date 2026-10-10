@@ -8,6 +8,7 @@ import SwiftUI
 
 public struct TimelineView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
 
     @State private var model: TimelineModel
@@ -36,7 +37,7 @@ public struct TimelineView: View {
             }
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.72), value: model.pendingNewCount > 0)
-        .background(palette.background)
+        .background(palette.background.ignoresSafeArea())
         .timelineKeyboard(
             focusedID: $focusedStatusID,
             isShowingShortcuts: $isShowingShortcuts,
@@ -88,7 +89,7 @@ public struct TimelineView: View {
                 if model.isRefreshing {
                     ForEach(0..<3, id: \.self) { index in
                         SkeletonRow(hasMedia: index == 1)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 0, leading: metrics.space4, bottom: 0, trailing: metrics.space4))
                             .listRowBackground(palette.background)
                             .listRowSeparator(.hidden)
                     }
@@ -109,10 +110,8 @@ public struct TimelineView: View {
                         isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
                         onAction: onAction
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: metrics.space1, leading: metrics.space4, bottom: metrics.space1, trailing: metrics.space4))
                     .listRowBackground(palette.background)
-                    // Space separates rows now, not a hairline between every
-                    // pair of them.
                     .listRowSeparator(.hidden)
                     .id(status.id)
                     .overlay(alignment: .leading) {
@@ -120,7 +119,7 @@ public struct TimelineView: View {
                             Capsule()
                                 .fill(palette.accent)
                                 .frame(width: 3)
-                                .padding(.vertical, 4)
+                                .padding(.vertical, metrics.space2)
                                 .padding(.leading, -8)
                         }
                     }
@@ -133,6 +132,9 @@ public struct TimelineView: View {
 
                 case .gap(let id):
                     gapRow(id: id)
+
+                case .caughtUpDivider(let after):
+                    caughtUpDivider(after: after)
                 }
             }
 
@@ -147,6 +149,7 @@ public struct TimelineView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .background(palette.background)
     }
 
     /// A hole between two fetched ranges, never closed silently.
@@ -154,7 +157,7 @@ public struct TimelineView: View {
         Button {
             Task { await model.fillGap(id: id) }
         } label: {
-            HStack(spacing: AlohaMetrics.space2) {
+            HStack(spacing: metrics.space2) {
                 Spacer()
                 Image(systemName: AlohaSymbol.gap)
                 Text("Load the posts in between", comment: "Timeline gap row")
@@ -162,10 +165,30 @@ public struct TimelineView: View {
             }
             .font(.footnote.weight(.medium))
             .foregroundStyle(palette.accent)
-            .padding(.vertical, AlohaMetrics.space3)
+            .padding(.vertical, metrics.space3)
         }
         .buttonStyle(.plain)
         .listRowBackground(palette.surfaceRaised)
+        .unifiedGlass(.subtle)
+    }
+
+    /// A visual divider marking where the previous session ended.
+    private func caughtUpDivider(after statusID: String) -> some View {
+        HStack(spacing: metrics.space2) {
+            Spacer()
+            VStack(spacing: metrics.space1) {
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(height: 1)
+                Text("You're caught up", comment: "Timeline caught up divider")
+                    .font(AlohaType.micro)
+                    .foregroundStyle(palette.tertiaryLabel)
+            }
+            Spacer()
+        }
+        .padding(.vertical, metrics.space3)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     /// New content never moves what the person is reading.
@@ -173,7 +196,7 @@ public struct TimelineView: View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { model.revealPendingRows() }
         } label: {
-            HStack(spacing: AlohaMetrics.space2) {
+            HStack(spacing: metrics.space2) {
                 Image(systemName: "arrow.up")
                 Text(
                     "^[\(model.pendingNewCount) new post](inflect: true)", comment: "New posts pill"
@@ -181,20 +204,20 @@ public struct TimelineView: View {
             }
             .font(.footnote.weight(.semibold))
             .foregroundStyle(palette.onAccent)
-            .padding(.horizontal, AlohaMetrics.space4)
-            .padding(.vertical, AlohaMetrics.space2)
+            .padding(.horizontal, metrics.space4)
+            .padding(.vertical, metrics.space2)
             .background(palette.accent, in: Capsule())
-            .shadow(radius: 6, y: 2)
+            .shadow(color: palette.accent.opacity(0.3), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
-        .padding(.top, AlohaMetrics.space2)
+        .padding(.top, metrics.space2)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - Non-content states
 
     private var reauthenticationBanner: some View {
-        HStack(spacing: AlohaMetrics.space3) {
+        HStack(spacing: metrics.space3) {
             Image(systemName: AlohaSymbol.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Your sign-in has expired", comment: "Re-auth banner title")
@@ -209,26 +232,27 @@ public struct TimelineView: View {
             }
             Spacer()
         }
-        .padding(AlohaMetrics.space3)
+        .padding(metrics.space3)
         .background(palette.surfaceRaised)
+        .unifiedGlass(.regular)
         .listRowInsets(EdgeInsets())
         .listRowBackground(palette.background)
     }
 
     private var offlineStrip: some View {
-        HStack(spacing: AlohaMetrics.space2) {
+        HStack(spacing: metrics.space2) {
             Image(systemName: AlohaSymbol.offline)
             Text("Offline — showing what's cached", comment: "Offline strip")
             Spacer()
         }
         .font(.caption)
         .foregroundStyle(palette.secondaryLabel)
-        .padding(.vertical, AlohaMetrics.space2)
+        .padding(.vertical, metrics.space2)
         .listRowBackground(palette.background)
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
+        HStack(spacing: metrics.space2) {
             Image(systemName: AlohaSymbol.warning)
             Text(message).font(.caption)
             Spacer()
@@ -240,7 +264,8 @@ public struct TimelineView: View {
             .font(.caption.weight(.semibold))
         }
         .foregroundStyle(palette.destructive)
-        .padding(.vertical, AlohaMetrics.space2)
+        .padding(.vertical, metrics.space2)
+        .unifiedGlass(.regular)
         .listRowBackground(palette.background)
     }
 
