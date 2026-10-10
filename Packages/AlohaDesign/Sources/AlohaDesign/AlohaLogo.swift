@@ -18,12 +18,7 @@ public struct AlohaLogo: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            Image("AlohaLogo", bundle: .module)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 96, height: 96)
-                .accessibilityHidden(true)
-
+            AlohaLogoMark(size: 96)
             AlohaWordmark()
         }
         .accessibilityElement(children: .combine)
@@ -31,12 +26,39 @@ public struct AlohaLogo: View {
     }
 }
 
+/// The mark on its own, at any size: above a sign-in field, in an empty state,
+/// or wherever the wordmark would be too much.
+///
+/// It lives here, in the design package, so no other package has to reach into
+/// this one's asset catalog — an `Image(_:bundle:)` in another module resolves
+/// against *that* module's resources and silently draws nothing.
+public struct AlohaLogoMark: View {
+    private let size: CGFloat
+
+    public init(size: CGFloat = 96) {
+        self.size = size
+    }
+
+    public var body: some View {
+        Image("AlohaLogo", bundle: .module)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
 /// The name, in the brand's own type.
 ///
 /// Rounded, because the logo is round and a wordmark that fights its own mark
 /// reads as two different apps. The weight is heavy enough to hold against the
-/// logo above it, and the tracking is tightened the way a wordmark is set by
+/// logo above it, and the tracking is tightened the way a logotype is set by
 /// hand rather than left at the default.
+///
+/// The type face itself is one function away (`AlohaType.wordmark`): the
+/// repository ships no brand font, and if the brand's own arrives, that
+/// function and the `UIAppFonts` entry in the app's Info.plist are the only two
+/// places that change.
 public struct AlohaWordmark: View {
     @Environment(\.alohaPalette) private var palette
 
@@ -46,8 +68,8 @@ public struct AlohaWordmark: View {
 
     public var body: some View {
         Text("Aloha Social", comment: "App name")
-            .font(.system(.title, design: .rounded, weight: .bold))
-            .tracking(-0.5)
+            .font(AlohaType.wordmark)
+            .tracking(AlohaType.wordmarkTracking)
             .foregroundStyle(palette.label)
     }
 }

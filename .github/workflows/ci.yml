@@ -142,14 +142,10 @@ jobs:
   # Every app target, every platform. Signing is off: CI is about the code
   # compiling, not about a certificate nobody should be committing.
   #
-  # The project is objectVersion 110, which means Xcode 27, and no hosted
-  # runner image ships it yet (the newest on macos-26 is 26.6). An Xcode that
-  # cannot parse the format refuses the project outright, which is the
-  # correct failure for a person and the wrong cross for a check: it tells
-  # the branch nothing. So the job asserts what it can — that this Xcode can
-  # open the project — and skips with the reason when it cannot. The day an
-  # image carries Xcode 27 the build runs for real, and a failure then is a
-  # failure about the code. Remove the skip when that day comes.
+  # All four platforms, with signing off: CI is about the code compiling,
+  # not about a certificate nobody should be committing. The runner images
+  # now carry Xcode 27, so this job is real signal — a failure is a failure
+  # about the branch.
   build:
     name: Build (${{ matrix.name }})
     runs-on: macos-26
@@ -182,15 +178,6 @@ jobs:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
           set -o pipefail
-          if ! listing=$(xcodebuild -list -quiet -project AlohaSocial.xcodeproj 2>&1); then
-            if printf '%s' "$listing" | grep -q "future Xcode project file format"; then
-              version=$(xcodebuild -version | head -1 | tr -s ' ' | cut -d' ' -f2)
-              echo "::notice title=Build skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27). This runner's Xcode $version cannot open that format, so the build was skipped rather than failed. This is a runner toolchain limit, not a statement about the code; no hosted image ships Xcode 27 yet."
-              exit 0
-            fi
-            printf '%s\n' "$listing" >&2
-            exit 1
-          fi
           xcodebuild build \
             -project AlohaSocial.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
@@ -203,10 +190,6 @@ jobs:
   # VoiceOver and Reduce Motion. Runs on the iOS simulator because that is the
   # platform the UI-test bundle is built for — the Mac tours run locally where
   # a Mac app target exists to drive.
-  #
-  # Same honest skip as the build job: the UI tests launch an app in an
-  # objectVersion 110 project, so until a runner ships Xcode 27 the suite is
-  # skipped with the reason instead of failing on the toolchain.
   ui:
     name: UI tours
     runs-on: macos-26
@@ -241,15 +224,6 @@ jobs:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
           set -o pipefail
-          if ! listing=$(xcodebuild -list -quiet -project AlohaSocial.xcodeproj 2>&1); then
-            if printf '%s' "$listing" | grep -q "future Xcode project file format"; then
-              version=$(xcodebuild -version | head -1 | tr -s ' ' | cut -d' ' -f2)
-              echo "::notice title=UI tours skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27). This runner's Xcode $version cannot open that format, so the tours were skipped rather than failed. This is a runner toolchain limit, not a statement about the tests."
-              exit 0
-            fi
-            printf '%s\n' "$listing" >&2
-            exit 1
-          fi
           device=$(xcrun simctl list devices available -j | python3 -c '
             import json, sys
             data = json.load(sys.stdin).get("devices", {})

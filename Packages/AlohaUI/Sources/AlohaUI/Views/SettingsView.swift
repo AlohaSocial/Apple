@@ -81,6 +81,10 @@ public struct SettingsView: View {
     @State private var cacheSize = 0
     @State private var isShowingNextcloudConnect = false
     @State private var isShowingShortcuts = false
+    /// The introduction, revisited: a person who has already signed in has no
+    /// other way to see the tour again, and it is the only place the app
+    /// explains itself.
+    @State private var isShowingIntroduction = false
 
     public init(onAddAccount: @escaping () -> Void) {
         self.onAddAccount = onAddAccount
@@ -407,6 +411,16 @@ public struct SettingsView: View {
                         }
                     }
                     Button {
+                        isShowingIntroduction = true
+                    } label: {
+                        Label {
+                            Text("Show the introduction", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "sparkles")
+                        }
+                    }
+
+                    Button {
                         isShowingShortcuts = true
                     } label: {
                         Label {
@@ -433,6 +447,13 @@ public struct SettingsView: View {
         )
         .navigationTitle(Text("Settings", comment: "Screen title"))
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
+        .sheet(isPresented: $isShowingIntroduction) {
+            // The same introduction a first launch sees, in a sheet: the last
+            // page's address field still signs in, and anything already
+            // signed in stays signed in when it is dismissed.
+            WelcomeView()
+                .alohaTheme(environment.theme, metrics: environment.metrics)
+        }
         .sheet(isPresented: whenSignedIn($isShowingNextcloudConnect)) {
             if let session = environment.activeSession {
                 NextcloudConnectView(session: session)
