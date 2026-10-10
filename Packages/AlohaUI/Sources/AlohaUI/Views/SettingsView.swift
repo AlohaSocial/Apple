@@ -147,10 +147,10 @@ public struct SettingsView: View {
                 }
             }
 
-            if shows(
-                "Appearance",
-                "appearance theme density serif icon dark light text")
-            {
+                if shows(
+                    "Appearance",
+                    "appearance theme density serif icon counts numbers text size compact")
+                {
                 Section {
                     Picker(selection: $environment.theme) {
                         ForEach(AlohaTheme.allCases) { theme in
@@ -167,6 +167,33 @@ public struct SettingsView: View {
                         Text("Spacious", comment: "Density").tag(AlohaMetrics.Density.spacious)
                     } label: {
                         Text("Density", comment: "Settings item")
+                    }
+
+                    // docs/05 §9: the appearance section owns the counts switch
+                    // — "show/hide counts" sits with how the app looks, next to
+                    // density and the reading options, not buried in the feed's
+                    // behaviour. It is the same setting either way.
+                    if let session = environment.activeSession {
+                        Toggle(
+                            isOn: Binding(
+                                get: { session.settings.showPopularityCounts },
+                                set: { value in
+                                    Task {
+                                        await session.updateSettings {
+                                            $0.showPopularityCounts = value
+                                        }
+                                    }
+                                })
+                        ) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Show numbers", comment: "Settings item")
+                                Text(
+                                    "Reply, boost and favourite counts, follower and post counts, and view counts.",
+                                    comment: "Settings explanation")
+                                    .font(.footnote)
+                                    .foregroundStyle(palette.secondaryLabel)
+                            }
+                        }
                     }
 
                     Toggle(isOn: $environment.metrics.useSerifBody) {
@@ -608,23 +635,9 @@ NavigationLink(value: Route.notificationRequests) {
                 Text("Show replies", comment: "Settings item")
             }
 
-            Toggle(
-                isOn: Binding(
-                    get: { session.settings.showPopularityCounts },
-                    set: { value in
-                        Task { await session.updateSettings { $0.showPopularityCounts = value } }
-                    })
-            ) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Show numbers", comment: "Settings item")
-                    Text(
-                        "Reply, boost and favourite counts, follower and post counts, and view counts.",
-                        comment: "Settings explanation"
-                    )
-                    .font(.footnote)
-                    .foregroundStyle(palette.secondaryLabel)
-                }
-            }
+            // "Show numbers" lives in Appearance, where docs/05 §9 puts it:
+            // it is about how much the app shows, next to density and the
+            // reading options, not about what the feed does.
 
             Toggle(
                 isOn: Binding(
