@@ -71,7 +71,9 @@ public struct MemoriesView: View {
         }
         .alohaGround(palette)
         .overlay {
-            if isLoading && memories.isEmpty { ProgressView() }
+            if isLoading && memories.isEmpty {
+                SkeletonListRow(person: 3)
+            }
         }
         .navigationTitle(Text("Looking back", comment: "Screen title"))
         .task { await load() }

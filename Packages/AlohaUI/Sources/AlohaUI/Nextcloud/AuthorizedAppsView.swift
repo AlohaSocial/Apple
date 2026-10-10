@@ -45,7 +45,9 @@ public struct AuthorizedAppsView: View {
         .alohaGround(palette)
         .navigationTitle(Text("Authorized apps", comment: "Screen title"))
         .overlay {
-            if isLoading && apps.isEmpty { ProgressView() }
+            if isLoading && apps.isEmpty {
+                SkeletonListRow(text: 3)
+            }
         }
         .task { await load() }
         .refreshable { await load() }

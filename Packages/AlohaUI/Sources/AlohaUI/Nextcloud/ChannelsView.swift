@@ -100,7 +100,9 @@ public struct ChannelsView: View {
             }
         }
         .overlay {
-            if isLoading && channels.isEmpty { ProgressView() }
+            if isLoading && channels.isEmpty {
+                SkeletonListRow(person: 4)
+            }
         }
         .task { await load() }
         .refreshable { await load() }
