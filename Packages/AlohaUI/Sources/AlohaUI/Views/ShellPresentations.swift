@@ -47,6 +47,7 @@ enum ShellSheet: Identifiable {
 struct ShellSheets: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.mediaTransition) private var mediaTransition
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @Binding var isPresentingSignIn: Bool
     @Binding var composing: ComposerPresentation?
@@ -61,7 +62,16 @@ struct ShellSheets: ViewModifier {
             .sheet(item: whenSignedIn($composing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(
-                        session: session, replyTo: request.replyTo, quoting: request.quoting)
+                        session: session, replyTo: request.replyTo, quoting: request.quoting
+                    )
+                    #if os(iOS)
+                        // A composer is a writing surface, not a card: on a
+                        // regular-width iPad it opens large, so the alt-text
+                        // strip and the visibility picker are not a scroll
+                        // inside a half-height sheet.
+                        .presentationDetents(
+                            horizontalSizeClass == .regular ? [.large] : [.medium, .large])
+                    #endif
                 }
             }
             .sheet(item: whenSignedIn($sheet)) { sheet in

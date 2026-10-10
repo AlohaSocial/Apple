@@ -448,8 +448,10 @@ public struct AppShell: View {
         switch route {
         case .thread(let statusID):
             ThreadView(statusID: statusID, session: session) { handle($0, session: session) }
+                .readerColumn
         case .profile(let accountID):
             ProfileView(accountID: accountID, session: session) { handle($0, session: session) }
+                .readerColumn
         case .hashtag(let name):
             HashtagTimelineView(name: name, session: session) { handle($0, session: session) }
         case .bookmarks:
@@ -464,12 +466,15 @@ public struct AppShell: View {
             .navigationTitle(Text("Liked posts", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
+                .readerColumn
         case .settings:
             SettingsView(onAddAccount: { isPresentingSignIn = true })
         case .explore:
             ExploreView(session: session) { handle($0, session: session) }
+                .readerColumn
         case .search(let query):
             SearchView(session: session, initialQuery: query) { handle($0, session: session) }
+                .readerColumn
         case .lists:
             ListsView(session: session)
         case .filters:
