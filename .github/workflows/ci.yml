@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "fix/**", "feature/**"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # No XcodeGen: the project file is checked in and is the source of truth.
+
+jobs:
+  # Package logic. Every package builds for all five platforms; running the
+  # suites on macOS covers them all, because nothing in them links a UI.
+  test:
+    name: Package tests (macOS)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+          xcodebuild -version
+          swift --version
+      - name: Test every package
+        run: |
+          failed=0
+          for manifest in Packages/*/Package.swift; do
+            package_dir=$(dirname "$manifest")
+            echo "::group::swift test $package_dir"
+            if ! (cd "$package_dir" && swift test --parallel); then
+              failed=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $failed
+
+  # Package logic again, on a device simulator, where SwiftUI actually has a
+  # trait environment: this is where a colour or a layout crash surfaces.
+  test-simulator:
+    name: Package tests (iOS simulator)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Test every package
+        run: |
+          failed=0
+          for manifest in Packages/*/Package.swift; do
+            package_dir=$(dirname "$manifest")
+            scheme=$(basename "$package_dir")
+            echo "::group::xcodebuild test $package_dir"
+            destination='platform=iOS Simulator,name=iPhone 17 Pro'
+            if ! (cd "$package_dir" && xcodebuild test -scheme "$scheme" \
+                 -destination "$destination" -quiet); then
+              # Fall back to any available iPhone: a runner's device list is
+              # not a promise, and a named simulator that is not there is a
+              # build failure rather than a test failure.
+              device=$(xcrun simctl list devices available iPhone -j | python3 -c "import json,sys; d=json.load(sys.stdin); print(next(iter(d.values()))[0]['name'])" 2>/dev/null)
+              if [ -n "$device" ]; then
+                (cd "$package_dir" && xcodebuild test -scheme "$scheme" \
+                  -destination "platform=iOS Simulator,name=$device" -quiet) || failed=1
+              else
+                failed=1
+              fi
+            fi
+            echo "::endgroup::"
+          done
+          exit $failed
+
+  # Every app target, every platform. Signing is off: CI is about the code
+  # compiling, not about a certificate nobody should be committing.
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: macos-15
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iOS
+            scheme: AlohaSocial
+            destination: generic/platform=iOS
+          - name: macOS
+            scheme: AlohaSocialMac
+            destination: platform=macOS
+          - name: tvOS
+            scheme: AlohaSocialTV
+            destination: generic/platform=tvOS
+          - name: watchOS
+            scheme: AlohaSocialWatch
+            destination: generic/platform=watchOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Build ${{ matrix.name }}
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project AlohaSocial.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}" \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM=""
+
+  # The full tour suite: screen presentation, the Skeleton and Media viewer,
+  # VoiceOver and Reduce Motion. Runs on the iOS simulator because that is the
+  # platform the UI-test bundle is built for — the Mac tours run locally where
+  # a Mac app target exists to drive.
+  ui:
+    name: UI tours
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Boot a simulator
+        run: |
+          device=$(xcrun simctl list devices available iPhone -j | python3 -c "import json,sys; d=json.load(sys.stdin); print(next(iter(d.values()))[0]['udid'])" 2>/dev/null)
+          xcrun simctl boot "$device" || true
+      - name: Run the tour suite
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+        run: |
+          set -o pipefail
+          device=$(xcrun simctl list devices available iPhone -j | python3 -c "import json,sys; d=json.load(sys.stdin); print(next(iter(d.values()))[0]['name'])" 2>/dev/null)
+          xcodebuild test \
+            -project AlohaSocial.xcodeproj \
+            -scheme AlohaSocialUITests \
+            -destination "platform=iOS Simulator,name=$device" \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM=""
+
+  # A pull request that fails to lint does not merge (docs/12 §6).
+  lint:
+    name: swift-format (strict)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Lint everything
+        run: xcrun swift-format lint --recursive --strict .
+
+  # The licence gate: every file carries the SPDX header, and no external
+  # dependency has crept in.
+  licence:
+    name: Licence and dependency gate
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the gate
+        run: python3 tools/check-licence.py

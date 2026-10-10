@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import AlohaModels
 import Testing
 @testable import AlohaUI
