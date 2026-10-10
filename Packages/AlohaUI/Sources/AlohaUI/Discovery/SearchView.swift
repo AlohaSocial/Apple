@@ -191,14 +191,40 @@ public struct SearchView: View {
         }
     }
 
+    /// The shape of results arriving, not a spinner: three people, then a
+    /// couple of lines. A lone spinner over a blank screen reads as "broken";
+    /// the shape of the answer reads as "working".
     private var loadingRow: some View {
-        HStack {
-            Spacer()
-            ProgressView()
-            Spacer()
+        Section {
+            ForEach(0..<3, id: \.self) { index in
+                searchSkeleton(avatar: index == 0)
+            }
+        } header: {
+            Text("People", comment: "Search results section")
         }
+    }
+
+    private func searchSkeleton(avatar: Bool) -> some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            if avatar {
+                Circle()
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 40, height: 40)
+            }
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 140, height: 12)
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 200, height: 10)
+            }
+        }
+        .padding(.vertical, AlohaMetrics.space2)
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
+        .accessibilityHidden(true)
+        .redacted(reason: .placeholder)
     }
 
     private func errorStrip(_ message: String) -> some View {
