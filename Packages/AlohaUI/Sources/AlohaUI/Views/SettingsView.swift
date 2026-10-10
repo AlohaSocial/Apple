@@ -96,102 +96,14 @@ public struct SettingsView: View {
 
         Form {
             if shows("Accounts", "account accounts add sign switch remove") {
-                // Hoisted out of the row entirely: the compiler could not
-                // check this builder in reasonable time, and the active
-                // account is a fact about the section rather than about a row.
-                let activeAccountID = environment.activeSession?.id
-                Section {
-                    ForEach(environment.sessions) { session in
-                        // One row per account, extracted so the builder can be
-                        // checked: the compiler refuses an expression this
-                        // large ("unable to type-check in reasonable time").
-                        accountRow(
-                            session,
-                            isActiveAccount: session.id == activeAccountID
-                        )
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                Task { await environment.removeAccount(session.id) }
-                            } label: {
-                                Text("Remove", comment: "Account action")
-                            }
-                        }
-                    }
-
-                    Button(action: onAddAccount) {
-                        Text("Add account…", comment: "Settings action")
-                    }
-                } header: {
-                    Text("Accounts", comment: "Settings section")
-                }
+                accountsSection
             }
 
             if shows(
                 "Appearance",
                 "appearance theme density serif icon counts numbers text size compact")
             {
-                Section {
-                    Picker(selection: $environment.theme) {
-                        ForEach(AlohaTheme.allCases) { theme in
-                            Text(theme.displayName).tag(theme)
-                        }
-                    } label: {
-                        Text("Theme", comment: "Settings item")
-                    }
-
-                    Picker(selection: $environment.metrics.density) {
-                        Text("Compact", comment: "Density").tag(AlohaMetrics.Density.compact)
-                        Text("Comfortable", comment: "Density").tag(
-                            AlohaMetrics.Density.comfortable)
-                        Text("Spacious", comment: "Density").tag(AlohaMetrics.Density.spacious)
-                    } label: {
-                        Text("Density", comment: "Settings item")
-                    }
-
-                    // docs/05 §9: the appearance section owns the counts switch
-                    // — "show/hide counts" sits with how the app looks, next to
-                    // density and the reading options, not buried in the feed's
-                    // behaviour. It is the same setting either way.
-                    if let session = environment.activeSession {
-                        Toggle(
-                            isOn: Binding(
-                                get: { session.settings.showPopularityCounts },
-                                set: { value in
-                                    Task {
-                                        await session.updateSettings {
-                                            $0.showPopularityCounts = value
-                                        }
-                                    }
-                                })
-                        ) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Show numbers", comment: "Settings item")
-                                Text(
-                                    "Reply, boost and favourite counts, follower and post counts, and view counts.",
-                                    comment: "Settings explanation"
-                                )
-                                .font(.footnote)
-                                .foregroundStyle(palette.secondaryLabel)
-                            }
-                        }
-                    }
-
-                    Toggle(isOn: $environment.metrics.useSerifBody) {
-                        Text("Serif body text", comment: "Settings item")
-                    }
-
-                    #if os(iOS)
-                        AppIconPicker()
-                    #endif
-                } header: {
-                    Text("Appearance", comment: "Settings section")
-                } footer: {
-                    if environment.serverAccent != nil {
-                        Text(
-                            "The accent colour comes from your Nextcloud, so the app looks like the server it is signed in to.",
-                            comment: "Where the accent colour comes from")
-                    }
-                }
+                appearanceSection
             }
 
             if let session = environment.activeSession {
@@ -910,6 +822,97 @@ public struct SettingsView: View {
 extension SettingsView {
     /// A handle is not a sentence. Read aloud it should be words, not
     /// punctuation — "alice at cloud.example.test".
+    /// Appearance: the theme, the density, and the reading options.
+    ///
+    /// docs/05 §9 puts "show/hide counts" here, beside density and the reading
+    /// options: it is about how much the app shows, not about what a feed
+    /// does. Extracted from the body so the compiler can check the builder.
+    @ViewBuilder private var appearanceSection: some View {
+        Section {
+            Picker(selection: $environment.theme) {
+                ForEach(AlohaTheme.allCases) { theme in
+                    Text(theme.displayName).tag(theme)
+                }
+            } label: {
+                Text("Theme", comment: "Settings item")
+            }
+
+            Picker(selection: $environment.metrics.density) {
+                Text("Compact", comment: "Density").tag(AlohaMetrics.Density.compact)
+                Text("Comfortable", comment: "Density").tag(AlohaMetrics.Density.comfortable)
+                Text("Spacious", comment: "Density").tag(AlohaMetrics.Density.spacious)
+            } label: {
+                Text("Density", comment: "Settings item")
+            }
+
+            if let session = environment.activeSession {
+                Toggle(
+                    isOn: Binding(
+                        get: { session.settings.showPopularityCounts },
+                        set: { value in
+                            Task {
+                                await session.updateSettings {
+                                    $0.showPopularityCounts = value
+                                }
+                            }
+                        })
+                ) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Show numbers", comment: "Settings item")
+                        Text(
+                            "Reply, boost and favourite counts, follower and post counts, and view counts.",
+                            comment: "Settings explanation")
+                            .font(.footnote)
+                            .foregroundStyle(palette.secondaryLabel)
+                    }
+                }
+            }
+
+            Toggle(isOn: $environment.metrics.useSerifBody) {
+                Text("Serif body text", comment: "Settings item")
+            }
+
+            #if os(iOS)
+                AppIconPicker()
+            #endif
+        } header: {
+            Text("Appearance", comment: "Settings section")
+        } footer: {
+            if environment.serverAccent != nil {
+                Text(
+                    "The accent colour comes from your Nextcloud, so the app looks like the server it is signed in to.",
+                    comment: "Where the accent colour comes from")
+            }
+        }
+    }
+
+    /// The accounts section: one row per account, and the way in.
+    ///
+    /// Extracted from the body because the compiler refuses to type-check a
+    /// builder this large ("unable to type-check in reasonable time"), which is
+    /// the same problem the account row solved one level down.
+    @ViewBuilder private var accountsSection: some View {
+        let activeAccountID = environment.activeSession?.id
+        Section {
+            ForEach(environment.sessions) { session in
+                accountRow(session, isActiveAccount: session.id == activeAccountID)
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            Task { await environment.removeAccount(session.id) }
+                        } label: {
+                            Text("Remove", comment: "Account action")
+                        }
+                    }
+            }
+
+            Button(action: onAddAccount) {
+                Text("Add account…", comment: "Settings action")
+            }
+        } header: {
+            Text("Accounts", comment: "Settings section")
+        }
+    }
+
     /// One account row: face, name, handle, and a check when it is the active
     /// one. Extracted from the accounts section because a builder this large
     /// is more than the compiler will check in one go — the check and the
