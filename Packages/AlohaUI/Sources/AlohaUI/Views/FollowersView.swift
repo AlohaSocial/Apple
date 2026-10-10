@@ -60,32 +60,12 @@ public struct FollowersView: View {
             }
 
             if isLoading {
-                // The shape of a list arriving, not a spinner: five rows of
-                // avatar and name. The web's own profiles page waits exactly
-                // this way, and a blank screen with a spinner reads as broken
-                // where a list in progress reads as working.
-                Section {
-                    ForEach(0..<6, id: \.self) { _ in
-                        HStack(spacing: metrics.space3) {
-                            Circle()
-                                .fill(palette.surfaceRaised)
-                                .frame(width: metrics.avatarSize, height: metrics.avatarSize)
-                            VStack(alignment: .leading, spacing: metrics.space2) {
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(palette.surfaceRaised)
-                                    .frame(width: 160, height: 12)
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(palette.surfaceRaised)
-                                    .frame(width: 100, height: 10)
-                            }
-                        }
-                        .padding(.vertical, metrics.space2)
-                        .listRowBackground(palette.background)
-                        .listRowSeparator(.hidden)
-                        .accessibilityHidden(true)
-                        .redacted(reason: .placeholder)
-                    }
-                }
+                // The shape of a list arriving, not a spinner: six rows of
+                // avatar and name. A blank screen with a spinner reads as
+                // broken where a list in progress reads as working.
+                SkeletonListRow(person: 6)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
             } else if accounts.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     switch kind {
