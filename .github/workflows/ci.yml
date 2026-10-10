@@ -184,7 +184,11 @@ jobs:
           if ! xcodebuild -list -quiet -project AlohaSocial.xcodeproj \
               >"$RUNNER_TEMP/xcode-list" 2>&1; then
             if grep -q "future Xcode project file format" "$RUNNER_TEMP/xcode-list"; then
-              version=$(xcodebuild -version | head -1 | tr -s ' ' | cut -d' ' -f2)
+              # Never pipe xcodebuild into head: a closed pipe makes its
+              # version handler raise an uncaught NSException (exit 134),
+              # which takes the whole script down.
+              xcodebuild -version >"$RUNNER_TEMP/xcode-version" 2>&1 || true
+              version=$(tr -s ' ' <"$RUNNER_TEMP/xcode-version" | cut -d' ' -f2 | head -1)
               echo "::notice title=Build skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format. The project needs Xcode 27; when an image ships it, remove this skip and the build runs for real."
               exit 0
             fi
