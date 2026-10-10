@@ -8,40 +8,6 @@ import SwiftUI
 /// The notification policy screen: five for_* rows with Accept/Filter/Drop,
 /// plus a link to the filtered-notifications inbox.
 public struct NotificationPolicyView: View {
-    /// The five decision key paths, typed once.
-    ///
-    /// A bare `\.member` literal inside a `@ViewBuilder` is inferred as an
-    /// existential `any WritableKeyPath<…> & Sendable`, which then cannot be
-    /// passed where a concrete `ReferenceWritableKeyPath` is expected. Naming
-    /// them pins the type and keeps the row calls readable.
-    private enum KeyPaths {
-        static let forNotFollowing:
-            ReferenceWritableKeyPath<
-                NotificationPolicy, NotificationPolicy.Decision
-            > = \.forNotFollowing
-        static let forNotFollowers:
-            ReferenceWritableKeyPath<
-                NotificationPolicy, NotificationPolicy.Decision
-            > = \.forNotFollowers
-        static let forNewAccounts:
-            ReferenceWritableKeyPath<
-                NotificationPolicy, NotificationPolicy.Decision
-            > = \.forNewAccounts
-        static let forPrivateMentions:
-            ReferenceWritableKeyPath<
-                NotificationPolicy, NotificationPolicy.Decision
-            > = \.forPrivateMentions
-        static let forLimitedAccounts:
-            ReferenceWritableKeyPath<
-                NotificationPolicy, NotificationPolicy.Decision
-            > = \.forLimitedAccounts
-    }
-
-    @Environment(\.alohaPalette) private var palette
-    @Environment(\.dismiss) private var dismiss
-
-    private let session: AccountSession
-
     @State private var policy: NotificationPolicy?
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -58,25 +24,49 @@ public struct NotificationPolicyView: View {
             }
 
             if let policy {
+                // Typed locals, not a static table: a key-path literal is
+                // inferred as an existential inside a view builder, and a
+                // `static let` of one is a mutable global in Swift 6.
+                let forNotFollowing:
+                    ReferenceWritableKeyPath<
+                        NotificationPolicy, NotificationPolicy.Decision
+                    > = \.forNotFollowing
+                let forNotFollowers:
+                    ReferenceWritableKeyPath<
+                        NotificationPolicy, NotificationPolicy.Decision
+                    > = \.forNotFollowers
+                let forNewAccounts:
+                    ReferenceWritableKeyPath<
+                        NotificationPolicy, NotificationPolicy.Decision
+                    > = \.forNewAccounts
+                let forPrivateMentions:
+                    ReferenceWritableKeyPath<
+                        NotificationPolicy, NotificationPolicy.Decision
+                    > = \.forPrivateMentions
+                let forLimitedAccounts:
+                    ReferenceWritableKeyPath<
+                        NotificationPolicy, NotificationPolicy.Decision
+                    > = \.forLimitedAccounts
+
                 Section {
                     policyRow(
-                        key: KeyPaths.forNotFollowing,
+                        key: forNotFollowing,
                         title: Text("People you don't follow", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: KeyPaths.forNotFollowers,
+                        key: forNotFollowers,
                         title: Text("People who don't follow you", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: KeyPaths.forNewAccounts,
+                        key: forNewAccounts,
                         title: Text("New accounts", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: KeyPaths.forPrivateMentions,
+                        key: forPrivateMentions,
                         title: Text("Unsolicited private mentions", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: KeyPaths.forLimitedAccounts,
+                        key: forLimitedAccounts,
                         title: Text("Limited accounts", comment: "Policy row"),
                         policy: policy)
                 } footer: {

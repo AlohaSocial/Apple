@@ -191,13 +191,21 @@ jobs:
             cat "$RUNNER_TEMP/xcode-list" >&2
             exit 1
           fi
+          # Output goes to a file, never a pipe: xcodebuild aborts with
+          # NSFileHandleOperationException (broken pipe) when its stdout's
+          # reader disappears, and that abort is indistinguishable from a
+          # build failure in the log.
           xcodebuild build \
             -project AlohaSocial.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
             -destination "${{ matrix.destination }}" \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM=""
+            DEVELOPMENT_TEAM="" \
+            >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/build-${{ matrix.name }}.log"
+          exit $status
 
   # The full tour suite: screen presentation, the Skeleton and Media viewer,
   # VoiceOver and Reduce Motion. Runs on the iOS simulator because that is the
