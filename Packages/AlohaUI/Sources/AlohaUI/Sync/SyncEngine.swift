@@ -309,7 +309,7 @@ public struct NotificationPayload: Codable, Sendable, Hashable {
         let payload = NotificationPayload(
             title: notification.account.bestDisplayName,
             body: Self.preview(notification.status),
-            avatarURL: notification.account.avatar,
+            avatarURL: notification.account.preferredAvatarURL,
             accountHandle: notification.account.acct,
             statusID: notification.status?.id)
         return (try? AlohaJSON.encoder.encode(payload)) ?? Data()
@@ -321,7 +321,7 @@ public struct NotificationPayload: Codable, Sendable, Hashable {
         let payload = NotificationPayload(
             title: first?.bestDisplayName ?? "",
             body: Self.preview(status),
-            avatarURL: first?.avatar,
+            avatarURL: first?.preferredAvatarURL,
             accountHandle: first?.acct ?? "",
             statusID: group.statusID)
         return (try? AlohaJSON.encoder.encode(payload)) ?? Data()

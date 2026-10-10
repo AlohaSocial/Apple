@@ -113,6 +113,22 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
 
     public func handle(_ error: any Error) async {
         if let apiError = error as? APIError, apiError.requiresReauthentication {
+            // A 401 on one route is not a revoked token.
+            //
+            // Nextcloud Social's own routes — statistics, interests, channels,
+            // memories — and anything behind a token scope answer 401 for
+            // reasons that say nothing about the account. Marking the whole
+            // account from one request's failure is how a person ends up being
+            // told their sign-in expired on half the screens while they are
+            // perfectly signed in.
+            //
+            // So verify against the one endpoint that is authoritative before
+            // believing it: if the token still works, the 401 belonged to that
+            // route and nothing else changes.
+            let stillSignedIn =
+                (try? await client.decode(
+                    Account.self, from: Endpoint.session.verifyCredentials)) != nil
+            guard !stillSignedIn else { return }
             await markNeedsReauthentication()
         }
     }

@@ -64,30 +64,35 @@ import SwiftUI
         }
     }
 
-    /// The mark, drawn small: gradient ground, two bubbles.
+    /// The artwork itself: the same flower the Home Screen gets, at the size
+    /// the row shows it.
     private struct IconPreview: View {
+        @Environment(\.alohaPalette) private var palette
+
         let accent: AlohaIconVariant
         let isSelected: Bool
 
+        private var imageName: String {
+            accent == .aloha ? "Aloha" : "AlohaIcon-\(accent.rawValue.capitalized)"
+        }
+
         var body: some View {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [accent.swatch.mix(with: .white, by: 0.18), accent.swatch],
-                        startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
                 .frame(width: 60, height: 60)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                )
+                // Drawn inside the frame: a ring that hung outside the tile
+                // overlapped its neighbour at the spacing this row uses.
                 .overlay {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(.white)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(
-                            isSelected ? Color.primary : Color.clear, lineWidth: 2.5
+                    if isSelected {
+                        RoundedRectangle(
+                            cornerRadius: AlohaMetrics.cornerMedium, style: .continuous
                         )
-                        .padding(-3)
+                        .strokeBorder(palette.label, lineWidth: 2.5)
+                    }
                 }
         }
     }

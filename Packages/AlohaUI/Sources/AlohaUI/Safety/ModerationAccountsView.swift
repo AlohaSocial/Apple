@@ -24,6 +24,7 @@ public struct ModerationAccountsView: View {
     @State private var query = ""
     @State private var isLoading = true
     @State private var acting: AdminAccount?
+    @State private var loadID = UUID()
     @State private var errorMessage: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
@@ -34,7 +35,7 @@ public struct ModerationAccountsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             Section {
@@ -62,6 +63,9 @@ public struct ModerationAccountsView: View {
                 } label: {
                     Text("Standing", comment: "Moderation filter")
                 }
+                // Four standings do not fit on a row, and the current one is
+                // what the list below is filtered by.
+                .pickerStyle(.menu)
             }
 
             Section {
@@ -74,13 +78,18 @@ public struct ModerationAccountsView: View {
                     .buttonStyle(.plain)
                 }
 
-                if accounts.isEmpty && !isLoading {
-                    Text("Nobody matches that.", comment: "Moderation accounts empty")
-                        .font(.footnote)
-                        .foregroundStyle(palette.secondaryLabel)
+                if isLoading && accounts.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AlohaMetrics.space5)
+                } else if accounts.isEmpty && errorMessage == nil {
+                    ContentUnavailableView {
+                        Text("Nobody matches that.", comment: "Moderation accounts empty")
+                    }
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Accounts", comment: "Screen title"))
         .searchable(
             text: $query,
@@ -99,25 +108,48 @@ public struct ModerationAccountsView: View {
         "\(origin.rawValue)|\(standing.rawValue)|\(query)"
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+    }
+
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
+        // The previous failure is not the current state: the strip would
+        // otherwise sit next to the spinner of the search that replaced it,
+        // and Retry would re-run whatever query is current.
+        errorMessage = nil
+        let requestedOrigin = origin
+        let requestedStanding = standing
+        let requestedUsername = query.trimmingCharacters(in: .whitespacesAndNewlines)
         // A keystroke should not be a request.
         if !query.isEmpty {
             try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
+            // A newer filter started while this one waited; it owns the
+            // spinner now and will put it down.
+            guard !Task.isCancelled, loadID == requestID else { return }
         }
         do {
-            accounts = try await session.client.decode(
+            let response = try await session.client.decode(
                 LossyArray<AdminAccount>.self,
                 from: Endpoint.moderation.accounts(
-                    origin: origin, standing: standing,
-                    username: query.trimmingCharacters(in: .whitespaces), limit: 40)
+                    origin: requestedOrigin, standing: requestedStanding,
+                    username: requestedUsername, limit: 40)
             ).elements
+            guard !Task.isCancelled, loadID == requestID else { return }
+            accounts = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard loadID == requestID else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Accounts could not be loaded. Please try again.")
         }
     }
 }
@@ -154,7 +186,9 @@ struct AdminAccountRow: View {
         case .active:
             EmptyView()
         case .silenced:
-            label(Text("Silenced", comment: "Account standing"), palette.boost)
+            // Not the boost colour: this is a standing on an account, not an
+            // action on a post.
+            label(Text("Silenced", comment: "Account standing"), palette.accent)
         case .suspended:
             label(Text("Suspended", comment: "Account standing"), palette.destructive)
         case .sensitized:
@@ -166,8 +200,8 @@ struct AdminAccountRow: View {
         text
             .font(AlohaType.micro)
             .foregroundStyle(colour)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, AlohaMetrics.space2)
+            .padding(.vertical, AlohaMetrics.space1)
             .background(colour.opacity(0.14), in: Capsule())
     }
 }
@@ -190,7 +224,7 @@ struct ModerationAccountSheet: View {
         NavigationStack {
             List {
                 if let errorMessage {
-                    Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
                 Section {
@@ -259,6 +293,7 @@ struct ModerationAccountSheet: View {
                 }
                 .disabled(isWorking)
             }
+            .alohaGround(palette)
             .navigationTitle(Text(verbatim: entry.handle))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -275,11 +310,18 @@ struct ModerationAccountSheet: View {
         }
     }
 
+    /// No retry button: the actions that can fail are the buttons on this
+    /// sheet, and pressing one again sends it with the note as it now stands.
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message)
+    }
+
     private func act(_ action: AdminAccountAction) async {
         await run(Endpoint.moderation.act(on: entry.id, action: action, note: note))
     }
 
     private func run(_ endpoint: Endpoint) async {
+        guard !isWorking else { return }
         isWorking = true
         defer { isWorking = false }
         do {
@@ -288,7 +330,9 @@ struct ModerationAccountSheet: View {
             dismiss()
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The account action could not be completed. Please try again.")
         }
     }
 }
@@ -316,6 +360,15 @@ public struct ModerationTrendsView: View {
     @State private var decided: Set<String> = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// Which decision failed, so the strip can take that one again rather
+    /// than guessing at a reload.
+    @State private var failedDecision: (id: String, approve: Bool)?
+    /// Rows with a decision in flight: their controls are disabled and the
+    /// request cannot be doubled by tapping both sides of one row.
+    @State private var decidingIDs: Set<String> = []
+    /// Identifies the newest `load()` so a slow first response cannot
+    /// overwrite a newer one's data or error.
+    @State private var loadID = UUID()
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -325,7 +378,7 @@ public struct ModerationTrendsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             Picker(selection: $kind) {
@@ -336,7 +389,6 @@ public struct ModerationTrendsView: View {
                 Text("Show", comment: "Trends filter")
             }
             .pickerStyle(.segmented)
-            .listRowBackground(palette.background)
 
             Section {
                 switch kind {
@@ -361,10 +413,14 @@ public struct ModerationTrendsView: View {
                     }
                 }
 
-                if isEmpty && !isLoading {
-                    Text("Nothing is trending here yet.", comment: "Trends empty")
-                        .font(.footnote)
-                        .foregroundStyle(palette.secondaryLabel)
+                if isLoading && isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AlohaMetrics.space5)
+                } else if isEmpty && errorMessage == nil {
+                    ContentUnavailableView {
+                        Text("Nothing is trending here yet.", comment: "Trends empty")
+                    }
                 }
             } footer: {
                 Text(
@@ -372,9 +428,31 @@ public struct ModerationTrendsView: View {
                     comment: "Trends moderation explanation")
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("What may trend", comment: "Screen title"))
         .refreshable { await load() }
         .task(id: kind) { await load() }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task {
+                    if let failedDecision {
+                        await decide(id: failedDecision.id, approve: failedDecision.approve)
+                    } else {
+                        await load()
+                    }
+                }
+            } label: {
+                Text("Retry", comment: "Trends reload action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
     }
 
     private var isEmpty: Bool {
@@ -415,6 +493,7 @@ public struct ModerationTrendsView: View {
                     .font(AlohaType.micro)
                     .foregroundStyle(palette.secondaryLabel)
             } else {
+                let isDeciding = decidingIDs.contains(id)
                 HStack(spacing: AlohaMetrics.space3) {
                     Button {
                         Task { await decide(id: id, approve: true) }
@@ -423,6 +502,7 @@ public struct ModerationTrendsView: View {
                             .font(.footnote)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isDeciding)
 
                     Button(role: .destructive) {
                         Task { await decide(id: id, approve: false) }
@@ -431,6 +511,7 @@ public struct ModerationTrendsView: View {
                             .font(.footnote)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isDeciding)
                 }
             }
         }
@@ -438,6 +519,12 @@ public struct ModerationTrendsView: View {
     }
 
     private func decide(id: String, approve: Bool) async {
+        // Tapping both sides of one row before the first response lands
+        // would send two decisions and the last response to arrive would
+        // decide the row — with the badge already showing "Decided".
+        guard !decidingIDs.contains(id) else { return }
+        decidingIDs.insert(id)
+        defer { decidingIDs.remove(id) }
         let encoded =
             id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
         let endpoint =
@@ -448,16 +535,22 @@ public struct ModerationTrendsView: View {
             _ = try await session.client.send(endpoint)
             decided.insert(id)
             errorMessage = nil
+            failedDecision = nil
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
+            failedDecision = (id, approve)
         }
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
         decided = []
+        // Whatever failed before, this request is the one to answer for now.
+        failedDecision = nil
         do {
             switch kind {
             case .tags:
@@ -473,9 +566,12 @@ public struct ModerationTrendsView: View {
                     LossyArray<Card>.self, from: Endpoint.moderation.trendingLinks()
                 ).elements
             }
+            guard !Task.isCancelled, loadID == requestID else { return }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
+            guard loadID == requestID else { return }
             errorMessage = (error as? APIError)?.errorDescription
         }
     }

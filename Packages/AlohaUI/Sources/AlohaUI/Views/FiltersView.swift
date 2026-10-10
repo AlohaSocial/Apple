@@ -35,7 +35,7 @@ public struct FiltersView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             Section {
@@ -59,7 +59,7 @@ public struct FiltersView: View {
                     }
                 }
 
-                if filters.isEmpty && !isLoading {
+                if filters.isEmpty && !isLoading && errorMessage == nil {
                     Text("Nothing filtered yet.", comment: "Empty filters")
                         .font(.footnote)
                         .foregroundStyle(palette.secondaryLabel)
@@ -82,6 +82,10 @@ public struct FiltersView: View {
                     comment: "Filters explanation")
             }
         }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && filters.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Filtered words", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
@@ -92,7 +96,14 @@ public struct FiltersView: View {
         }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+    }
+
     private func load() async {
+        isLoading = true
         defer { isLoading = false }
         do {
             filters = try await session.client.decode(
@@ -102,18 +113,25 @@ public struct FiltersView: View {
             try? await session.supportStore.replaceFilters(filters, accountID: session.id)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
     private func delete(_ filter: Filter) async {
-        filters.removeAll { $0.id == filter.id }
+        guard let index = filters.firstIndex(where: { $0.id == filter.id }) else { return }
+        filters.remove(at: index)
         do {
             _ = try await session.client.send(Endpoint.filters.delete(filter.id))
             try? await session.supportStore.replaceFilters(filters, accountID: session.id)
         } catch {
+            if !filters.contains(where: { $0.id == filter.id }) {
+                filters.insert(filter, at: min(index, filters.count))
+            }
+            try? await session.supportStore.replaceFilters(filters, accountID: session.id)
             await session.handle(error)
-            await load()
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The filter could not be deleted. Please try again.")
         }
     }
 }
@@ -338,9 +356,11 @@ struct FilterEditorView: View {
     private var isNew: Bool { draft.filterID == nil }
 
     private var canSave: Bool {
-        !draft.title.trimmingCharacters(in: .whitespaces).isEmpty
+        !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !draft.contexts.isEmpty
-            && draft.keywords.contains { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }
+            && draft.keywords.contains {
+                !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
     }
 
     private var expiryChoices: [FilterExpiry] {
@@ -369,10 +389,10 @@ struct FilterEditorView: View {
                 }
 
                 Section {
-                    ForEach($draft.keywords) { $keyword in
+                    ForEach(draft.keywords) { keyword in
                         VStack(alignment: .leading, spacing: 4) {
                             TextField(
-                                text: $keyword.text,
+                                text: binding(for: keyword).text,
                                 prompt: Text("Word or phrase", comment: "Filter keyword prompt")
                             ) {
                                 Text("Word", comment: "Filter field")
@@ -382,7 +402,7 @@ struct FilterEditorView: View {
                             #endif
                             .autocorrectionDisabled()
 
-                            Toggle(isOn: $keyword.wholeWord) {
+                            Toggle(isOn: binding(for: keyword).wholeWord) {
                                 Text("Whole word only", comment: "Filter keyword option")
                                     .font(.footnote)
                             }
@@ -437,6 +457,9 @@ struct FilterEditorView: View {
                         Text("Fold it away", comment: "Filter action choice").tag(FilterAction.warn)
                         Text("Hide it completely", comment: "Filter action choice").tag(
                             FilterAction.hide)
+                        if draft.action == .blur {
+                            Text("Blur", comment: "Filter action name").tag(FilterAction.blur)
+                        }
                     } label: {
                         Text("When it matches", comment: "Filter field")
                     }
@@ -454,6 +477,8 @@ struct FilterEditorView: View {
                         comment: "Filter action explanation")
                 }
             }
+            .alohaGround(palette)
+            .disabled(isSaving)
             .navigationTitle(
                 isNew
                     ? Text("New filter", comment: "Screen title")
@@ -469,6 +494,7 @@ struct FilterEditorView: View {
                     } label: {
                         Text("Cancel", comment: "Sheet action")
                     }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -484,6 +510,26 @@ struct FilterEditorView: View {
                 }
             }
         }
+        .interactiveDismissDisabled(isSaving)
+    }
+
+    private func binding(for keyword: FilterDraft.Keyword) -> Binding<FilterDraft.Keyword> {
+        Binding(
+            get: { draft.keywords.first { $0.id == keyword.id } ?? keyword },
+            set: { updated in
+                draft.keywords = Self.replacing(updated, in: draft.keywords)
+            })
+    }
+
+    nonisolated static func replacing(
+        _ keyword: FilterDraft.Keyword, in keywords: [FilterDraft.Keyword]
+    ) -> [FilterDraft.Keyword] {
+        guard let index = keywords.firstIndex(where: { $0.id == keyword.id }) else {
+            return keywords
+        }
+        var updated = keywords
+        updated[index] = keyword
+        return updated
     }
 
     private func binding(for context: FilterContext) -> Binding<Bool> {
@@ -508,13 +554,14 @@ struct FilterEditorView: View {
     }
 
     private func save() async {
+        guard canSave, !isSaving else { return }
         isSaving = true
         defer { isSaving = false }
 
-        let title = draft.title.trimmingCharacters(in: .whitespaces)
+        let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let contexts = Self.editableContexts.filter { draft.contexts.contains($0) }
         var drafts: [Endpoint.filters.KeywordDraft] = draft.keywords
-            .map { ($0, $0.text.trimmingCharacters(in: .whitespaces)) }
+            .map { ($0, $0.text.trimmingCharacters(in: .whitespacesAndNewlines)) }
             .filter { !$0.1.isEmpty }
             .map { .init(id: $0.0.serverID, keyword: $0.1, wholeWord: $0.0.wholeWord) }
         drafts += removed.map {
@@ -538,7 +585,7 @@ struct FilterEditorView: View {
             dismiss()
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

@@ -23,15 +23,33 @@ public enum FeedMode: String, Codable, Sendable, Hashable, CaseIterable, Identif
     /// Each mode needs a silhouette of its own at 24pt. Photos, Video and
     /// Shorts were all a rounded rectangle with a mark in it, so the tab bar
     /// read as three of the same thing.
+    ///
+    /// Every name here has a [selectedSymbolName](doc:selectedSymbolName) to
+    /// fill, because that is how a tab says "on": Apple's own apps switch
+    /// weight rather than colour, and an outline icon beside a filled one
+    /// reads as off instead of as a different drawing style.
     public var symbolName: String {
         switch self {
         case .home: "house"
         case .photos: "photo.stack"
-        case .video: "film"
-        // Portrait on portrait: a short is a tall video, and the icon says so.
-        case .shorts: "rectangle.portrait.on.rectangle.portrait"
+        case .video: "play.rectangle"
+        // A short is a tall video: the silhouette says so where a filmstrip
+        // could have been the video feed's twin.
+        case .shorts: "rectangle.portrait"
         case .news: "newspaper"
-        case .audio: "waveform"
+        case .audio: "speaker.wave.2"
+        }
+    }
+
+    /// The selected spelling of [symbolName](doc:symbolName).
+    public var selectedSymbolName: String {
+        switch self {
+        case .home: "house.fill"
+        case .photos: "photo.stack.fill"
+        case .video: "play.rectangle.fill"
+        case .shorts: "rectangle.portrait.fill"
+        case .news: "newspaper.fill"
+        case .audio: "speaker.wave.2.fill"
         }
     }
 }

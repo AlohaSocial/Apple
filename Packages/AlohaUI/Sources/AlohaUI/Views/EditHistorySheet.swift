@@ -27,16 +27,21 @@ public struct EditHistorySheet: View {
         NavigationStack {
             List {
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
+                // Identity is the offset, which is always unique. The server's
+                // `created_at` is only second-resolution and two rapid edits
+                // can share it; duplicating a `ForEach` id crashes at runtime
+                // ("identifier is not unique"), which is worse than an index
+                // that shifts on reload. History is a static server-ordered
+                // list, so the offset does not actually reshuffle.
                 ForEach(Array(edits.enumerated()), id: \.offset) { index, edit in
                     version(edit, isCurrent: index == 0, number: edits.count - index)
+                        .listRowBackground(palette.background)
                 }
 
-                if edits.isEmpty && !isLoading {
+                if edits.isEmpty && !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("No history", comment: "Empty edit history")
                     } description: {
@@ -44,10 +49,17 @@ public struct EditHistorySheet: View {
                             "This server keeps no record of earlier versions.",
                             comment: "Edit history empty detail")
                     }
+                    .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
+            .overlay {
+                if isLoading && edits.isEmpty {
+                    SkeletonListRow(text: 3)
+                }
+            }
             .navigationTitle(Text("Edit history", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -111,6 +123,14 @@ public struct EditHistorySheet: View {
         .padding(.vertical, AlohaMetrics.space2)
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -122,7 +142,7 @@ public struct EditHistorySheet: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

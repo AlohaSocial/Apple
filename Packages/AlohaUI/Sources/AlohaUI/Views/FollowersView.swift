@@ -15,6 +15,7 @@ public enum FollowListKind: Sendable, Hashable {
 /// header the server sends.
 public struct FollowersView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
 
     private let accountID: String
     private let kind: FollowListKind
@@ -42,7 +43,7 @@ public struct FollowersView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             ForEach(accounts) { account in
@@ -52,19 +53,20 @@ public struct FollowersView: View {
                 ) { updated in
                     relationships[account.id] = updated
                 }
+                .listRowBackground(palette.background)
                 .onAppear {
                     if account.id == accounts.last?.id { Task { await loadMore() } }
                 }
             }
 
             if isLoading {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-                .listRowSeparator(.hidden)
-            } else if accounts.isEmpty {
+                // The shape of a list arriving, not a spinner: six rows of
+                // avatar and name. A blank screen with a spinner reads as
+                // broken where a list in progress reads as working.
+                SkeletonListRow(person: 6)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            } else if accounts.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     switch kind {
                     case .followers: Text("No followers yet", comment: "Empty followers")
@@ -77,10 +79,12 @@ public struct FollowersView: View {
                             comment: "Empty followers explanation")
                     }
                 }
+                .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
         .navigationTitle(title)
         .task { await load() }
         .refreshable { await load() }
@@ -100,6 +104,14 @@ public struct FollowersView: View {
         }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -112,7 +124,7 @@ public struct FollowersView: View {
             await loadRelationships(for: accounts)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
@@ -120,18 +132,21 @@ public struct FollowersView: View {
         guard let nextPage, !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        guard
-            let page = try? await session.client.page(
+        do {
+            let page = try await session.client.page(
                 LossyArray<Account>.self, following: nextPage, limit: Self.pageSize)
-        else {
-            self.nextPage = nil
-            return
+            let known = Set(accounts.map(\.id))
+            let fresh = page.value.elements.filter { !known.contains($0.id) }
+            accounts += fresh
+            self.nextPage = page.mayHaveMore ? page.link.next : nil
+            errorMessage = nil
+            await loadRelationships(for: fresh)
+        } catch {
+            // The cursor is left where it was: clearing it turned one failed
+            // page into the end of the list, silently and for good.
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
-        let known = Set(accounts.map(\.id))
-        let fresh = page.value.elements.filter { !known.contains($0.id) }
-        accounts += fresh
-        self.nextPage = page.mayHaveMore ? page.link.next : nil
-        await loadRelationships(for: fresh)
     }
 
     /// One request per page rather than one per row.
@@ -199,13 +214,10 @@ struct FollowableAccountRow: View {
             Spacer(minLength: 0)
 
             if !isSelf {
-                // Two concrete styles rather than a ternary between them: the
-                // two are different types, so only a branch can choose.
-                if relationship?.following == true {
-                    followButton.buttonStyle(.bordered)
-                } else {
-                    followButton.buttonStyle(.borderedProminent)
-                }
+                // One style for both relationship states: the label already
+                // says which it is, and glass keeps the button legible over
+                // the list scrolling behind it.
+                followButton.buttonStyle(.glass)
             }
         }
         .padding(.vertical, AlohaMetrics.space1)

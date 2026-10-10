@@ -14,7 +14,7 @@ public struct OAuthService: Sendable {
     public static let clientName = "Aloha Social"
     public static let redirectURI = "alohasocial://oauth-callback"
     public static let outOfBandRedirectURI = "urn:ietf:wg:oauth:2.0:oob"
-    public static let website = "https://github.com/nextcloud/AlohaSocial"
+    public static let website = "https://github.com/AlohaSocial/Apple"
     /// Coarse grants covering every granular scope Nextcloud Social checks
     /// (`read:lists`, `read:notifications`, `write:notifications`,
     /// `read:stories`, `write:stories`). `push` costs nothing on a server with
@@ -66,11 +66,31 @@ public struct OAuthService: Sendable {
         else { return fallback }
 
         return Endpoints(
-            authorization: metadata.authorizationEndpoint ?? fallback.authorization,
-            token: metadata.tokenEndpoint ?? fallback.token,
-            revocation: metadata.revocationEndpoint ?? fallback.revocation,
+            authorization: endpoint(
+                metadata.authorizationEndpoint, fallback: fallback.authorization),
+            token: endpoint(metadata.tokenEndpoint, fallback: fallback.token),
+            revocation: endpoint(metadata.revocationEndpoint, fallback: fallback.revocation),
             supportsPKCE: metadata.supportsPKCE
         )
+    }
+
+    /// Reverse proxies sometimes advertise an unreachable private backend.
+    /// OAuth must remain on the origin which supplied the API connection.
+    ///
+    /// "Same origin" is spelled case-insensitively and ignores a port that is
+    /// the scheme's default, so `https://host:443/oauth/token` is accepted
+    /// against `https://host`. An endpoint that really is off-origin is logged
+    /// when it is discarded: a silent discard is indistinguishable from a
+    /// server that never advertised anything.
+    private func endpoint(_ advertised: URL?, fallback: URL) -> URL {
+        guard let advertised else { return fallback }
+        guard advertised.isSameOrigin(as: fallback) else {
+            logger.info(
+                "discarded off-origin OAuth endpoint \(advertised.absoluteString, privacy: .public) in favour of \(fallback.absoluteString, privacy: .public)"
+            )
+            return fallback
+        }
+        return advertised
     }
 
     // MARK: - Registration

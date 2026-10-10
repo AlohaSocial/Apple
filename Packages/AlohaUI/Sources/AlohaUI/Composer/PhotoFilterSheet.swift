@@ -25,7 +25,7 @@ struct PhotoFilterSheet: View {
         NavigationStack {
             VStack(spacing: AlohaMetrics.space4) {
                 choice.preview(
-                    RemoteImage(url: attachment.previewURL ?? attachment.url)
+                    RemoteImage(url: attachment.displayImageURL)
                         .aspectRatio(contentMode: .fit)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
@@ -39,7 +39,7 @@ struct PhotoFilterSheet: View {
                             } label: {
                                 VStack(spacing: AlohaMetrics.space1) {
                                     filter.preview(
-                                        RemoteImage(url: attachment.previewURL ?? attachment.url)
+                                        RemoteImage(url: attachment.displayImageURL)
                                     )
                                     .frame(width: 64, height: 64)
                                     .clipShape(
@@ -78,7 +78,9 @@ struct PhotoFilterSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(.top, AlohaMetrics.space4)
-            .background(palette.background)
+            .presentationBackground {
+                Color.clear.glassEffect(.regular, in: Rectangle())
+            }
             .navigationTitle(Text("Adjust", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

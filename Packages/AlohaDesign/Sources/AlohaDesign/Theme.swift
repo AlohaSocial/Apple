@@ -2,6 +2,10 @@
 
 import SwiftUI
 
+#if canImport(UIKit)
+    import UIKit
+#endif
+
 /// Semantic colour roles. View code names a role, never a colour — which is
 /// what makes light, dark and the two increased-contrast variants one change
 /// rather than four (docs/05 §2).
@@ -266,6 +270,23 @@ public struct AlohaMetrics: Sendable, Hashable {
     }
 }
 
+/// The one platform rule a full-bleed vertical surface needs.
+///
+/// Shorts is a phone-shaped thing: on a regular-width shell it stays a vertical
+/// column in the middle of the window, the way TikTok and Reels do on an iPad,
+/// rather than becoming a letterboxed sprawl across a Mac window. On a phone it
+/// takes the whole screen, which it already does.
+public enum PlatformBehavior {
+    /// How wide a vertical full-screen surface may grow.
+    public static var shortsColumnWidth: CGFloat? {
+        #if os(iOS)
+            return UIDevice.current.userInterfaceIdiom == .phone ? nil : 460
+        #else
+            return 460
+        #endif
+    }
+}
+
 public struct AlohaThemeModifier: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -328,5 +349,105 @@ extension View {
         accent: AlohaThemeModifier.ServerTheme? = nil
     ) -> some View {
         modifier(AlohaThemeModifier(theme: theme, metrics: metrics, accent: accent))
+    }
+
+    /// The app's own ground beneath a scrolling container.
+    ///
+    /// `List` and `Form` paint the system's grouped background over whatever is
+    /// behind them — a cool grey under a theme whose ground is warm cream — so
+    /// every screen built on one looked like a different app from the timelines
+    /// it sat next to. Hiding that and painting `palette.background` is what
+    /// puts the grouped screens back in the same theme.
+    ///
+    /// The cards themselves are left alone: the system's grouped card colour
+    /// already tracks the scheme, and the one theme where a palette surface
+    /// would swallow them (`black`, where surface and ground are both black)
+    /// is the one that would break.
+    public func alohaGround(_ palette: AlohaPalette) -> some View {
+        scrollContentBackground(.hidden)
+            .background(palette.background)
+    }
+}
+
+/// Modern glass material intensities for native UI layering.
+///
+/// A card over content, a sheet over the screen, a toolbar over the list —
+/// the three levels a blur can sit at. Naming them keeps the same level in
+/// every place instead of a material chosen by whichever view got there
+/// first.
+public enum AlohaGlass: Sendable {
+    /// A card, a row, a control sitting on content.
+    case regular
+    /// A sheet or a toolbar over the screen: the strongest layer.
+    case prominent
+    /// A hairline of separation rather than a wall.
+    case subtle
+
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    public var material: Material {
+        switch self {
+        case .regular: .regularMaterial
+        case .prominent: .thickMaterial
+        case .subtle: .ultraThinMaterial
+        }
+    }
+}
+
+/// Glass effect modifiers for modern native UI layering.
+///
+/// `unifiedGlass` is the one every view uses: on iOS 17 and macOS 14 it is a
+/// real `Material` blur, and on anything older it degrades to a gradient over
+/// `ultraThinMaterial` — which is not the same one, but a caller should not
+/// have to compile two versions of a card for that.
+extension View {
+    /// A filled glass panel: the material, plus a hairline border that reads
+    /// as the edge of a real layer of glass.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    public func alohaGlass(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some InsettableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        self
+            .background(style.material, in: shape)
+            .overlay(shape.strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5))
+    }
+
+    /// The material alone, for when something else draws the edge.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+
+    /// A fallback for older systems: a gradient over ultra-thin material rather
+    /// than a plain colour, so a card still reads as a layer.
+    public func alohaGlassFallback(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some InsettableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        let colors: [Color] = {
+            switch style {
+            case .regular: return [Color.white.opacity(0.15), Color.white.opacity(0.05)]
+            case .prominent: return [Color.white.opacity(0.25), Color.white.opacity(0.1)]
+            case .subtle: return [Color.white.opacity(0.08), Color.white.opacity(0.02)]
+            }
+        }()
+        return
+            self
+            .background(
+                LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .background(.ultraThinMaterial)
+                    .clipShape(shape)
+            )
+            .overlay(shape.strokeBorder(Color.white.opacity(0.15), lineWidth: 0.5))
+    }
+
+    /// The one glass effect every view uses: real material everywhere it is
+    /// available, the gradient fallback everywhere else.
+    public func unifiedGlass(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some InsettableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
+            return self.alohaGlass(style, in: shape)
+        } else {
+            return self.alohaGlassFallback(style, in: shape)
+        }
     }
 }

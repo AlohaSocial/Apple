@@ -105,7 +105,7 @@ public struct MediaGrid: View {
         } label: {
             ZStack(alignment: .bottomLeading) {
                 RemoteImage(
-                    url: attachment.previewURL ?? attachment.url,
+                    url: attachment.displayImageURL,
                     blurhash: attachment.blurhash,
                     accessibilityText: attachment.description
                 )

@@ -21,6 +21,7 @@ public struct VideoModeView: View {
 
     @State private var model: TimelineModel
     @State private var continueWatching: [ContinueWatchingItem] = []
+    @State private var watched: [String: Double] = [:]
 
     public init(
         session: AccountSession, source: TimelineSource,
@@ -34,7 +35,11 @@ public struct VideoModeView: View {
                 key: TimelineKey(mode: .video, source: source), session: session))
     }
 
-    private var statuses: [Status] { model.rows.compactMap(\.status) }
+    private var statuses: [Status] {
+        model.rows.compactMap(\.status).filter { status in
+            status.displayed.mediaAttachments.contains(where: { $0.isVideo })
+        }
+    }
 
     /// Cards run edge to edge on a phone, and sit in a padded grid elsewhere.
     private var isCompact: Bool {
@@ -55,8 +60,9 @@ public struct VideoModeView: View {
                         status: status,
                         policy: session.settings.sensitiveMediaPolicy,
                         localHost: session.snapshot.instanceHost,
-                        progress: nil,
+                        progress: watched[status.displayed.id],
                         isEdgeToEdge: isCompact,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
                     .onAppear {
@@ -130,7 +136,7 @@ public struct VideoModeView: View {
     }
 
     private func continueCard(_ status: Status, fraction: Double) -> some View {
-        let attachment = status.displayed.mediaAttachments.first
+        let attachment = status.displayed.mediaAttachments.first(where: { $0.isVideo })
 
         return VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
             ZStack(alignment: .bottom) {
@@ -182,11 +188,16 @@ public struct VideoModeView: View {
     /// Excludes anything barely started and anything finished — the server
     /// drops those itself, and the client mirrors it.
     private func loadContinueWatching() async {
-        guard session.capabilities.watchPositions else { return }
-        continueWatching =
-            (try? await session.client.decode(
-                LossyArray<ContinueWatchingItem>.self,
-                from: Endpoint.video.continueWatching()))?.elements ?? []
+        if session.capabilities.watchPositions {
+            continueWatching =
+                (try? await session.client.decode(
+                    LossyArray<ContinueWatchingItem>.self,
+                    from: Endpoint.video.continueWatching()))?.elements ?? []
+        }
+        // Locally remembered, so a card still shows the bar it had before the
+        // shelf got a chance to load — or while the server refuses to.
+        watched =
+            ((try? await session.supportStore.watchFractions(accountID: session.id)) ?? [:])
     }
 
     private func forget(_ item: ContinueWatchingItem) async {
@@ -219,11 +230,13 @@ public struct VideoCard: View {
     private let localHost: String?
     private let progress: Double?
     private let isEdgeToEdge: Bool
+    private let showsCounts: Bool
     private let onAction: (StatusRowAction) -> Void
 
     public init(
         status: Status, policy: SensitiveMediaPolicy, localHost: String?,
         progress: Double?, isEdgeToEdge: Bool = false,
+        showsCounts: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -231,13 +244,14 @@ public struct VideoCard: View {
         self.localHost = localHost
         self.progress = progress
         self.isEdgeToEdge = isEdgeToEdge
+        self.showsCounts = showsCounts
         self.onAction = onAction
     }
 
     private var target: Status { status.displayed }
 
     public var body: some View {
-        let attachment = target.mediaAttachments.first
+        let attachment = target.mediaAttachments.first(where: { $0.isVideo })
         let isCovered = target.sensitive && !policy.allowsAutomaticReveal
 
         VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
@@ -246,7 +260,7 @@ public struct VideoCard: View {
             } label: {
                 ZStack(alignment: .bottomTrailing) {
                     RemoteImage(
-                        url: attachment?.previewURL ?? attachment?.url,
+                        url: attachment?.displayImageURL,
                         blurhash: attachment?.blurhash,
                         accessibilityText: attachment?.description
                     )
@@ -339,7 +353,7 @@ public struct VideoCard: View {
     private var byline: Text {
         let name = Text(target.account.bestDisplayName)
         let age = Text(PostAge.short(target.createdAt))
-        if target.favouritesCount > 0 {
+        if showsCounts, target.favouritesCount > 0 {
             let count = Text(
                 "^[\(target.favouritesCount) favourite](inflect: true)",
                 comment: "Video byline count")

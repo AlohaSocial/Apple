@@ -11,6 +11,8 @@ public struct DraftsView: View {
 
     private let session: AccountSession
     @State private var drafts: [DraftSnapshot] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
 
     public init(session: AccountSession) {
         self.session = session
@@ -18,6 +20,10 @@ public struct DraftsView: View {
 
     public var body: some View {
         List {
+            if let errorMessage {
+                errorStrip(errorMessage)
+            }
+
             ForEach(drafts) { draft in
                 VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                     Text(
@@ -52,10 +58,11 @@ public struct DraftsView: View {
                 }
             }
             .onDelete { offsets in
-                Task { await delete(at: offsets) }
+                let targets = offsets.compactMap { drafts.indices.contains($0) ? drafts[$0] : nil }
+                Task { await delete(targets) }
             }
 
-            if drafts.isEmpty {
+            if drafts.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No drafts", comment: "Empty drafts")
                 } description: {
@@ -65,19 +72,43 @@ public struct DraftsView: View {
                 }
             }
         }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && drafts.isEmpty {
+                SkeletonListRow(text: 4)
+            }
+        }
         .navigationTitle(Text("Drafts", comment: "Screen title"))
         .task { await load() }
     }
 
-    private func load() async {
-        drafts = (try? await session.supportStore.drafts(accountID: session.id)) ?? []
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
     }
 
-    private func delete(at offsets: IndexSet) async {
-        let targets = offsets.map { drafts[$0] }
-        drafts.remove(atOffsets: offsets)
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            drafts = try await session.supportStore.drafts(accountID: session.id)
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func delete(_ targets: [DraftSnapshot]) async {
         for draft in targets {
-            try? await session.supportStore.deleteDraft(id: draft.id)
+            do {
+                try await session.supportStore.deleteDraft(id: draft.id)
+                drafts.removeAll { $0.id == draft.id }
+            } catch {
+                errorMessage = String(
+                    localized: "The draft could not be deleted. Please try again.")
+            }
         }
     }
 }
@@ -90,6 +121,8 @@ public struct NotificationRequestsView: View {
 
     private let session: AccountSession
     @State private var requests: [NotificationRequest] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
 
     public init(session: AccountSession) {
         self.session = session
@@ -97,6 +130,10 @@ public struct NotificationRequestsView: View {
 
     public var body: some View {
         List {
+            if let errorMessage {
+                errorStrip(errorMessage)
+            }
+
             ForEach(requests) { request in
                 VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                     AccountRow(
@@ -128,7 +165,7 @@ public struct NotificationRequestsView: View {
                 }
             }
 
-            if requests.isEmpty {
+            if requests.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Nothing held", comment: "Empty notification requests")
                 } description: {
@@ -138,26 +175,67 @@ public struct NotificationRequestsView: View {
                 }
             }
         }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && requests.isEmpty {
+                SkeletonListRow(person: 4)
+            }
+        }
         .navigationTitle(Text("Filtered notifications", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+    }
+
     private func load() async {
-        requests =
-            (try? await session.client.decode(
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            requests = try await session.client.decode(
                 LossyArray<NotificationRequest>.self,
-                from: Endpoint.notifications.requests))?.elements ?? []
+                from: Endpoint.notifications.requests
+            ).elements
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     private func accept(_ request: NotificationRequest) async {
-        requests.removeAll { $0.id == request.id }
-        _ = try? await session.client.send(Endpoint.notifications.acceptRequest(request.id))
+        await decide(request) {
+            _ = try await session.client.send(Endpoint.notifications.acceptRequest(request.id))
+        }
     }
 
     private func dismiss(_ request: NotificationRequest) async {
-        requests.removeAll { $0.id == request.id }
-        _ = try? await session.client.send(Endpoint.notifications.dismissRequest(request.id))
+        await decide(request) {
+            _ = try await session.client.send(Endpoint.notifications.dismissRequest(request.id))
+        }
+    }
+
+    /// The row leaves at once and comes back if the server refuses: a request
+    /// that vanished on a failed answer was a request nobody ever saw again.
+    private func decide(
+        _ request: NotificationRequest, send: () async throws -> Void
+    ) async {
+        guard let index = requests.firstIndex(where: { $0.id == request.id }) else { return }
+        requests.remove(at: index)
+        do {
+            try await send()
+            errorMessage = nil
+        } catch {
+            if !requests.contains(where: { $0.id == request.id }) {
+                requests.insert(request, at: min(index, requests.count))
+            }
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 }
 

@@ -20,6 +20,8 @@ public struct PlaceView: View {
     @State private var next: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var retryOlder = false
 
     public init(
         id: String, session: AccountSession,
@@ -40,11 +42,24 @@ public struct PlaceView: View {
             VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
                 header
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
-                        .padding(.horizontal, AlohaMetrics.space3)
+                if let errorMessage, !isLoading {
+                    VStack(spacing: AlohaMetrics.space2) {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(palette.destructive)
+                        Button {
+                            Task {
+                                if retryOlder { await loadMore() } else { await load() }
+                            }
+                        } label: {
+                            Text("Retry", comment: "Place retry action")
+                                .font(.footnote.weight(.semibold))
+                        }
+                        .buttonStyle(.glass)
+                        .disabled(isLoading)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, AlohaMetrics.space3)
                 }
 
                 if !withMedia.isEmpty {
@@ -65,6 +80,7 @@ public struct PlaceView: View {
                             policy: session.settings.sensitiveMediaPolicy,
                             localHost: session.snapshot.instanceHost,
                             canReact: session.capabilities.emojiReactions,
+                            showsCounts: session.settings.showPopularityCounts,
                             onAction: onAction
                         )
                         .padding(.horizontal, AlohaMetrics.space4)
@@ -75,7 +91,7 @@ public struct PlaceView: View {
                     }
                 }
 
-                if statuses.isEmpty && !isLoading {
+                if statuses.isEmpty && !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("Nothing from here yet", comment: "Empty place")
                     } description: {
@@ -85,15 +101,28 @@ public struct PlaceView: View {
                     }
                     .padding(.top, AlohaMetrics.space6)
                 }
+                if isLoading && !statuses.isEmpty {
+                    ProgressView().frame(maxWidth: .infinity).padding()
+                }
             }
         }
         .background(palette.background)
-        .navigationTitle(place?.name ?? "")
+        .overlay {
+            if isLoading && statuses.isEmpty { ProgressView() }
+        }
+        .navigationTitle(title)
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    /// The fetched name, and the screen's own word for a place when the
+    /// fetch has not answered — never an empty bar.
+    private var title: Text {
+        if let name = place?.name, !name.isEmpty { return Text(verbatim: name) }
+        return Text("Place", comment: "Place fallback title")
     }
 
     private var header: some View {
@@ -103,6 +132,7 @@ public struct PlaceView: View {
                 .foregroundStyle(palette.accent)
                 .frame(width: 44, height: 44)
                 .background(palette.surfaceRaised, in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(place?.name ?? String(localized: "Place", comment: "Place fallback title"))
                     .font(AlohaType.display)
@@ -130,11 +160,22 @@ public struct PlaceView: View {
             onAction(.openMedia(status: status.displayed, index: 0))
         } label: {
             RemoteImage(
-                url: first?.previewURL ?? first?.url, blurhash: first?.blurhash,
-                accessibilityText: first?.description
+                url: first?.displayImageURL, blurhash: first?.blurhash,
+                accessibilityText: isCovered ? nil : first?.description
             )
             .aspectRatio(1, contentMode: .fill)
             .overlay { if isCovered { Rectangle().fill(.ultraThinMaterial) } }
+            .overlay(alignment: .bottomTrailing) {
+                if first?.isVideo == true && !isCovered {
+                    Image(systemName: "play.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(8)
+                        .background(.black.opacity(0.6), in: Circle())
+                        .padding(6)
+                        .accessibilityHidden(true)
+                }
+            }
             .clipped()
         }
         .buttonStyle(.plain)
@@ -142,34 +183,58 @@ public struct PlaceView: View {
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        retryOlder = false
+        defer { if loadID == request { isLoading = false } }
         async let placeTask = session.client.decode(
             Status.StatusPlace.self, from: Endpoint.statusExtras.place(id))
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.placeStatuses(id), limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             statuses = page.value.elements
             next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Posts from this place could not be loaded. Please try again.")
         }
         // The place itself is worth showing even when its posts failed.
-        place = try? await placeTask
+        let loadedPlace = try? await placeTask
+        guard !Task.isCancelled, loadID == request else { return }
+        place = loadedPlace
     }
 
     private func loadMore() async {
         guard let next, !isLoading else { return }
+        let request = loadID
         isLoading = true
-        defer { isLoading = false }
-        guard
-            let page = try? await session.client.page(
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
+        do {
+            let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
-        else { return }
-        let known = Set(statuses.map(\.id))
-        statuses += page.value.elements.filter { !known.contains($0.id) }
-        self.next = page.mayHaveMore ? page.link.next : nil
+            guard !Task.isCancelled, loadID == request else { return }
+            let known = Set(statuses.map(\.id))
+            statuses += page.value.elements.filter { !known.contains($0.id) }
+            self.next = page.mayHaveMore ? page.link.next : nil
+            errorMessage = nil
+        } catch {
+            // The cursor is left where it was, so the next scroll tries again.
+            guard !Task.isCancelled, loadID == request else { return }
+            await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
+            retryOlder = true
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "More posts could not be loaded. Please try again.")
+        }
     }
 }

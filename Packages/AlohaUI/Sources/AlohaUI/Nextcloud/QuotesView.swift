@@ -17,6 +17,8 @@ public struct QuotesView: View {
     @State private var next: URL?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var retryOlder = false
 
     public init(
         statusID: String, session: AccountSession,
@@ -30,9 +32,7 @@ public struct QuotesView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(quotes) { quote in
@@ -42,6 +42,7 @@ public struct QuotesView: View {
                     localHost: session.snapshot.instanceHost,
                     canReact: session.capabilities.emojiReactions,
                     isOwn: quote.displayed.account.id == session.snapshot.serverAccountID,
+                    showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -52,46 +53,106 @@ public struct QuotesView: View {
                 }
             }
 
-            if quotes.isEmpty && !isLoading {
+            if isLoading && !quotes.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+
+            if quotes.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No quotes yet", comment: "Empty quotes")
                 } description: {
                     Text("Posts that quote this one appear here.", comment: "Quotes empty detail")
                 }
                 .listRowSeparator(.hidden)
+                .listRowBackground(palette.background)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && quotes.isEmpty {
+                // A first page arriving is a list in progress, not a blank
+                // screen with a spinner floating over it.
+                SkeletonListRow(person: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+        }
         .navigationTitle(Text("Quotes", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
     }
 
+    private func errorRow(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
+            Button {
+                Task {
+                    if retryOlder { await loadMore() } else { await load() }
+                }
+            } label: {
+                Text("Retry", comment: "Quotes retry action")
+            }
+            .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading)
+        }
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
+    }
+
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        retryOlder = false
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.quotes(statusID), limit: 20)
+            guard !Task.isCancelled, loadID == request else { return }
             quotes = page.value.elements
             next = page.mayHaveMore ? page.link.next : nil
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Quotes could not be loaded. Please try again.")
         }
     }
 
     private func loadMore() async {
         guard let next, !isLoading else { return }
+        let request = loadID
         isLoading = true
-        defer { isLoading = false }
-        guard
-            let page = try? await session.client.page(
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
+        do {
+            let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
-        else { return }
-        let known = Set(quotes.map(\.id))
-        quotes += page.value.elements.filter { !known.contains($0.id) }
-        self.next = page.mayHaveMore ? page.link.next : nil
+            guard !Task.isCancelled, loadID == request else { return }
+            let known = Set(quotes.map(\.id))
+            quotes += page.value.elements.filter { !known.contains($0.id) }
+            self.next = page.mayHaveMore ? page.link.next : nil
+            errorMessage = nil
+        } catch {
+            // The cursor is left where it was, so the next scroll tries again.
+            guard !Task.isCancelled, loadID == request else { return }
+            await session.handle(error)
+            guard !Task.isCancelled, loadID == request else { return }
+            retryOlder = true
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "More quotes could not be loaded. Please try again.")
+        }
     }
 }

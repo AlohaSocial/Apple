@@ -21,12 +21,17 @@ public struct InterestsView: View {
     @State private var statuses: [Status] = []
     @State private var nextPage: URL?
     @State private var mayHaveMore = true
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var isPagingOlder = false
     @State private var state = InterestsState()
     @State private var isStateLoaded = false
     @State private var errorMessage: String?
     @State private var hiddenIDs: Set<String> = []
+    @State private var refreshID = UUID()
+
+    private var visibleStatuses: [Status] {
+        statuses.filter { !hiddenIDs.contains($0.displayed.id) }
+    }
 
     enum Face: Hashable {
         case feed, settings
@@ -70,23 +75,35 @@ public struct InterestsView: View {
     private var feed: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
-                    .listRowBackground(palette.background)
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: AlohaSymbol.warning)
+                        .accessibilityHidden(true)
+                    Text(errorMessage).font(.footnote)
+                    Spacer()
+                    Button {
+                        Task { await refresh() }
+                    } label: {
+                        Text("Retry", comment: "Interests retry action")
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+                .foregroundStyle(palette.destructive)
+                .padding(.vertical, AlohaMetrics.space2)
+                .listRowBackground(palette.background)
             }
 
             if isStateLoaded && !state.settings.learning {
                 learningOffNotice
             }
 
-            ForEach(statuses.filter { !hiddenIDs.contains($0.id) }) { status in
+            ForEach(visibleStatuses) { status in
                 StatusRow(
                     status: status,
                     policy: session.settings.sensitiveMediaPolicy,
                     localHost: session.snapshot.instanceHost,
                     canReact: session.capabilities.emojiReactions,
                     isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
+                    showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -104,7 +121,7 @@ public struct InterestsView: View {
                     }
                 }
                 .onAppear {
-                    if status.id == statuses.last?.id {
+                    if status.id == visibleStatuses.last?.id {
                         Task { await loadOlder() }
                     }
                 }
@@ -120,14 +137,21 @@ public struct InterestsView: View {
                 .listRowSeparator(.hidden)
             }
 
-            if statuses.isEmpty && !isLoading {
+            // A first page arriving is a list in progress, not a blank screen.
+            if isLoading && statuses.isEmpty {
+                SkeletonListRow(person: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+
+            if statuses.isEmpty && !isLoading && errorMessage == nil {
                 emptyState
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+        .alohaGround(palette)
         .refreshable { await refresh() }
     }
 
@@ -182,31 +206,42 @@ public struct InterestsView: View {
             let loaded = try? await session.client.decode(
                 InterestsState.self, from: Endpoint.interests.state)
         else { return }
+        guard !Task.isCancelled, !isStateLoaded else { return }
         state = loaded
         isStateLoaded = true
     }
 
     private func refresh() async {
+        let request = UUID()
+        refreshID = request
         isLoading = true
-        defer { isLoading = false }
+        isPagingOlder = false
+        errorMessage = nil
+        defer { if refreshID == request { isLoading = false } }
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.interests.timeline(limit: 20), limit: 20)
+            guard !Task.isCancelled, refreshID == request else { return }
             statuses = page.value.elements
             nextPage = page.link.next
             mayHaveMore = page.mayHaveMore
             errorMessage = nil
             await session.latchCapabilities(observing: statuses)
         } catch {
+            guard !Task.isCancelled, refreshID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, refreshID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Your interests feed could not be loaded. Please try again.")
         }
     }
 
     private func loadOlder() async {
         guard mayHaveMore, !isPagingOlder, !isLoading else { return }
+        let request = refreshID
         isPagingOlder = true
-        defer { isPagingOlder = false }
+        defer { if refreshID == request { isPagingOlder = false } }
         do {
             let page: Paginated<LossyArray<Status>>
             if let nextPage {
@@ -220,20 +255,34 @@ public struct InterestsView: View {
             } else {
                 return
             }
+            guard !Task.isCancelled, refreshID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }
             self.nextPage = page.link.next
             mayHaveMore = page.mayHaveMore && !page.value.elements.isEmpty
         } catch {
+            guard !Task.isCancelled, refreshID == request else { return }
             await session.handle(error)
+            guard !Task.isCancelled, refreshID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "More posts could not be loaded. Please try again.")
         }
     }
 
     /// Hides the row at once; the server call is what makes it stick.
     private func showFewer(like status: Status) async {
-        withAnimation { _ = hiddenIDs.insert(status.displayed.id) }
-        _ = try? await session.client.send(
-            Endpoint.interests.fewerLikeThis(status.displayed.id))
+        let id = status.displayed.id
+        guard hiddenIDs.insert(id).inserted else { return }
+        do {
+            _ = try await session.client.send(Endpoint.interests.fewerLikeThis(id))
+        } catch {
+            withAnimation { _ = hiddenIDs.remove(id) }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Your feed preference could not be saved. Please try again.")
+        }
     }
 }
 
@@ -255,20 +304,45 @@ struct InterestsSettingsView: View {
     @State private var isConfirmingReset = false
     @State private var errorMessage: String?
     @State private var languageDraft = ""
+    @State private var isWorking = false
+    @State private var isLoadingState = false
 
     var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: AlohaSymbol.warning)
+                        .accessibilityHidden(true)
+                    Text(errorMessage).font(.footnote)
+                    Spacer()
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Text("Retry", comment: "Interests retry action")
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .buttonStyle(.glass)
+                    .disabled(isWorking || isLoadingState)
+                }
+                .foregroundStyle(palette.destructive)
             }
 
-            learningSection
-            cloudSection
-            if !state.candidates.isEmpty { candidatesSection }
-            languagesSection
-            resetSection
+            Group {
+                learningSection
+                cloudSection
+                if !state.candidates.isEmpty { candidatesSection }
+                languagesSection
+                resetSection
+            }
+            .disabled(!isLoaded || isWorking || isLoadingState)
+        }
+        .alohaGround(palette)
+        .overlay {
+            if isLoadingState && !isLoaded {
+                // The shape of the settings arriving: rows of switches and
+                // chips, not a spinner over nothing.
+                SkeletonListRow(text: 5)
+            }
         }
         .task { if !isLoaded { await load() } }
         .refreshable { await load() }
@@ -370,26 +444,26 @@ struct InterestsSettingsView: View {
                             .font(.title2)
                             .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(canAdd ? palette.accent : palette.tertiaryLabel)
+                    .buttonStyle(.glassProminent)
                     .disabled(!canAdd || isAdding)
                     .accessibilityLabel(Text("Add interest", comment: "Interests add action"))
                 }
 
                 if !suggestions.isEmpty {
                     ScrollView(.horizontal) {
-                        HStack(spacing: AlohaMetrics.space2) {
-                            ForEach(suggestions) { tag in
-                                Button {
-                                    Task { await add(tag.name) }
-                                } label: {
-                                    Text(verbatim: "#\(tag.name)")
-                                        .font(.footnote)
-                                        .padding(.horizontal, AlohaMetrics.space3)
-                                        .frame(minHeight: 32)
-                                        .background(palette.surfaceRaised, in: Capsule())
+                        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                            HStack(spacing: AlohaMetrics.space2) {
+                                ForEach(suggestions) { tag in
+                                    Button {
+                                        Task { await add(tag.name) }
+                                    } label: {
+                                        Text(verbatim: "#\(tag.name)")
+                                            .font(.footnote)
+                                            .padding(.horizontal, AlohaMetrics.space3)
+                                            .frame(minHeight: 32)
+                                    }
+                                    .buttonStyle(.glass)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -471,8 +545,7 @@ struct InterestsSettingsView: View {
                         .font(.title2)
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(isLanguageDraftValid ? palette.accent : palette.tertiaryLabel)
+                .buttonStyle(.glassProminent)
                 .disabled(!isLanguageDraftValid)
                 .accessibilityLabel(Text("Add language", comment: "Interests language add action"))
             }
@@ -506,30 +579,54 @@ struct InterestsSettingsView: View {
     }
 
     private func load() async {
+        guard !isWorking, !isLoadingState else { return }
+        isLoadingState = true
+        errorMessage = nil
+        defer { isLoadingState = false }
         do {
-            state = try await session.client.decode(
+            let response = try await session.client.decode(
                 InterestsState.self, from: Endpoint.interests.state)
+            guard !Task.isCancelled else { return }
+            state = response
             isLoaded = true
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Interests could not be loaded. Please try again.")
         }
     }
 
     /// Every write answers with the whole state, so one handler fits all.
-    private func apply(_ endpoint: Endpoint) async {
+    @discardableResult
+    private func apply(_ endpoint: Endpoint) async -> Bool {
+        guard isLoaded, !isWorking, !isLoadingState else { return false }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
         do {
             state = try await session.client.decode(InterestsState.self, from: endpoint)
             errorMessage = nil
+            return true
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Your interests could not be updated. Please try again.")
+            return false
         }
     }
 
-    private func save(learning: Bool? = nil, paused: Bool? = nil, languages: [String]? = nil) async
-    {
+    @discardableResult
+    private func save(
+        learning: Bool? = nil, paused: Bool? = nil, languages: [String]? = nil
+    ) async -> Bool {
+        guard isLoaded, !isWorking, !isLoadingState else { return false }
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
         // Settings answer with the settings object alone; reload for the rest.
         do {
             _ = try await session.client.send(
@@ -539,19 +636,25 @@ struct InterestsSettingsView: View {
             if let paused { state.settings.paused = paused }
             if let languages { state.settings.languages = languages }
             errorMessage = nil
+            return true
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Interest settings could not be saved. Please try again.")
+            return false
         }
     }
 
     private func add(_ raw: String) async {
-        guard let tag = Tag.normalise(raw) else { return }
+        guard !isAdding, !isWorking, let tag = Tag.normalise(raw) else { return }
+        let submittedDraft = newTag
         isAdding = true
         defer { isAdding = false }
-        await apply(Endpoint.interests.add(tag))
-        newTag = ""
-        suggestions = []
+        if await apply(Endpoint.interests.add(tag)), newTag == submittedDraft {
+            newTag = ""
+            suggestions = []
+        }
     }
 
     private func remove(_ tag: InterestTag) async {
@@ -568,10 +671,15 @@ struct InterestsSettingsView: View {
     }
 
     private func addLanguage() {
-        guard isLanguageDraftValid else { return }
+        guard isLanguageDraftValid, !isWorking, !isLoadingState else { return }
+        let submittedDraft = languageDraft
         let code = languageDraft.trimmingCharacters(in: .whitespaces).lowercased()
-        languageDraft = ""
-        Task { await save(languages: state.settings.languages + [code]) }
+        let languages = state.settings.languages + [code]
+        Task {
+            if await save(languages: languages), languageDraft == submittedDraft {
+                languageDraft = ""
+            }
+        }
     }
 
     private func suggest() async {
@@ -604,51 +712,48 @@ struct InterestCloud: View {
     var body: some View {
         FlowLayout(spacing: AlohaMetrics.space2) {
             ForEach(tags) { tag in
-                HStack(spacing: AlohaMetrics.space1) {
-                    if tag.pinned {
-                        Image(systemName: "pin.fill")
-                            .font(.caption2)
-                            .accessibilityLabel(Text("Pinned", comment: "Interest pinned state"))
-                    }
-                    Text(verbatim: "#\(tag.tag)")
-                        .font(
-                            .system(size: size(for: tag), weight: tag.pinned ? .semibold : .regular)
-                        )
+                NavigationLink(value: Route.hashtag(tag.tag)) {
+                    chip(tag)
+                }
+                .buttonStyle(.plain)
+                // The chip is the way in; the two actions are where a list
+                // keeps them — one swipe away, rather than an xmark wedged
+                // inside the chip that inflates every row to fit its 44-point
+                // target and makes the cloud look like a row of buttons.
+                .swipeActions(edge: .trailing) {
                     Button {
+                        onTogglePin(tag)
+                    } label: {
+                        Label {
+                            Text(
+                                tag.pinned ? "Unpin" : "Pin",
+                                comment: "Interest action")
+                        } icon: {
+                            Image(systemName: tag.pinned ? "pin.slash" : "pin")
+                        }
+                    }
+                    .tint(palette.accent)
+
+                    Button(role: .destructive) {
                         onRemove(tag)
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2.weight(.bold))
-                            .frame(width: 28, height: 28)
-                            .contentShape(Rectangle())
+                        Label {
+                            Text("Remove", comment: "Interest action")
+                        } icon: {
+                            Image(systemName: "xmark")
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .accessibilityLabel(
-                        Text("Remove \(tag.tag)", comment: "Interest remove action"))
                 }
-                .padding(.leading, AlohaMetrics.space3)
-                .padding(.trailing, AlohaMetrics.space1)
-                .frame(minHeight: 36)
-                .background(
-                    tag.pinned ? palette.accentMuted : palette.surfaceRaised, in: Capsule()
-                )
                 .contextMenu {
                     Button {
                         onTogglePin(tag)
                     } label: {
-                        if tag.pinned {
-                            Label {
-                                Text("Unpin", comment: "Interest action")
-                            } icon: {
-                                Image(systemName: "pin.slash")
-                            }
-                        } else {
-                            Label {
-                                Text("Pin", comment: "Interest action")
-                            } icon: {
-                                Image(systemName: "pin")
-                            }
+                        Label {
+                            Text(
+                                tag.pinned ? "Unpin" : "Pin",
+                                comment: "Interest action")
+                        } icon: {
+                            Image(systemName: tag.pinned ? "pin.slash" : "pin")
                         }
                     }
                     Button(role: .destructive) {
@@ -666,36 +771,67 @@ struct InterestCloud: View {
         .padding(.vertical, AlohaMetrics.space1)
     }
 
-    /// 13pt for the faintest interest, 22pt for the strongest.
-    private func size(for tag: InterestTag) -> Double {
-        13 + 9 * min(max(tag.score / maximum, 0), 1)
+    /// One interest: the tag, weighted by score and marked when pinned. Two
+    /// sizes rather than four — a cloud of five different sizes reads as
+    /// noise, and the difference between a strong and a weak interest is one
+    /// step of emphasis.
+    private func chip(_ tag: InterestTag) -> some View {
+        HStack(spacing: AlohaMetrics.space1) {
+            if tag.pinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption2)
+                    .accessibilityLabel(
+                        Text("Pinned", comment: "Interest pinned state"))
+            }
+            Text(verbatim: "#\(tag.tag)")
+                .font(font(for: tag))
+        }
+        .padding(.horizontal, AlohaMetrics.space3)
+        .padding(.vertical, AlohaMetrics.space2)
+        .frame(minHeight: 36)
+        .background {
+            if tag.pinned { Capsule().fill(palette.accentMuted) }
+        }
+        .unifiedGlass(.regular, in: Capsule())
+        .accessibilityLabel(
+            // verbatim, because the whole label is one interpolated string: a
+            // Text initialised from a localised key cannot take a ternary of
+            // Strings, and verbatim takes no comment of its own.
+            Text(verbatim: tag.pinned ? "\(tag.tag), pinned" : tag.tag))
+    }
+
+    /// The cloud's weight as two steps of emphasis, so it grows with the
+    /// reader's own text size rather than clipping at a fixed point size.
+    private func font(for tag: InterestTag) -> Font {
+        let weight = min(max(tag.score / maximum, 0), 1)
+        return weight >= 0.5 ? .subheadline.weight(.semibold) : .footnote
     }
 }
 
 /// Candidates as plain chips with one action.
 struct InterestChips: View {
-    @Environment(\.alohaPalette) private var palette
-
     let tags: [InterestTag]
     let symbol: String
     let onTap: (InterestTag) -> Void
 
     var body: some View {
-        FlowLayout(spacing: AlohaMetrics.space2) {
-            ForEach(tags) { tag in
-                Button {
-                    onTap(tag)
-                } label: {
-                    HStack(spacing: AlohaMetrics.space1) {
-                        Image(systemName: symbol).font(.caption)
-                        Text(verbatim: "#\(tag.tag)").font(.footnote)
+        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            FlowLayout(spacing: AlohaMetrics.space2) {
+                ForEach(tags) { tag in
+                    Button {
+                        onTap(tag)
+                    } label: {
+                        HStack(spacing: AlohaMetrics.space1) {
+                            Image(systemName: symbol).font(.caption)
+                            Text(verbatim: "#\(tag.tag)").font(.footnote)
+                        }
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .frame(minHeight: 36)
                     }
-                    .padding(.horizontal, AlohaMetrics.space3)
-                    .frame(minHeight: 36)
-                    .background(palette.surfaceRaised, in: Capsule())
+                    .buttonStyle(.glass)
+                    .accessibilityLabel(
+                        Text("Add \(tag.tag)", comment: "Interest candidate action"))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Add \(tag.tag)", comment: "Interest candidate action"))
             }
         }
         .padding(.vertical, AlohaMetrics.space1)

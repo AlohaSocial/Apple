@@ -14,6 +14,7 @@ struct ServerAddressTests {
     func acceptedForms() throws {
         #expect(Address(typed: "cloud.example.com")?.host == "cloud.example.com")
         #expect(Address(typed: "https://cloud.example.com/")?.host == "cloud.example.com")
+        #expect(Address(typed: "http://192.168.178.162/apps/social/")?.scheme == "http")
         #expect(Address(typed: "  CLOUD.Example.COM ")?.host == "cloud.example.com")
         #expect(Address(typed: "@alice@cloud.example.com")?.host == "cloud.example.com")
         #expect(Address(typed: "alice@cloud.example.com")?.host == "cloud.example.com")
@@ -26,13 +27,28 @@ struct ServerAddressTests {
         #expect(address.pathHint == "nextcloud")
     }
 
-    @Test("Nonsense and plain HTTP are refused")
+    /// A private-network server is very often served from a non-default
+    /// port. Dropping it rewrites the address to port 80, where nothing
+    /// answers, which is the whole failure this app exists to avoid.
+    @Test("A typed port survives normalisation and reaches every candidate")
+    func typedPortSurvives() throws {
+        let address = try #require(Address(typed: "http://192.168.178.162:8080/apps/social/"))
+        #expect(address.scheme == "http")
+        #expect(address.host == "192.168.178.162")
+        #expect(address.port == 8080)
+        #expect(address.pathHint == "apps/social")
+
+        let candidates = ServerProbe.candidates(for: address)
+        #expect(candidates.isEmpty == false)
+        #expect(
+            candidates.allSatisfy { $0.base.host() == "192.168.178.162" && $0.base.port == 8080 })
+    }
+
+    @Test("Nonsense and unsupported schemes are refused")
     func rejectedForms() {
         #expect(Address(typed: "") == nil)
         #expect(Address(typed: "not a host") == nil)
-        // ATS is left at its defaults and no exception ships, so an instance
-        // without HTTPS cannot be added (docs/11 §3).
-        #expect(Address(typed: "http://cloud.example.com") == nil)
+        #expect(Address(typed: "ftp://cloud.example.com") == nil)
     }
 }
 

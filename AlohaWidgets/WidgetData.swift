@@ -4,6 +4,7 @@ import AlohaModels
 import AlohaNetwork
 import AlohaStore
 import Foundation
+import SwiftData
 
 /// Reads the shared store. Deliberately narrow: the widget process has a tight
 /// memory budget and must not stand up the app's whole object graph.
@@ -46,6 +47,36 @@ enum WidgetData {
     @MainActor
     static func unreadCount() async -> Int {
         AppGroup.defaults.integer(forKey: AppGroup.unreadTotalKey)
+    }
+
+    /// The newest mentions for one account, straight from the shared store.
+    ///
+    /// Mentions are the one notification kind that never groups (docs/05 §6),
+    /// so a row is a row: a mention widget is a plain list rather than a
+    /// count, and the newest few are what a person opens their phone to see.
+    @MainActor
+    static func latestMentions(accountID: UUID, limit: Int) async -> [WidgetMention] {
+        let container = StoreContainer.make()
+        let descriptor = FetchDescriptor<NotificationRecord>(
+            predicate: #Predicate { $0.accountID == accountID && $0.kindRaw == "mention" },
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        guard let records = try? container.mainContext.fetch(descriptor) else { return [] }
+
+        return records.prefix(limit).compactMap { record in
+            guard
+                let payload = try? AlohaJSON.decoder.decode(
+                    NotificationPayload.self, from: record.payload),
+                !payload.title.isEmpty
+            else { return nil }
+            return WidgetMention(
+                id: record.serverID,
+                author: payload.title,
+                handle: payload.accountHandle,
+                text: payload.body,
+                createdAt: record.createdAt,
+                statusID: payload.statusID)
+        }
     }
 
     private static func plain(_ html: String) -> String {

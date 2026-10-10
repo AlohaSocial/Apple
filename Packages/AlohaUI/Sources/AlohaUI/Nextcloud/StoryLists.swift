@@ -14,6 +14,7 @@ struct StoryViewersSheet: View {
     let session: AccountSession
 
     @State private var viewers: [Account] = []
+    @State private var loadID = UUID()
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -21,9 +22,14 @@ struct StoryViewersSheet: View {
         NavigationStack {
             List {
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(palette.destructive)
+                        Button("Try again") { Task { await load() } }
+                            .buttonStyle(.glass)
+                    }
+                    .listRowBackground(palette.background)
                 }
                 ForEach(viewers) { account in
                     accountRow(account)
@@ -32,9 +38,15 @@ struct StoryViewersSheet: View {
                     Text("Nobody has watched this yet.", comment: "Empty story viewers")
                         .font(.footnote)
                         .foregroundStyle(palette.tertiaryLabel)
+                        .listRowBackground(palette.background)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
+            .overlay {
+                if isLoading && viewers.isEmpty { ProgressView() }
+            }
+            .refreshable { await load() }
             .navigationTitle(Text("Seen by", comment: "Story viewers title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -69,19 +81,29 @@ struct StoryViewersSheet: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            viewers = try await session.client.decode(
+            let response = try await session.client.decode(
                 LossyArray<Account>.self, from: Endpoint.storyExtras.viewers(story.id)
             ).elements
+            guard !Task.isCancelled, loadID == request else { return }
+            viewers = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Story viewers could not be loaded. Please try again.")
         }
     }
 }
@@ -95,6 +117,7 @@ struct StoryReactionsSheet: View {
     let session: AccountSession
 
     @State private var reactions: [StoryReaction] = []
+    @State private var loadID = UUID()
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -102,9 +125,14 @@ struct StoryReactionsSheet: View {
         NavigationStack {
             List {
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(palette.destructive)
+                        Button("Try again") { Task { await load() } }
+                            .buttonStyle(.glass)
+                    }
+                    .listRowBackground(palette.background)
                 }
                 ForEach(reactions) { reaction in
                     row(reaction)
@@ -113,9 +141,15 @@ struct StoryReactionsSheet: View {
                     Text("No reactions yet.", comment: "Empty story reactions")
                         .font(.footnote)
                         .foregroundStyle(palette.tertiaryLabel)
+                        .listRowBackground(palette.background)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
+            .overlay {
+                if isLoading && reactions.isEmpty { ProgressView() }
+            }
+            .refreshable { await load() }
             .navigationTitle(Text("Reactions", comment: "Story reactions title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -163,19 +197,29 @@ struct StoryReactionsSheet: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            reactions = try await session.client.decode(
+            let response = try await session.client.decode(
                 StoryReactionList.self, from: Endpoint.storyExtras.reactions(story.id)
             ).reactions
+            guard !Task.isCancelled, loadID == request else { return }
+            reactions = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Story reactions could not be loaded. Please try again.")
         }
     }
 }

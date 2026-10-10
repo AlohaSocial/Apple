@@ -26,6 +26,7 @@ public struct ServerInfoView: View {
     @State private var rules: [InstanceDescription.Rule] = []
     @State private var peerFilter = ""
     @State private var isLoading = true
+    @State private var errorMessage: String?
 
     public init(session: AccountSession) {
         self.session = session
@@ -39,6 +40,10 @@ public struct ServerInfoView: View {
 
     public var body: some View {
         List {
+            if let errorMessage {
+                errorStrip(errorMessage)
+            }
+
             Section {
                 LabeledContent {
                     Text(verbatim: session.snapshot.instanceHost)
@@ -152,9 +157,14 @@ public struct ServerInfoView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("About this server", comment: "Screen title"))
         .overlay {
-            if isLoading && peers.isEmpty && activity.isEmpty { ProgressView() }
+            if isLoading && activity.isEmpty && peers.isEmpty && blocks.isEmpty
+                && rules.isEmpty
+            {
+                ProgressView()
+            }
         }
         .refreshable { await load() }
         .task { await load() }
@@ -170,22 +180,48 @@ public struct ServerInfoView: View {
         host.replacingOccurrences(of: ".", with: " dot ")
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+    }
+
     private func load() async {
+        isLoading = true
         defer { isLoading = false }
         // Each is separately optional: a server may publish its activity and
         // not its peers, or neither, and one absence must not empty the page.
-        async let activityTask = try? await session.client.decode(
-            LossyArray<InstanceActivityWeek>.self, from: Endpoint.instance.activity)
-        async let peersTask = try? await session.client.decode(
-            LossyArray<String>.self, from: Endpoint.instance.peers)
-        async let blocksTask = try? await session.client.decode(
-            LossyArray<PublicDomainBlock>.self, from: Endpoint.instance.domainBlocks)
-        async let rulesTask = try? await session.client.decode(
-            LossyArray<InstanceDescription.Rule>.self, from: Endpoint.instance.rules)
+        async let activityTask = fetch(InstanceActivityWeek.self, from: Endpoint.instance.activity)
+        async let peersTask = fetch(String.self, from: Endpoint.instance.peers)
+        async let blocksTask = fetch(PublicDomainBlock.self, from: Endpoint.instance.domainBlocks)
+        async let rulesTask = fetch(InstanceDescription.Rule.self, from: Endpoint.instance.rules)
 
-        activity = (await activityTask)?.elements ?? []
-        peers = ((await peersTask)?.elements ?? []).sorted()
-        blocks = (await blocksTask)?.elements ?? []
-        rules = (await rulesTask)?.elements ?? []
+        let activityResult = await activityTask
+        let peersResult = await peersTask
+        let blocksResult = await blocksTask
+        let rulesResult = await rulesTask
+
+        activity = activityResult.values ?? []
+        peers = (peersResult.values ?? []).sorted()
+        blocks = blocksResult.values ?? []
+        rules = rulesResult.values ?? []
+        // A request that *failed* is not a section the server chose not to
+        // publish; reporting it as one left an empty page with no error and
+        // nothing to do about it.
+        errorMessage =
+            activityResult.message ?? peersResult.message ?? blocksResult.message
+            ?? rulesResult.message
+    }
+
+    private func fetch<T: Decodable & Sendable>(
+        _ type: T.Type, from endpoint: Endpoint
+    ) async -> (values: [T]?, message: String?) {
+        do {
+            let page = try await session.client.decode(LossyArray<T>.self, from: endpoint)
+            return (page.elements, nil)
+        } catch {
+            await session.handle(error)
+            return (nil, (error as? APIError)?.errorDescription ?? error.localizedDescription)
+        }
     }
 }

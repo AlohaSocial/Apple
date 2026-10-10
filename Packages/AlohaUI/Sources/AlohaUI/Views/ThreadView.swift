@@ -45,21 +45,17 @@ public struct ThreadView: View {
                 }
 
                 if isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .listRowSeparator(.hidden)
+                    SkeletonListRow(person: 3)
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
                 }
 
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
             .task {
                 await load()
@@ -80,11 +76,31 @@ public struct ThreadView: View {
             // every row was noise.
             showsContextLine: isFocused,
             canReact: session.capabilities.emojiReactions,
+            showsCounts: session.settings.showPopularityCounts,
             onAction: onAction
         )
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-        .listRowBackground(isFocused ? palette.surface : palette.background)
+        // Raised card plus the accent rail the timeline uses for keyboard
+        // focus: `surface` and `background` are the same black in the Black
+        // theme, so the old pair marked nothing there.
+        .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
         .font(isFocused ? .body : nil)
+        .overlay(alignment: .leading) {
+            if isFocused {
+                Capsule()
+                    .fill(palette.accent)
+                    .frame(width: 3)
+                    .padding(.vertical, 4)
+                    .padding(.leading, -8)
+            }
+        }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowBackground(palette.background)
     }
 
     /// Indentation is capped at five levels; anything deeper reads as a flat

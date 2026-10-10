@@ -268,7 +268,7 @@ public struct CollectionDetailView: View {
                         onAction(.openMedia(status: status.displayed, index: 0))
                     } label: {
                         RemoteImage(
-                            url: status.displayed.mediaAttachments.first?.previewURL,
+                            url: status.displayed.mediaAttachments.first?.displayImageURL,
                             blurhash: status.displayed.mediaAttachments.first?.blurhash,
                             accessibilityText: status.displayed.mediaAttachments.first?.description
                         )

@@ -318,7 +318,11 @@ public struct Preferences: Codable, Sendable, Hashable {
 }
 
 public struct NotificationPolicy: Codable, Sendable, Hashable {
-    public enum Decision: String, UnknownPreserving {
+    // CaseIterable because the policy screen enumerates the three decisions a
+    // server can act on; the `unknownCase` sentinel is filtered out there
+    // rather than omitted here, so a server that adds a fourth state still
+    // round-trips through decoding.
+    public enum Decision: String, UnknownPreserving, CaseIterable {
         case accept, filter, drop
         case unknownCase = "__unknown"
         public static func unknown(_ raw: String) -> Decision { .unknownCase }
@@ -331,6 +335,44 @@ public struct NotificationPolicy: Codable, Sendable, Hashable {
     public var forPrivateMentions: Decision
     public var forLimitedAccounts: Decision
     public var summary: Summary?
+
+    /// The five decisions' raw keys, in the order the server reads them. One
+    /// list rather than five hard-coded strings at each call site.
+    public static let decisionKeys = [
+        "for_not_following", "for_not_followers", "for_new_accounts",
+        "for_private_mentions", "for_limited_accounts",
+    ]
+
+    /// Writes one decision by its raw key.
+    ///
+    /// A mutating method rather than a `KeyPath` parameter: the compiler
+    /// infers a key-path literal inside a `@ViewBuilder` as an existential
+    /// (`any WritableKeyPath<…> & Sendable`), which cannot then be passed
+    /// where a concrete `ReferenceWritableKeyPath` is expected — and the
+    /// mapping between a row and its field is one thing, defined once,
+    /// rather than five literals.
+    public mutating func setDecision(_ key: String, to value: Decision) {
+        switch key {
+        case "for_not_following": forNotFollowing = value
+        case "for_not_followers": forNotFollowers = value
+        case "for_new_accounts": forNewAccounts = value
+        case "for_private_mentions": forPrivateMentions = value
+        case "for_limited_accounts": forLimitedAccounts = value
+        default: break
+        }
+    }
+
+    /// The decision for one raw key, for a row to read.
+    public func decision(for key: String) -> Decision {
+        switch key {
+        case "for_not_following": forNotFollowing
+        case "for_not_followers": forNotFollowers
+        case "for_new_accounts": forNewAccounts
+        case "for_private_mentions": forPrivateMentions
+        case "for_limited_accounts": forLimitedAccounts
+        default: .accept
+        }
+    }
 
     public struct Summary: Codable, Sendable, Hashable {
         @LenientInt public var pendingRequestsCount: Int

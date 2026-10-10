@@ -34,7 +34,7 @@ struct FocalPointEditor: View {
                 GeometryReader { proxy in
                     ZStack {
                         RemoteImage(
-                            url: attachment.previewURL ?? attachment.url,
+                            url: attachment.displayImageURL,
                             blurhash: attachment.blurhash,
                             contentMode: .fit,
                             accessibilityText: attachment.description)

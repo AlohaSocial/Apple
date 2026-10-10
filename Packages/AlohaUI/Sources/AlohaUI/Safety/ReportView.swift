@@ -22,6 +22,9 @@ public struct ReportView: View {
     @State private var rules: [InstanceDescription.Rule] = []
     @State private var isSending = false
     @State private var didSend = false
+    /// Set only when the report itself did not go through. The form stays up
+    /// with everything typed still in it, so the same report can be sent again.
+    @State private var sendError: String?
     @State private var alsoBlock = false
     @State private var alsoMute = false
 
@@ -45,6 +48,7 @@ public struct ReportView: View {
                 }
             }
             .formStyle(.grouped)
+            .alohaGround(palette)
             .navigationTitle(Text("Report", comment: "Report screen title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -75,6 +79,24 @@ public struct ReportView: View {
 
     @ViewBuilder
     private var form: some View {
+        if let sendError {
+            Section {
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: AlohaSymbol.warning)
+                    Text(sendError).font(.footnote)
+                    Spacer()
+                    Button {
+                        Task { await send() }
+                    } label: {
+                        Text("Try again", comment: "Report send retry")
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+                .foregroundStyle(palette.destructive)
+                .listRowSeparator(.hidden)
+            }
+        }
+
         Section {
             Picker(selection: $category) {
                 Text("Spam", comment: "Report category").tag("spam")
@@ -94,24 +116,10 @@ public struct ReportView: View {
         if category == "violation" && !rules.isEmpty {
             Section {
                 ForEach(rules) { rule in
-                    Button {
-                        if selectedRules.contains(rule.id) {
-                            selectedRules.remove(rule.id)
-                        } else {
-                            selectedRules.insert(rule.id)
-                        }
-                    } label: {
-                        HStack(alignment: .top) {
-                            Image(
-                                systemName: selectedRules.contains(rule.id)
-                                    ? "checkmark.square.fill" : "square"
-                            )
-                            .foregroundStyle(palette.accent)
-                            Text(rule.text).font(.footnote)
-                            Spacer()
-                        }
+                    Toggle(isOn: selection(for: rule.id)) {
+                        Text(rule.text).font(.footnote)
                     }
-                    .buttonStyle(.plain)
+                    .toggleStyle(.automatic)
                 }
             } header: {
                 Text("Which rule?", comment: "Report section")
@@ -163,7 +171,7 @@ public struct ReportView: View {
                     Image(systemName: "checkmark.circle.fill")
                 }
                 .font(.headline)
-                .foregroundStyle(palette.boost)
+                .foregroundStyle(palette.accent)
 
                 Text(
                     forwardToOrigin
@@ -187,6 +195,19 @@ public struct ReportView: View {
         }
     }
 
+    /// One rule's tick, as a binding the native checkmark style can drive.
+    private func selection(for ruleID: String) -> Binding<Bool> {
+        Binding(
+            get: { selectedRules.contains(ruleID) },
+            set: { isOn in
+                if isOn {
+                    selectedRules.insert(ruleID)
+                } else {
+                    selectedRules.remove(ruleID)
+                }
+            })
+    }
+
     private func loadRules() async {
         rules =
             (try? await session.client.decode(
@@ -198,15 +219,29 @@ public struct ReportView: View {
         isSending = true
         defer { isSending = false }
 
-        _ = try? await session.client.send(
-            Endpoint.safety.report(
-                accountID: account.id,
-                statusIDs: status.map { [$0.displayed.id] } ?? [],
-                comment: comment,
-                forward: forwardToOrigin,
-                category: category,
-                ruleIDs: Array(selectedRules)))
+        do {
+            _ = try await session.client.send(
+                Endpoint.safety.report(
+                    accountID: account.id,
+                    statusIDs: status.map { [$0.displayed.id] } ?? [],
+                    comment: comment,
+                    forward: forwardToOrigin,
+                    category: category,
+                    ruleIDs: Array(selectedRules)))
+        } catch {
+            await session.handle(error)
+            // Nothing is cleared: the typed comment stays where it was, and
+            // "Report sent" is not shown for a report the server never got.
+            sendError =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The report could not be sent. Your comment has been kept.",
+                    comment: "Report send failure")
+            return
+        }
 
+        // Only once the report itself has landed: blocking or muting first
+        // would act on the account while the record of why never arrives.
         if alsoBlock {
             _ = try? await session.client.send(
                 Endpoint.accounts.simpleAction(account.id, "block"))
@@ -216,6 +251,7 @@ public struct ReportView: View {
                 Endpoint.accounts.mute(account.id, notifications: true, duration: nil))
         }
 
+        sendError = nil
         didSend = true
     }
 }
@@ -230,6 +266,12 @@ public struct SafetyListsView: View {
     @State private var muted: [Account] = []
     @State private var domains: [String] = []
     @State private var newDomain = ""
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    /// The accounts and domains with a request in flight, so a second tap
+    /// cannot send the same one twice.
+    @State private var pendingIDs: Set<String> = []
+    @State private var isBlockingDomain = false
 
     public init(session: AccountSession) {
         self.session = session
@@ -237,6 +279,10 @@ public struct SafetyListsView: View {
 
     public var body: some View {
         List {
+            if let errorMessage {
+                errorStrip(errorMessage)
+            }
+
             Section {
                 ForEach(blocked) { account in
                     HStack {
@@ -248,9 +294,10 @@ public struct SafetyListsView: View {
                             Text("Unblock", comment: "Safety action")
                         }
                         .font(.caption)
+                        .disabled(pendingIDs.contains(account.id))
                     }
                 }
-                if blocked.isEmpty { emptyRow }
+                if blocked.isEmpty && !isLoading && errorMessage == nil { emptyRow }
             } header: {
                 Text("Blocked accounts", comment: "Safety section")
             }
@@ -266,9 +313,10 @@ public struct SafetyListsView: View {
                             Text("Unmute", comment: "Safety action")
                         }
                         .font(.caption)
+                        .disabled(pendingIDs.contains(account.id))
                     }
                 }
-                if muted.isEmpty { emptyRow }
+                if muted.isEmpty && !isLoading && errorMessage == nil { emptyRow }
             } header: {
                 Text("Muted accounts", comment: "Safety section")
             }
@@ -284,6 +332,7 @@ public struct SafetyListsView: View {
                             Text("Unblock", comment: "Safety action")
                         }
                         .font(.caption)
+                        .disabled(pendingIDs.contains(domain))
                     }
                 }
                 HStack {
@@ -302,8 +351,11 @@ public struct SafetyListsView: View {
                     } label: {
                         Text("Block", comment: "Safety action")
                     }
-                    .disabled(newDomain.isEmpty)
+                    .disabled(
+                        newDomain.isEmpty || isBlockingDomain
+                            || domains.contains(domainKey(newDomain)))
                 }
+                if domains.isEmpty && !isLoading && errorMessage == nil { emptyRow }
             } header: {
                 Text("Blocked servers", comment: "Safety section")
             } footer: {
@@ -312,52 +364,157 @@ public struct SafetyListsView: View {
                     comment: "Domain block explanation")
             }
         }
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && blocked.isEmpty && muted.isEmpty && domains.isEmpty {
+                ProgressView()
+            }
+        }
         .navigationTitle(Text("Blocking", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowSeparator(.hidden)
+    }
+
     private var emptyRow: some View {
-        Text("None", comment: "Empty safety list")
-            .font(.footnote)
-            .foregroundStyle(palette.secondaryLabel)
+        ContentUnavailableView {
+            Text("None", comment: "Empty safety list")
+        }
+        .listRowSeparator(.hidden)
+    }
+
+    private func domainKey(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespaces).lowercased()
     }
 
     /// Blocks and mutes take no cursor and send no `Link` header, so they are
     /// fetched by `limit` alone in a bounded loop (docs/02 §5).
     private func load() async {
-        blocked =
-            (try? await session.client.decode(
-                LossyArray<Account>.self, from: Endpoint.accounts.blocks(limit: 80)))?.elements
-            ?? []
-        muted =
-            (try? await session.client.decode(
-                LossyArray<Account>.self, from: Endpoint.accounts.mutes(limit: 80)))?.elements ?? []
-        domains =
-            (try? await session.client.decode(
-                LossyArray<String>.self, from: Endpoint.accounts.domainBlocks))?.elements ?? []
+        // A load that lands mid-action would overwrite the optimistic list
+        // with the server's pre-action snapshot; the action's own outcome is
+        // the newer truth.
+        guard pendingIDs.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let blocks = session.client.decode(
+                LossyArray<Account>.self, from: Endpoint.accounts.blocks(limit: 80))
+            async let mutes = session.client.decode(
+                LossyArray<Account>.self, from: Endpoint.accounts.mutes(limit: 80))
+            async let servers = session.client.decode(
+                LossyArray<String>.self, from: Endpoint.accounts.domainBlocks)
+            blocked = try await blocks.elements
+            muted = try await mutes.elements
+            domains = try await servers.elements
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Blocking could not be loaded. Pull down to try again.",
+                    comment: "Blocking load failure")
+        }
     }
 
     private func unblock(_ account: Account) async {
+        guard !pendingIDs.contains(account.id) else { return }
+        pendingIDs.insert(account.id)
+        defer { pendingIDs.remove(account.id) }
+        let index = blocked.firstIndex { $0.id == account.id } ?? blocked.endIndex
         blocked.removeAll { $0.id == account.id }
-        _ = try? await session.client.send(Endpoint.accounts.simpleAction(account.id, "unblock"))
+        do {
+            _ = try await session.client.send(
+                Endpoint.accounts.simpleAction(account.id, "unblock"))
+            errorMessage = nil
+        } catch {
+            // Only the refused row comes back — never a whole pre-action
+            // snapshot. Restoring that would resurrect rows whose actions
+            // succeeded while this one was still on the wire.
+            if !blocked.contains(where: { $0.id == account.id }) {
+                blocked.insert(account, at: min(index, blocked.endIndex))
+            }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That account could not be unblocked. Try again.",
+                    comment: "Unblock failure")
+        }
     }
 
     private func unmute(_ account: Account) async {
+        guard !pendingIDs.contains(account.id) else { return }
+        pendingIDs.insert(account.id)
+        defer { pendingIDs.remove(account.id) }
+        let index = muted.firstIndex { $0.id == account.id } ?? muted.endIndex
         muted.removeAll { $0.id == account.id }
-        _ = try? await session.client.send(Endpoint.accounts.simpleAction(account.id, "unmute"))
+        do {
+            _ = try await session.client.send(
+                Endpoint.accounts.simpleAction(account.id, "unmute"))
+            errorMessage = nil
+        } catch {
+            if !muted.contains(where: { $0.id == account.id }) {
+                muted.insert(account, at: min(index, muted.endIndex))
+            }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That account could not be unmuted. Try again.",
+                    comment: "Unmute failure")
+        }
     }
 
     private func blockDomain() async {
-        let domain = newDomain.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !domain.isEmpty else { return }
+        let domain = domainKey(newDomain)
+        guard !domain.isEmpty, !domains.contains(domain), !isBlockingDomain else { return }
+        isBlockingDomain = true
+        defer { isBlockingDomain = false }
         newDomain = ""
         domains.append(domain)
-        _ = try? await session.client.send(Endpoint.accounts.blockDomain(domain))
+        do {
+            _ = try await session.client.send(Endpoint.accounts.blockDomain(domain))
+            errorMessage = nil
+        } catch {
+            // Duplicating an id in this list would break the rows built from
+            // it, and the typed domain comes back so it can be sent again.
+            domains.removeAll { $0 == domain }
+            newDomain = domain
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That server could not be blocked. Try again.",
+                    comment: "Domain block failure")
+        }
     }
 
     private func unblockDomain(_ domain: String) async {
+        guard !pendingIDs.contains(domain) else { return }
+        pendingIDs.insert(domain)
+        defer { pendingIDs.remove(domain) }
+        let index = domains.firstIndex(of: domain) ?? domains.endIndex
         domains.removeAll { $0 == domain }
-        _ = try? await session.client.send(Endpoint.accounts.unblockDomain(domain))
+        do {
+            _ = try await session.client.send(Endpoint.accounts.unblockDomain(domain))
+            errorMessage = nil
+        } catch {
+            if !domains.contains(domain) {
+                domains.insert(domain, at: min(index, domains.endIndex))
+            }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That server could not be unblocked. Try again.",
+                    comment: "Domain unblock failure")
+        }
     }
 }

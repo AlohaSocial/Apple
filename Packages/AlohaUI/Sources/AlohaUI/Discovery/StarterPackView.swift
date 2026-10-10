@@ -52,6 +52,7 @@ public struct StarterPackView: View {
                         }
                         followAllButton(pack)
                     }
+                    .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                     .padding(.vertical, AlohaMetrics.space1)
                 }
@@ -66,6 +67,7 @@ public struct StarterPackView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .listRowBackground(palette.background)
                         .accessibilityLabel(Text(account.bestDisplayName))
                     }
                 } header: {
@@ -80,12 +82,14 @@ public struct StarterPackView: View {
                             Text(handle)
                                 .font(.subheadline)
                                 .foregroundStyle(palette.tertiaryLabel)
+                                .listRowBackground(palette.background)
                         }
                         Button {
                             Task { await load() }
                         } label: {
                             Text("Try again", comment: "Starter pack retry action")
                         }
+                        .listRowBackground(palette.background)
                     } header: {
                         Text("Couldn't be reached", comment: "Starter pack section")
                     } footer: {
@@ -97,17 +101,16 @@ public struct StarterPackView: View {
             } else if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
+                    .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
             }
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
-                    .listRowSeparator(.hidden)
+                errorStrip(errorMessage)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
         .navigationTitle(
             pack.map { Text($0.name) } ?? Text("Starter pack", comment: "Screen title")
         )
@@ -116,6 +119,22 @@ public struct StarterPackView: View {
         #endif
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task {
+                // A follow that failed is retried as a follow; anything else
+                // is a pack that did not come in, so it is loaded again.
+                if pack != nil && followedCount == nil {
+                    await followAll()
+                } else {
+                    await load()
+                }
+            }
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private func followAllButton(_ pack: StarterPack) -> some View {

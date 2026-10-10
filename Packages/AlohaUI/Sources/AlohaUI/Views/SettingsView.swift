@@ -4,6 +4,8 @@ import AlohaDesign
 import AlohaIntelligence
 import AlohaMedia
 import AlohaModels
+import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct SettingsView: View {
@@ -34,6 +36,10 @@ public struct SettingsView: View {
         ("Sound & touch", "sound touch haptics vibrate vibration audio chime tick senses silent"),
         ("Moderation", "moderation moderator reports admin administrator suspend silence trends"),
         (
+            "Delete account",
+            "delete account erase remove deactivate close"
+        ),
+        (
             "About",
             "about licence license version source code developer contact server peers activity federation keyboard shortcuts year wrapped"
         ),
@@ -49,10 +55,37 @@ public struct SettingsView: View {
         Self.searchTerms.contains { shows($0.title, $0.keywords) }
     }
 
+    /// The host comes from the server, so the string is not ours to trust: a
+    /// name the URL parser refuses is a link with nowhere to go, and there is
+    /// no forced URL that could be asked for one. The scheme and port are
+    /// read from the stored API base so a private-network `http` server opens
+    /// over `http` rather than a connection that can only fail.
+    private func serverDestination(_ session: AccountSession) -> URL? {
+        guard
+            let url = URL(string: session.capabilities.apiBase.originString),
+            url.host != nil
+        else { return nil }
+        return url
+    }
+
+    /// The shell's sheets carry the same guard: with no active account there
+    /// is no session to build the next screen from, so the presentation reads
+    /// back as not presented rather than going up with an empty body.
+    private func whenSignedIn(_ binding: Binding<Bool>) -> Binding<Bool> {
+        let hasSession = environment.activeSession != nil
+        return Binding(
+            get: { hasSession && binding.wrappedValue },
+            set: { binding.wrappedValue = hasSession && $0 })
+    }
+
     private let onAddAccount: () -> Void
     @State private var cacheSize = 0
     @State private var isShowingNextcloudConnect = false
     @State private var isShowingShortcuts = false
+    /// The introduction, revisited: a person who has already signed in has no
+    /// other way to see the tour again, and it is the only place the app
+    /// explains itself.
+    @State private var isShowingIntroduction = false
 
     public init(onAddAccount: @escaping () -> Void) {
         self.onAddAccount = onAddAccount
@@ -63,34 +96,18 @@ public struct SettingsView: View {
 
         Form {
             if shows("Accounts", "account accounts add sign switch remove") {
+                // Hoisted out of the row entirely: the compiler could not
+                // check this builder in reasonable time, and the active
+                // account is a fact about the section rather than about a row.
+                let activeAccountID = environment.activeSession?.id
                 Section {
                     ForEach(environment.sessions) { session in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(session.snapshot.bestDisplayName).font(.body)
-                                Text(session.snapshot.qualifiedHandle)
-                                    .font(.caption)
-                                    .foregroundStyle(palette.secondaryLabel)
-                            }
-                            Spacer()
-                            if session.needsReauthentication {
-                                Text("Sign in again", comment: "Account state")
-                                    .font(.caption)
-                                    .foregroundStyle(palette.destructive)
-                            }
-                            if session.id == environment.activeSession?.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(palette.accent)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { environment.setActiveAccount(session.id) }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accountLabel(session))
-                        .accessibilityAddTraits(
-                            session.id == environment.activeSession?.id
-                                ? [.isButton, .isSelected] : .isButton
+                        // One row per account, extracted so the builder can be
+                        // checked: the compiler refuses an expression this
+                        // large ("unable to type-check in reasonable time").
+                        accountRow(
+                            session,
+                            isActiveAccount: session.id == activeAccountID
                         )
                         .swipeActions {
                             Button(role: .destructive) {
@@ -111,7 +128,7 @@ public struct SettingsView: View {
 
             if shows(
                 "Appearance",
-                "appearance theme density serif icon dark light text")
+                "appearance theme density serif icon counts numbers text size compact")
             {
                 Section {
                     Picker(selection: $environment.theme) {
@@ -129,6 +146,34 @@ public struct SettingsView: View {
                         Text("Spacious", comment: "Density").tag(AlohaMetrics.Density.spacious)
                     } label: {
                         Text("Density", comment: "Settings item")
+                    }
+
+                    // docs/05 §9: the appearance section owns the counts switch
+                    // — "show/hide counts" sits with how the app looks, next to
+                    // density and the reading options, not buried in the feed's
+                    // behaviour. It is the same setting either way.
+                    if let session = environment.activeSession {
+                        Toggle(
+                            isOn: Binding(
+                                get: { session.settings.showPopularityCounts },
+                                set: { value in
+                                    Task {
+                                        await session.updateSettings {
+                                            $0.showPopularityCounts = value
+                                        }
+                                    }
+                                })
+                        ) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Show numbers", comment: "Settings item")
+                                Text(
+                                    "Reply, boost and favourite counts, follower and post counts, and view counts.",
+                                    comment: "Settings explanation"
+                                )
+                                .font(.footnote)
+                                .foregroundStyle(palette.secondaryLabel)
+                            }
+                        }
                     }
 
                     Toggle(isOn: $environment.metrics.useSerifBody) {
@@ -156,11 +201,17 @@ public struct SettingsView: View {
                 ) {
                     yourAccountSection(session)
                 }
+                if shows("Timeline", "timeline feed boosts replies pill position restore numbers") {
+                    timelineSection(session)
+                }
                 if shows("Nextcloud", "nextcloud files push notification server connect") {
                     nextcloudSection(session)
                 }
                 if shows("Media", "media autoplay video sensitive blur mute loop data") {
                     mediaSection(session)
+                }
+                if shows("Notifications", "notifications push digest quiet hours delivery sounds") {
+                    notificationsSection(session)
                 }
                 if shows("Posting", "posting compose composer visibility language alt draft") {
                     composerSection(session)
@@ -219,7 +270,20 @@ public struct SettingsView: View {
                         Label {
                             Text("Filtered notifications", comment: "Settings item")
                         } icon: {
-                            Image(systemName: AlohaSymbol.notifications)
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                        }
+                    }
+                    // The notification policy screen is only shown when the server
+                    // supports it (Mastodon 4.3+ / Nextcloud Social with v2).
+                    if let session = environment.activeSession,
+                        session.capabilities.notificationPolicy
+                    {
+                        NavigationLink(value: Route.notificationPolicy) {
+                            Label {
+                                Text("Notification policy", comment: "Settings item")
+                            } icon: {
+                                Image(systemName: AlohaSymbol.shield)
+                            }
                         }
                     }
                     NavigationLink(value: Route.drafts) {
@@ -268,7 +332,10 @@ public struct SettingsView: View {
                 moderationSection(session)
             }
 
-            if let session = environment.activeSession {
+            if let session = environment.activeSession,
+                shows("Delete account", "delete account erase remove deactivate close"),
+                session.capabilities.isNextcloudSocial || serverDestination(session) != nil
+            {
                 Section {
                     if session.capabilities.isNextcloudSocial {
                         // Nextcloud Social can do this over the API, so the
@@ -278,11 +345,8 @@ public struct SettingsView: View {
                             Text("Delete my Social account", comment: "Settings action")
                                 .foregroundStyle(palette.destructive)
                         }
-                    } else {
-                        // Everywhere else the account belongs to the server and
-                        // there is no route for it.
-                        Link(destination: URL(string: "https://\(session.snapshot.instanceHost)")!)
-                        {
+                    } else if let serverURL = serverDestination(session) {
+                        Link(destination: serverURL) {
                             Text("Delete my account on this server", comment: "Settings action")
                         }
                     }
@@ -306,11 +370,11 @@ public struct SettingsView: View {
                     } label: {
                         Text("Version", comment: "Settings item")
                     }
-                    Link(destination: URL(string: "https://github.com/nextcloud/AlohaSocial")!) {
+                    Link(destination: URL(string: "https://github.com/AlohaSocial/Apple")!) {
                         Text("Source code", comment: "Settings item")
                     }
                     Link(
-                        destination: URL(string: "https://github.com/nextcloud/AlohaSocial/issues")!
+                        destination: URL(string: "https://github.com/AlohaSocial/Apple/issues")!
                     ) {
                         Text("Contact the developer", comment: "Settings item")
                     }
@@ -323,6 +387,16 @@ public struct SettingsView: View {
                             }
                         }
                     }
+                    Button {
+                        isShowingIntroduction = true
+                    } label: {
+                        Label {
+                            Text("Show the introduction", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "sparkles")
+                        }
+                    }
+
                     Button {
                         isShowingShortcuts = true
                     } label: {
@@ -342,6 +416,7 @@ public struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
         .searchable(
             text: $settingsQuery,
             placement: .automatic,
@@ -349,7 +424,14 @@ public struct SettingsView: View {
         )
         .navigationTitle(Text("Settings", comment: "Screen title"))
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
-        .sheet(isPresented: $isShowingNextcloudConnect) {
+        .sheet(isPresented: $isShowingIntroduction) {
+            // The same introduction a first launch sees, in a sheet: the last
+            // page's address field still signs in, and anything already
+            // signed in stays signed in when it is dismissed.
+            WelcomeView()
+                .alohaTheme(environment.theme, metrics: environment.metrics)
+        }
+        .sheet(isPresented: whenSignedIn($isShowingNextcloudConnect)) {
             if let session = environment.activeSession {
                 NextcloudConnectView(session: session)
             }
@@ -421,21 +503,29 @@ public struct SettingsView: View {
     /// about the phone or the Mac in front of the reader.
     private var sensesSection: some View {
         Section {
+            Toggle(
+                isOn: Binding(
+                    get: { Senses.shared.soundsEnabled },
+                    set: { Senses.shared.soundsEnabled = $0 })
+            ) {
+                Text("Play sounds", comment: "Settings item")
+            }
+
+            // Its own row rather than a neighbour inside the switch's: in the
+            // switch's row VoiceOver read the preview as part of the toggle,
+            // and a tap anywhere on the row flipped the setting instead.
             HStack {
-                Toggle(
-                    isOn: Binding(
-                        get: { Senses.shared.soundsEnabled },
-                        set: { Senses.shared.soundsEnabled = $0 })
-                ) {
-                    Text("Play sounds", comment: "Settings item")
-                }
+                Spacer(minLength: 0)
                 Button {
                     Senses.shared.play(.like)
                 } label: {
-                    Image(systemName: AlohaSymbol.play)
+                    Label {
+                        Text("Listen", comment: "Settings action")
+                    } icon: {
+                        Image(systemName: AlohaSymbol.play)
+                    }
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(Text("Listen", comment: "Settings action"))
             }
 
             Toggle(
@@ -515,6 +605,67 @@ public struct SettingsView: View {
         }
     }
 
+    /// What your home feed shows.
+    ///
+    /// These preferences were stored and read by the timeline but had no
+    /// screen: `showBoosts`, `showReplies`, `restoreTimelinePosition` and
+    /// `showNewPostsPill` all changed behaviour with no way to change them,
+    /// and "Show numbers" sat under Media, where it is not about media at
+    /// all. Every switch here now exists (docs/05 §2).
+    private func timelineSection(_ session: AccountSession) -> some View {
+        Section {
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.showBoosts },
+                    set: { value in
+                        Task { await session.updateSettings { $0.showBoosts = value } }
+                    })
+            ) {
+                Text("Show boosts", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.showReplies },
+                    set: { value in
+                        Task { await session.updateSettings { $0.showReplies = value } }
+                    })
+            ) {
+                Text("Show replies", comment: "Settings item")
+            }
+
+            // "Show numbers" lives in Appearance, where docs/05 §9 puts it:
+            // it is about how much the app shows, next to density and the
+            // reading options, not about what the feed does.
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.showNewPostsPill },
+                    set: { value in
+                        Task { await session.updateSettings { $0.showNewPostsPill = value } }
+                    })
+            ) {
+                Text("New posts pill", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.restoreTimelinePosition },
+                    set: { value in
+                        Task { await session.updateSettings { $0.restoreTimelinePosition = value } }
+                    })
+            ) {
+                Text("Return to where I was", comment: "Settings item")
+            }
+        } header: {
+            Text("Home feed", comment: "Settings section")
+        } footer: {
+            Text(
+                "Off, the new-posts pill disappears and every refresh scrolls to the top instead of holding your place.",
+                comment: "Home feed section explanation")
+        }
+    }
+
     private func mediaSection(_ session: AccountSession) -> some View {
         Section {
             Toggle(
@@ -557,6 +708,141 @@ public struct SettingsView: View {
         } footer: {
             // The cost is stated in one line rather than hidden.
             Text("Videos play automatically, including on cellular.", comment: "Autoplay footnote")
+        }
+    }
+
+    private func notificationsSection(_ session: AccountSession) -> some View {
+        Section {
+            Picker(
+                selection: Binding(
+                    get: { session.settings.notificationDeliveryMode },
+                    set: { value in
+                        Task {
+                            await session.updateSettings { $0.notificationDeliveryMode = value }
+                        }
+                    })
+            ) {
+                Text("As they arrive", comment: "Notification delivery mode")
+                    .tag(AccountSettings.NotificationDeliveryMode.immediate)
+                Text("In a digest", comment: "Notification delivery mode")
+                    .tag(AccountSettings.NotificationDeliveryMode.digest)
+            } label: {
+                Text("Delivery", comment: "Notification delivery mode")
+            }
+
+            if session.settings.notificationDeliveryMode == .digest {
+                Section {
+                    ForEach(session.settings.digestTimes.indices, id: \.self) { idx in
+                        Stepper(
+                            value: Binding(
+                                get: { session.settings.digestTimes[idx] },
+                                set: { value in
+                                    Task {
+                                        await session.updateSettings {
+                                            var times = $0.digestTimes
+                                            times[idx] = max(0, min(23, value))
+                                        }
+                                    }
+                                }),
+                            in: 0...23
+                        ) {
+                            Text("Digest \(idx + 1): \(session.settings.digestTimes[idx]):00")
+                        }
+                    }
+
+                    Button {
+                        Task {
+                            await session.updateSettings { settings in
+                                if settings.digestTimes.count < 4 {
+                                    settings.digestTimes.append(
+                                        (settings.digestTimes.last ?? 8) + 2)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label {
+                            Text("Add digest time", comment: "Settings action")
+                        } icon: {
+                            Image(systemName: "plus")
+                        }
+                    }
+                    .disabled(session.settings.digestTimes.count >= 4)
+
+                    if session.settings.digestTimes.count > 1 {
+                        Button(role: .destructive) {
+                            Task {
+                                await session.updateSettings { settings in
+                                    if settings.digestTimes.count > 1 {
+                                        settings.digestTimes.removeLast()
+                                    }
+                                }
+                            }
+                        } label: {
+                            Label {
+                                Text("Remove last digest time", comment: "Settings action")
+                            } icon: {
+                                Image(systemName: "minus")
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Digest times", comment: "Settings section")
+                } footer: {
+                    Text(
+                        "Notifications are grouped and delivered at these hours (local time). Direct messages and mentions from accounts you follow always come through immediately. Quiet hours override digest times.",
+                        comment: "Digest times explanation")
+                }
+            }
+
+            // Quiet hours (existing fields, now exposed)
+            Section {
+                HStack {
+                    Text("Quiet hours start", comment: "Settings item")
+                    Spacer()
+                    Picker(
+                        "",
+                        selection: Binding(
+                            get: { session.settings.quietHoursStart ?? 22 },
+                            set: { value in
+                                Task { await session.updateSettings { $0.quietHoursStart = value } }
+                            })
+                    ) {
+                        ForEach(0..<24) { hour in
+                            Text("\(hour):00").tag(hour)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+                HStack {
+                    Text("Quiet hours end", comment: "Settings item")
+                    Spacer()
+                    Picker(
+                        "",
+                        selection: Binding(
+                            get: { session.settings.quietHoursEnd ?? 7 },
+                            set: { value in
+                                Task { await session.updateSettings { $0.quietHoursEnd = value } }
+                            })
+                    ) {
+                        ForEach(0..<24) { hour in
+                            Text("\(hour):00").tag(hour)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            } header: {
+                Text("Quiet hours", comment: "Settings section")
+            } footer: {
+                Text(
+                    "During quiet hours no notifications are delivered. Digest times that fall within quiet hours are skipped; the badge updates at the next digest time.",
+                    comment: "Quiet hours explanation")
+            }
+        } header: {
+            Text("Notifications", comment: "Settings section")
+        } footer: {
+            Text(
+                "\"As they arrive\" is the default. \"In a digest\" batches notifications at your chosen hours; DMs and mentions from people you follow always break through.",
+                comment: "Notifications section explanation")
         }
     }
 
@@ -624,6 +910,50 @@ public struct SettingsView: View {
 extension SettingsView {
     /// A handle is not a sentence. Read aloud it should be words, not
     /// punctuation — "alice at cloud.example.test".
+    /// One account row: face, name, handle, and a check when it is the active
+    /// one. Extracted from the accounts section because a builder this large
+    /// is more than the compiler will check in one go — the check and the
+    /// reauth badge are the part of the row that is a fact, not layout.
+    private func accountRow(_ session: AccountSession, isActiveAccount: Bool) -> some View {
+        Button {
+            environment.setActiveAccount(session.id)
+        } label: {
+            HStack(spacing: AlohaMetrics.space3) {
+                AvatarView(
+                    account: session.snapshot.asAccount,
+                    size: AlohaMetrics().avatarSize
+                )
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.snapshot.bestDisplayName).font(.body)
+                    Text(session.snapshot.qualifiedHandle)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryLabel)
+                }
+                Spacer()
+                if session.needsReauthentication {
+                    Text("Sign in again", comment: "Account state")
+                        .font(.caption)
+                        .foregroundStyle(palette.destructive)
+                }
+                if isActiveAccount {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(palette.accent)
+                        .accessibilityHidden(true)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accountLabel(session))
+        .accessibilityAddTraits(
+            isActiveAccount
+                ? [.isButton, .isSelected] : .isButton
+        )
+    }
+
     fileprivate func accountLabel(_ session: AccountSession) -> Text {
         let handle = session.snapshot.qualifiedHandle
             .trimmingCharacters(in: CharacterSet(charactersIn: "@"))

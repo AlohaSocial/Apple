@@ -34,6 +34,9 @@ public struct MigrationView: View {
     }
 
     @State private var pendingImport: ImportKind?
+    /// What the open picker is for, held outside `pendingImport` because the
+    /// presentation binding drops that as soon as the picker closes.
+    @State private var importKind: ImportKind?
     @State private var busy: Set<String> = []
     @State private var exported: [String: URL] = [:]
     @State private var reports: [String: MigrationReport] = [:]
@@ -45,6 +48,7 @@ public struct MigrationView: View {
     @State private var instagramHandles: [String] = []
     @State private var lookup: [MigrationLookup.Entry] = []
     @State private var followed: Set<String> = []
+    @State private var didLookup = false
     @State private var errorMessage: String?
 
     public init(session: AccountSession) {
@@ -71,13 +75,17 @@ public struct MigrationView: View {
             instagramSection
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
         .navigationTitle(Text("Migration", comment: "Screen title"))
         .fileImporter(
             isPresented: Binding(
                 get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),
             allowedContentTypes: allowedTypes
         ) { result in
-            guard let kind = pendingImport else { return }
+            // Dismissing the picker clears `pendingImport` before this runs,
+            // so the kind it was opened for is held separately.
+            guard let kind = importKind else { return }
+            importKind = nil
             pendingImport = nil
             if case .success(let url) = result {
                 Task { await upload(kind, from: url) }
@@ -139,7 +147,7 @@ public struct MigrationView: View {
                     }
                     .font(.footnote.weight(.semibold))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
             } else {
                 Button {
@@ -148,7 +156,7 @@ public struct MigrationView: View {
                     Text("Prepare", comment: "Migration export action")
                         .font(.footnote.weight(.semibold))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
             }
         }
@@ -166,11 +174,14 @@ public struct MigrationView: View {
 
     /// Fetched into a temporary file, which is what the share sheet wants.
     private func download(id: String, endpoint: Endpoint, filename: String) async {
-        busy.insert(id)
+        guard busy.insert(id).inserted else { return }
+        errorMessage = nil
         defer { busy.remove(id) }
         do {
             let response = try await session.client.send(endpoint)
-            let folder = FileManager.default.temporaryDirectory.appending(path: "aloha-export")
+            guard !Task.isCancelled else { return }
+            let folder = FileManager.default.temporaryDirectory
+                .appending(path: "aloha-export-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let url = folder.appending(path: filename)
             try response.data.write(to: url, options: .atomic)
@@ -178,7 +189,9 @@ public struct MigrationView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The export could not be prepared. Please try again.")
         }
     }
 
@@ -248,6 +261,7 @@ public struct MigrationView: View {
                     ProgressView()
                 } else {
                     Button {
+                        importKind = kind
                         pendingImport = kind
                     } label: {
                         Text("Choose file…", comment: "Migration import action")
@@ -280,11 +294,18 @@ public struct MigrationView: View {
     }
 
     private func upload(_ kind: ImportKind, from url: URL) async {
-        busy.insert(kind.id)
+        guard busy.insert(kind.id).inserted else { return }
+        let shouldFetchMedia = fetchMedia
+        errorMessage = nil
         defer { busy.remove(kind.id) }
         let didAccess = url.startAccessingSecurityScopedResource()
         defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else {
+        // Archives can be large. Do not block the UI while reading the file.
+        let result = await Task.detached(priority: .userInitiated) {
+            try Data(contentsOf: url)
+        }.result
+        guard !Task.isCancelled else { return }
+        guard case .success(let data) = result else {
             errorMessage = String(
                 localized: "That file couldn't be read.", comment: "Migration import failed")
             return
@@ -295,7 +316,8 @@ public struct MigrationView: View {
         case .archive: endpoint = .migration.importArchive(data, filename: filename)
         case .list(let list): endpoint = .migration.importList(list, csv: data, filename: filename)
         case .posts:
-            endpoint = .migration.importPosts(data, filename: filename, fetchMedia: fetchMedia)
+            endpoint = .migration.importPosts(
+                data, filename: filename, fetchMedia: shouldFetchMedia)
         case .instagram: endpoint = .migration.instagramPeople(data, filename: filename)
         }
         do {
@@ -303,7 +325,8 @@ public struct MigrationView: View {
                 let handles = try await session.client.decode(MigrationHandles.self, from: endpoint)
                 instagramHandles = handles.handles
                 lookup = []
-                if !handles.handles.isEmpty { await findPeople() }
+                didLookup = false
+                if !handles.handles.isEmpty, !(await findPeople()) { return }
             } else {
                 reports[kind.id] = try await session.client.decode(
                     MigrationReport.self, from: endpoint)
@@ -311,22 +334,30 @@ public struct MigrationView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The import could not be completed. Please try again.")
         }
     }
 
     private func importVideo() async {
-        busy.insert("video")
+        guard busy.insert("video").inserted else { return }
+        let submittedURL = videoURL
+        let shouldFetchMedia = fetchMedia
+        errorMessage = nil
         defer { busy.remove("video") }
         do {
             reports["video"] = try await session.client.decode(
                 MigrationReport.self,
-                from: Endpoint.migration.importVideo(url: videoURL, fetchMedia: fetchMedia))
-            videoURL = ""
+                from: Endpoint.migration.importVideo(
+                    url: submittedURL, fetchMedia: shouldFetchMedia))
+            if videoURL == submittedURL { videoURL = "" }
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The video could not be imported. Please try again.")
         }
     }
 
@@ -369,15 +400,18 @@ public struct MigrationView: View {
                         Image(systemName: "arrow.triangle.branch")
                     }
                     Spacer()
+                }
+                .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         Task { await removeAlias(alias) }
                     } label: {
-                        Image(systemName: "minus.circle")
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+                        Label {
+                            Text("Remove alias \(alias)", comment: "Migration action")
+                        } icon: {
+                            Image(systemName: "minus.circle")
+                        }
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(Text("Remove alias \(alias)", comment: "Migration action"))
+                    .disabled(busy.contains("alias") || busy.contains("alias-load"))
                 }
             }
 
@@ -401,9 +435,11 @@ public struct MigrationView: View {
                             .font(.footnote.weight(.semibold))
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .controlSize(.small)
-                .disabled(busy.contains("alias") || !newAlias.contains("@"))
+                .disabled(
+                    busy.contains("alias") || busy.contains("alias-load") || !newAlias.contains("@")
+                )
             }
         } header: {
             Text("Move", comment: "Migration section")
@@ -415,39 +451,56 @@ public struct MigrationView: View {
     }
 
     private func loadMove() async {
-        aliases =
-            (try? await session.client.decode(
-                MigrationAliases.self, from: Endpoint.migration.aliases))?.aliases ?? []
+        guard !busy.contains("alias"), busy.insert("alias-load").inserted else { return }
+        defer { busy.remove("alias-load") }
+        if let response = try? await session.client.decode(
+            MigrationAliases.self, from: Endpoint.migration.aliases)
+        {
+            guard !Task.isCancelled else { return }
+            aliases = response.aliases
+        }
+        guard !Task.isCancelled else { return }
         announcement = try? await session.client.decode(
             MigrationAnnouncement.self, from: Endpoint.migration.announcement)
     }
 
     private func addAlias() async {
+        guard !busy.contains("alias"), !busy.contains("alias-load") else { return }
+        let submittedDraft = newAlias
         let alias = newAlias.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
         guard alias.contains("@") else { return }
         busy.insert("alias")
+        errorMessage = nil
         defer { busy.remove("alias") }
         do {
             aliases = try await session.client.decode(
                 MigrationAliases.self, from: Endpoint.migration.addAlias(alias)
             ).aliases
-            newAlias = ""
+            if newAlias == submittedDraft { newAlias = "" }
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The alias could not be added. Please try again.")
         }
     }
 
     private func removeAlias(_ alias: String) async {
+        guard !busy.contains("alias-load"), busy.insert("alias").inserted else { return }
+        errorMessage = nil
+        defer { busy.remove("alias") }
         do {
             aliases = try await session.client.decode(
                 MigrationAliases.self, from: Endpoint.migration.removeAlias(alias)
             ).aliases
+            errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The alias could not be removed. Please try again.")
         }
     }
 
@@ -466,6 +519,7 @@ public struct MigrationView: View {
                     ProgressView()
                 } else {
                     Button {
+                        importKind = .instagram
                         pendingImport = .instagram
                     } label: {
                         Text("Choose file…", comment: "Migration import action")
@@ -476,7 +530,13 @@ public struct MigrationView: View {
                 }
             }
 
-            if !instagramHandles.isEmpty && lookup.isEmpty && !busy.contains("find") {
+            if !instagramHandles.isEmpty && !didLookup && !busy.contains("find") {
+                Button("Try again") { Task { await findPeople() } }
+                    .buttonStyle(.glass)
+            }
+            if !instagramHandles.isEmpty && didLookup && !lookup.contains(where: { $0.found })
+                && !busy.contains("find")
+            {
                 Text(
                     "^[\(instagramHandles.count) handle](inflect: true) found in the archive, none of them on the fediverse yet.",
                     comment: "Migration Instagram no matches"
@@ -502,14 +562,19 @@ public struct MigrationView: View {
                         Button {
                             Task { await follow(account) }
                         } label: {
-                            (followed.contains(account.id)
-                                ? Text("Following", comment: "Migration follow state")
-                                : Text("Follow", comment: "Migration follow action"))
-                                .font(.footnote.weight(.semibold))
+                            if busy.contains("follow.\(account.id)") {
+                                ProgressView()
+                            } else {
+                                (followed.contains(account.id)
+                                    ? Text("Following", comment: "Migration follow state")
+                                    : Text("Follow", comment: "Migration follow action"))
+                                    .font(.footnote.weight(.semibold))
+                            }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .disabled(followed.contains(account.id))
+                        .disabled(
+                            followed.contains(account.id) || busy.contains("follow.\(account.id)"))
                     }
                 }
             }
@@ -522,26 +587,43 @@ public struct MigrationView: View {
         }
     }
 
-    private func findPeople() async {
-        busy.insert("find")
+    @discardableResult
+    private func findPeople() async -> Bool {
+        guard busy.insert("find").inserted else { return false }
+        let handles = instagramHandles
+        errorMessage = nil
         defer { busy.remove("find") }
         do {
-            lookup = try await session.client.decode(
-                MigrationLookup.self, from: Endpoint.migration.findPeople(instagramHandles)
+            let response = try await session.client.decode(
+                MigrationLookup.self, from: Endpoint.migration.findPeople(handles)
             ).entries
+            guard !Task.isCancelled, instagramHandles == handles else { return false }
+            lookup = response
+            didLookup = true
+            return true
         } catch {
+            guard !Task.isCancelled, instagramHandles == handles else { return false }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "People could not be looked up. Please try again.")
+            return false
         }
     }
 
     private func follow(_ account: Account) async {
+        let key = "follow.\(account.id)"
+        guard !followed.contains(account.id), busy.insert(key).inserted else { return }
+        defer { busy.remove(key) }
+        errorMessage = nil
         do {
             _ = try await session.client.send(Endpoint.accounts.follow(account.id))
             followed.insert(account.id)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The account could not be followed. Please try again.")
         }
     }
 }

@@ -85,7 +85,9 @@ public struct VideoWatchView: View {
 
     @ViewBuilder
     private var player: some View {
-        if let target = status?.displayed, let attachment = target.mediaAttachments.first {
+        if let target = status?.displayed,
+            let attachment = target.mediaAttachments.first(where: { $0.isVideo })
+        {
             let isCovered =
                 target.sensitive
                 && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal
@@ -105,9 +107,10 @@ public struct VideoWatchView: View {
                     VideoAttachmentPlayer(
                         attachment: attachment, statusID: target.id,
                         apiBase: session.capabilities.apiBase,
-                        autoplay: session.settings.autoplayVideo,
+                        autoplay: true,
                         startsMuted: false,
-                        seekRequest: $seekRequest)
+                        seekRequest: $seekRequest,
+                        session: session)
                 }
             }
             .aspectRatio(playerAspect(attachment), contentMode: .fit)
@@ -286,11 +289,14 @@ public struct VideoWatchView: View {
     /// Counts and the date, as `Text` so the plural markup is resolved.
     private func meta(_ target: Status) -> Text {
         let date = Text(target.createdAt.formatted(date: .abbreviated, time: .omitted))
+        // A reader who turned "Show numbers" off sees the date, not the
+        // crowd's size (docs/05 §4).
+        let showsCounts = session.settings.showPopularityCounts
         let favourites = Text(
             "^[\(target.favouritesCount) favourite](inflect: true)", comment: "Watch page count")
         let boosts = Text(
             "^[\(target.reblogsCount) boost](inflect: true)", comment: "Watch page count")
-        switch (target.favouritesCount > 0, target.reblogsCount > 0) {
+        switch (showsCounts && target.favouritesCount > 0, showsCounts && target.reblogsCount > 0) {
         case (true, true):
             return Text("\(favourites) · \(boosts) · \(date)", comment: "Watch page meta line")
         case (true, false):
@@ -577,11 +583,24 @@ public struct VideoWatchView: View {
                 ?? VideoStatusExtras()
             comments = try await contextTask.descendants
             errorMessage = nil
+            await resumeWhereTheyLeftOff()
             await loadRelationship(loaded.displayed.account)
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
         }
+    }
+
+    /// The position this account last left the video at, handed to the player
+    /// as a seek. Set before the player exists, so `prepare()` picks it up the
+    /// moment the item is ready rather than starting from the top.
+    private func resumeWhereTheyLeftOff() async {
+        guard session.capabilities.watchPositions,
+            let saved = try? await session.supportStore.watchPosition(
+                accountID: session.id, statusID: statusID),
+            saved >= WatchPositionRules.minimumReportableSeconds
+        else { return }
+        seekRequest = saved
     }
 
     private var dislikeCount: Int {

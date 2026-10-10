@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The same ATS exception the other targets carry: the sign-in screen
+	     accepts plain http from a private network (http://192.168.x.x[:port]),
+	     and the Mac client is the place those servers are most likely to be
+	     reached from. See Supporting/Info.plist and docs/11 §5. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

@@ -23,6 +23,11 @@ public struct EditProfileView: View {
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var errorMessage: String?
+    private enum Retry { case load, save, removeAvatar, removeHeader }
+    @State private var retryAction: Retry = .load
+    @State private var isPreparingAvatar = false
+    @State private var isPreparingHeader = false
+    @State private var photoError: String?
     @State private var managedByServer = false
     @State private var didSave = false
 
@@ -54,9 +59,29 @@ public struct EditProfileView: View {
         Form {
             if let errorMessage {
                 Section {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    // A failed first load leaves `original` nil, which makes
+                    // Save impossible for as long as it stands: the way back
+                    // has to be on screen, not assumed.
+                    HStack(spacing: AlohaMetrics.space2) {
+                        Image(systemName: AlohaSymbol.warning)
+                        Text(errorMessage)
+                            .font(.footnote)
+                        Spacer()
+                        Button {
+                            Task {
+                                switch retryAction {
+                                case .load: await load()
+                                case .save: await save()
+                                case .removeAvatar: await removeAvatar()
+                                case .removeHeader: await removeHeader()
+                                }
+                            }
+                        } label: {
+                            Text("Retry", comment: "Error strip action")
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(palette.destructive)
                 }
             }
 
@@ -80,6 +105,7 @@ public struct EditProfileView: View {
             postingSection
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
         .navigationTitle(Text("Edit profile", comment: "Screen title"))
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -95,21 +121,43 @@ public struct EditProfileView: View {
                         Text("Save", comment: "Profile editing action")
                     }
                 }
-                .disabled(isSaving || !hasChanges)
+                .disabled(isSaving || isPreparingAvatar || isPreparingHeader || !hasChanges)
             }
         }
-        .disabled(isLoading)
+        .disabled(isLoading || isSaving)
         .overlay {
             if isLoading { ProgressView() }
         }
         .task { await load() }
         .onChange(of: avatarItem) { _, item in
-            Task { avatarPicked = await picture(from: item, name: "avatar") }
+            isPreparingAvatar = item != nil
+            Task {
+                let picked = await picture(from: item, name: "avatar")
+                guard avatarItem == item else { return }
+                avatarPicked = picked
+                isPreparingAvatar = false
+            }
         }
         .onChange(of: headerItem) { _, item in
-            Task { headerPicked = await picture(from: item, name: "header") }
+            isPreparingHeader = item != nil
+            Task {
+                let picked = await picture(from: item, name: "header")
+                guard headerItem == item else { return }
+                headerPicked = picked
+                isPreparingHeader = false
+            }
         }
         .sensoryFeedback(.success, trigger: didSave)
+        .alert(
+            "Image could not be loaded",
+            isPresented: Binding(
+                get: { photoError != nil }, set: { if !$0 { photoError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { photoError = nil }
+        } message: {
+            Text(photoError ?? "")
+        }
     }
 
     // MARK: - Sections
@@ -126,6 +174,9 @@ public struct EditProfileView: View {
                 }
                 .frame(width: 64, height: 64)
                 .clipShape(Circle())
+                // The buttons beside it carry the meaning; a preview read on
+                // its own is a picture with no way to act on it.
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                     Text("Picture", comment: "Profile editing field")
@@ -143,7 +194,7 @@ public struct EditProfileView: View {
                         }
                     }
                     .font(.footnote)
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.glass)
                 }
             }
             .padding(.vertical, AlohaMetrics.space1)
@@ -166,7 +217,9 @@ public struct EditProfileView: View {
                 .frame(height: 96)
                 .frame(maxWidth: .infinity)
                 .clipShape(
-                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+                )
+                .accessibilityHidden(true)
 
                 HStack(spacing: AlohaMetrics.space3) {
                     Text("Banner", comment: "Profile editing field")
@@ -184,7 +237,7 @@ public struct EditProfileView: View {
                     }
                 }
                 .font(.footnote)
-                .buttonStyle(.borderless)
+                .buttonStyle(.glass)
             }
             .padding(.vertical, AlohaMetrics.space1)
         } header: {
@@ -210,16 +263,26 @@ public struct EditProfileView: View {
     private var fieldsSection: some View {
         Section {
             ForEach(fields.indices, id: \.self) { index in
-                HStack(spacing: AlohaMetrics.space2) {
+                // One field per row. Side by side with a fixed 110-point
+                // label column they collided as soon as the reader raised
+                // their type size.
+                Grid(
+                    alignment: .leading,
+                    horizontalSpacing: AlohaMetrics.space3,
+                    verticalSpacing: AlohaMetrics.space2
+                ) {
                     TextField(
                         String(localized: "Label", comment: "Profile field name placeholder"),
-                        text: $fields[index].name
+                        text: fieldBinding(at: index, keyPath: \.name)
                     )
-                    .frame(maxWidth: 110)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     TextField(
                         String(localized: "Content", comment: "Profile field value placeholder"),
-                        text: $fields[index].value)
+                        text: fieldBinding(at: index, keyPath: \.value)
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .onDelete { offsets in fields.remove(atOffsets: offsets) }
 
@@ -352,6 +415,7 @@ public struct EditProfileView: View {
     }
 
     private func load() async {
+        retryAction = .load
         isLoading = true
         defer { isLoading = false }
         do {
@@ -364,7 +428,7 @@ public struct EditProfileView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
@@ -384,14 +448,17 @@ public struct EditProfileView: View {
         language = account.source?.language ?? ""
         avatarPicked = nil
         headerPicked = nil
+        avatarItem = nil
+        headerItem = nil
         avatarPreview = nil
         headerPreview = nil
     }
 
     private func save() async {
-        guard let original else { return }
+        guard let original, !isSaving, !isPreparingAvatar, !isPreparingHeader else { return }
         let update = changes(from: original)
         guard !update.isEmpty else { return }
+        retryAction = .save
         isSaving = true
         defer { isSaving = false }
         do {
@@ -413,12 +480,20 @@ public struct EditProfileView: View {
                 rest.displayName = nil
                 rest.avatar = nil
                 rest.header = nil
-                if !rest.isEmpty,
-                    let saved = try? await session.client.decode(
-                        Account.self, from: Endpoint.credentials.update(rest))
-                {
-                    apply(saved)
-                    didSave.toggle()
+                if !rest.isEmpty {
+                    do {
+                        let saved = try await session.client.decode(
+                            Account.self, from: Endpoint.credentials.update(rest))
+                        if let indexable = rest.indexable { extras.indexable = indexable }
+                        apply(saved)
+                        didSave.toggle()
+                        await session.refreshServerState()
+                    } catch {
+                        await session.handle(error)
+                        errorMessage =
+                            (error as? APIError)?.errorDescription ?? error.localizedDescription
+                        return
+                    }
                 }
                 errorMessage = nil
             } else {
@@ -432,14 +507,24 @@ public struct EditProfileView: View {
     }
 
     private func removeAvatar() async {
-        avatarItem = nil
-        avatarPicked = nil
-        avatarPreview = nil
-        guard original?.avatar != nil else { return }
+        guard !isSaving else { return }
+        retryAction = .removeAvatar
+        guard original?.avatar != nil else {
+            avatarItem = nil
+            avatarPicked = nil
+            avatarPreview = nil
+            return
+        }
+        isSaving = true
+        defer { isSaving = false }
         do {
             let saved = try await session.client.decode(
                 Account.self, from: Endpoint.credentials.deleteAvatar)
-            apply(saved)
+            original = saved
+            avatarItem = nil
+            avatarPicked = nil
+            avatarPreview = nil
+            errorMessage = nil
         } catch let error as APIError {
             if case .unprocessable = error {
                 managedByServer = true
@@ -449,37 +534,91 @@ public struct EditProfileView: View {
             }
         } catch {
             await session.handle(error)
+            errorMessage = error.localizedDescription
         }
     }
 
     private func removeHeader() async {
-        headerItem = nil
-        headerPicked = nil
-        headerPreview = nil
-        guard original?.header != nil else { return }
+        guard !isSaving else { return }
+        retryAction = .removeHeader
+        guard original?.header != nil else {
+            headerItem = nil
+            headerPicked = nil
+            headerPreview = nil
+            return
+        }
+        isSaving = true
+        defer { isSaving = false }
         do {
             let saved = try await session.client.decode(
                 Account.self, from: Endpoint.credentials.deleteHeader)
-            apply(saved)
+            original = saved
+            headerItem = nil
+            headerPicked = nil
+            headerPreview = nil
+            errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
     private func picture(
         from item: PhotosPickerItem?, name: String
     ) async -> CredentialsUpdate.Picture? {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self) else {
+        guard let item else { return nil }
+        let data: Data
+        do {
+            guard let loaded = try await item.loadTransferable(type: Data.self) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            data = loaded
+        } catch {
+            guard !Task.isCancelled,
+                name == "avatar" ? avatarItem == item : headerItem == item
+            else { return nil }
+            photoError = String(
+                localized:
+                    "Please choose another image or try downloading it from your photo library first."
+            )
             return nil
         }
         let type = item.supportedContentTypes.first
         let mimeType = type?.preferredMIMEType ?? "image/jpeg"
         let ext = type?.preferredFilenameExtension ?? "jpg"
         let preview = Self.image(from: data)
+        guard !Task.isCancelled,
+            name == "avatar" ? avatarItem == item : headerItem == item
+        else { return nil }
         if name == "avatar" { avatarPreview = preview } else { headerPreview = preview }
         return CredentialsUpdate.Picture(
             data: data, filename: "\(name).\(ext)", mimeType: mimeType)
+    }
+
+    private func fieldBinding(
+        at index: Int, keyPath: WritableKeyPath<Account.Field, String>
+    ) -> Binding<String> {
+        Binding(
+            get: { Self.fieldValue(in: fields, at: index, keyPath: keyPath) },
+            set: { value in
+                fields = Self.updatingField(in: fields, at: index, keyPath: keyPath, value: value)
+            })
+    }
+
+    nonisolated static func fieldValue(
+        in fields: [Account.Field], at index: Int, keyPath: KeyPath<Account.Field, String>
+    ) -> String {
+        fields.indices.contains(index) ? fields[index][keyPath: keyPath] : ""
+    }
+
+    nonisolated static func updatingField(
+        in fields: [Account.Field], at index: Int,
+        keyPath: WritableKeyPath<Account.Field, String>, value: String
+    ) -> [Account.Field] {
+        guard fields.indices.contains(index) else { return fields }
+        var updated = fields
+        updated[index][keyPath: keyPath] = value
+        return updated
     }
 
     private static func image(from data: Data) -> Image? {

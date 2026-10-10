@@ -16,6 +16,8 @@ import SwiftUI
 /// endpoint in 3.0, so on newer servers it also returned nothing at all.
 public struct ConversationsView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+    @Namespace private var filterGlass
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -27,9 +29,20 @@ public struct ConversationsView: View {
     @State private var query = ""
     @State private var filter: Filter = .all
     @State private var isComposing = false
+    /// Guards a response from being committed over a newer request — a filter
+    /// change while the first load is still on the wire used to bring the old
+    /// list back.
+    @State private var loadID = UUID()
 
-    enum Filter: Hashable {
+    enum Filter: Hashable, CaseIterable {
         case all, unread
+
+        var title: String {
+            switch self {
+            case .all: String(localized: "All", comment: "Conversations filter")
+            case .unread: String(localized: "Unread", comment: "Conversations filter")
+            }
+        }
     }
 
     public init(
@@ -62,42 +75,52 @@ public struct ConversationsView: View {
         List {
             Section {
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
-                ForEach(visible) { conversation in
-                    Button {
-                        open(conversation)
-                    } label: {
-                        row(conversation)
+                // The shape of a list arriving, rather than a spinner that
+                // could be broken rather than working (docs/05 §4).
+                if isLoading {
+                    ForEach(0..<6, id: \.self) { _ in
+                        ConversationSkeletonRow()
+                            .listRowSeparator(.hidden)
                     }
-                    .buttonStyle(.plain)
-                    .listRowInsets(
-                        EdgeInsets(
-                            top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
-                            bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space3)
-                    )
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            Task { await delete(conversation) }
+                } else {
+                    ForEach(visible) { conversation in
+                        Button {
+                            open(conversation)
                         } label: {
-                            Label {
-                                Text("Delete", comment: "Conversations action")
-                            } icon: {
-                                Image(systemName: AlohaSymbol.delete)
+                            row(conversation)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(
+                            EdgeInsets(
+                                top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
+                                bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space3)
+                        )
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Task { await delete(conversation) }
+                            } label: {
+                                Label {
+                                    Text("Delete", comment: "Conversations action")
+                                } icon: {
+                                    Image(systemName: AlohaSymbol.delete)
+                                }
                             }
                         }
                     }
-                }
 
-                if visible.isEmpty && !isLoading { emptyState }
+                    if visible.isEmpty && !isLoading && errorMessage == nil { emptyState }
+                }
             } header: {
                 filterBar
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
         .searchable(
             text: $query,
             prompt: Text("Search conversations", comment: "Conversations search prompt")
@@ -145,13 +168,17 @@ public struct ConversationsView: View {
     /// back — which is what the server's own docblock says it does, and worth
     /// saying because "delete" reads stronger than it is.
     private func delete(_ conversation: Conversation) async {
-        let previous = conversations
+        let index = conversations.firstIndex { $0.id == conversation.id } ?? conversations.endIndex
         conversations.removeAll { $0.id == conversation.id }
         do {
             _ = try await session.client.send(
                 Endpoint.timelines.deleteConversation(conversation.id))
         } catch {
-            conversations = previous
+            // Only this row comes back, never a pre-action snapshot: a snapshot
+            // would resurrect conversations deleted while it was away.
+            if !conversations.contains(where: { $0.id == conversation.id }) {
+                conversations.insert(conversation, at: min(index, conversations.endIndex))
+            }
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
         }
@@ -172,19 +199,35 @@ public struct ConversationsView: View {
     // MARK: - Pieces
 
     private var filterBar: some View {
-        Picker(selection: $filter) {
-            Text("All", comment: "Conversations filter").tag(Filter.all)
-            Text("Unread (\(unreadCount))", comment: "Conversations filter with count")
-                .tag(Filter.unread)
-        } label: {
-            Text("Filter", comment: "Conversations filter picker")
+        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            Picker(selection: $filter) {
+                Text("All", comment: "Conversations filter").tag(Filter.all)
+                Text("Unread (\(unreadCount))", comment: "Conversations filter with count")
+                    .tag(Filter.unread)
+            } label: {
+                Text("Filter", comment: "Conversations filter picker")
+            }
+            .pickerStyle(.segmented)
+            // The bar sits over the rows rather than on a band of its own, so
+            // the control keeps its own opaque track and the labels stay as
+            // high-contrast as the system's.
+            .textCase(nil)
+            .labelsHidden()
+            .accessibilityLabel(Text("Filter", comment: "Conversations filter picker"))
+            .glassEffect(.regular.interactive(), in: Capsule())
+            .glassEffectID(filter, in: filterGlass)
         }
-        .pickerStyle(.segmented)
-        .textCase(nil)
         .padding(.horizontal, AlohaMetrics.space3)
-        .padding(.vertical, AlohaMetrics.space1)
+        .padding(.vertical, AlohaMetrics.space2)
         .listRowInsets(EdgeInsets())
-        .background(palette.background)
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private func row(_ conversation: Conversation) -> some View {
@@ -256,6 +299,7 @@ public struct ConversationsView: View {
                 .buttonStyle(.borderedProminent)
             }
         }
+        .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }
 
@@ -330,17 +374,77 @@ public struct ConversationsView: View {
     }
 
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
         do {
             let page = try await session.client.decode(
                 LossyArray<Conversation>.self, from: Endpoint.timelines.conversations())
+            guard !Task.isCancelled, loadID == requestID else { return }
             conversations = page.elements
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard loadID == requestID else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
+    }
+}
+
+/// The shape of a conversation list arriving, shimmering. A spinner over an
+/// empty screen reads as "broken"; six of these read as the app doing
+/// something (SkeletonRow's sibling).
+private struct ConversationSkeletonRow: View {
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var phase: Double = -1
+
+    var body: some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Circle()
+                .fill(fill)
+                .frame(width: metrics.avatarSize, height: metrics.avatarSize)
+
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                bar(width: 140, height: 12)
+                bar(width: nil, height: 10)
+                bar(width: 200, height: 10)
+            }
+        }
+        .padding(.vertical, AlohaMetrics.space2)
+        .task {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) {
+                phase = 2
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func bar(width: CGFloat?, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .fill(fill)
+            .frame(width: width, height: height)
+            .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
+    }
+
+    /// The sweep is a gradient moved across the shape rather than an opacity
+    /// pulse: it reads as light travelling, not as flicker.
+    private var fill: some ShapeStyle {
+        LinearGradient(
+            stops: [
+                .init(color: palette.surfaceRaised, location: 0),
+                .init(color: palette.separator.opacity(0.55), location: 0.5),
+                .init(color: palette.surfaceRaised, location: 1),
+            ],
+            startPoint: UnitPoint(x: phase, y: 0.5),
+            endPoint: UnitPoint(x: phase + 1, y: 0.5))
     }
 }
 
@@ -379,6 +483,7 @@ struct NewMessageView: View {
     @State private var query = ""
     @State private var results: [Account] = []
     @State private var isSearching = false
+    @State private var errorMessage: String?
     /// Mutual follows, which is who most messages go to. Offered before a
     /// search rather than after it: making somebody search for a person the
     /// app could have listed is a step that answers its own question.
@@ -401,17 +506,24 @@ struct NewMessageView: View {
                     }
                 }
 
-                if results.isEmpty && !query.isEmpty && !isSearching {
-                    Text("Nobody found.", comment: "New message empty search")
-                        .font(.footnote)
-                        .foregroundStyle(palette.tertiaryLabel)
+                // Waiting, failing and empty are three different answers, and
+                // the last of them waits for a query worth answering.
+                if isSearching {
+                    loadingRow
+                } else if let errorMessage {
+                    errorStrip(errorMessage)
+                } else if results.isEmpty && query.count >= 2 {
+                    ContentUnavailableView {
+                        Text("Nobody found.", comment: "New message empty search")
+                    }
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
                 } else if results.isEmpty && mutuals.isEmpty {
-                    Text(
-                        "Search for someone to write to.",
-                        comment: "New message search hint"
-                    )
-                    .font(.footnote)
-                    .foregroundStyle(palette.tertiaryLabel)
+                    ContentUnavailableView {
+                        Text("Search for someone to write to.", comment: "New message search hint")
+                    }
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
                 }
 
                 ForEach(results) { account in
@@ -436,10 +548,12 @@ struct NewMessageView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .listRowBackground(palette.background)
                     .accessibilityLabel(Text(account.bestDisplayName))
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .searchable(
                 text: $query,
                 prompt: Text("Search people", comment: "New message search prompt")
@@ -491,24 +605,69 @@ struct NewMessageView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .listRowBackground(palette.background)
         .accessibilityLabel(Text(account.bestDisplayName))
+    }
+
+    private var loadingRow: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+            Spacer()
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await search() }
+            } label: {
+                Text("Retry", comment: "New message search retry")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private func search() async {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else {
+            isSearching = false
             results = []
+            errorMessage = nil
             return
         }
+        // The spinner starts with the debounce, so a query never sits on
+        // "nobody found" while the answer is still coming.
+        isSearching = true
+        // Only the search still matching what is on screen may put the
+        // spinner down; a newer one owns it from here.
+        defer { if query == trimmed { isSearching = false } }
         // Wait for typing to settle before every keystroke becomes a request.
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }
-        isSearching = true
-        defer { isSearching = false }
-        let found = try? await session.client.decode(
-            SearchResults.self,
-            from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
-        guard !Task.isCancelled else { return }
-        results = (found?.accounts ?? []).filter { $0.id != session.snapshot.serverAccountID }
+        do {
+            let found = try await session.client.decode(
+                SearchResults.self,
+                from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
+            guard !Task.isCancelled else { return }
+            results = (found.accounts).filter { $0.id != session.snapshot.serverAccountID }
+            errorMessage = nil
+        } catch {
+            // A superseded search is not a failure; it just stops here.
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Search could not be run. Try again.", comment: "Search failure")
+        }
     }
 }

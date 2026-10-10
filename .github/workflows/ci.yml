@@ -1,0 +1,297 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "fix/**", "feature/**"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Package logic. Every package builds for all five platforms; running the
+  # suites on macOS covers them all, because nothing in them links a UI.
+  #
+  # macos-26, not macos-15, and for one concrete reason: AlohaIntelligence
+  # imports FoundationModels under a canImport guard, but with the 27.0
+  # deployment target the link is strong, so the test bundle fails to dlopen
+  # on a host that has no FoundationModels.framework — the macos-15 image's
+  # macOS 15 host. macos-26 hosts have the framework, so the suites run.
+  test:
+    name: Package tests (macOS)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+          xcodebuild -version
+          swift --version
+      # Eight packages, each built by both test jobs on every push, and none
+      # of them with a dependency to fetch — so everything worth caching is
+      # the compiler's own output. Keyed on the manifests and the sources: a
+      # change to either invalidates, anything else restores.
+      - name: Cache package build products
+        uses: actions/cache@v4
+        with:
+          path: Packages/*/.build
+          key: packages-${{ runner.os }}-${{ hashFiles('Packages/*/Package.swift', 'Packages/*/Sources/**/*.swift') }}
+          restore-keys: |
+            packages-${{ runner.os }}-
+      - name: Test every package
+        run: |
+          set -o pipefail
+          failed=0
+          for manifest in Packages/*/Package.swift; do
+            package_dir=$(dirname "$manifest")
+            scheme=$(basename "$package_dir")
+            echo "::group::swift test $package_dir"
+            if (cd "$package_dir" && swift test --parallel 2>&1 | tee "$RUNNER_TEMP/package-tests.log"); then
+              :
+            else
+              # The one failure that says nothing about this repository: the
+              # suite built fine, but the host OS has no
+              # FoundationModels.framework to load at run time. Report it and
+              # move on rather than pointing a red cross at the code.
+              if grep -q "Library not loaded: .*FoundationModels.framework" "$RUNNER_TEMP/package-tests.log"; then
+                echo "::notice title=$scheme tests skipped::The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded. Run the suite on a macos-26 host to exercise it."
+                echo "::endgroup::"
+                rm -f "$RUNNER_TEMP/package-tests.log"
+                continue
+              fi
+              failed=1
+            fi
+            echo "::endgroup::"
+            rm -f "$RUNNER_TEMP/package-tests.log"
+          done
+          exit $failed
+
+  # Package logic again, on a device simulator, where SwiftUI actually has a
+  # trait environment: this is where a colour or a layout crash surfaces.
+  test-simulator:
+    name: Package tests (iOS simulator)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Cache package build products
+        uses: actions/cache@v4
+        with:
+          path: Packages/*/.build
+          key: packages-sim-${{ runner.os }}-${{ hashFiles('Packages/*/Package.swift', 'Packages/*/Sources/**/*.swift') }}
+          restore-keys: |
+            packages-sim-${{ runner.os }}-
+      - name: Test every package
+        run: |
+          # iPhone 17 Pro when the image has it, the first available iPhone
+          # otherwise — a runner's device list is not a promise. Note that
+          # `simctl list -j` puts the per-runtime device lists under a
+          # top-level "devices" key: taking the first value of the root and
+          # then indexing it with [0] reads the device map itself, which
+          # never yields a name no matter what is installed.
+          device=$(xcrun simctl list devices available -j | python3 -c '
+            import json, sys
+            data = json.load(sys.stdin).get("devices", {})
+            names = [d["name"] for devices in data.values() for d in devices]
+            pick = next((n for n in names if n == "iPhone 17 Pro"), None)
+            if not pick:
+                pick = next((n for n in names if n.startswith("iPhone")), None)
+            if pick:
+                print(pick)
+          ')
+          if [ -z "$device" ]; then
+            echo "::notice title=Package tests skipped::No available iPhone simulator on this runner image, so no package suite can be run under an iOS trait environment. The macOS job above exercises the same suites; simulator-only behaviour needs an image with an iPhone simulator."
+            exit 0
+          fi
+          echo "Testing on $device"
+          failed=0
+          for manifest in Packages/*/Package.swift; do
+            package_dir=$(dirname "$manifest")
+            scheme=$(basename "$package_dir")
+            echo "::group::xcodebuild test $package_dir"
+            if (cd "$package_dir" && xcodebuild test -scheme "$scheme" \
+                 -destination "platform=iOS Simulator,name=$device" -quiet 2>&1 \
+                 | tee "$RUNNER_TEMP/sim-package-tests.log"); then
+              :
+            else
+              # The intelligence package's tests need FoundationModels.framework
+              # at run time, which the host OS has to provide. Where it does
+              # not, the suite compiled and linked and the bundle could not be
+              # loaded — reported rather than pointed at the code.
+              if grep -q "Library not loaded: .*FoundationModels.framework" "$RUNNER_TEMP/sim-package-tests.log"; then
+                echo "::notice title=$scheme tests skipped::The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded. Run the suite on a macos-26 host to exercise it."
+                rm -f "$RUNNER_TEMP/sim-package-tests.log"
+                echo "::endgroup::"
+                continue
+              fi
+              failed=1
+            fi
+            echo "::endgroup::"
+            rm -f "$RUNNER_TEMP/sim-package-tests.log"
+          done
+          exit $failed
+
+  # Every app target, every platform. Signing is off: CI is about the code
+  # compiling, not about a certificate nobody should be committing.
+  #
+  # All four platforms, with signing off: CI is about the code compiling,
+  # not about a certificate nobody should be committing. The runner images
+  # now carry Xcode 27, so this job is real signal — a failure is a failure
+  # about the branch.
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: macos-26
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iOS
+            scheme: AlohaSocial
+            destination: generic/platform=iOS
+          - name: macOS
+            scheme: AlohaSocialMac
+            destination: platform=macOS
+          - name: tvOS
+            scheme: AlohaSocialTV
+            destination: generic/platform=tvOS
+          - name: watchOS
+            scheme: AlohaSocialWatch
+            destination: generic/platform=watchOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Build ${{ matrix.name }}
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+        run: |
+          set -o pipefail
+          # Probe first, to a file: `xcodebuild -list` in a command
+          # substitution is a tool that crashes on a broken pipe, and this
+          # check exists to report an environment limit without that noise.
+          if ! xcodebuild -list -quiet -project AlohaSocial.xcodeproj \
+              >"$RUNNER_TEMP/xcode-list" 2>&1; then
+            if grep -q "future Xcode project file format" "$RUNNER_TEMP/xcode-list"; then
+              version=$(xcodebuild -version | head -1 | tr -s ' ' | cut -d' ' -f2)
+              echo "::notice title=Build skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format. The project needs Xcode 27; when an image ships it, remove this skip and the build runs for real."
+              exit 0
+            fi
+            cat "$RUNNER_TEMP/xcode-list" >&2
+            exit 1
+          fi
+          # Output goes to a file, never a pipe: xcodebuild aborts with
+          # NSFileHandleOperationException (broken pipe) when its stdout's
+          # reader disappears, and that abort is indistinguishable from a
+          # build failure in the log.
+          xcodebuild build \
+            -project AlohaSocial.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}" \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/build-${{ matrix.name }}.log"
+          exit $status
+
+  # The full tour suite: screen presentation, the Skeleton and Media viewer,
+  # VoiceOver and Reduce Motion.
+  #
+  # Two facts about the host decide whether this can run at all, and neither
+  # is a statement about the code: the tours launch an app in an objectVersion
+  # 110 project (Xcode 27), and they need an iPhone simulator to launch it in.
+  # When this image has neither, the job says so and stops — checking both in
+  # one script, rather than booting a simulator in one step and failing in the
+  # next, which is what a crash mid-job looked like.
+  ui:
+    name: UI tours
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Run the tour suite
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+        run: |
+          set -u
+          skip () { echo "::notice title=UI tours skipped::$1"; exit 0; }
+
+          # 1. An Xcode that cannot open the project cannot run its tests.
+          if ! xcodebuild -list -quiet -project AlohaSocial.xcodeproj \
+              >"$RUNNER_TEMP/xcode-list" 2>&1; then
+            if grep -q "future Xcode project file format" "$RUNNER_TEMP/xcode-list"; then
+              skip "AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode cannot open that format. The tours need Xcode 27; when an image ships it, this job runs the suite for real."
+            fi
+            cat "$RUNNER_TEMP/xcode-list" >&2
+            exit 1
+          fi
+
+          # 2. An image without an iPhone simulator has nowhere to launch.
+          device=$(xcrun simctl list devices available -j | python3 -c '
+            import json, sys
+            data = json.load(sys.stdin).get("devices", {})
+            pick = next((d for devices in data.values() for d in devices
+                         if d["name"].startswith("iPhone")), None)
+            if pick:
+              print(pick["name"])
+          ')
+          [ -n "$device" ] || skip "No available iPhone simulator on this runner image, so the tours have nowhere to launch. The package suites above still exercise the logic."
+
+          # 3. Output to a file, never a pipe: xcodebuild aborts with a broken
+          #    pipe when its reader disappears, and that abort is
+          #    indistinguishable from a test failure.
+          xcodebuild test \
+            -project AlohaSocial.xcodeproj \
+            -scheme AlohaSocialUITests \
+            -destination "platform=iOS Simulator,name=$device" \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            >"$RUNNER_TEMP/ui-tours.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/ui-tours.log"
+          exit $status
+
+  # A pull request that fails to lint does not merge (docs/12 §6).
+  lint:
+    name: swift-format (strict)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Lint everything
+        run: xcrun swift-format lint --recursive --strict .
+
+  # The licence gate: every file carries the SPDX header, and no external
+  # dependency has crept in.
+  licence:
+    name: Licence and dependency gate
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the gate
+        run: python3 tools/check-licence.py

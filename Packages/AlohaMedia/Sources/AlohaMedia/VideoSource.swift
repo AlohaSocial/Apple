@@ -45,17 +45,26 @@ public enum VideoSourceResolver {
             sources.append(VideoSource(url: hls, kind: .hlsLadder))
         }
 
-        // A federated PeerTube video is referenced rather than mirrored, so
-        // there is no local copy. **Never point the player at the origin**:
-        // Nextcloud's CSP forbids it, and it would announce every viewer to a
-        // server they never chose to talk to.
-        if isRemote, attachment.hlsURL == nil {
+        // A direct URL on the chosen instance is already a proxy/cached copy
+        // for a federated post. Prefer it: not every Social version exposes
+        // the optional `media/playlist` route (it returns 404 on older
+        // servers), while this URL is what the status payload explicitly
+        // advertises as playable.
+        //
+        // Only a URL **on this instance** qualifies. A federated attachment
+        // that still carries the origin's URL in `url` must never reach the
+        // player: Nextcloud's CSP forbids it and it would disclose the viewer
+        // to a server they never chose to talk to (docs/06 §3).
+        if let url = attachment.url, isVideoResource(url),
+            !isRemote || isLocal(url, apiBase: apiBase)
+        {
+            sources.append(VideoSource(url: url, kind: .progressive))
+        } else if isRemote, attachment.hlsURL == nil {
+            // A federated PeerTube video with no local file needs the server
+            // proxy. Never point the player at `remote_url`: that would evade
+            // the instance CSP and disclose the viewer to the origin host.
             let proxied = apiBase.appending(path: "media/playlist/\(statusID)")
             sources.append(VideoSource(url: proxied, kind: .proxiedPlaylist))
-        }
-
-        if let url = attachment.url {
-            sources.append(VideoSource(url: url, kind: .progressive))
         }
 
         return sources
@@ -65,6 +74,29 @@ public enum VideoSourceResolver {
     /// present is the server saying so.
     public static func isRemote(_ attachment: MediaAttachment) -> Bool {
         attachment.remoteURL != nil
+    }
+
+    /// Social occasionally labels an attachment as `video` while returning a
+    /// JPEG poster in `url`. AVFoundation then only reports the vague
+    /// "Cannot Open" error. Reject known image resources before the player is
+    /// created; `preview_url` remains exclusively for the poster image.
+    private static func isVideoResource(_ url: URL) -> Bool {
+        let imageExtensions: Set<String> = [
+            "apng", "avif", "gif", "heic", "heif", "jpeg", "jpg", "png", "webp",
+        ]
+        return !imageExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    /// Whether a URL is served by the instance the person signed in to.
+    ///
+    /// Hosts are compared case-insensitively per RFC 3986, and the port is
+    /// ignored: a server that advertises `https://cloud.example/media/…`
+    /// while the account is signed in as `https://cloud.example:443/…` (or
+    /// the other way round) is still the same instance.
+    private static func isLocal(_ url: URL, apiBase: URL) -> Bool {
+        guard let urlHost = url.host()?.lowercased(), let baseHost = apiBase.host()?.lowercased()
+        else { return false }
+        return urlHost == baseHost
     }
 }
 

@@ -5,6 +5,7 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
+import Combine
 import Foundation
 import OSLog
 import Observation
@@ -30,12 +31,127 @@ public final class TimelineModel {
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
+    @ObservationIgnored private var statusUpdates: AnyCancellable?
+    /// When the server last confirmed an interaction with a status, per id.
+    /// A page fetched *before* that moment carries the older copy and must
+    /// not overwrite the confirmation again (see `performRefresh`).
+    @ObservationIgnored private var confirmations: [String: Date] = [:]
+    /// The post ID that marks "you're caught up" on the home timeline.
+    /// Loaded from the local marker store; when the reader scrolls past the
+    /// divider below this post, the marker advances. Read by the view to
+    /// restore where the reader got to (docs/08 §7).
+    @ObservationIgnored private(set) public var caughtUpMarkerID: String?
+    /// Whether the marker has been advanced this session (to avoid
+    /// re-syncing on every appearance of the same row).
+    @ObservationIgnored private var markerAdvancedThisSession = false
 
     private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "timeline")
 
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key
         self.session = session
+        statusUpdates = Self.observeStatusUpdates { [weak self] update in
+            guard let self, update.accountID == self.session.id else { return }
+            let now = Date()
+            Self.pruneConfirmations(&self.confirmations, now: now)
+            self.confirmations[update.status.id] = now
+            self.rows = Self.replacing(update.status, in: self.rows)
+            self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
+        }
+
+        // Load the "caught up" marker for the home timeline.
+        if key.mode == .home, key.source == .home {
+            Task { await loadCaughtUpMarker() }
+        }
+    }
+
+    /// Loads the local marker for the home timeline. If found, the marker
+    /// ID is stored so a divider can be inserted below that post.
+    private func loadCaughtUpMarker() async {
+        do {
+            let markerID = try await session.supportStore.marker(
+                accountID: session.id, timeline: "home")
+            if let markerID, !markerID.isEmpty {
+                caughtUpMarkerID = markerID
+            }
+        } catch {
+            logger.debug(
+                "could not load home marker: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// Advances the caught-up marker to the given post ID, both locally
+    /// and on the server (fire-and-forget).
+    /// Called from the view when the reader passes the divider.
+    ///
+    /// Async because the local marker lives in an actor — the store — and a
+    /// marker that is only saved off the main actor is the one thing this
+    /// must not do.
+    func advanceCaughtUpMarker(to statusID: String) async {
+        guard !markerAdvancedThisSession else { return }
+        markerAdvancedThisSession = true
+        caughtUpMarkerID = statusID
+        // Local store.
+        do {
+            try await session.supportStore.advanceMarker(
+                accountID: session.id, timeline: "home", to: statusID)
+        } catch {
+            logger.debug(
+                "could not advance local home marker: \(String(describing: error), privacy: .public)"
+            )
+        }
+        // Server sync, fire-and-forget.
+        let endpoint = Endpoint.markers.write(home: statusID, notifications: nil)
+        do {
+            _ = try await session.client.send(endpoint)
+        } catch {
+            logger.debug(
+                "could not sync home marker: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// Ensures the "caught up" divider is present in `rows` when the marker
+    /// ID is known and present in the timeline. Idempotent.
+    private func ensureCaughtUpDivider() {
+        guard let markerID = caughtUpMarkerID,
+            let idx = rows.firstIndex(where: { $0.status?.id == markerID })
+        else { return }
+        // Already present?
+        if rows.indices.contains(idx + 1),
+            case .caughtUpDivider = rows[idx + 1]
+        {
+            return
+        }
+        rows.insert(.caughtUpDivider(after: markerID), at: idx + 1)
+    }
+
+    nonisolated static func observeStatusUpdates(
+        _ receive: @escaping @MainActor @Sendable (TimelineStatusUpdate) -> Void
+    ) -> AnyCancellable {
+        NotificationCenter.default.publisher(for: TimelineStatusUpdate.notification)
+            .sink { @Sendable notification in
+                guard let update = notification.object as? TimelineStatusUpdate else { return }
+                Task { @MainActor in receive(update) }
+            }
+    }
+
+    nonisolated static func replacing(_ updated: Status, in rows: [TimelineRow]) -> [TimelineRow] {
+        rows.map { row in
+            guard var status = row.status else { return row }
+            if status.id == updated.id { return .status(updated) }
+            if status.reblog?.value.id == updated.id {
+                status.reblog = Box(updated)
+                return .status(status)
+            }
+            return row
+        }
+    }
+
+    /// Interaction confirmations only have to outlive a page that was still
+    /// in flight when the confirmation landed, so they are time-boxed and
+    /// pruned on every store.
+    nonisolated static func pruneConfirmations(_ stamps: inout [String: Date], now: Date) {
+        stamps = stamps.filter { now.timeIntervalSince($0.value) < 60 }
     }
 
     private var storageKey: String { key.storageKey }
@@ -55,6 +171,7 @@ public final class TimelineModel {
                 accountID: session.id, timelineKey: storageKey)
             filters = (try? await session.supportStore.activeFilters(accountID: session.id)) ?? []
             rows = applyFilters(to: cached)
+            ensureCaughtUpDivider()
         } catch {
             logger.error("cache read failed: \(String(describing: error), privacy: .public)")
         }
@@ -110,11 +227,16 @@ public final class TimelineModel {
         let plan = Self.refreshPlan(
             hasFetchedBefore: lastRefresh != nil,
             newestRowID: rows.compactMap(\.status).first?.id)
-        let anchor = plan.anchor
         let direction = plan.direction
 
         do {
-            let harvest = try await fetch(anchor: anchor)
+            // Fetch the head as well as new arrivals: since_id responses never
+            // include existing posts whose counts or interaction flags changed.
+            let harvest = try await fetch(anchor: .cold)
+            // When this response arrived, not when the server produced it: a
+            // confirmation stamped after this instant is newer than anything
+            // the page can say about its status.
+            let harvestReceivedAt = Date()
             errorMessage = nil
             isOffline = false
             lastRefresh = Date()
@@ -125,13 +247,27 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
-            await Self.warmRichText(harvest.statuses)
             let filtered = applyFilters(to: merged)
-            await session.latchCapabilities(observing: harvest.statuses)
+
+            // A new-post pill must not hold updated counts on existing rows
+            // hostage alongside the arrivals it is deliberately withholding.
+            Self.pruneConfirmations(&confirmations, now: harvestReceivedAt)
+            for status in harvest.statuses {
+                // ...unless the server confirmed an interaction with that
+                // status while this page was on the wire. That confirmation is
+                // newer than the page's copy; applying the copy again would
+                // visibly revert the like or boost until the next refresh.
+                if let confirmedAt = confirmations[status.id], confirmedAt > harvestReceivedAt {
+                    continue
+                }
+                rows = Self.replacing(status.displayed, in: rows)
+                ensureCaughtUpDivider()
+            }
 
             if direction == .cold || rows.isEmpty {
                 rows = filtered
                 nextCursor = harvest.nextCursor
+                ensureCaughtUpDivider()
             } else {
                 // Hold new rows behind a pill rather than moving what the person
                 // is reading.
@@ -144,8 +280,15 @@ public final class TimelineModel {
                     pendingNewCount = arrivals.compactMap(\.status).count
                 } else {
                     rows = filtered
+                    ensureCaughtUpDivider()
                 }
             }
+
+            // Painting the rows is the user-visible critical path. Parsing
+            // rich text and promoting optional capabilities can finish just
+            // behind it without holding the whole first screen hostage.
+            Task { await Self.warmRichText(harvest.statuses) }
+            await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
         }
@@ -162,7 +305,9 @@ public final class TimelineModel {
         case .photos:
             guard status.mediaAttachments.contains(where: { $0.type == .image }) else { return }
         case .video, .shorts:
-            guard status.mediaAttachments.contains(where: { $0.type == .video }) else { return }
+            // The server-side only_video filter is best-effort on older
+            // Social versions, so enforce the contract locally as well.
+            guard status.mediaAttachments.contains(where: { $0.isVideo }) else { return }
         case .news, .audio: return
         }
         _ = try? await session.timelineStore.apply(
@@ -175,6 +320,7 @@ public final class TimelineModel {
     public func revealPendingRows() {
         guard !pendingRows.isEmpty else { return }
         rows = pendingRows
+        ensureCaughtUpDivider()
         pendingRows = []
         pendingNewCount = 0
     }
@@ -193,9 +339,10 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
-            await Self.warmRichText(harvest.statuses)
             rows = applyFilters(to: merged)
+            ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
+            Task { await Self.warmRichText(harvest.statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
@@ -213,6 +360,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
             rows = applyFilters(to: merged)
+            ensureCaughtUpDivider()
         } catch {
             await handle(error)
         }
@@ -323,8 +471,8 @@ public final class TimelineModel {
     private static func previewURLs(_ row: TimelineRow) -> [URL] {
         guard let status = row.status else { return [] }
         let target = status.displayed
-        var urls = target.mediaAttachments.compactMap { $0.previewURL ?? $0.url }
-        if let avatar = target.account.avatar { urls.append(avatar) }
+        var urls = target.mediaAttachments.compactMap(\.displayImageURL)
+        if let avatar = target.account.preferredAvatarURL { urls.append(avatar) }
         if let card = target.card?.image { urls.append(card) }
         return urls
     }

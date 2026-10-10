@@ -8,6 +8,7 @@ import SwiftUI
 
 public struct TimelineView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
 
     @State private var model: TimelineModel
@@ -17,6 +18,9 @@ public struct TimelineView: View {
     @State private var isShowingShortcuts = false
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
+    /// Set once the first page has been scrolled to, so reopening a timeline
+    /// does not pull the reader back to the post they had already left behind.
+    @State private var didRestorePosition = false
 
     public init(
         key: TimelineKey, session: AccountSession,
@@ -36,7 +40,7 @@ public struct TimelineView: View {
             }
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.72), value: model.pendingNewCount > 0)
-        .background(palette.background)
+        .background(palette.background.ignoresSafeArea())
         .timelineKeyboard(
             focusedID: $focusedStatusID,
             isShowingShortcuts: $isShowingShortcuts,
@@ -63,6 +67,21 @@ public struct TimelineView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             rows
+                // "Return to where I was": once the first page is in, scroll to
+                // the last-read post rather than to the top. Off, the timeline
+                // opens at the newest post, which is what a storefront expects.
+                .onChange(of: model.rows.isEmpty) { _, isEmpty in
+                    guard
+                        !isEmpty, !didRestorePosition,
+                        session.settings.restoreTimelinePosition,
+                        let markerID = model.caughtUpMarkerID,
+                        model.rows.contains(where: { $0.id == markerID })
+                    else { return }
+                    didRestorePosition = true
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo(markerID, anchor: .top)
+                    }
+                }
                 .onChange(of: focusedStatusID) { _, id in
                     guard let id else { return }
                     withAnimation(.easeOut(duration: 0.18)) {
@@ -88,7 +107,11 @@ public struct TimelineView: View {
                 if model.isRefreshing {
                     ForEach(0..<3, id: \.self) { index in
                         SkeletonRow(hasMedia: index == 1)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: 0, leading: AlohaMetrics.space4, bottom: 0,
+                                    trailing: AlohaMetrics.space4)
+                            )
                             .listRowBackground(palette.background)
                             .listRowSeparator(.hidden)
                     }
@@ -107,12 +130,16 @@ public struct TimelineView: View {
                         filterWarning: model.filterWarning(for: status),
                         canReact: session.capabilities.emojiReactions,
                         isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: AlohaMetrics.space1, leading: AlohaMetrics.space4,
+                            bottom: AlohaMetrics.space1,
+                            trailing: AlohaMetrics.space4)
+                    )
                     .listRowBackground(palette.background)
-                    // Space separates rows now, not a hairline between every
-                    // pair of them.
                     .listRowSeparator(.hidden)
                     .id(status.id)
                     .overlay(alignment: .leading) {
@@ -120,7 +147,7 @@ public struct TimelineView: View {
                             Capsule()
                                 .fill(palette.accent)
                                 .frame(width: 3)
-                                .padding(.vertical, 4)
+                                .padding(.vertical, AlohaMetrics.space2)
                                 .padding(.leading, -8)
                         }
                     }
@@ -133,6 +160,22 @@ public struct TimelineView: View {
 
                 case .gap(let id):
                     gapRow(id: id)
+
+                case .caughtUpDivider(let after):
+                    caughtUpDivider(after: after)
+                        .onAppear {
+                            // The divider sits below the last-read post: when
+                            // it becomes visible the reader has passed it, so
+                            // the marker moves to the post that follows.
+                            guard
+                                let idx = model.rows.firstIndex(where: {
+                                    $0.id == "caughtUp-\(after)"
+                                }),
+                                idx + 1 < model.rows.count,
+                                case .status(let next) = model.rows[idx + 1]
+                            else { return }
+                            Task { await model.advanceCaughtUpMarker(to: next.id) }
+                        }
                 }
             }
 
@@ -147,6 +190,7 @@ public struct TimelineView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .background(palette.background)
     }
 
     /// A hole between two fetched ranges, never closed silently.
@@ -166,7 +210,29 @@ public struct TimelineView: View {
         }
         .buttonStyle(.plain)
         .listRowBackground(palette.surfaceRaised)
+        .unifiedGlass(.subtle)
     }
+
+    /// A visual divider marking where the previous session ended.
+    private func caughtUpDivider(after statusID: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Spacer()
+            VStack(spacing: AlohaMetrics.space1) {
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(height: 1)
+                Text("You're caught up", comment: "Timeline caught up divider")
+                    .font(AlohaType.micro)
+                    .foregroundStyle(palette.tertiaryLabel)
+            }
+            Spacer()
+        }
+        .padding(.vertical, AlohaMetrics.space3)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    /// A visual divider marking where the previous session ended.
 
     /// New content never moves what the person is reading.
     private var newPostsPill: some View {
@@ -184,7 +250,7 @@ public struct TimelineView: View {
             .padding(.horizontal, AlohaMetrics.space4)
             .padding(.vertical, AlohaMetrics.space2)
             .background(palette.accent, in: Capsule())
-            .shadow(radius: 6, y: 2)
+            .shadow(color: palette.accent.opacity(0.3), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
         .padding(.top, AlohaMetrics.space2)
@@ -211,6 +277,7 @@ public struct TimelineView: View {
         }
         .padding(AlohaMetrics.space3)
         .background(palette.surfaceRaised)
+        .unifiedGlass(.regular)
         .listRowInsets(EdgeInsets())
         .listRowBackground(palette.background)
     }
@@ -228,19 +295,9 @@ public struct TimelineView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.caption)
-            Spacer()
-            Button {
-                Task { await model.refresh() }
-            } label: {
-                Text("Retry", comment: "Error strip action")
-            }
-            .font(.caption.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await model.refresh() }
         }
-        .foregroundStyle(palette.destructive)
-        .padding(.vertical, AlohaMetrics.space2)
         .listRowBackground(palette.background)
     }
 

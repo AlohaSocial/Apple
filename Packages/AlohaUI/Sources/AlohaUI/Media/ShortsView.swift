@@ -45,7 +45,7 @@ public struct ShortsView: View {
     @State private var feed: Feed = .forYou
     @State private var model: TimelineModel
     @State private var currentID: String?
-    @State private var isMuted = true
+    @AppStorage("aloha.shorts.muted") private var isMuted = true
     @State private var isPaused = false
     @State private var progress: Double = 0
     @State private var hearted: String?
@@ -59,7 +59,13 @@ public struct ShortsView: View {
                 key: TimelineKey(mode: .shorts, source: Feed.forYou.source), session: session))
     }
 
-    private var shorts: [Status] { model.rows.compactMap(\.status) }
+    private var shorts: [Status] {
+        // `only_video` is not implemented consistently by all compatible
+        // servers. Never render an image or audio status as a Short.
+        model.rows.compactMap(\.status).filter { status in
+            status.displayed.mediaAttachments.contains(where: { $0.isVideo })
+        }
+    }
 
     public var body: some View {
         GeometryReader { proxy in
@@ -84,6 +90,11 @@ public struct ShortsView: View {
                     .scrollPosition(id: $currentID)
                     .scrollIndicators(.hidden)
                     .ignoresSafeArea()
+                    // A short is a phone-shaped thing: on a regular-width
+                    // shell it stays a vertical column in the middle of the
+                    // window rather than becoming a letterboxed sprawl, the
+                    // way TikTok and Reels do on an iPad.
+                    .frame(maxWidth: PlatformBehavior.shortsColumnWidth)
                 }
 
                 topBar
@@ -204,11 +215,12 @@ public struct ShortsView: View {
 
     private func page(_ status: Status, isCurrent: Bool, insets: EdgeInsets) -> some View {
         ZStack {
-            if let attachment = status.displayed.mediaAttachments.first {
+            if let attachment = status.displayed.mediaAttachments.first(where: { $0.isVideo }) {
                 ShortPlayer(
                     attachment: attachment,
                     statusID: status.displayed.id,
                     apiBase: session.capabilities.apiBase,
+                    session: session,
                     isCurrent: isCurrent,
                     isMuted: isMuted,
                     isPaused: isPaused,
@@ -388,30 +400,33 @@ public struct ShortsView: View {
                     comment: "Accessibility label for an avatar button"))
 
             railButton(
-                symbol: "heart.fill", tint: displayed.favourited ? palette.favourite : .white,
-                count: displayed.favouritesCount,
+                symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
+                tint: displayed.favourited ? palette.favourite : .white,
+                count: session.settings.showPopularityCounts ? displayed.favouritesCount : nil,
                 label: Text("Favourite", comment: "Shorts action")
             ) { onAction(.favourite(status)) }
 
             railButton(
-                symbol: "ellipsis.bubble.fill", tint: .white, count: displayed.repliesCount,
+                symbol: AlohaSymbol.reply, tint: .white,
+                count: session.settings.showPopularityCounts ? displayed.repliesCount : nil,
                 label: Text("Reply", comment: "Shorts action")
             ) { onAction(.open(status)) }
 
             railButton(
                 symbol: AlohaSymbol.boost, tint: displayed.reblogged ? palette.boost : .white,
-                count: displayed.reblogsCount,
+                count: session.settings.showPopularityCounts ? displayed.reblogsCount : nil,
                 label: Text("Boost", comment: "Shorts action")
             ) { onAction(.boost(status)) }
 
             railButton(
-                symbol: "bookmark.fill", tint: displayed.bookmarked ? palette.bookmark : .white,
+                symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
+                tint: displayed.bookmarked ? palette.bookmark : .white,
                 count: nil,
                 label: Text("Bookmark", comment: "Shorts action")
             ) { onAction(.bookmark(status)) }
 
             railButton(
-                symbol: "arrowshape.turn.up.right.fill", tint: .white, count: nil,
+                symbol: AlohaSymbol.share, tint: .white, count: nil,
                 label: Text("Share", comment: "Shorts action")
             ) { onAction(.share(status)) }
 
@@ -437,7 +452,7 @@ public struct ShortsView: View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: symbol)
-                    .font(.system(size: 30))
+                    .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(tint)
                 if let count, count > 0 {
                     Text(count, format: .number.notation(.compactName))
@@ -505,6 +520,7 @@ struct ShortPlayer: View {
     let attachment: MediaAttachment
     let statusID: String
     let apiBase: URL
+    let session: AccountSession?
     let isCurrent: Bool
     let isMuted: Bool
     let isPaused: Bool
@@ -515,8 +531,19 @@ struct ShortPlayer: View {
     let onWatched: (Double, Double) async -> Void
 
     @State private var player: AVPlayer?
+    @State private var isReady = false
     @State private var looper: Any?
     @State private var ticker: Any?
+    @State private var watcher: Task<Void, Never>?
+    @State private var sourceIndex = 0
+    @State private var retryCount = 0
+    @State private var playbackFailed = false
+
+    private var sources: [VideoSource] {
+        VideoSourceResolver.sources(
+            for: attachment, statusID: statusID, apiBase: apiBase,
+            isRemote: VideoSourceResolver.isRemote(attachment))
+    }
 
     var body: some View {
         ZStack {
@@ -532,14 +559,35 @@ struct ShortPlayer: View {
                     }
                     .foregroundStyle(.white)
                 }
-            } else if let player {
-                PlayerSurface(player: player, showsControls: false)
             } else {
-                RemoteImage(
-                    url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fill)
+                if let player, isReady {
+                    PlayerSurface(player: player, showsControls: false)
+                } else {
+                    RemoteImage(
+                        url: attachment.previewURL, blurhash: attachment.blurhash,
+                        contentMode: .fill)
+                }
+            }
+            if isCurrent && !isCovered && !isReady {
+                if playbackFailed {
+                    VStack(spacing: AlohaMetrics.space2) {
+                        Text("This video could not be played.")
+                            .font(.callout)
+                        Button("Try again") {
+                            sourceIndex = 0
+                            retryCount += 1
+                        }
+                        .buttonStyle(.glass)
+                    }
+                    .foregroundStyle(.primary)
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                } else {
+                    ProgressView().tint(.white)
+                }
             }
         }
-        .task(id: isCurrent) { await manage() }
+        .task(id: "\(isCurrent):\(isCovered):\(sourceIndex):\(retryCount)") { await manage() }
         .onChange(of: isMuted) { _, muted in player?.isMuted = muted }
         .onChange(of: isPaused) { _, paused in
             guard isCurrent, autoplay else { return }
@@ -551,16 +599,68 @@ struct ShortPlayer: View {
     private func manage() async {
         guard isCurrent, !isCovered else {
             teardown()
+            sourceIndex = 0
             return
         }
+        teardown()
+        playbackFailed = false
 
-        let sources = VideoSourceResolver.sources(
-            for: attachment, statusID: statusID, apiBase: apiBase,
-            isRemote: VideoSourceResolver.isRemote(attachment))
-        guard let first = sources.first else { return }
+        // Every rung is judged before anything is shown: a pager full of
+        // players bound to items that never became playable is a pager full
+        // of black rectangles, and the poster behind each one is the honest
+        // answer until a source actually works.
+        for index in sourceIndex..<sources.count {
+            let source = sources[index]
+            guard !Task.isCancelled, isCurrent else { return }
+            let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
+            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero)
+            {
+            case .playable(let newPlayer, let item, let ready):
+                guard !Task.isCancelled, isCurrent else {
+                    newPlayer.replaceCurrentItem(with: nil)
+                    return
+                }
+                isReady = ready
+                watch(item, at: index)
+                await start(newPlayer, item: item)
+                return
+            case .rejected(let reason):
+                PlaybackLog.logger.error("short rung rejected: \(reason, privacy: .public)")
+            }
+        }
+        guard !Task.isCancelled else { return }
+        playbackFailed = true
+    }
 
-        let item = AVPlayerItem(url: first.url)
-        let newPlayer = AVPlayer(playerItem: item)
+    /// Lifts the poster the moment there is a frame behind it — a rung can
+    /// open before it has parsed far enough to draw — and drops the player if
+    /// the file collapses after having opened.
+    private func watch(_ item: AVPlayerItem, at rung: Int) {
+        watcher = Task { @MainActor in
+            for await status in PlaybackReadiness.statuses(item) {
+                guard !Task.isCancelled else { return }
+                switch status {
+                case .readyToPlay:
+                    isReady = true
+                case .failed:
+                    PlaybackLog.logger.error(
+                        "short failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)"
+                    )
+                    teardown()
+                    if rung + 1 < sources.count {
+                        sourceIndex = rung + 1
+                    } else {
+                        playbackFailed = true
+                    }
+                    return
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func start(_ newPlayer: AVPlayer, item: AVPlayerItem) async {
         newPlayer.isMuted = isMuted
         newPlayer.actionAtItemEnd = loops ? .none : .pause
         player = newPlayer
@@ -587,7 +687,7 @@ struct ShortPlayer: View {
         if autoplay, !isPaused { newPlayer.play() }
 
         // Report as it goes, coalesced well inside the server's 600-a-minute.
-        while !Task.isCancelled, isCurrent {
+        while !Task.isCancelled, isCurrent, player != nil {
             try? await Task.sleep(for: .seconds(WatchPositionRules.reportInterval))
             let position = newPlayer.currentTime().seconds
             let duration = item.duration.seconds
@@ -598,10 +698,14 @@ struct ShortPlayer: View {
     }
 
     private func teardown() {
+        watcher?.cancel()
+        watcher = nil
         if let ticker { player?.removeTimeObserver(ticker) }
         ticker = nil
         player?.pause()
+        player?.replaceCurrentItem(with: nil)
         player = nil
+        isReady = false
         if let looper { NotificationCenter.default.removeObserver(looper) }
         looper = nil
     }
