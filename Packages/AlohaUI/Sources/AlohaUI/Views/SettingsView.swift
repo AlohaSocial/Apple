@@ -194,7 +194,7 @@ public struct SettingsView: View {
                             Label {
                                 Text("Notification policy", comment: "Settings item")
                             } icon: {
-                                Image(systemName: AlohaSymbol.shield)
+                                Image(systemName: "lock.shield")
                             }
                         }
                     }
@@ -828,6 +828,7 @@ extension SettingsView {
     /// options: it is about how much the app shows, not about what a feed
     /// does. Extracted from the body so the compiler can check the builder.
     @ViewBuilder private var appearanceSection: some View {
+        @Bindable var environment = environment
         Section {
             Picker(selection: $environment.theme) {
                 ForEach(AlohaTheme.allCases) { theme in
@@ -892,6 +893,7 @@ extension SettingsView {
     /// builder this large ("unable to type-check in reasonable time"), which is
     /// the same problem the account row solved one level down.
     @ViewBuilder private var accountsSection: some View {
+        @Bindable var environment = environment
         let activeAccountID = environment.activeSession?.id
         Section {
             ForEach(environment.sessions) { session in
