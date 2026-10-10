@@ -12,6 +12,7 @@ import SwiftUI
 /// tap away for browsing; the toggle is remembered.
 public struct PhotosModeView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.mediaTransition) private var mediaTransition
 
     private let session: AccountSession
@@ -178,13 +179,22 @@ public struct PhotosModeView: View {
 
     static let gutter: Double = 1.5
 
+    /// How many columns the grid takes. A photo grid is the one surface that
+    /// wants more width, not less: three square columns across a Mac window
+    /// leaves two thirds of it empty, so a regular-width shell gets six and a
+    /// phone its three.
+    private var columnCount: Int {
+        horizontalSizeClass == .regular ? 6 : 3
+    }
+
     private var grid: some View {
         ScrollView {
             if session.capabilities.stories { storyCarousel }
 
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.flexible(), spacing: Self.gutter), count: 3),
+                    repeating: GridItem(.flexible(), spacing: Self.gutter),
+                    count: columnCount),
                 spacing: Self.gutter
             ) {
                 ForEach(statuses) { status in
