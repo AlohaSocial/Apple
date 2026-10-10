@@ -64,7 +64,12 @@ struct SharedComponentsTests {
 /// Renders a view so a test can assert it drew at all. `uiImage` is UIKit's,
 /// so on a Mac the assertion rests on the renderer existing rather than on
 /// pixels nobody is looking at.
+///
+/// Main-actor, because `ImageRenderer` is: its initialiser, its `scale` and
+/// its `render` are all isolated, and a free function that touches any of
+/// them has to live on the same actor as the view it was handed.
 @available(macOS 13.0, *)
+@MainActor
 private func render<V: View>(_ view: V) -> Bool {
     let renderer = ImageRenderer(content: view)
     renderer.scale = 1
