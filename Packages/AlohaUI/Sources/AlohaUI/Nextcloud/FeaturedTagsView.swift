@@ -154,7 +154,9 @@ public struct FeaturedTagsView: View {
         .alohaGround(palette)
         .navigationTitle(Text("Featured hashtags", comment: "Screen title"))
         .overlay {
-            if isLoading && featured.isEmpty { ProgressView() }
+            if isLoading && featured.isEmpty {
+                SkeletonListRow(text: 4)
+            }
         }
         .task { await load() }
         .refreshable { await load() }

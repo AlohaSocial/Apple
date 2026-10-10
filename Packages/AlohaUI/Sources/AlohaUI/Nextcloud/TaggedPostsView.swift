@@ -85,7 +85,11 @@ struct TaggedGrid: View {
             }
 
             if isLoading || !removing.isEmpty {
-                ProgressView().padding(AlohaMetrics.space4)
+                // A first page, or more arriving, is a list in progress — the
+                // shape of three photos — rather than a spinner floating in the
+                // middle of nothing.
+                SkeletonListRow(person: 3)
+                    .padding(AlohaMetrics.space4)
             } else if statuses.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Not tagged anywhere", comment: "Empty tagged photos")
