@@ -94,6 +94,13 @@ public struct AppShell: View {
                 environment.sync.setForeground(phase == .active)
             }
             .onOpenURL { url in handle(url) }
+            .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) { _ in
+                // The compose deep link — from the quick-compose widget, or a
+                // Shortcut — reached here because the composer is a sheet the
+                // shell owns, not a navigation destination.
+                guard environment.activeSession != nil else { return }
+                composing = ComposerPresentation()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
                 if let route = note.userInfo?["route"] as? Route { open(route) }
@@ -662,6 +669,16 @@ public struct AppShell: View {
         // The browser fallback for sign-in comes back this way, and it is not
         // a navigation destination.
         if WebAuthenticator.shared.deliver(url) { return }
+
+        // The composer is presented, not pushed (docs/09 §8): a link asking for
+        // it is a request to open the sheet, which is what the quick-compose
+        // widget's button now does.
+        if url.scheme == RouteResolver.scheme,
+            url.host() == "compose"
+        {
+            NotificationCenter.default.post(name: RouteResolver.composeRequested, object: nil)
+            return
+        }
 
         guard let route = RouteResolver.route(for: url) else { return }
         if case .timeline(let key) = route {
