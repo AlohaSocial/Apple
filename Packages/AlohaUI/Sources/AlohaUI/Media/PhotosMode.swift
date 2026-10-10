@@ -47,10 +47,14 @@ public struct PhotosModeView: View {
             }
         }
         .background(palette.background)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                layoutSwitcher
-            }
+        // The display format sits over the content rather than in the toolbar:
+        // a toolbar item is four taps from the pictures and competes with the
+        // title for the only slot there, while the one control this screen has
+        // belongs where the thumb already is.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            formatBar
+                .padding(.vertical, AlohaMetrics.space2)
+                .background(palette.background.opacity(0.85))
         }
         .task {
             await model.appear()
@@ -73,37 +77,45 @@ public struct PhotosModeView: View {
     /// segmented control: an accent pill slides behind the chosen one, and each
     /// state carries its own label, so "which layout am I on" never depends on
     /// telling two icons apart.
-    private var layoutSwitcher: some View {
-        HStack(spacing: 0) {
-            ForEach(PhotosModeView.Layout.allCases, id: \.rawValue) { option in
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        layout = option
-                    }
-                } label: {
-                    Label {
-                        Text(title(for: option))
-                    } icon: {
-                        Image(systemName: symbolName(for: option))
-                    }
-                    .labelStyle(.iconOnly)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(
-                        layout == option ? palette.onAccent : palette.secondaryLabel)
-                    .padding(.horizontal, AlohaMetrics.space3)
-                    .padding(.vertical, AlohaMetrics.space2)
-                    .background {
-                        if layout == option {
-                            Capsule().fill(palette.accent)
+    private var formatBar: some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Spacer(minLength: 0)
+
+            HStack(spacing: 0) {
+                ForEach(PhotosModeView.Layout.allCases, id: \.rawValue) { option in
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            layout = option
+                        }
+                    } label: {
+                        Label {
+                            Text(title(for: option))
+                        } icon: {
+                            Image(systemName: symbolName(for: option))
+                        }
+                        .labelStyle(.iconOnly)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(
+                            layout == option ? palette.onAccent : palette.secondaryLabel)
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .padding(.vertical, AlohaMetrics.space2)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .background {
+                            if layout == option {
+                                Capsule().fill(palette.accent)
+                            }
                         }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(title(for: option)))
+                    .accessibilityAddTraits(layout == option ? .isSelected : [])
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(title(for: option)))
-                .accessibilityAddTraits(layout == option ? .isSelected : [])
             }
+            .unifiedGlass(.regular, in: Capsule())
+
+            Spacer(minLength: 0)
         }
-        .unifiedGlass(.subtle, in: Capsule())
+        .padding(.horizontal, AlohaMetrics.space3)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Layout", comment: "Photos layout picker"))
     }
