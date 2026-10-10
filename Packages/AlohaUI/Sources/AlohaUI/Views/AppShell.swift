@@ -199,11 +199,14 @@ public struct AppShell: View {
                                 }
                         }
                     } label: {
-                        Label {
-                            Text(modeTitle(mode))
-                        } icon: {
-                            Image(systemName: mode.symbolName)
-                        }
+                        // The filled spelling while selected, the outline
+                        // otherwise — Apple's own apps switch weight rather
+                        // than colour to say "this is the tab you are on".
+                        Image(
+                            systemName: selectedTab == .mode(mode)
+                                ? mode.selectedSymbolName : mode.symbolName
+                        )
+                        Text(modeTitle(mode))
                     }
                 }
 
@@ -219,11 +222,11 @@ public struct AppShell: View {
                         }
                     }
                 } label: {
-                    Label {
-                        Text("Messages", comment: "Tab title")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.envelope)
-                    }
+                    Image(
+                        systemName: selectedTab == .messages
+                            ? "envelope.fill" : AlohaSymbol.envelope
+                    )
+                    Text("Messages", comment: "Tab title")
                 }
             }
             .onChange(of: selectedTab) { _, tab in

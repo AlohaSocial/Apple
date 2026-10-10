@@ -279,25 +279,25 @@ public struct SidebarView: View {
         List(selection: optionalSelection) {
             Section {
                 ForEach(session.visibleModes, id: \.self) { mode in
-                    Label {
-                        Text(title(for: mode))
-                    } icon: {
-                        Image(systemName: mode.symbolName)
-                    }
-                    .tag(SidebarItem.mode(mode))
+                    modeRow(mode)
+                        .tag(SidebarItem.mode(mode))
+                        .listRowBackground(
+                            selection == .mode(mode)
+                                ? palette.accent.opacity(0.12) : Color.clear
+                        )
                 }
 
                 row(
-                    "Direct messages", symbol: AlohaSymbol.envelope, route: .conversations,
+                    "Direct messages", symbol: selectedRoute == .conversations ? "envelope.fill" : AlohaSymbol.envelope, route: .conversations,
                     comment: "Sidebar item")
                 row(
-                    "Discover", symbol: "safari", route: .explore,
+                    "Discover", symbol: selectedRoute == .explore ? "safari.fill" : "safari", route: .explore,
                     comment: "Sidebar item")
             }
 
             Section {
                 row(
-                    "Your lists", symbol: AlohaSymbol.list, route: .lists,
+                    "Your lists", symbol: selectedRoute == .lists ? "list.bullet.rectangle.fill" : "list.bullet.rectangle", route: .lists,
                     comment: "Sidebar item")
                 if session.capabilities.isNextcloudSocial {
                     row(
@@ -316,6 +316,33 @@ public struct SidebarView: View {
                 Text("Explore", comment: "Sidebar section")
             }
         }
+    }
+
+    /// A mode row: the symbol in its own tile, filled while selected. A tile
+    /// gives every row the same weight, which a bare symbol never does when
+    /// one icon is a house and the next is a stack.
+    private func modeRow(_ mode: FeedMode) -> some View {
+        let isSelected = selection == .mode(mode)
+        return Button {
+            selection = .mode(mode)
+        } label: {
+            HStack(spacing: AlohaMetrics.space3) {
+                Image(systemName: isSelected ? mode.selectedSymbolName : mode.symbolName)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        isSelected ? palette.accent.opacity(0.14) : palette.surfaceRaised,
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    )
+                Text(title(for: mode))
+                    .fontWeight(isSelected ? .semibold : .regular)
+                Spacer(minLength: 0)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(title(for: mode)))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     /// Everything about your own account, behind your own face.
@@ -499,6 +526,13 @@ public struct SidebarView: View {
         Binding(
             get: { selection },
             set: { if let value = $0 { selection = value } })
+    }
+
+    /// The selected destination, if it is one of the fixed ones — so its
+    /// symbol can take the filled spelling while it is on screen.
+    private var selectedRoute: Route? {
+        if case .route(let route) = selection { return route }
+        return nil
     }
 
     private func title(for mode: FeedMode) -> String {
