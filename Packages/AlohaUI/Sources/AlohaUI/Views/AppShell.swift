@@ -232,8 +232,39 @@ public struct AppShell: View {
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
             }
+            // The one way to write something: a button beside the tab bar, not
+            // a toolbar icon and not a floating circle. A toolbar puts it four
+            // taps from the content and a floating button duplicates the tab
+            // bar's thumb zone — the accessory slot is where Apple puts the
+            // primary action of a tab app.
+            .tabViewBottomAccessory {
+                composeAccessory
+            }
         }
     #endif
+
+    /// New post in the tab bar's accessory slot: labelled, always on screen,
+    /// out of the way of the thumb.
+    @available(iOS 18.0, tvOS 18.0, visionOS 2.0, *)
+    private var composeAccessory: some View {
+        Button {
+            composing = ComposerPresentation()
+        } label: {
+            Label {
+                Text("New post", comment: "Compose accessory")
+            } icon: {
+                Image(systemName: AlohaSymbol.compose)
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.glassProminent)
+        .keyboardShortcut("n", modifiers: .command)
+        .accessibilityLabel(Text("New post", comment: "Compose button"))
+        .tint(environment.activeSession.map { session in
+            environment.theme.palette(for: .light).accent
+        } ?? .accentColor)
+    }
 
     // MARK: - iPad, Mac, Vision
 
@@ -278,24 +309,6 @@ public struct AppShell: View {
             }
         }
     }
-
-    /// Sits in the tab bar's accessory slot rather than floating over it.
-    private var composeButton: some View {
-        Button {
-            composing = ComposerPresentation()
-        } label: {
-            Image(systemName: AlohaSymbol.compose)
-                .font(.title3.weight(.semibold))
-                .frame(width: 56, height: 56)
-        }
-        .buttonStyle(.borderedProminent)
-        .clipShape(Circle())
-        .padding(.trailing, AlohaMetrics.space4)
-        .padding(.bottom, AlohaMetrics.space4)
-        .accessibilityLabel(Text("New post", comment: "Compose button"))
-    }
-
-    // MARK: - Content
 
     @ViewBuilder
     private func modeRoot(_ mode: FeedMode, session: AccountSession) -> some View {
