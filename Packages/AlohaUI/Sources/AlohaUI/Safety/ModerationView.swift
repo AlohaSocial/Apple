@@ -178,18 +178,9 @@ public struct ModerationReportsView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
-                Task { await load() }
-            } label: {
-                Text("Retry", comment: "Reports reload action")
-            }
-            .font(.footnote.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
         }
-        .foregroundStyle(palette.destructive)
     }
 
     private func load() async {
@@ -376,18 +367,9 @@ public struct ModerationReportView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
-                Task { await load() }
-            } label: {
-                Text("Retry", comment: "Report reload action")
-            }
-            .font(.footnote.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
         }
-        .foregroundStyle(palette.destructive)
     }
 
     @ViewBuilder

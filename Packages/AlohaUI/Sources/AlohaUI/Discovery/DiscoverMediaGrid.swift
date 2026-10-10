@@ -68,18 +68,9 @@ struct DiscoverMediaGrid: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
-                Task { await load() }
-            } label: {
-                Text("Retry", comment: "Discover media reload action")
-            }
-            .font(.footnote.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
         }
-        .foregroundStyle(palette.destructive)
         .padding(AlohaMetrics.space3)
     }
 

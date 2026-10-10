@@ -148,19 +148,9 @@ public struct ListMembershipSheet: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.caption)
-            Spacer()
-            Button {
-                Task { await load() }
-            } label: {
-                Text("Retry", comment: "Error strip action")
-            }
-            .font(.caption.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
         }
-        .foregroundStyle(palette.destructive)
-        .padding(.vertical, AlohaMetrics.space2)
     }
 
     private func load() async {

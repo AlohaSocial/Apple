@@ -122,26 +122,17 @@ public struct StarterPackView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
+        AlohaErrorStrip(message: message) {
+            Task {
                 // A follow that failed is retried as a follow; anything else
                 // is a pack that did not come in, so it is loaded again.
-                Task {
-                    if pack != nil && followedCount == nil {
-                        await followAll()
-                    } else {
-                        await load()
-                    }
+                if pack != nil && followedCount == nil {
+                    await followAll()
+                } else {
+                    await load()
                 }
-            } label: {
-                Text("Retry", comment: "Starter pack retry action")
             }
-            .font(.footnote.weight(.semibold))
         }
-        .foregroundStyle(palette.destructive)
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }

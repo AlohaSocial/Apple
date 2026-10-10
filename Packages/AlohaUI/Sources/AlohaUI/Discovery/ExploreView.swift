@@ -468,18 +468,9 @@ public struct ExploreView: View {
     private enum Retry { case people, trends, search }
 
     private func errorStrip(_ message: String, retry: Retry) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
-                Task { await perform(retry) }
-            } label: {
-                Text("Retry", comment: "Discover reload action")
-            }
-            .font(.footnote.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await perform(retry) }
         }
-        .foregroundStyle(palette.destructive)
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }
