@@ -318,15 +318,20 @@ public struct VideoAttachmentPlayer: View {
                 VStack {
                     HStack {
                         Spacer()
-                        ShareLink(item: attachment.url ?? attachment.previewURL) {
-                            Image(systemName: AlohaSymbol.share)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(10)
-                                .background(.black.opacity(0.3), in: Circle())
-                                .unifiedGlass(.subtle, in: Circle())
+                        // A video with neither a file nor a poster has nothing
+                        // to share, so the button is not drawn rather than
+                        // pointing at a URL that isn't there.
+                        if let shareURL = attachment.url ?? attachment.previewURL {
+                            ShareLink(item: shareURL) {
+                                Image(systemName: AlohaSymbol.share)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(10)
+                                    .background(.black.opacity(0.3), in: Circle())
+                                    .unifiedGlass(.subtle, in: Circle())
+                            }
+                            .accessibilityLabel(Text("Share video", comment: "Video action"))
                         }
-                        .accessibilityLabel(Text("Share video", comment: "Video action"))
                     }
                     .foregroundStyle(.white)
                     .padding(AlohaMetrics.space3)

@@ -101,7 +101,7 @@ public enum RouteResolver {
         switch url.host() {
         case "timeline":
             guard let modeName = components.first, let mode = FeedMode(rawValue: modeName)
-            else { return .timeline(.home()) }
+            else { return .timeline(.home) }
             let source: TimelineSource
             switch components.dropFirst().first {
             case "local": source = .local

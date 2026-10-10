@@ -38,17 +38,16 @@ public struct LocalNotifier: Sendable {
             title: String(localized: "Mute conversation", comment: "Notification action"),
             options: [.destructive])
 
+        // One category, because a reply is a mention: Mastodon's API has no
+        // "reply" kind, so every notification that can be replied to arrives
+        // as a mention and wears this category's actions.
         let mention = UNNotificationCategory(
             identifier: "mention", actions: [reply, favourite, boost, muteConversation],
-            intentIdentifiers: [], options: [])
-        // Replies use their own category so the mute action appears there too.
-        let replyCategory = UNNotificationCategory(
-            identifier: "reply", actions: [reply, favourite, boost, muteConversation],
             intentIdentifiers: [], options: [])
         let generic = UNNotificationCategory(
             identifier: "generic", actions: [], intentIdentifiers: [], options: [])
 
-        center.setNotificationCategories([mention, replyCategory, generic])
+        center.setNotificationCategories([mention, generic])
     }
 
     /// Returns the ids that were actually announced, so the caller can mark
@@ -87,8 +86,10 @@ public struct LocalNotifier: Sendable {
             if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
             content.categoryIdentifier =
                 switch notification.kind {
+                // A reply is a mention: Mastodon's own API has no separate
+                // "reply" kind, and the mention category carries the actions
+                // people want on both.
                 case .mention: "mention"
-                case .reply: "reply"
                 default: "generic"
                 }
             content.interruptionLevel = notification.kind == .mention ? .active : .passive
@@ -105,10 +106,9 @@ public struct LocalNotifier: Sendable {
             // Determine trigger based on delivery mode.
             let trigger: UNNotificationTrigger?
             if deliveryMode == .digest {
-                // Mentions and DMs from followed accounts always come through immediately.
-                let isBreaking =
-                    notification.kind == .mention
-                    || (notification.kind == .followRequest && payload?.followsYou == true)
+                // A mention is the thing somebody wants answered, so it always
+                // comes through immediately even in digest mode.
+                let isBreaking = notification.kind == .mention
                 if isBreaking {
                     trigger = nil
                 } else {

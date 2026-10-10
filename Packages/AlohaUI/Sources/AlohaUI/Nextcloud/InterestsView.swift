@@ -795,7 +795,10 @@ struct InterestCloud: View {
         .unifiedGlass(.regular, in: Capsule())
         .accessibilityLabel(
             Text(
-                tag.pinned ? "\(tag.tag), pinned" : tag.tag,
+                // verbatim, because the whole label is one interpolated string:
+                // a Text initialised from a localised key cannot take a
+                // ternary of Strings.
+                verbatim: tag.pinned ? "\(tag.tag), pinned" : tag.tag,
                 comment: "Interest chip"))
     }
 

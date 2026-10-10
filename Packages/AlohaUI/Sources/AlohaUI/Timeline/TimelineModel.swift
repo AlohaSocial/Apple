@@ -60,7 +60,7 @@ public final class TimelineModel {
         }
 
         // Load the "caught up" marker for the home timeline.
-        if key.mode == .home(), key.source == .home {
+        if key.mode == .home, key.source == .home {
             Task { await loadCaughtUpMarker() }
         }
     }
