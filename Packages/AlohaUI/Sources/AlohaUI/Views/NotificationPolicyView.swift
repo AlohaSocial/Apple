@@ -8,6 +8,12 @@ import SwiftUI
 /// The notification policy screen: five for_* rows with Accept/Filter/Drop,
 /// plus a link to the filtered-notifications inbox.
 public struct NotificationPolicyView: View {
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+    @Environment(\.dismiss) private var dismiss
+
+    private let session: AccountSession
+
     @State private var policy: NotificationPolicy?
     @State private var isLoading = true
     @State private var errorMessage: String?
