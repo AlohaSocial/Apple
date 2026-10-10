@@ -169,7 +169,9 @@ public struct SubscriptionsView: View {
             }
 
             if isLoadingFeeds && feeds.isEmpty {
-                ProgressView()
+                SkeletonListRow(person: 5)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
             } else if feeds.isEmpty && errorMessage == nil {
                 Text("You follow no feeds yet.", comment: "Empty subscriptions")
                     .font(.footnote)
