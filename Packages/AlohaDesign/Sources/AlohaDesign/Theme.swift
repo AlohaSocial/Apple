@@ -459,6 +459,30 @@ public struct PlatformAdaptive: ViewModifier {
     }
 }
 
+/// Modern glass material intensities for native UI layering.
+///
+/// A card over content, a sheet over the screen, a toolbar over the list —
+/// the three levels a blur can sit at. Naming them keeps the same level in
+/// every place instead of a material chosen by whichever view got there
+/// first.
+public enum AlohaGlass: Sendable {
+    /// A card, a row, a control sitting on content.
+    case regular
+    /// A sheet or a toolbar over the screen: the strongest layer.
+    case prominent
+    /// A hairline of separation rather than a wall.
+    case subtle
+
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    public var material: Material {
+        switch self {
+        case .regular: .regularMaterial
+        case .prominent: .thickMaterial
+        case .subtle: .ultraThinMaterial
+        }
+    }
+}
+
 extension View {
     /// Applies platform-adaptive behavior
     public func platformAdaptive(
@@ -492,6 +516,87 @@ extension View {
         #else
         NavigationSplitView { content() }
         #endif
+    }
+}
+
+/// Glass effect modifiers for modern native UI layering.
+///
+/// `unifiedGlass` is the one every view uses: on iOS 17 and macOS 14 it is a
+/// real `Material` blur, and on anything older it degrades to a gradient over
+/// `ultraThinMaterial` — which is not the same one, but a caller should not
+/// have to compile two versions of a card for that.
+extension View {
+    /// A filled glass panel: the material, plus a hairline border that reads
+    /// as the edge of a real layer of glass.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    public func alohaGlass(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        self
+            .background(style.material, in: shape)
+            .overlay(shape.strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5))
+    }
+
+    /// The material alone, for when something else draws the edge.
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    public func alohaGlassBackground(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        self.background(style.material, in: shape)
+    }
+
+    /// A fallback for older systems: a gradient over ultra-thin material rather
+    /// than a plain colour, so a card still reads as a layer.
+    public func alohaGlassFallback(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        let colors: [Color] = {
+            switch style {
+            case .regular: return [Color.white.opacity(0.15), Color.white.opacity(0.05)]
+            case .prominent: return [Color.white.opacity(0.25), Color.white.opacity(0.1)]
+            case .subtle: return [Color.white.opacity(0.08), Color.white.opacity(0.02)]
+            }
+        }()
+        return self
+            .background(
+                LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .background(.ultraThinMaterial)
+                    .clipShape(shape)
+            )
+            .overlay(shape.strokeBorder(Color.white.opacity(0.15), lineWidth: 0.5))
+    }
+
+    /// The one glass effect every view uses: real material everywhere it is
+    /// available, the gradient fallback everywhere else.
+    public func unifiedGlass(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+    ) -> some View {
+        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
+            return self.alohaGlass(style, in: shape)
+        } else {
+            return self.alohaGlassFallback(style, in: shape)
+        }
+    }
+
+    /// A glass card with the app's shared corner.
+    public func alohaCard(
+        _ style: AlohaGlass = AlohaGlass.regular,
+        cornerRadius: CGFloat = AlohaMetrics.cornerMedium
+    ) -> some View {
+        self.unifiedGlass(style, in: RoundedRectangle(cornerRadius: cornerRadius))
+    }
+
+    /// A tab or toolbar's background: nothing to draw, nothing to hit-test.
+    public func glassToolbarBackground() -> some View {
+        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
+            return self.background(.thickMaterial)
+        } else {
+            return self.background(.ultraThinMaterial)
+        }
     }
 }
 
