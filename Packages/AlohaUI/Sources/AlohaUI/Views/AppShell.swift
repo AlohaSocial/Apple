@@ -261,9 +261,9 @@ public struct AppShell: View {
         .buttonStyle(.glassProminent)
         .keyboardShortcut("n", modifiers: .command)
         .accessibilityLabel(Text("New post", comment: "Compose button"))
-        .tint(environment.activeSession.map { session in
-            environment.theme.palette(for: .light).accent
-        } ?? .accentColor)
+        // No tint: the accent the app already wears is the one this button
+        // takes. Re-deriving it here from the theme created a second source
+        // of truth that ignored the server's colour and the colour scheme.
     }
 
     // MARK: - iPad, Mac, Vision
