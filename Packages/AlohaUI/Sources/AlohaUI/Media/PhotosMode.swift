@@ -23,7 +23,7 @@ public struct PhotosModeView: View {
     @State private var stories: [Story] = []
     @State private var playingStoriesFrom: Int?
 
-    enum Layout: String {
+    enum Layout: String, CaseIterable {
         case grid, feed
     }
 
@@ -49,14 +49,7 @@ public struct PhotosModeView: View {
         .background(palette.background)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Picker(selection: $layout) {
-                    Image(systemName: "rectangle.grid.1x2").tag(Layout.feed)
-                    Image(systemName: "square.grid.3x3").tag(Layout.grid)
-                } label: {
-                    Text("Layout", comment: "Photos layout picker")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                layoutSwitcher
             }
         }
         .task {
@@ -73,6 +66,59 @@ public struct PhotosModeView: View {
                 set: { playingStoriesFrom = $0?.index })
         ) { start in
             StoryPlayer(stories: stories, startIndex: start.index, session: session)
+        }
+    }
+
+    /// The display format, as a two-state glass switcher rather than a plain
+    /// segmented control: an accent pill slides behind the chosen one, and each
+    /// state carries its own label, so "which layout am I on" never depends on
+    /// telling two icons apart.
+    private var layoutSwitcher: some View {
+        HStack(spacing: 0) {
+            ForEach(PhotosModeView.Layout.allCases, id: \.rawValue) { option in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        layout = option
+                    }
+                } label: {
+                    Label {
+                        Text(title(for: option))
+                    } icon: {
+                        Image(systemName: symbolName(for: option))
+                    }
+                    .labelStyle(.iconOnly)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(
+                        layout == option ? palette.onAccent : palette.secondaryLabel)
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .padding(.vertical, AlohaMetrics.space2)
+                    .background {
+                        if layout == option {
+                            Capsule().fill(palette.accent)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(title(for: option)))
+                .accessibilityAddTraits(layout == option ? .isSelected : [])
+            }
+        }
+        .unifiedGlass(.subtle, in: Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Layout", comment: "Photos layout picker"))
+    }
+
+    private func title(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: String(localized: "Feed", comment: "Photos layout")
+        case .grid: String(localized: "Grid", comment: "Photos layout")
+        }
+    }
+
+    private func symbolName(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: "rectangle.grid.1x2"
+        case .grid: "square.grid.3x3"
         }
     }
 
