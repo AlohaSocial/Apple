@@ -42,11 +42,16 @@ public struct SkeletonListRow: View {
         self.count = max(1, count)
     }
 
+    /// Rows without a `Section`.
+    ///
+    /// A Section only has meaning inside a List, and this component is used in
+    /// both places — in a List (timelines, notifications) and in an overlay
+    /// over a blank screen (drafts, requests, edit history, a profile being
+    /// loaded). A Section outside a List is undefined behaviour, so the rows
+    /// stand on their own: a List shows them as rows, an overlay as a stack.
     public var body: some View {
-        Section {
-            ForEach(0..<count, id: \.self) { _ in
-                row
-            }
+        ForEach(0..<count, id: \.self) { _ in
+            row
         }
         .task {
             guard !reduceMotion else { return }
