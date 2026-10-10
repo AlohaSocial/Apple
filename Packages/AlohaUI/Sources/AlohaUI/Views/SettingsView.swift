@@ -96,7 +96,13 @@ public struct SettingsView: View {
                         Button {
                             environment.setActiveAccount(session.id)
                         } label: {
-                            HStack {
+                            HStack(spacing: AlohaMetrics.space3) {
+                                AvatarView(
+                                    account: session.snapshot.asAccount,
+                                    size: AlohaMetrics().avatarSize
+                                )
+                                .accessibilityHidden(true)
+
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(session.snapshot.bestDisplayName).font(.body)
                                     Text(session.snapshot.qualifiedHandle)
@@ -187,6 +193,9 @@ public struct SettingsView: View {
                     "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
                 ) {
                     yourAccountSection(session)
+                }
+                if shows("Timeline", "timeline feed boosts replies pill position restore numbers") {
+                    timelineSection(session)
                 }
                 if shows("Nextcloud", "nextcloud files push notification server connect") {
                     nextcloudSection(session)
@@ -570,22 +579,35 @@ NavigationLink(value: Route.notificationRequests) {
         }
     }
 
-    private func mediaSection(_ session: AccountSession) -> some View {
+    /// What your home feed shows.
+    ///
+    /// These preferences were stored and read by the timeline but had no
+    /// screen: `showBoosts`, `showReplies`, `restoreTimelinePosition` and
+    /// `showNewPostsPill` all changed behaviour with no way to change them,
+    /// and "Show numbers" sat under Media, where it is not about media at
+    /// all. Every switch here now exists (docs/05 §2).
+    private func timelineSection(_ session: AccountSession) -> some View {
         Section {
             Toggle(
                 isOn: Binding(
-                    get: { session.settings.autoplayVideo },
+                    get: { session.settings.showBoosts },
                     set: { value in
-                        Task { await session.updateSettings { $0.autoplayVideo = value } }
+                        Task { await session.updateSettings { $0.showBoosts = value } }
                     })
             ) {
-                Text("Autoplay video", comment: "Settings item")
+                Text("Show boosts", comment: "Settings item")
             }
 
-            // Comparing oneself with others is the most consistent harm
-            // social media does, and the numbers feed it directly. They are
-            // on by default, because a count is sometimes just information —
-            // this is an option, not a default with a debate attached.
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.showReplies },
+                    set: { value in
+                        Task { await session.updateSettings { $0.showReplies = value } }
+                    })
+            ) {
+                Text("Show replies", comment: "Settings item")
+            }
+
             Toggle(
                 isOn: Binding(
                     get: { session.settings.showPopularityCounts },
@@ -602,6 +624,46 @@ NavigationLink(value: Route.notificationRequests) {
                     .font(.footnote)
                     .foregroundStyle(palette.secondaryLabel)
                 }
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.showNewPostsPill },
+                    set: { value in
+                        Task { await session.updateSettings { $0.showNewPostsPill = value } }
+                    })
+            ) {
+                Text("New posts pill", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.restoreTimelinePosition },
+                    set: { value in
+                        Task { await session.updateSettings { $0.restoreTimelinePosition = value } }
+                    })
+            ) {
+                Text("Return to where I was", comment: "Settings item")
+            }
+        } header: {
+            Text("Home feed", comment: "Settings section")
+        } footer: {
+            Text(
+                "Off, the new-posts pill disappears and every refresh scrolls to the top instead of holding your place.",
+                comment: "Home feed section explanation")
+        }
+    }
+
+    private func mediaSection(_ session: AccountSession) -> some View {
+        Section {
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.autoplayVideo },
+                    set: { value in
+                        Task { await session.updateSettings { $0.autoplayVideo = value } }
+                    })
+            ) {
+                Text("Autoplay video", comment: "Settings item")
             }
 
             Toggle(
@@ -633,11 +695,6 @@ NavigationLink(value: Route.notificationRequests) {
             Text("Media", comment: "Settings section")
         } footer: {
             // The cost is stated in one line rather than hidden.
-            Text("Videos play automatically, including on cellular.", comment: "Autoplay footnote")
-        }
-    }
-
-    // The cost is stated in one line rather than hidden.
             Text("Videos play automatically, including on cellular.", comment: "Autoplay footnote")
         }
     }
@@ -732,7 +789,7 @@ NavigationLink(value: Route.notificationRequests) {
                         get: { session.settings.quietHoursStart ?? 22 },
                         set: { value in
                             Task { await session.updateSettings { $0.quietHoursStart = value } }
-                    )) {
+                        })) {
                         ForEach(0..<24) { hour in
                             Text("\(hour):00").tag(hour)
                         }
@@ -746,7 +803,7 @@ NavigationLink(value: Route.notificationRequests) {
                         get: { session.settings.quietHoursEnd ?? 7 },
                         set: { value in
                             Task { await session.updateSettings { $0.quietHoursEnd = value } }
-                    )) {
+                        })) {
                         ForEach(0..<24) { hour in
                             Text("\(hour):00").tag(hour)
                         }
