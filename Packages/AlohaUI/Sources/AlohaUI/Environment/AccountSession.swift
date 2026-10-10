@@ -125,9 +125,9 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
             // So verify against the one endpoint that is authoritative before
             // believing it: if the token still works, the 401 belonged to that
             // route and nothing else changes.
-            let stillSignedIn = (try? await client.decode(
-                Account.self, from: Endpoint.session.verifyCredentials)
-            ) != nil
+            let stillSignedIn =
+                (try? await client.decode(
+                    Account.self, from: Endpoint.session.verifyCredentials)) != nil
             guard !stillSignedIn else { return }
             await markNeedsReauthentication()
         }

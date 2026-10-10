@@ -112,7 +112,12 @@ public struct StatisticsView: View {
             }
         }
         .overlay {
-            if isLoading && (statistics == nil || loadedDays != days) { ProgressView() }
+            if isLoading && (statistics == nil || loadedDays != days) {
+                // The shape of the page arriving: a hero block and a grid of
+                // tiles. A spinner over a blank screen reads as broken, where
+                // the shape of the answer reads as working.
+                statisticsSkeleton
+            }
         }
         .sheet(item: Binding(get: { exportURL.map(ExportFile.init) }, set: { exportURL = $0?.url }))
         { file in
@@ -444,11 +449,57 @@ public struct StatisticsView: View {
 
     // MARK: - Pieces
 
+    /// The shape of the page arriving: a hero block, then the tiles' grid.
+    private var statisticsSkeleton: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+            heroSkeleton
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), spacing: AlohaMetrics.space3)],
+                spacing: AlohaMetrics.space3
+            ) {
+                ForEach(0..<6, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+                        .fill(palette.surfaceRaised)
+                        .frame(height: 64)
+                }
+            }
+        }
+        .padding(AlohaMetrics.space4)
+        .accessibilityLabel(Text("Loading statistics", comment: "Statistics loading"))
+    }
+
+    private var heroSkeleton: some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Circle()
+                .fill(palette.surfaceRaised)
+                .frame(width: 48, height: 48)
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 140, height: 14)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 96, height: 10)
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: AlohaMetrics.space3) {
+                ForEach(0..<3, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(palette.surfaceRaised)
+                        .frame(width: 56, height: 20)
+                }
+            }
+        }
+    }
+
     private func stat(_ value: Double, _ label: Text) -> some View {
         HStack(spacing: 4) {
             Text(verbatim: StatisticsNumbers.count(value, compact: true))
                 .fontWeight(.semibold)
                 .fontDesign(.rounded)
+                // Tabular digits, so a row of hero numbers aligns instead of
+                // jittering as the values change.
+                .monospacedDigit()
             label.foregroundStyle(palette.secondaryLabel)
         }
         .font(.footnote)
@@ -471,6 +522,10 @@ public struct StatisticsView: View {
             }
             .font(.title3.weight(.bold))
             .fontDesign(.rounded)
+            // Tabular digits across the whole grid: without it the columns of
+            // numbers are ragged and a two-digit and a five-digit count sit on
+            // different baselines.
+            .monospacedDigit()
             label
                 .font(AlohaType.meta)
                 .foregroundStyle(palette.secondaryLabel)
@@ -604,6 +659,12 @@ extension View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 palette.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+            )
+            // A hairline so a card reads as a layer over the scroll rather
+            // than as a slightly different colour.
+            .overlay(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                    .strokeBorder(palette.separator.opacity(0.5), lineWidth: 0.5))
     }
 }
