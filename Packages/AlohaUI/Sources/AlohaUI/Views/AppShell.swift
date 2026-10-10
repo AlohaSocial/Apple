@@ -361,7 +361,11 @@ public struct AppShell: View {
                 AudioModeView(session: session, source: selectedSource) {
                     handle($0, session: session)
                 }
-                .navigationTitle(modeTitle(mode)),
+                .navigationTitle(modeTitle(mode))
+                // On a regular-width shell a timeline is a reading column:
+                // full window width runs a post's text to 1,200pt, which is
+                // unreadable. Mail and Reader constrain theirs; so does this.
+                .readerColumn,
                 session: session)
 
         case .news:
@@ -369,7 +373,8 @@ public struct AppShell: View {
                 NewsModeView(session: session, source: selectedSource) {
                     handle($0, session: session)
                 }
-                .navigationTitle(modeTitle(mode)),
+                .navigationTitle(modeTitle(mode))
+                .readerColumn,
                 session: session)
 
         case .home:
@@ -381,6 +386,7 @@ public struct AppShell: View {
                 // The home mode is whichever of the three you are reading, so
                 // the title says which rather than always "My Feed".
                 .navigationTitle(sourceTitle)
+                .readerColumn
                 .onAppear { environment.sync.noteTimelineVisible(for: session.id) },
                 session: session)
         }
@@ -755,6 +761,33 @@ struct MediaPresentation: Identifiable, Hashable {
 }
 
 extension View {
+    /// A timeline on a regular-width shell is a reading column.
+    ///
+    /// Full window width runs a post's text to twelve hundred point, which is
+    /// unreadable — the eye cannot find the start of the next line. Mail and
+    /// Reader constrain their columns on the Mac, and so does this: a 680-point
+    /// column, centred, with the rest of the window quiet around it. On a phone
+    /// the tab shell already fills the screen and the constraint would only
+    /// add margins, so it does nothing there.
+    @ViewBuilder
+    var readerColumn: some View {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                self
+            } else {
+                column
+            }
+        #else
+            column
+        #endif
+    }
+
+    private var column: some View {
+        self
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+    }
+
     /// `fullScreenCover` does not exist on macOS; a sheet is the right
     /// equivalent there.
     @ViewBuilder
