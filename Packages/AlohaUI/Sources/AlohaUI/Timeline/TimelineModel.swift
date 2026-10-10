@@ -83,11 +83,15 @@ public final class TimelineModel {
     /// Advances the caught-up marker to the given post ID, both locally
     /// and on the server (fire-and-forget).
     /// Called from the view when the reader passes the divider.
-    func advanceCaughtUpMarker(to statusID: String) {
+    ///
+    /// Async because the local marker lives in an actor — the store — and a
+    /// marker that is only saved off the main actor is the one thing this
+    /// must not do.
+    func advanceCaughtUpMarker(to statusID: String) async {
         guard !markerAdvancedThisSession else { return }
         markerAdvancedThisSession = true
         caughtUpMarkerID = statusID
-        // Local store
+        // Local store.
         do {
             try await session.supportStore.advanceMarker(
                 accountID: session.id, timeline: "home", to: statusID)
@@ -96,13 +100,13 @@ public final class TimelineModel {
                 "could not advance local home marker: \(String(describing: error), privacy: .public)"
             )
         }
-        // Server sync (fire-and-forget)
-        Task {
-            let endpoint = Endpoint.markers.write(home: statusID, notifications: nil)
-            do { _ = try await session.client.send(endpoint) } catch {
-                logger.debug(
-                    "could not sync home marker: \(String(describing: error), privacy: .public)")
-            }
+        // Server sync, fire-and-forget.
+        let endpoint = Endpoint.markers.write(home: statusID, notifications: nil)
+        do {
+            _ = try await session.client.send(endpoint)
+        } catch {
+            logger.debug(
+                "could not sync home marker: \(String(describing: error), privacy: .public)")
         }
     }
 

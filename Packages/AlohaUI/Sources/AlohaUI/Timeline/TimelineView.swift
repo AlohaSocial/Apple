@@ -174,7 +174,7 @@ public struct TimelineView: View {
                                 idx + 1 < model.rows.count,
                                 case .status(let next) = model.rows[idx + 1]
                             else { return }
-                            model.advanceCaughtUpMarker(to: next.id)
+                            Task { await model.advanceCaughtUpMarker(to: next.id) }
                         }
                 }
             }

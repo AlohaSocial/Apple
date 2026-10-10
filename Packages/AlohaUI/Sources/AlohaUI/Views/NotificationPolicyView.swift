@@ -73,7 +73,7 @@ public struct NotificationPolicyView: View {
                     Section {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
-                                Image(systemName: AlohaSymbol.filter)
+                                Image(systemName: "line.3.horizontal.decrease.circle")
                                 Text("Filtered notifications")
                                 Spacer()
                                 Text("\(summary.pendingRequestsCount)")
@@ -93,7 +93,7 @@ public struct NotificationPolicyView: View {
                         Label {
                             Text("Open filtered notifications", comment: "Policy action")
                         } icon: {
-                            Image(systemName: AlohaSymbol.filter)
+                            Image(systemName: "line.3.horizontal.decrease.circle")
                         }
                     }
                 }
@@ -107,7 +107,7 @@ public struct NotificationPolicyView: View {
     }
 
     private func policyRow(
-        key: KeyPath<NotificationPolicy, NotificationPolicy.Decision>,
+        key: ReferenceWritableKeyPath<NotificationPolicy, NotificationPolicy.Decision>,
         title: Text,
         policy: NotificationPolicy
     ) -> some View {
@@ -125,7 +125,7 @@ public struct NotificationPolicyView: View {
         ) {
             ForEach(NotificationPolicy.Decision.allCases.filter { !$0.isUnknown }, id: \.self) {
                 decision in
-                Text(decision.rawValue.capitalized, comment: "Policy decision").tag(decision)
+                Text(decisionTitle(decision)).tag(decision)
             }
         } label: {
             title
@@ -133,8 +133,26 @@ public struct NotificationPolicyView: View {
         .disabled(isUpdating)
     }
 
+    /// The three decisions, each with a translator comment: a localised key
+    /// cannot be built from the server's raw value, and "accept" is a word a
+    /// translator wants context for.
+    private func decisionTitle(_ decision: NotificationPolicy.Decision) -> Text {
+        switch decision {
+        case .accept:
+            Text("Accept", comment: "Notification policy decision: mention reaches the inbox")
+        case .filter:
+            Text("Filter", comment: "Notification policy decision: held in the requests inbox")
+        case .drop:
+            Text("Drop", comment: "Notification policy decision: discarded by the server")
+        case .unknownCase:
+            // A state from a newer server than the app: named, not blank, and
+            // never offered for sending.
+            Text("Unknown", comment: "Notification policy decision the app does not know")
+        }
+    }
+
     private func update(
-        key: KeyPath<NotificationPolicy, NotificationPolicy.Decision>,
+        key: ReferenceWritableKeyPath<NotificationPolicy, NotificationPolicy.Decision>,
         value: NotificationPolicy.Decision
     ) async {
         guard var policy, !updatingIDs.contains("\(key)") else { return }

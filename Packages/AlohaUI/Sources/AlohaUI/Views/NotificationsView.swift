@@ -119,10 +119,6 @@ public struct NotificationsView: View {
         flat.filter { Self.matches($0.type, selected: selectedKinds) }
     }
 
-    private var visibleFlat: [MastodonNotification] {
-        flat.filter { Self.matches($0.type, selected: selectedKinds) }
-    }
-
     /// The flat list with an optional "caught up" divider inserted at the
     /// marker position. When the marker notification is in the visible list,
     /// a divider is inserted below it; the marker advances when the next
@@ -240,7 +236,9 @@ public struct NotificationsView: View {
     private func groupRow(_ group: NotificationGroup) -> some View {
         let sample = group.sampleAccountIDs.compactMap { accounts[$0] }
         let status = group.statusID.flatMap { statuses[$0] }
-        let canMuteConversation = status != nil && (group.type == .mention || group.type == .reply)
+        // A reply is a mention: the API has no separate kind, and both are a
+        // message from a person that a conversation can be muted over.
+        let canMuteConversation = status != nil && group.type == .mention
 
         return Button {
             if let status {
@@ -406,7 +404,7 @@ public struct NotificationsView: View {
             .contextMenu {
                 let canMute =
                     notification.status != nil
-                    && (notification.type == .mention || notification.type == .reply)
+                    && notification.type == .mention
                 if canMute, let status = notification.status {
                     Button {
                         onAction(.muteConversation(status))
