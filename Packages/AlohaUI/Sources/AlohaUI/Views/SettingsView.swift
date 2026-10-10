@@ -96,13 +96,13 @@ public struct SettingsView: View {
 
         Form {
             if shows("Accounts", "account accounts add sign switch remove") {
+                // Hoisted out of the row entirely: the compiler could not
+                // check this builder in reasonable time, and the active
+                // account is a fact about the section rather than about a row.
+                let activeAccountID = environment.activeSession?.id
                 Section {
                     ForEach(environment.sessions) { session in
-                        // Hoisted out of the row: the compiler cannot check a
-                        // builder this shape in reasonable time, and the
-                        // comparison is a fact about the row rather than part
-                        // of its layout.
-                        let isActiveAccount = session.id == environment.activeSession?.id
+                        let isActiveAccount = session.id == activeAccountID
                         Button {
                             environment.setActiveAccount(session.id)
                         } label: {

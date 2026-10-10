@@ -58,7 +58,7 @@ public struct NotificationsView: View {
                     {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
-                                Image(systemName: AlohaSymbol.filter)
+                                Image(systemName: "line.3.horizontal.decrease.circle")
                                 Text("Filtered notifications")
                                 Spacer()
                                 Text("\(summary.pendingRequestsCount)")
@@ -316,8 +316,10 @@ public struct NotificationsView: View {
                     idx + 1 < visibleGroups.count,
                     visibleGroups[idx + 1].mostRecentNotificationID != markerID
                 {
-                    advanceCaughtUpNotificationMarker(
-                        to: visibleGroups[idx + 1].mostRecentNotificationID)
+                    Task {
+                        await advanceCaughtUpNotificationMarker(
+                            to: visibleGroups[idx + 1].mostRecentNotificationID)
+                    }
                 }
             }
         }

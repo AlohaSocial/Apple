@@ -8,6 +8,35 @@ import SwiftUI
 /// The notification policy screen: five for_* rows with Accept/Filter/Drop,
 /// plus a link to the filtered-notifications inbox.
 public struct NotificationPolicyView: View {
+    /// The five decision key paths, typed once.
+    ///
+    /// A bare `\.member` literal inside a `@ViewBuilder` is inferred as an
+    /// existential `any WritableKeyPath<…> & Sendable`, which then cannot be
+    /// passed where a concrete `ReferenceWritableKeyPath` is expected. Naming
+    /// them pins the type and keeps the row calls readable.
+    private enum KeyPaths {
+        static let forNotFollowing:
+            ReferenceWritableKeyPath<
+                NotificationPolicy, NotificationPolicy.Decision
+            > = \.forNotFollowing
+        static let forNotFollowers:
+            ReferenceWritableKeyPath<
+                NotificationPolicy, NotificationPolicy.Decision
+            > = \.forNotFollowers
+        static let forNewAccounts:
+            ReferenceWritableKeyPath<
+                NotificationPolicy, NotificationPolicy.Decision
+            > = \.forNewAccounts
+        static let forPrivateMentions:
+            ReferenceWritableKeyPath<
+                NotificationPolicy, NotificationPolicy.Decision
+            > = \.forPrivateMentions
+        static let forLimitedAccounts:
+            ReferenceWritableKeyPath<
+                NotificationPolicy, NotificationPolicy.Decision
+            > = \.forLimitedAccounts
+    }
+
     @Environment(\.alohaPalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -31,23 +60,23 @@ public struct NotificationPolicyView: View {
             if let policy {
                 Section {
                     policyRow(
-                        key: \.forNotFollowing,
+                        key: KeyPaths.forNotFollowing,
                         title: Text("People you don't follow", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: \.forNotFollowers,
+                        key: KeyPaths.forNotFollowers,
                         title: Text("People who don't follow you", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: \.forNewAccounts,
+                        key: KeyPaths.forNewAccounts,
                         title: Text("New accounts", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: \.forPrivateMentions,
+                        key: KeyPaths.forPrivateMentions,
                         title: Text("Unsolicited private mentions", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: \.forLimitedAccounts,
+                        key: KeyPaths.forLimitedAccounts,
                         title: Text("Limited accounts", comment: "Policy row"),
                         policy: policy)
                 } footer: {

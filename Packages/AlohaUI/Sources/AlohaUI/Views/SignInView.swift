@@ -64,10 +64,13 @@ public struct SignInView: View {
     // MARK: - Sections
 
     private var entrySection: some View {
-        // The app's own lockup above the field it belongs to: the screen the
-        // person lands on after the introduction should look like the app the
-        // introduction just showed them, not a bare form.
         Section {
+            // The app's own lockup above the field it belongs to: the screen
+            // the person lands on after the introduction should look like the
+            // app the introduction just showed them, not a bare form. It lives
+            // inside this section's builder, because a view builder is what
+            // this is — a second `Section` here would be a second expression
+            // in a function whose result is one view.
             VStack(spacing: AlohaMetrics.space2) {
                 AlohaLogoMark(size: 56)
                 AlohaWordmark()
@@ -76,11 +79,7 @@ public struct SignInView: View {
             .padding(.bottom, AlohaMetrics.space2)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(Text("Aloha Social", comment: "App name"))
-        }
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
 
-        Section {
             TextField(
                 text: $typed,
                 prompt: Text(verbatim: "cloud.example.com")

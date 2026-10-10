@@ -105,13 +105,16 @@ public struct WelcomeView: View {
                         Image(systemName: "server.rack")
                     }
                 }
-                .textContentType(.URL)
-                .keyboardType(.URL)
                 #if os(iOS)
+                    // Every one of these is an iPhone keyboard concern: a Mac
+                    // has no keyboard type and no text-content type, and the
+                    // suite compiles on one.
+                    .textContentType(.URL)
+                    .keyboardType(.URL)
                     .autocapitalization(.none)
                     .autocorrectionDisabled()
+                    .submitLabel(.go)
                 #endif
-                .submitLabel(.go)
                 .focused($isAddressFocused)
                 .onSubmit(start)
                 .disabled(serverAddress.trimmingCharacters(in: .whitespaces).isEmpty)
