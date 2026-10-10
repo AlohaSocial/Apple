@@ -26,7 +26,8 @@ public struct WelcomeView: View {
                 title: Text("Welcome to Aloha Social", comment: "Onboarding title"),
                 detail: Text(
                     "A calmer client for the social web. Read, post, photograph and message — on your own server, in your own time.",
-                    comment: "Onboarding detail")),
+                    comment: "Onboarding detail"),
+                isHero: true),
             OnboardingPage(
                 symbol: "square.stack.3d.up.fill",
                 title: Text("Six feeds, each its own screen", comment: "Onboarding title"),
@@ -59,6 +60,9 @@ public struct WelcomeView: View {
                     OnboardingPageView(page: content)
                         .tag(index)
                 }
+
+                signInPage
+                    .tag(pages.count)
             }
             #if os(iOS)
                 .tabViewStyle(.page(indexDisplayMode: .never))
@@ -71,12 +75,73 @@ public struct WelcomeView: View {
         .background(palette.background.ignoresSafeArea())
     }
 
+    /// The last page is the beginning: the server address, here, rather than a
+    /// button that opens somewhere else and asks again.
+    private var signInPage: some View {
+        VStack(spacing: AlohaMetrics.space4) {
+            Spacer(minLength: 0)
+
+            Text("Where do you socialize?", comment: "Onboarding sign-in title")
+                .font(.title2.weight(.bold))
+                .multilineTextAlignment(.center)
+
+            Text(
+                "Your server's address — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
+                comment: "Onboarding sign-in detail"
+            )
+            .font(.subheadline)
+            .foregroundStyle(palette.secondaryLabel)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 400)
+
+            VStack(spacing: AlohaMetrics.space2) {
+                TextField(
+                    text: $serverAddress,
+                    prompt: Text("cloud.example.com", comment: "Server address placeholder")
+                ) {
+                    Label {
+                        Text("Server", comment: "Server address field")
+                    } icon: {
+                        Image(systemName: "server.rack")
+                    }
+                }
+                .textContentType(.URL)
+                .keyboardType(.URL)
+                #if os(iOS)
+                    .autocapitalization(.none)
+                    .autocorrectionDisabled()
+                #endif
+                .submitLabel(.go)
+                .focused($isAddressFocused)
+                .onSubmit(start)
+                .disabled(serverAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+
+                Button(action: start) {
+                    Text("Continue", comment: "Onboarding sign-in action")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.alohaProminent)
+                .disabled(serverAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, AlohaMetrics.space5)
+    }
+
+    /// Hands what was typed to the sign-in flow, so the address is typed once
+    /// here rather than again on the next screen.
+    private func start() {
+        let typed = serverAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        onAddAccount(typed.isEmpty ? nil : typed)
+    }
+
     private var footer: some View {
         VStack(spacing: AlohaMetrics.space3) {
             // Owned rather than `.tabViewStyle(.page)`'s indicator: that style
             // does not exist on every platform, and four dots are cheap.
             HStack(spacing: AlohaMetrics.space2) {
-                ForEach(pages.indices, id: \.self) { index in
+                ForEach(0..<pageCount, id: \.self) { index in
                     Circle()
                         .fill(index == page ? palette.accent : palette.separator)
                         .frame(width: index == page ? 9 : 6, height: index == page ? 9 : 6)
@@ -85,40 +150,35 @@ public struct WelcomeView: View {
             }
             .accessibilityHidden(true)
 
-            let isLast = page == pages.count - 1
-            Button {
-                if isLast {
-                    onAddAccount()
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { page += 1 }
-                }
-            } label: {
-                Text(
-                    isLast ? "Add your account" : "Continue", comment: "Onboarding action"
-                )
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.alohaProminent)
-
-            if isLast {
-                Text(
-                    "You will need the address of your server — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
-                    comment: "Onboarding footnote"
-                )
-                .font(.caption)
-                .foregroundStyle(palette.tertiaryLabel)
-                .multilineTextAlignment(.center)
-                .transition(.opacity)
-            } else {
+            if page < pageCount - 1 {
                 Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { page += 1 }
+                } label: {
+                    Text("Continue", comment: "Onboarding action")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.alohaProminent)
+
+                Button {
+                    // Straight to the page you sign in on, where the address
+                    // already is.
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        page = pages.count - 1
+                        page = pageCount - 1
+                        isAddressFocused = true
                     }
                 } label: {
                     Text("Skip", comment: "Onboarding action")
                 }
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(palette.secondaryLabel)
+            } else {
+                Text(
+                    "Don't know your address? Your server's website has it, or ask whoever runs it.",
+                    comment: "Onboarding footnote"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.tertiaryLabel)
+                .multilineTextAlignment(.center)
                 .transition(.opacity)
             }
         }
@@ -132,6 +192,12 @@ private struct OnboardingPage: Identifiable {
     let symbol: String
     let title: Text
     let detail: Text
+    /// Where the page also shows the six feeds as tiles: people believe a
+    /// picture of the thing they will use more than a paragraph about it.
+    var showsModeTour: Bool = false
+    /// The hero page carries the app's own lockup rather than a symbol in a
+    /// glass tile — an app's first screen should look like that app.
+    var isHero: Bool = false
 }
 
 private struct OnboardingPageView: View {
@@ -143,31 +209,103 @@ private struct OnboardingPageView: View {
         VStack(spacing: AlohaMetrics.space5) {
             Spacer(minLength: 0)
 
-            Image(systemName: page.symbol)
-                .font(.system(size: 62))
-                .foregroundStyle(palette.accent)
-                .frame(width: 148, height: 148)
-                .unifiedGlass(
-                    .regular,
-                    in: RoundedRectangle(
-                        cornerRadius: AlohaMetrics.cornerLarge * 2, style: .continuous)
-                )
-                .accessibilityHidden(true)
+            if page.isHero {
+                // The app's own mark and wordmark: the first screen a person
+                // sees should look like the app they are about to use.
+                AlohaLogo()
+            } else {
+                Image(systemName: page.symbol)
+                    .font(.system(size: 62))
+                    .foregroundStyle(palette.accent)
+                    .frame(width: 148, height: 148)
+                    .unifiedGlass(
+                        .regular,
+                        in: RoundedRectangle(
+                            cornerRadius: AlohaMetrics.cornerLarge * 2, style: .continuous)
+                    )
+                    .accessibilityHidden(true)
+            }
 
             VStack(spacing: AlohaMetrics.space3) {
-                page.title
-                    .font(.title.weight(.bold))
-                    .multilineTextAlignment(.center)
-                page.detail
-                    .font(.body)
-                    .foregroundStyle(palette.secondaryLabel)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 420)
+                if page.isHero {
+                    page.detail
+                        .font(.body)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+                } else {
+                    page.title
+                        .font(.title.weight(.bold))
+                        .multilineTextAlignment(.center)
+                    page.detail
+                        .font(.body)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+                }
+            }
+
+            if page.showsModeTour {
+                // The six feeds as they actually appear, with the same symbols
+                // the sidebar uses — an introduction that shows the app rather
+                // than describing it.
+                ModeTour()
             }
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, AlohaMetrics.space5)
+    }
+}
+
+/// The six feeds, as tiles, on the introduction's second page.
+///
+/// These are the same symbols and names the sidebar and tab bar carry, so
+/// nothing here is invented for the tour: what a person sees is what they get.
+private struct ModeTour: View {
+    @Environment(\.alohaPalette) private var palette
+
+    var body: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 96), spacing: AlohaMetrics.space2)],
+            spacing: AlohaMetrics.space2
+        ) {
+            ForEach(FeedMode.allCases) { mode in
+                VStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: mode.symbolName)
+                        .font(.title3)
+                        .foregroundStyle(mode == .home ? palette.accent : palette.secondaryLabel)
+                        .frame(width: 44, height: 44)
+                        .unifiedGlass(
+                            .subtle,
+                            in: RoundedRectangle(
+                                cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+                        )
+                    Text(modeTitle(mode))
+                        .font(.caption.weight(.medium))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .frame(maxWidth: 420)
+        .accessibilityLabel(
+            Text(
+                "The six feeds: Home, Photos, Video, Shorts, News and Audio.",
+                comment: "Mode tour")
+        )
+    }
+
+    private func modeTitle(_ mode: FeedMode) -> String {
+        switch mode {
+        case .home: String(localized: "Home", comment: "Feed mode")
+        case .photos: String(localized: "Photos", comment: "Feed mode")
+        case .video: String(localized: "Video", comment: "Feed mode")
+        case .shorts: String(localized: "Shorts", comment: "Feed mode")
+        case .news: String(localized: "News", comment: "Feed mode")
+        case .audio: String(localized: "Audio", comment: "Feed mode")
+        }
     }
 }
 

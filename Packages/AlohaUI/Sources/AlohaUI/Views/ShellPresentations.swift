@@ -50,6 +50,9 @@ struct ShellSheets: ViewModifier {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @Binding var isPresentingSignIn: Bool
+    /// What the introduction's last page had in its field, handed to the
+    /// sign-in screen so the address is typed once.
+    @Binding var signInAddress: String
     @Binding var composing: ComposerPresentation?
     @Binding var reportTarget: ReportTarget?
     @Binding var editing: EditRequest?
@@ -58,7 +61,9 @@ struct ShellSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $isPresentingSignIn) { SignInView() }
+            .sheet(isPresented: $isPresentingSignIn) {
+                SignInView(serverAddress: signInAddress)
+            }
             .sheet(item: whenSignedIn($composing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(

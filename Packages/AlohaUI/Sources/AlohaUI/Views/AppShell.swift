@@ -22,6 +22,9 @@ public struct AppShell: View {
     @State private var selectedSource: TimelineSource = .home
     @State private var path: [Route] = []
     @State private var isPresentingSignIn = false
+    /// The address typed on the introduction, for the sign-in screen to open
+    /// with — or empty when the person chose "skip" and will type it there.
+    @State private var signInAddress = ""
     @State private var composing: ComposerPresentation?
     @Namespace private var mediaTransition
     @State private var isCelebrating = false
@@ -76,6 +79,7 @@ public struct AppShell: View {
             .modifier(
                 ShellSheets(
                     isPresentingSignIn: $isPresentingSignIn,
+                    signInAddress: $signInAddress,
                     composing: $composing,
                     reportTarget: $reportTarget,
                     editing: $editing,
@@ -124,7 +128,10 @@ public struct AppShell: View {
                 // serving the actions (docs/03 §6).
                 .id(session.id)
         } else {
-            WelcomeView { isPresentingSignIn = true }
+            WelcomeView { address in
+                signInAddress = address ?? ""
+                isPresentingSignIn = true
+            }
         }
     }
 

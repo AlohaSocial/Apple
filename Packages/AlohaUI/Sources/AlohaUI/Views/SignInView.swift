@@ -16,7 +16,12 @@ public struct SignInView: View {
     @State private var typed = ""
     @FocusState private var isFieldFocused: Bool
 
-    public init() {}
+    /// Opens with an address already in the field — the one the person typed
+    /// on the introduction's last page, rather than asking them to type it
+    /// twice.
+    public init(serverAddress: String = "") {
+        _typed = State(initialValue: serverAddress)
+    }
 
     public var body: some View {
         NavigationStack {
