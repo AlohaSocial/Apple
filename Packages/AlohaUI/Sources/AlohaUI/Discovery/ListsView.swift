@@ -33,6 +33,14 @@ public struct ListsView: View {
                 errorStrip(errorMessage)
             }
 
+            // A first page arriving is a list in progress, not a blank screen
+            // with a spinner floating over it.
+            if isLoading && lists.isEmpty && followedTags.isEmpty {
+                SkeletonListRow(person: 5)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+
             Section {
                 ForEach(lists) { list in
                     HStack {
@@ -182,11 +190,6 @@ public struct ListsView: View {
             }
         }
         .alohaGround(palette)
-        .overlay {
-            if isLoading && lists.isEmpty && followedTags.isEmpty {
-                ProgressView()
-            }
-        }
         .navigationTitle(Text("Your lists", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
