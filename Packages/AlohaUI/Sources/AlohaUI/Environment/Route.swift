@@ -86,6 +86,14 @@ public enum Route: Codable, Hashable, Sendable {
 public enum RouteResolver {
     public static let scheme = "alohasocial"
 
+    /// Posted when `alohasocial://compose` is opened. The composer is a sheet
+    /// from the shell rather than a navigation destination, so a deep link to
+    /// it has to arrive as something the shell is watching for.
+    public static let composeRequested = Notification.Name("alohasocial.compose.requested")
+
+    /// Returns the Route the URL names, or nil where the URL asks for
+    /// something that is not a destination — the sign-in callback, and the
+    /// compose request.
     public static func route(for url: URL) -> Route? {
         guard url.scheme == scheme else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
@@ -127,7 +135,13 @@ public enum RouteResolver {
         case "settings": return .settings
         case "explore": return .explore
         case "lists": return .lists
-        case "compose": return .drafts
+        // "compose" opens the composer rather than any of the Routes: the
+        // composer is presented as a sheet from the shell, not pushed onto a
+        // navigation stack, so there is no destination to name. Sending the
+        // person to Drafts — which is what this used to do — meant a widget
+        // button labelled "New post" landed them in a list of things they had
+        // not written yet (docs/09 §8).
+        case "compose": return nil
         default: return nil
         }
     }
