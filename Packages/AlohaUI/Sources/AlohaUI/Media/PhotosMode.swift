@@ -19,7 +19,10 @@ public struct PhotosModeView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var model: TimelineModel
-    @AppStorage("aloha.photosLayout") private var layout: Layout = .feed
+    // Grid is the default, per docs/06 §5: a 3-column square grid is what a
+    // photo mode opens on, and the feed is the slower, deliberate reading of
+    // the same posts. Remembered per device.
+    @AppStorage("aloha.photosLayout") private var layout: Layout = .grid
     @State private var stories: [Story] = []
     @State private var playingStoriesFrom: Int?
 

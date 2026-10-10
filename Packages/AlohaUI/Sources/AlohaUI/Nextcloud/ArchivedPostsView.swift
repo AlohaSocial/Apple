@@ -84,7 +84,13 @@ public struct ArchivedPostsView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .overlay {
-            if isLoading && statuses.isEmpty { ProgressView() }
+            if isLoading && statuses.isEmpty {
+                // A first page arriving is a list in progress, not a blank
+                // screen with a spinner floating over it.
+                SkeletonListRow(person: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
         }
         .navigationTitle(Text("Archived posts", comment: "Screen title"))
         .task { await load() }

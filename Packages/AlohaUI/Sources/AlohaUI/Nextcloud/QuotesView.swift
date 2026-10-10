@@ -73,7 +73,13 @@ public struct QuotesView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .overlay {
-            if isLoading && quotes.isEmpty { ProgressView() }
+            if isLoading && quotes.isEmpty {
+                // A first page arriving is a list in progress, not a blank
+                // screen with a spinner floating over it.
+                SkeletonListRow(person: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
         }
         .navigationTitle(Text("Quotes", comment: "Screen title"))
         .task { await load() }

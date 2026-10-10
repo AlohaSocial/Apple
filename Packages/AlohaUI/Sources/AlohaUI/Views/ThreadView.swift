@@ -45,13 +45,9 @@ public struct ThreadView: View {
                 }
 
                 if isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .listRowBackground(palette.background)
-                    .listRowSeparator(.hidden)
+                    SkeletonListRow(person: 3)
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
                 }
 
                 if let errorMessage {
