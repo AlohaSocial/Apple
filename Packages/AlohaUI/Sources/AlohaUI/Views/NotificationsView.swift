@@ -102,7 +102,9 @@ public struct NotificationsView: View {
                 .background(palette.background)
         }
         .overlay {
-            if isLoading && groups.isEmpty && flat.isEmpty { ProgressView() }
+            if isLoading && groups.isEmpty && flat.isEmpty {
+                SkeletonListRow(person: 4)
+            }
         }
         .navigationTitle(Text("Activities", comment: "Screen title"))
         .refreshable { await load() }

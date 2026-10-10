@@ -56,7 +56,9 @@ public struct EditHistorySheet: View {
             .listStyle(.plain)
             .alohaGround(palette)
             .overlay {
-                if isLoading && edits.isEmpty { ProgressView() }
+                if isLoading && edits.isEmpty {
+                    SkeletonListRow(text: 3)
+                }
             }
             .navigationTitle(Text("Edit history", comment: "Screen title"))
             #if os(iOS)

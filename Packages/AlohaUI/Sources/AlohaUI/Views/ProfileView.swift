@@ -68,7 +68,9 @@ public struct ProfileView: View {
                     Text(errorMessage)
                 }
             } else {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The profile arriving is the shape of a profile.
+                SkeletonListRow(person: 3)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .navigationTitle(account?.bestDisplayName ?? "")

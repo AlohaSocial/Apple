@@ -74,7 +74,9 @@ public struct DraftsView: View {
         }
         .alohaGround(palette)
         .overlay {
-            if isLoading && drafts.isEmpty { ProgressView() }
+            if isLoading && drafts.isEmpty {
+                SkeletonListRow(text: 4)
+            }
         }
         .navigationTitle(Text("Drafts", comment: "Screen title"))
         .task { await load() }
@@ -175,7 +177,9 @@ public struct NotificationRequestsView: View {
         }
         .alohaGround(palette)
         .overlay {
-            if isLoading && requests.isEmpty { ProgressView() }
+            if isLoading && requests.isEmpty {
+                SkeletonListRow(person: 4)
+            }
         }
         .navigationTitle(Text("Filtered notifications", comment: "Screen title"))
         .task { await load() }
