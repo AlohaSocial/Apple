@@ -8,36 +8,32 @@ public struct WelcomeView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
 
-    private let onAddAccount: () -> Void
+    /// Called with what the last page's field holds, so the sign-in screen
+    /// opens with the address already in it rather than asking again.
+    private let onAddAccount: (String?) -> Void
 
-    public init(onAddAccount: @escaping () -> Void) {
+    public init(onAddAccount: @escaping (String?) -> Void = { _ in }) {
         self.onAddAccount = onAddAccount
     }
 
-    /// What the introduction says, one page per promise the app makes. Each
-    /// page is a sentence somebody can agree with before they hand over a
-    /// server address — the first screen is where the app explains itself,
-    /// not a splash to be tapped away.
+    /// The introduction, in the order a person can agree with it: what this
+    /// is, what it looks like, what it will not do to you, and where to start.
+    /// The last page is the beginning itself, not a button that begins.
     private var pages: [OnboardingPage] {
         [
             OnboardingPage(
-                symbol: "server.rack",
-                title: Text("Your server, your rules", comment: "Onboarding title"),
+                symbol: "bubble.left.and.text.bubble.right",
+                title: Text("Welcome to Aloha Social", comment: "Onboarding title"),
                 detail: Text(
-                    "Aloha Social is a client, not a platform. Sign in to the Nextcloud Social or Mastodon server you already use — your posts, photos and messages stay there.",
+                    "A calmer client for the social web. Read, post, photograph and message — on your own server, in your own time.",
                     comment: "Onboarding detail")),
             OnboardingPage(
                 symbol: "square.stack.3d.up.fill",
                 title: Text("Six feeds, each its own screen", comment: "Onboarding title"),
                 detail: Text(
-                    "Home is everything. Photos is a grid of pictures. Video remembers where you got to. Shorts is full screen. News and Audio are off until you ask for them.",
-                    comment: "Onboarding detail")),
-            OnboardingPage(
-                symbol: "bubble.left.and.exclamationmark.right",
-                title: Text("The whole fediverse, one inbox", comment: "Onboarding title"),
-                detail: Text(
-                    "Follow people on other servers and read everything in one place. Direct messages, notifications and mentions all work across the federation.",
-                    comment: "Onboarding detail")),
+                    "Home is everything. Photos is a grid of pictures. Video remembers where you got to. Shorts is full screen.",
+                    comment: "Onboarding detail"),
+                showsModeTour: true),
             OnboardingPage(
                 symbol: "lock.shield.fill",
                 title: Text("Quiet by default", comment: "Onboarding title"),
@@ -48,6 +44,13 @@ public struct WelcomeView: View {
     }
 
     @State private var page = 0
+    /// The last page's field, seeded into the sign-in flow so the address is
+    /// typed once, here, where the app already has your attention.
+    @State private var serverAddress = ""
+    @FocusState private var isAddressFocused: Bool
+
+    /// The tour's pages plus the page you sign in on.
+    private var pageCount: Int { pages.count + 1 }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -258,8 +261,10 @@ public struct SidebarView: View {
         }
         .padding(.horizontal, AlohaMetrics.space3)
         .padding(.vertical, AlohaMetrics.space2)
-        .background(
-            palette.surfaceRaised,
+        // Glass, the way a field in a sidebar is drawn: a material with a
+        // hairline edge, not a flat fill that ignores what is behind it.
+        .unifiedGlass(
+            .subtle,
             in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
         )
         .padding(.horizontal, AlohaMetrics.space3)
@@ -283,10 +288,13 @@ public struct SidebarView: View {
                 ForEach(session.visibleModes, id: \.self) { mode in
                     modeRow(mode)
                         .tag(SidebarItem.mode(mode))
-                        .listRowBackground(
-                            selection == .mode(mode)
-                                ? palette.accent.opacity(0.12) : Color.clear
-                        )
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        // A selected sidebar row is Liquid Glass: the system's
+                        // own way of saying "this is where you are", rather
+                        // than an accent wash that ignores what is behind it.
+                        .selectedGlass(
+                            selection == .mode(mode), tint: palette.accent)
                 }
 
                 row(
@@ -342,6 +350,9 @@ public struct SidebarView: View {
                         isSelected ? palette.accent.opacity(0.14) : palette.surfaceRaised,
                         in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
+                    // The tile of the mode you are reading is the one lit
+                    // element in an unlit column, so it takes the material.
+                    .selectedGlass(isSelected, tint: palette.accent)
                 Text(title(for: mode))
                     .fontWeight(isSelected ? .semibold : .regular)
                 Spacer(minLength: 0)
@@ -358,9 +369,16 @@ public struct SidebarView: View {
     /// `NcAppNavigationSettings`: the avatar and display name are the toggle,
     /// the drawer is collapsed until you click it, and it holds the pages that
     /// are about you rather than about a timeline.
+    ///
+    /// Everything in the drawer is native: sidebar rows, the system's
+    /// borderless button style, `Label` with `.titleAndIcon`, and insets that
+    /// match the list above it. The hand-rolled selection pill it used to draw
+    /// is gone — a selected sidebar row takes the accent on its own label, the
+    /// way Mail and Notes highlight theirs.
     private var accountDrawer: some View {
         VStack(spacing: 0) {
             Divider()
+                .padding(.leading, AlohaMetrics.space3)
 
             if isAccountExpanded {
                 // Sized to its rows, and only scrolls when there are more than
@@ -378,7 +396,7 @@ public struct SidebarView: View {
     }
 
     private var drawerContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 2) {
             drawerRow("My profile", symbol: "person.crop.circle", route: myProfile)
             // Activities is about you rather than about a feed, so it sits with
             // the rest of what is yours rather than among the timelines.
@@ -396,7 +414,7 @@ public struct SidebarView: View {
             // The web is one account per Nextcloud; this app is not, so
             // switching belongs with everything else that is about who you are.
             if environment.sessions.count > 1 {
-                Divider().padding(.vertical, AlohaMetrics.space1)
+                insetDivider
                 ForEach(environment.sessions.filter { $0.id != session.id }) { other in
                     drawerButton(
                         other.snapshot.bestDisplayName,
@@ -410,14 +428,22 @@ public struct SidebarView: View {
                 }
             }
 
-            Divider().padding(.vertical, AlohaMetrics.space1)
+            insetDivider
             drawerButton(
                 String(localized: "Add account…", comment: "Account switcher action"),
                 symbol: "person.badge.plus",
                 accessibilityLabel: Text("Add account", comment: "Account switcher action"),
                 action: onAddAccount)
         }
-        .padding(.vertical, AlohaMetrics.space1)
+        .padding(.vertical, AlohaMetrics.space2)
+    }
+
+    /// A divider that starts where the text starts, the way a grouped list
+    /// separates its sections rather than running a rule under the whole row.
+    private var insetDivider: some View {
+        Divider()
+            .padding(.leading, AlohaMetrics.space3 + AlohaMetrics.space3 + 20)
+            .padding(.vertical, AlohaMetrics.space1)
     }
 
     private var accountToggle: some View {
@@ -443,10 +469,11 @@ public struct SidebarView: View {
 
                 Spacer(minLength: 0)
 
-                Image(systemName: "chevron.up")
+                // The system's own affordance for a drawer that opens and
+                // closes, rather than a chevron that rotates by hand.
+                Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2)
                     .foregroundStyle(palette.tertiaryLabel)
-                    .rotationEffect(.degrees(isAccountExpanded ? 180 : 0))
             }
             .padding(AlohaMetrics.space3)
             .contentShape(Rectangle())
@@ -486,19 +513,21 @@ public struct SidebarView: View {
         _ title: String, symbol: String, accessibilityLabel: Text,
         isSelected: Bool = false, action: @escaping () -> Void
     ) -> some View {
+        // Native sidebar rows: a label, the borderless style, and a selection
+        // that tints the row's own content instead of a drawn-on pill.
         Button(action: action) {
-            HStack(spacing: AlohaMetrics.space3) {
-                Image(systemName: symbol)
-                    .frame(width: 20)
-                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
+            Label {
                 Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(palette.label)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+                    .foregroundStyle(isSelected ? palette.accent : palette.label)
+            } icon: {
+                Image(systemName: symbol)
+                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
             }
+            .labelStyle(.titleAndIcon)
+            .font(.subheadline)
             .padding(.horizontal, AlohaMetrics.space3)
             .padding(.vertical, AlohaMetrics.space2)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 isSelected ? palette.accent.opacity(0.12) : .clear,
                 in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
@@ -506,7 +535,7 @@ public struct SidebarView: View {
             .padding(.horizontal, AlohaMetrics.space2)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
@@ -527,6 +556,9 @@ public struct SidebarView: View {
             Image(systemName: symbol)
         }
         .tag(SidebarItem.route(route))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .selectedGlass(selection == .route(route), tint: palette.accent)
     }
 
     private var optionalSelection: Binding<SidebarItem?> {
