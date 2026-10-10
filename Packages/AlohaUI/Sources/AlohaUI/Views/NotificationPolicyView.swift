@@ -54,6 +54,17 @@ public struct NotificationPolicyView: View {
                     Text(
                         "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered notifications screen instead of your inbox.",
                         comment: "Notification policy explanation")
+
+                    // docs/05 §6: on Nextcloud Social `drop` behaves as
+                    // `filter` — the server has no fourth action. Saying so is
+                    // not a footnote to hide behind; a person who picked "Drop"
+                    // and later finds the message held in the inbox has been
+                    // lied to, however politely.
+                    if session.capabilities.isNextcloudSocial {
+                        Text(
+                            "On this server \"Drop\" holds messages out of your inbox the same way \"Filter\" does — there is no way to refuse them outright, and they are never sent back to their sender.",
+                            comment: "Notification policy drop footnote")
+                    }
                 }
 
                 if let summary = policy.summary,
