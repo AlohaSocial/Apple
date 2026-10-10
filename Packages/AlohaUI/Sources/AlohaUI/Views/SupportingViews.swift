@@ -421,6 +421,11 @@ public struct SidebarView: View {
         // plain one. Bridging here keeps the caller's binding non-optional.
         // The shape of Nextcloud Social's own navigation: one primary group of
         // timelines, then Explore, then everything about your own account.
+        //
+        // `.sidebar` is the style that makes the list *be* a sidebar: the
+        // system's own insets, section headings and — the point — the selected
+        // row's highlight. Drawing our own on top of the default style is what
+        // made this look like a List wearing a sidebar costume.
         List(selection: optionalSelection) {
             Section {
                 ForEach(session.visibleModes, id: \.self) { mode in
@@ -428,11 +433,6 @@ public struct SidebarView: View {
                         .tag(SidebarItem.mode(mode))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        // A selected sidebar row is Liquid Glass: the system's
-                        // own way of saying "this is where you are", rather
-                        // than an accent wash that ignores what is behind it.
-                        .selectedGlass(
-                            selection == .mode(mode), tint: palette.accent)
                 }
 
                 row(
@@ -469,6 +469,11 @@ public struct SidebarView: View {
                 Text("Explore", comment: "Sidebar section")
             }
         }
+        .listStyle(.sidebar)
+        // The sidebar is the one column that should not scroll under the
+        // content: it is navigation, and a navigation item that moves while
+        // you are reading is a moving target.
+        .scrollContentBackground(.hidden)
     }
 
     /// A mode row: the symbol in its own tile, filled while selected. A tile
@@ -488,9 +493,6 @@ public struct SidebarView: View {
                         isSelected ? palette.accent.opacity(0.14) : palette.surfaceRaised,
                         in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
-                    // The tile of the mode you are reading is the one lit
-                    // element in an unlit column, so it takes the material.
-                    .selectedGlass(isSelected, tint: palette.accent)
                 Text(title(for: mode))
                     .fontWeight(isSelected ? .semibold : .regular)
                 Spacer(minLength: 0)
@@ -514,24 +516,38 @@ public struct SidebarView: View {
     /// is gone — a selected sidebar row takes the accent on its own label, the
     /// way Mail and Notes highlight theirs.
     private var accountDrawer: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .padding(.leading, AlohaMetrics.space3)
+        // One container for every glass shape in the drawer, the way Apple's
+        // Landmarks sample groups its badges and toggle: neighbouring shapes
+        // blend rather than each blurring alone, and the toggle can morph into
+        // the drawer it opens.
+        GlassEffectContainer(spacing: AlohaMetrics.space3) {
+            VStack(spacing: 0) {
+                Divider()
+                    .padding(.leading, AlohaMetrics.space3)
 
-            if isAccountExpanded {
-                // Sized to its rows, and only scrolls when there are more than
-                // fit: a ScrollView on its own claims all the height offered.
-                ViewThatFits(in: .vertical) {
-                    drawerContent
-                    ScrollView { drawerContent }
+                if isAccountExpanded {
+                    // Sized to its rows, and only scrolls when there are more
+                    // than fit: a ScrollView on its own claims all the height
+                    // offered.
+                    ViewThatFits(in: .vertical) {
+                        drawerContent
+                        ScrollView { drawerContent }
+                    }
+                    .glassEffectID("drawer", in: drawerNamespace)
+                    .glassEffectTransition(.materialize)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
 
-            accountToggle
+                accountToggle
+                    .glassEffectID("toggle", in: drawerNamespace)
+            }
         }
         .background(palette.surface)
     }
+
+    /// The namespace that lets the toggle morph into the drawer it opens,
+    /// rather than two unrelated blurs appearing and disappearing.
+    @Namespace private var drawerNamespace
 
     private var drawerContent: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -615,6 +631,9 @@ public struct SidebarView: View {
             }
             .padding(AlohaMetrics.space3)
             .contentShape(Rectangle())
+            // The toggle's own glass, so it has a material to morph from and
+            // to: an id without a shape is an id with nothing to match.
+            .glassEffect(.regular.interactive())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
@@ -676,6 +695,9 @@ public struct SidebarView: View {
         .buttonStyle(.borderless)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        // Interactive glass: a row answers the pointer and the touch, so its
+        // material responds the way the system's own controls do.
+        .selectedGlass(isSelected, tint: palette.accent)
     }
 
     private var myProfile: Route {
@@ -696,7 +718,6 @@ public struct SidebarView: View {
         .tag(SidebarItem.route(route))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .selectedGlass(selection == .route(route), tint: palette.accent)
     }
 
     private var optionalSelection: Binding<SidebarItem?> {
