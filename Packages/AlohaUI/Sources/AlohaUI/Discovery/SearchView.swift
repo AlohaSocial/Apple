@@ -134,6 +134,11 @@ public struct SearchView: View {
         }
         .onChange(of: query) { _, value in schedule(value) }
         .onSubmit(of: .search) { remember(query) }
+        // A pull is somebody asking the same question again, so the search on
+        // screen re-runs — every other list in the app refreshes on a pull.
+        .refreshable {
+            await schedule(query, immediately: true)?.value
+        }
         .task { recents = SearchHistory.load() }
         .onDisappear {
             searchTask?.cancel()
@@ -213,7 +218,10 @@ public struct SearchView: View {
         .listRowSeparator(.hidden)
     }
 
-    private func schedule(_ value: String, immediately: Bool = false) {
+    /// Signs up a run of the search on screen. Returns it, so a caller with
+    /// something to wait for — the pull-to-refresh gesture — can.
+    @discardableResult
+    private func schedule(_ value: String, immediately: Bool = false) -> Task<Void, Never>? {
         searchTask?.cancel()
         let id = UUID()
         searchID = id
@@ -222,7 +230,7 @@ public struct SearchView: View {
             isSearching = false
             results = SearchResults()
             errorMessage = nil
-            return
+            return nil
         }
         isSearching = true
         errorMessage = nil
@@ -231,6 +239,7 @@ public struct SearchView: View {
             guard !Task.isCancelled else { return }
             await search(trimmed, id: id)
         }
+        return searchTask
     }
 
     private func search(_ value: String, id: UUID) async {
