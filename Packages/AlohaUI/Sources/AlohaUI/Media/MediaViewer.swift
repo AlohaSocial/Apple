@@ -156,7 +156,7 @@ public struct MediaViewer: View {
                 }
             }
             .foregroundStyle(.white)
-            .padding(metrics.space3)
+            .padding(AlohaMetrics.space3)
 
             Spacer()
         }
@@ -329,7 +329,7 @@ public struct VideoAttachmentPlayer: View {
                         .accessibilityLabel(Text("Share video", comment: "Video action"))
                     }
                     .foregroundStyle(.white)
-                    .padding(metrics.space3)
+                    .padding(AlohaMetrics.space3)
 
                     Spacer()
 
@@ -337,7 +337,7 @@ public struct VideoAttachmentPlayer: View {
                         Spacer()
                         VideoControlsOverlay(player: player)
                     }
-                    .padding(metrics.space3)
+                    .padding(AlohaMetrics.space3)
                 }
             }
         }

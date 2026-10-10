@@ -31,7 +31,7 @@ public struct AlohaErrorStrip: View {
     }
 
     public var body: some View {
-        HStack(spacing: metrics.space2) {
+        HStack(spacing: AlohaMetrics.space2) {
             Image(systemName: AlohaSymbol.warning)
                 .accessibilityHidden(true)
 
@@ -39,7 +39,7 @@ public struct AlohaErrorStrip: View {
                 .font(.caption)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Spacer(minLength: metrics.space2)
+            Spacer(minLength: AlohaMetrics.space2)
 
             if let retry {
                 Button(action: retry) {
@@ -50,11 +50,11 @@ public struct AlohaErrorStrip: View {
             }
         }
         .foregroundStyle(palette.destructive)
-        .padding(.horizontal, metrics.space3)
-        .padding(.vertical, metrics.space2)
+        .padding(.horizontal, AlohaMetrics.space3)
+        .padding(.vertical, AlohaMetrics.space2)
         .background(
             palette.surfaceRaised,
-            in: RoundedRectangle(cornerRadius: metrics.cornerSmall, style: .continuous)
+            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
         )
         // The strip states what is wrong; it does not also shout twice.
         .accessibilityElement(children: .combine)

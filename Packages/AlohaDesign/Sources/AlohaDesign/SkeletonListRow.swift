@@ -60,32 +60,32 @@ public struct SkeletonListRow: View {
     private var row: some View {
         switch kind {
         case .person:
-            HStack(spacing: metrics.space3) {
+            HStack(spacing: AlohaMetrics.space3) {
                 Circle()
                     .fill(fill)
                     .frame(width: metrics.avatarSize, height: metrics.avatarSize)
-                VStack(alignment: .leading, spacing: metrics.space2) {
+                VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                     bar(width: 160, height: 12)
                     bar(width: 100, height: 10)
                 }
             }
-            .padding(.vertical, metrics.space2)
-            .padding(.horizontal, metrics.space3)
+            .padding(.vertical, AlohaMetrics.space2)
+            .padding(.horizontal, AlohaMetrics.space3)
 
         case .text:
-            VStack(alignment: .leading, spacing: metrics.space2) {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 bar(width: 140, height: 12)
                 bar(width: nil, height: 10)
             }
-            .padding(.vertical, metrics.space2)
-            .padding(.horizontal, metrics.space3)
+            .padding(.vertical, AlohaMetrics.space2)
+            .padding(.horizontal, AlohaMetrics.space3)
 
         case .block:
-            RoundedRectangle(cornerRadius: metrics.cornerMedium, style: .continuous)
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
                 .fill(fill)
                 .frame(height: 132)
-                .padding(.vertical, metrics.space2)
-                .padding(.horizontal, metrics.space3)
+                .padding(.vertical, AlohaMetrics.space2)
+                .padding(.horizontal, AlohaMetrics.space3)
         }
     }
 

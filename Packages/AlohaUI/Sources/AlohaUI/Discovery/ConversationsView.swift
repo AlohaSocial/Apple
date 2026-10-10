@@ -97,8 +97,8 @@ public struct ConversationsView: View {
                         .listRowSeparator(.hidden)
                         .listRowInsets(
                             EdgeInsets(
-                                top: metrics.space2, leading: metrics.space3,
-                                bottom: metrics.space2, trailing: metrics.space3)
+                                top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
+                                bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space3)
                         )
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
@@ -406,18 +406,18 @@ private struct ConversationSkeletonRow: View {
     @State private var phase: Double = -1
 
     var body: some View {
-        HStack(spacing: metrics.space3) {
+        HStack(spacing: AlohaMetrics.space3) {
             Circle()
                 .fill(fill)
                 .frame(width: metrics.avatarSize, height: metrics.avatarSize)
 
-            VStack(alignment: .leading, spacing: metrics.space2) {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 bar(width: 140, height: 12)
                 bar(width: nil, height: 10)
                 bar(width: 200, height: 10)
             }
         }
-        .padding(.vertical, metrics.space2)
+        .padding(.vertical, AlohaMetrics.space2)
         .task {
             guard !reduceMotion else { return }
             withAnimation(.linear(duration: 1.3).repeatForever(autoreverses: false)) {

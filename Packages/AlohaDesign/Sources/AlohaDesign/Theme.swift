@@ -431,40 +431,6 @@ public enum PlatformBehavior {
     }
 }
 
-/// Platform-adaptive view modifier for native behavior.
-///
-/// The closures are stored as `AnyView` producers rather than as
-/// `(() -> some View)?` — an opaque result type is only legal in a function's
-/// declared return position, and a *stored property* of a closure returning
-/// `some View` does not compile. The type is erased once, at construction,
-/// which is the only place the concrete type is known.
-public struct PlatformAdaptive: ViewModifier {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
-    private let compact: (() -> AnyView)?
-    private let regular: (() -> AnyView)?
-
-    public init<Compact: View, Regular: View>(
-        @ViewBuilder compact: (() -> Compact)? = nil,
-        @ViewBuilder regular: (() -> Regular)? = nil
-    ) {
-        self.compact = compact.map { build in { AnyView(build()) } }
-        self.regular = regular.map { build in { AnyView(build()) } }
-    }
-
-    public func body(content: Content) -> some View {
-        #if os(iOS)
-            if horizontalSizeClass == .compact {
-                if let compact { compact() } else { content }
-            } else {
-                if let regular { regular() } else { content }
-            }
-        #else
-            if let regular { regular() } else { content }
-        #endif
-    }
-}
-
 /// Modern glass material intensities for native UI layering.
 ///
 /// A card over content, a sheet over the screen, a toolbar over the list —
@@ -490,18 +456,6 @@ public enum AlohaGlass: Sendable {
 }
 
 extension View {
-    /// Applies platform-adaptive behaviour: one layout on a compact width,
-    /// another on a regular one, and the receiver where no replacement was
-    /// offered.
-    public func platformAdaptive<Compact: View, Regular: View>(
-        @ViewBuilder compact: (() -> Compact)? = nil,
-        @ViewBuilder regular: (() -> Regular)? = nil
-    ) -> some View {
-        modifier(
-            PlatformAdaptive(
-                compact: compact.map { build in { build() } },
-                regular: regular.map { build in { build() } }))
-    }
 
     /// Applies native glass effects based on platform
     public func nativeGlass(_ style: AlohaGlass = PlatformBehavior.preferredGlass) -> some View {

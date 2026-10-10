@@ -62,17 +62,17 @@ public struct WelcomeView: View {
             #endif
 
             footer
-                .padding(.horizontal, metrics.space5)
-                .padding(.bottom, metrics.space5)
+                .padding(.horizontal, AlohaMetrics.space5)
+                .padding(.bottom, AlohaMetrics.space5)
         }
         .background(palette.background.ignoresSafeArea())
     }
 
     private var footer: some View {
-        VStack(spacing: metrics.space3) {
+        VStack(spacing: AlohaMetrics.space3) {
             // Owned rather than `.tabViewStyle(.page)`'s indicator: that style
             // does not exist on every platform, and four dots are cheap.
-            HStack(spacing: metrics.space2) {
+            HStack(spacing: AlohaMetrics.space2) {
                 ForEach(pages.indices, id: \.self) { index in
                     Circle()
                         .fill(index == page ? palette.accent : palette.separator)
@@ -137,7 +137,7 @@ private struct OnboardingPageView: View {
     @Environment(\.alohaMetrics) private var metrics
 
     var body: some View {
-        VStack(spacing: metrics.space5) {
+        VStack(spacing: AlohaMetrics.space5) {
             Spacer(minLength: 0)
 
             Image(systemName: page.symbol)
@@ -151,7 +151,7 @@ private struct OnboardingPageView: View {
                 )
                 .accessibilityHidden(true)
 
-            VStack(spacing: metrics.space3) {
+            VStack(spacing: AlohaMetrics.space3) {
                 page.title
                     .font(.title.weight(.bold))
                     .multilineTextAlignment(.center)
@@ -164,7 +164,7 @@ private struct OnboardingPageView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, metrics.space5)
+        .padding(.horizontal, AlohaMetrics.space5)
     }
 }
 
