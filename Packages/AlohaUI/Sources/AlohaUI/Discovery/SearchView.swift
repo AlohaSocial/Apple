@@ -228,18 +228,9 @@ public struct SearchView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.footnote)
-            Spacer()
-            Button {
-                schedule(query, immediately: true)
-            } label: {
-                Text("Retry", comment: "Search reload action")
-            }
-            .font(.footnote.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            schedule(query, immediately: true)
         }
-        .foregroundStyle(palette.destructive)
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }

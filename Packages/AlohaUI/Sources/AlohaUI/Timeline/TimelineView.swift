@@ -300,20 +300,9 @@ public struct TimelineView: View {
     }
 
     private func errorStrip(_ message: String) -> some View {
-        HStack(spacing: metrics.space2) {
-            Image(systemName: AlohaSymbol.warning)
-            Text(message).font(.caption)
-            Spacer()
-            Button {
-                Task { await model.refresh() }
-            } label: {
-                Text("Retry", comment: "Error strip action")
-            }
-            .font(.caption.weight(.semibold))
+        AlohaErrorStrip(message: message) {
+            Task { await model.refresh() }
         }
-        .foregroundStyle(palette.destructive)
-        .padding(.vertical, metrics.space2)
-        .unifiedGlass(.regular)
         .listRowBackground(palette.background)
     }
 
