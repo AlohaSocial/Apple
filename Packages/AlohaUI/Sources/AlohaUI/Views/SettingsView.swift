@@ -862,9 +862,10 @@ extension SettingsView {
                         Text("Show numbers", comment: "Settings item")
                         Text(
                             "Reply, boost and favourite counts, follower and post counts, and view counts.",
-                            comment: "Settings explanation")
-                            .font(.footnote)
-                            .foregroundStyle(palette.secondaryLabel)
+                            comment: "Settings explanation"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(palette.secondaryLabel)
                     }
                 }
             }
