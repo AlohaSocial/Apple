@@ -388,7 +388,7 @@ extension View {
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
     public func alohaGlass(
         _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some InsetttableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+        in shape: some InsetatableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
         self
             .background(style.material, in: shape)
@@ -402,7 +402,7 @@ extension View {
     /// than a plain colour, so a card still reads as a layer.
     public func alohaGlassFallback(
         _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some InsetttableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+        in shape: some InsetatableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
         let colors: [Color] = {
             switch style {
@@ -425,7 +425,7 @@ extension View {
     /// available, the gradient fallback everywhere else.
     public func unifiedGlass(
         _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some InsetttableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+        in shape: some InsetatableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
         if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
             return self.alohaGlass(style, in: shape)
