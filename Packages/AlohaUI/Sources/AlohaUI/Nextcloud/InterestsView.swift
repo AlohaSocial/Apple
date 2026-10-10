@@ -337,7 +337,13 @@ struct InterestsSettingsView: View {
             .disabled(!isLoaded || isWorking || isLoadingState)
         }
         .alohaGround(palette)
-        .overlay { if isLoadingState && !isLoaded { ProgressView() } }
+        .overlay {
+            if isLoadingState && !isLoaded {
+                // The shape of the settings arriving: rows of switches and
+                // chips, not a spinner over nothing.
+                SkeletonListRow(text: 5)
+            }
+        }
         .task { if !isLoaded { await load() } }
         .refreshable { await load() }
         .alert(
@@ -704,63 +710,59 @@ struct InterestCloud: View {
     private var maximum: Double { max(tags.map(\.score).max() ?? 1, 0.001) }
 
     var body: some View {
-        GlassEffectContainer(spacing: AlohaMetrics.space2) {
-            FlowLayout(spacing: AlohaMetrics.space2) {
-                ForEach(tags) { tag in
-                    HStack(spacing: AlohaMetrics.space1) {
-                        if tag.pinned {
-                            Image(systemName: "pin.fill")
-                                .font(.caption2)
-                                .accessibilityLabel(
-                                    Text("Pinned", comment: "Interest pinned state"))
+        FlowLayout(spacing: AlohaMetrics.space2) {
+            ForEach(tags) { tag in
+                NavigationLink(value: Route.hashtag(tag.tag)) {
+                    chip(tag)
+                }
+                .buttonStyle(.plain)
+                // The chip is the way in; the two actions are where a list
+                // keeps them — one swipe away, rather than an xmark wedged
+                // inside the chip that inflates every row to fit its 44-point
+                // target and makes the cloud look like a row of buttons.
+                .swipeActions(edge: .trailing) {
+                    Button {
+                        onTogglePin(tag)
+                    } label: {
+                        Label {
+                            Text(
+                                tag.pinned ? "Unpin" : "Pin",
+                                comment: "Interest action")
+                        } icon: {
+                            Image(systemName: tag.pinned ? "pin.slash" : "pin")
                         }
-                        Text(verbatim: "#\(tag.tag)")
-                            .font(font(for: tag))
-                        Button {
-                            onRemove(tag)
-                        } label: {
+                    }
+                    .tint(palette.accent)
+
+                    Button(role: .destructive) {
+                        onRemove(tag)
+                    } label: {
+                        Label {
+                            Text("Remove", comment: "Interest action")
+                        } icon: {
                             Image(systemName: "xmark")
-                                .font(.caption2.weight(.bold))
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.glassProminent)
-                        .accessibilityLabel(
-                            Text("Remove \(tag.tag)", comment: "Interest remove action"))
                     }
-                    .padding(.leading, AlohaMetrics.space3)
-                    .padding(.trailing, AlohaMetrics.space1)
-                    .frame(minHeight: 44)
-                    .background {
-                        if tag.pinned { Capsule().fill(palette.accentMuted) }
-                    }
-                    .glassEffect(.regular, in: Capsule())
-                    .contextMenu {
-                        Button {
-                            onTogglePin(tag)
-                        } label: {
-                            if tag.pinned {
-                                Label {
-                                    Text("Unpin", comment: "Interest action")
-                                } icon: {
-                                    Image(systemName: "pin.slash")
-                                }
-                            } else {
-                                Label {
-                                    Text("Pin", comment: "Interest action")
-                                } icon: {
-                                    Image(systemName: "pin")
-                                }
-                            }
+                }
+                .contextMenu {
+                    Button {
+                        onTogglePin(tag)
+                    } label: {
+                        Label {
+                            Text(
+                                tag.pinned ? "Unpin" : "Pin",
+                                comment: "Interest action")
+                        } icon: {
+                            Image(systemName: tag.pinned ? "pin.slash" : "pin")
                         }
-                        Button(role: .destructive) {
-                            onRemove(tag)
-                        } label: {
-                            Label {
-                                Text("Remove", comment: "Interest action")
-                            } icon: {
-                                Image(systemName: "xmark")
-                            }
+                    }
+                    Button(role: .destructive) {
+                        onRemove(tag)
+                    } label: {
+                        Label {
+                            Text("Remove", comment: "Interest action")
+                        } icon: {
+                            Image(systemName: "xmark")
                         }
                     }
                 }
@@ -769,21 +771,39 @@ struct InterestCloud: View {
         .padding(.vertical, AlohaMetrics.space1)
     }
 
-    /// The cloud's weight as Dynamic Type styles, so it grows with the
+    /// One interest: the tag, weighted by score and marked when pinned. Two
+    /// sizes rather than four — a cloud of five different sizes reads as
+    /// noise, and the difference between a strong and a weak interest is one
+    /// step of emphasis.
+    private func chip(_ tag: InterestTag) -> some View {
+        HStack(spacing: AlohaMetrics.space1) {
+            if tag.pinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption2)
+                    .accessibilityLabel(
+                        Text("Pinned", comment: "Interest pinned state"))
+            }
+            Text(verbatim: "#\(tag.tag)")
+                .font(font(for: tag))
+        }
+        .padding(.horizontal, AlohaMetrics.space3)
+        .padding(.vertical, AlohaMetrics.space2)
+        .frame(minHeight: 36)
+        .background {
+            if tag.pinned { Capsule().fill(palette.accentMuted) }
+        }
+        .unifiedGlass(.regular, in: Capsule())
+        .accessibilityLabel(
+            Text(
+                tag.pinned ? "\(tag.tag), pinned" : tag.tag,
+                comment: "Interest chip"))
+    }
+
+    /// The cloud's weight as two steps of emphasis, so it grows with the
     /// reader's own text size rather than clipping at a fixed point size.
     private func font(for tag: InterestTag) -> Font {
         let weight = min(max(tag.score / maximum, 0), 1)
-        let base: Font
-        if weight < 0.25 {
-            base = .caption
-        } else if weight < 0.5 {
-            base = .footnote
-        } else if weight < 0.75 {
-            base = .subheadline
-        } else {
-            base = .title3
-        }
-        return tag.pinned ? base.weight(.semibold) : base
+        return weight >= 0.5 ? .subheadline.weight(.semibold) : .footnote
     }
 }
 

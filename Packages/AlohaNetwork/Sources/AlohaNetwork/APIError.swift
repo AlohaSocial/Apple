@@ -81,7 +81,14 @@ extension APIError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .unauthorised:
-            String(localized: "Your sign-in has expired.", comment: "Error when a token is revoked")
+            // Deliberately not the token story. A 401 on one of a server's own
+            // routes means that route refused this account — Nextcloud Social
+            // answers 401 from statistics, interests and channels for reasons
+            // nothing to do with the token — and telling somebody their sign-in
+            // expired there is how they end up believing it. The token story is
+            // the banner, which is only ever raised after verify_credentials
+            // confirms the token really is dead.
+            String(localized: "Your server wouldn't allow that.", comment: "HTTP 401")
         case .forbidden:
             String(localized: "Your server wouldn't allow that.", comment: "HTTP 403")
         case .notFound:
