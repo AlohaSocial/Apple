@@ -318,7 +318,11 @@ public struct Preferences: Codable, Sendable, Hashable {
 }
 
 public struct NotificationPolicy: Codable, Sendable, Hashable {
-    public enum Decision: String, UnknownPreserving {
+    // CaseIterable because the policy screen enumerates the three decisions a
+    // server can act on; the `unknownCase` sentinel is filtered out there
+    // rather than omitted here, so a server that adds a fourth state still
+    // round-trips through decoding.
+    public enum Decision: String, UnknownPreserving, CaseIterable {
         case accept, filter, drop
         case unknownCase = "__unknown"
         public static func unknown(_ raw: String) -> Decision { .unknownCase }

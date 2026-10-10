@@ -233,23 +233,6 @@ public struct TimelineView: View {
     }
 
     /// A visual divider marking where the previous session ended.
-    private func caughtUpDivider(after statusID: String) -> some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Spacer()
-            VStack(spacing: AlohaMetrics.space1) {
-                Rectangle()
-                    .fill(palette.separator)
-                    .frame(height: 1)
-                Text("You're caught up", comment: "Timeline caught up divider")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(palette.tertiaryLabel)
-            }
-            Spacer()
-        }
-        .padding(.vertical, AlohaMetrics.space3)
-        .listRowBackground(palette.background)
-        .listRowSeparator(.hidden)
-    }
 
     /// New content never moves what the person is reading.
     private var newPostsPill: some View {

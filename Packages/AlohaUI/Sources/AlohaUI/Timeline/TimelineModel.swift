@@ -69,7 +69,7 @@ public final class TimelineModel {
     /// ID is stored so a divider can be inserted below that post.
     private func loadCaughtUpMarker() async {
         do {
-            let markerID = try session.supportStore.repositories.marker(
+            let markerID = try await session.supportStore.marker(
                 accountID: session.id, timeline: "home")
             if let markerID, !markerID.isEmpty {
                 caughtUpMarkerID = markerID
@@ -82,13 +82,14 @@ public final class TimelineModel {
 
     /// Advances the caught-up marker to the given post ID, both locally
     /// and on the server (fire-and-forget).
-    private func advanceCaughtUpMarker(to statusID: String) {
+    /// Called from the view when the reader passes the divider.
+    func advanceCaughtUpMarker(to statusID: String) {
         guard !markerAdvancedThisSession else { return }
         markerAdvancedThisSession = true
         caughtUpMarkerID = statusID
         // Local store
         do {
-            try session.supportStore.repositories.advanceMarker(
+            try await session.supportStore.advanceMarker(
                 accountID: session.id, timeline: "home", to: statusID)
         } catch {
             logger.debug(
