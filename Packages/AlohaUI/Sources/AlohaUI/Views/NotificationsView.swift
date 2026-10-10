@@ -70,10 +70,7 @@ public struct NotificationsView: View {
             }
 
             if session.capabilities.groupedNotifications {
-                ForEach(visibleGroups) { group in
-                    groupRow(group)
-                        .listRowBackground(palette.background)
-                }
+                groupedRowsWithMarker
             } else {
                 flatRowsWithMarker
             }
@@ -297,12 +294,65 @@ private func groupRow(_ group: NotificationGroup) -> some View {
                     }
                 }
             }
+            .onAppear {
+                // Advance the marker past the divider's group: the marker
+                // names one notification, and a group's newest is the id the
+                // server reports for it. Where the group below this one has
+                // been seen, the reader has passed the divider.
+                if let markerID = caughtUpNotificationID,
+                   let idx = visibleGroups.firstIndex(where: { $0.mostRecentNotificationID == markerID }),
+                   idx + 1 < visibleGroups.count,
+                   visibleGroups[idx + 1].mostRecentNotificationID != markerID {
+                    advanceCaughtUpNotificationMarker(
+                        to: visibleGroups[idx + 1].mostRecentNotificationID)
+                }
+            }
         }
         .buttonStyle(.plain)
     }
 
-    private func flatRow(_ notification: MastodonNotification) -> some View {
-        Button {
+    /// The grouped list with the catch-up divider in it.
+    ///
+    /// A group is placed below the divider when every notification it contains
+    /// is older than the marker: the group's `most_recent_notification_id` is
+    /// what the server reports, and the marker names the newest notification
+    /// the reader had already seen. Comparing ids directly would be a
+    /// lexicographic lie — the ids are opaque — so the comparison is on the
+    /// group's own timestamp, and the id only decides whether a group *is* the
+    /// marker's.
+    private var groupedRowsWithMarker: some View {
+        let groups = visibleGroups
+        guard let markerID = caughtUpNotificationID,
+            let markerIndex = groups.firstIndex(where: { $0.mostRecentNotificationID == markerID })
+        else {
+            return AnyView(
+                ForEach(groups) { group in
+                    groupRow(group)
+                        .listRowBackground(palette.background)
+                })
+        }
+
+        var rows: [AnyView] = []
+        for (index, group) in groups.enumerated() {
+            rows.append(
+                AnyView(
+                    groupRow(group)
+                        .listRowBackground(palette.background)
+                ))
+            if index == markerIndex {
+                rows.append(
+                    AnyView(
+                        caughtUpDivider(after: markerID)
+                            .listRowBackground(palette.background)
+                    ))
+            }
+        }
+        return AnyView(
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in row }
+        )
+    }
+
+    private func flatRow(_ notification: MastodonNotification) -> some View {        Button {
             if let status = notification.status {
                 onAction(.open(status))
             } else {
