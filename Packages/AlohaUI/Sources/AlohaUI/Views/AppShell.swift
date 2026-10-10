@@ -297,6 +297,17 @@ public struct AppShell: View {
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
         }
+        // A sidebar the width of its content, not the default narrow sliver:
+        // "Direct messages" and "Subscriptions" are two-line labels at the
+        // default, and this is the navigation for a reading app on a big
+        // screen.
+        .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
+        #if os(macOS)
+            // The Mac's own convention: the content leads and the sidebar is
+            // the affordance beside it. On iPad the balanced split is the one
+            // Apple uses, and it is the default there.
+            .navigationSplitViewStyle(.prominentDetail)
+        #endif
         .onChange(of: sidebarItem) { _, item in
             // A new root; whatever was pushed belonged to the old one.
             path = []
