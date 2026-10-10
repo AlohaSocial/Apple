@@ -9,9 +9,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # No XcodeGen: the project file is checked in and is the source of truth.
-
 jobs:
   # Package logic. Every package builds for all five platforms; running the
   # suites on macOS covers them all, because nothing in them links a UI.
