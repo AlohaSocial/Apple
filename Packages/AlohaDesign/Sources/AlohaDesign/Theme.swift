@@ -347,3 +347,212 @@ extension View {
             .background(palette.background)
     }
 }
+
+/// Platform-adaptive behavior for native-feeling UI across all Apple platforms.
+public enum PlatformBehavior {
+    /// iPhone uses tab bar, others use sidebar
+    public static var usesSidebar: Bool {
+        #if os(iOS)
+        return false // Determined at runtime by size class
+        #else
+        return true
+        #endif
+    }
+
+    /// Default navigation style per platform
+    public static var defaultNavigation: NavigationStyle {
+        #if os(iOS)
+        return .tabBar
+        #elseif os(macOS) || os(visionOS) || os(tvOS)
+        return .splitView
+        #elseif os(watchOS)
+        return .stack
+        #else
+        return .stack
+        #endif
+    }
+
+    public enum NavigationStyle: Sendable {
+        case tabBar
+        case splitView
+        case stack
+    }
+
+    /// Glass material preference per platform
+    public static var preferredGlass: AlohaGlass {
+        #if os(visionOS)
+        return .subtle
+        #elseif os(tvOS)
+        return .regular
+        #elseif os(watchOS)
+        return .subtle
+        #else
+        return .regular
+        #endif
+    }
+
+    /// Default density per platform
+    public static var defaultDensity: AlohaMetrics.Density {
+        #if os(iOS) || os(visionOS)
+        return .comfortable
+        #elseif os(macOS)
+        return .spacious
+        #elseif os(tvOS)
+        return .spacious
+        #elseif os(watchOS)
+        return .compact
+        #else
+        return .comfortable
+        #endif
+    }
+
+    /// Touch target minimum size
+    public static var touchTarget: CGFloat {
+        #if os(watchOS)
+        return 32
+        #elseif os(tvOS)
+        return 60
+        #else
+        return 44
+        #endif
+    }
+
+    /// Keyboard shortcut modifier
+    public static var commandModifier: EventModifiers {
+        #if os(macOS) || os(visionOS) || os(iOS)
+        return .command
+        #else
+        return .command
+        #endif
+    }
+}
+
+/// Platform-adaptive view modifier for native behavior
+public struct PlatformAdaptive: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    let compact: (() -> some View)?
+    let regular: (() -> some View)?
+
+    public init(compact: (() -> some View)? = nil, regular: (() -> some View)? = nil) {
+        self.compact = compact
+        self.regular = regular
+    }
+
+    public func body(content: Content) -> some View {
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
+            content
+        } else if let regular {
+            regular()
+        } else {
+            content
+        }
+        #else
+        if let regular {
+            regular()
+        } else {
+            content
+        }
+        #endif
+    }
+}
+
+extension View {
+    /// Applies platform-adaptive behavior
+    public func platformAdaptive(
+        compact: (() -> some View)? = nil,
+        regular: (() -> some View)? = nil
+    ) -> some View {
+        modifier(PlatformAdaptive(compact: compact, regular: regular))
+    }
+
+    /// Applies native glass effects based on platform
+    public func nativeGlass(_ style: AlohaGlass = PlatformBehavior.preferredGlass) -> some View {
+        self.unifiedGlass(style)
+    }
+
+    /// Platform-aware touch target sizing
+    public func nativeTouchTarget() -> some View {
+        self.frame(minWidth: PlatformBehavior.touchTarget, minHeight: PlatformBehavior.touchTarget)
+    }
+
+    /// Platform-aware navigation style
+    @ViewBuilder
+    public func nativeNavigation<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            TabView { content() }
+        } else {
+            NavigationSplitView { content() }
+        }
+        #else
+        NavigationSplitView { content() }
+        #endif
+    }
+}
+
+/// SafeAreaInsets awareness for native feel
+extension View {
+    public func respectSafeArea(edges: Edge.Set = .all) -> some View {
+        self.safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+    }
+
+    /// Native scroll behavior
+    public func nativeScrollBehavior() -> some View {
+        self.scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+    }
+}
+
+/// Native accessibility helpers
+extension View {
+    public func nativeAccessibilityLabel(_ label: String) -> some View {
+        self.accessibilityLabel(Text(label))
+    }
+
+    public func nativeAccessibilityHint(_ hint: String) -> some View {
+        self.accessibilityHint(Text(hint))
+    }
+
+    public func nativeAccessibilityAction(
+        _ name: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        self.accessibilityAction(named: Text(name), action)
+    }
+}
+
+/// Dynamic island / live activity ready content
+extension View {
+    public func liveActivityReady() -> some View {
+        self
+    }
+}
+
+/// Native share sheet integration
+extension View {
+    public func nativeShareSheet(
+        items: [Any],
+        isPresented: Binding<Bool>
+    ) -> some View {
+        self.sheet(isPresented: isPresented) {
+            ShareSheet(activityItems: items)
+        }
+    }
+}
+
+/// ShareSheet wrapper for native share
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
