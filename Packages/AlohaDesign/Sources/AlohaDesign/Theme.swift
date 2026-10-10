@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 import SwiftUI
+#if canImport(UIKit)
+    import UIKit
+#endif
 
 /// Semantic colour roles. View code names a role, never a colour — which is
 /// what makes light, dark and the two increased-contrast variants one change
@@ -508,13 +511,13 @@ extension View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         #if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            TabView { content() }
-        } else {
-            NavigationSplitView { content() }
-        }
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                TabView { content() }
+            } else {
+                NavigationSplitView { content() }
+            }
         #else
-        NavigationSplitView { content() }
+            NavigationSplitView { content() }
         #endif
     }
 }
@@ -641,23 +644,40 @@ extension View {
 
 /// Native share sheet integration
 extension View {
+    /// Opens the system share sheet (iOS and tvOS only).
+    ///
+    /// A Mac or a watch gets no share sheet from a modifier — use
+    /// SwiftUI's `ShareLink`, which is the native control there.
+    @available(watchOS, unavailable)
+    @available(macOS, unavailable)
     public func nativeShareSheet(
         items: [Any],
         isPresented: Binding<Bool>
     ) -> some View {
-        self.sheet(isPresented: isPresented) {
-            ShareSheet(activityItems: items)
+        #if canImport(UIKit) && !os(watchOS) && !os(macOS)
+            return self.sheet(isPresented: isPresented) {
+                ShareSheet(activityItems: items)
+            }
+        #else
+            return self
+        #endif
+    }
+}
+
+/// ShareSheet wrapper for the system share sheet.
+///
+/// iOS, tvOS and visionOS only: UIKit's activity view controller has no
+/// SwiftUI equivalent, and a Mac reaches the share sheet through `ShareLink`
+/// and a watchOS app has no sheet to open. `nativeShareSheet` is unavailable
+/// on those platforms rather than silently doing nothing.
+#if canImport(UIKit) && !os(watchOS) && !os(macOS)
+    private struct ShareSheet: UIViewControllerRepresentable {
+        let activityItems: [Any]
+
+        func makeUIViewController(context: Context) -> UIActivityViewController {
+            UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
         }
+
+        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
     }
-}
-
-/// ShareSheet wrapper for native share
-private struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
+#endif
