@@ -38,8 +38,9 @@ public final class TimelineModel {
     @ObservationIgnored private var confirmations: [String: Date] = [:]
     /// The post ID that marks "you're caught up" on the home timeline.
     /// Loaded from the local marker store; when the reader scrolls past the
-    /// divider below this post, the marker advances.
-    @ObservationIgnored private var caughtUpMarkerID: String?
+    /// divider below this post, the marker advances. Read by the view to
+    /// restore where the reader got to (docs/08 §7).
+    @ObservationIgnored private(set) public var caughtUpMarkerID: String?
     /// Whether the marker has been advanced this session (to avoid
     /// re-syncing on every appearance of the same row).
     @ObservationIgnored private var markerAdvancedThisSession = false

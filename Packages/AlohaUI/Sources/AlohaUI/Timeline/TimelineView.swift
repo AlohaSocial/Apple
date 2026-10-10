@@ -18,6 +18,9 @@ public struct TimelineView: View {
     @State private var isShowingShortcuts = false
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
+    /// Set once the first page has been scrolled to, so reopening a timeline
+    /// does not pull the reader back to the post they had already left behind.
+    @State private var didRestorePosition = false
 
     public init(
         key: TimelineKey, session: AccountSession,
@@ -64,6 +67,21 @@ public struct TimelineView: View {
     private var list: some View {
         ScrollViewReader { proxy in
             rows
+                // "Return to where I was": once the first page is in, scroll to
+                // the last-read post rather than to the top. Off, the timeline
+                // opens at the newest post, which is what a storefront expects.
+                .onChange(of: model.rows.isEmpty) { _, isEmpty in
+                    guard
+                        !isEmpty, !didRestorePosition,
+                        session.settings.restoreTimelinePosition,
+                        let markerID = model.caughtUpMarkerID,
+                        model.rows.contains(where: { $0.id == markerID })
+                    else { return }
+                    didRestorePosition = true
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo(markerID, anchor: .top)
+                    }
+                }
                 .onChange(of: focusedStatusID) { _, id in
                     guard let id else { return }
                     withAnimation(.easeOut(duration: 0.18)) {
