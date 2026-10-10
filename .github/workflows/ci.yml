@@ -208,9 +208,14 @@ jobs:
           exit $status
 
   # The full tour suite: screen presentation, the Skeleton and Media viewer,
-  # VoiceOver and Reduce Motion. Runs on the iOS simulator because that is the
-  # platform the UI-test bundle is built for — the Mac tours run locally where
-  # a Mac app target exists to drive.
+  # VoiceOver and Reduce Motion.
+  #
+  # Two facts about the host decide whether this can run at all, and neither
+  # is a statement about the code: the tours launch an app in an objectVersion
+  # 110 project (Xcode 27), and they need an iPhone simulator to launch it in.
+  # When this image has neither, the job says so and stops — checking both in
+  # one script, rather than booting a simulator in one step and failing in the
+  # next, which is what a crash mid-job looked like.
   ui:
     name: UI tours
     runs-on: macos-26
@@ -222,42 +227,24 @@ jobs:
           latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
           if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
           sudo xcode-select --switch "$latest/Contents/Developer"
-      - name: Boot a simulator
-        run: |
-          # The first available iPhone, or nothing: an image without an
-          # installed simulator runtime has nothing to boot, and that is a
-          # fact about the image, not a failing check.
-          udid=$(xcrun simctl list devices available -j | python3 -c '
-            import json, sys
-            data = json.load(sys.stdin).get("devices", {})
-            pick = next((d for devices in data.values() for d in devices
-                         if d["name"].startswith("iPhone")), None)
-            if pick:
-              print(pick["udid"])
-          ')
-          if [ -z "$udid" ]; then
-            echo "No available iPhone simulator on this image; nothing to boot."
-            exit 0
-          fi
-          xcrun simctl boot "$udid" || true
       - name: Run the tour suite
         env:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
-          set -o pipefail
-          # Same file-based probe as the build job: an objectVersion 110
-          # project needs Xcode 27, and a runner without it cannot even list
-          # the schemes this suite is named for.
+          set -u
+          skip () { echo "::notice title=UI tours skipped::$1"; exit 0; }
+
+          # 1. An Xcode that cannot open the project cannot run its tests.
           if ! xcodebuild -list -quiet -project AlohaSocial.xcodeproj \
               >"$RUNNER_TEMP/xcode-list" 2>&1; then
             if grep -q "future Xcode project file format" "$RUNNER_TEMP/xcode-list"; then
-              version=$(xcodebuild -version | head -1 | tr -s ' ' | cut -d' ' -f2)
-              echo "::notice title=UI tours skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format. The tours launch the app, so they need Xcode 27 too."
-              exit 0
+              skip "AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode cannot open that format. The tours need Xcode 27; when an image ships it, this job runs the suite for real."
             fi
             cat "$RUNNER_TEMP/xcode-list" >&2
             exit 1
           fi
+
+          # 2. An image without an iPhone simulator has nowhere to launch.
           device=$(xcrun simctl list devices available -j | python3 -c '
             import json, sys
             data = json.load(sys.stdin).get("devices", {})
@@ -266,17 +253,22 @@ jobs:
             if pick:
               print(pick["name"])
           ')
-          if [ -z "$device" ]; then
-            echo "::notice title=UI tours skipped::No available iPhone simulator on this runner image, so the tours cannot launch the app. Run them on an image with an iPhone simulator."
-            exit 0
-          fi
+          [ -n "$device" ] || skip "No available iPhone simulator on this runner image, so the tours have nowhere to launch. The package suites above still exercise the logic."
+
+          # 3. Output to a file, never a pipe: xcodebuild aborts with a broken
+          #    pipe when its reader disappears, and that abort is
+          #    indistinguishable from a test failure.
           xcodebuild test \
             -project AlohaSocial.xcodeproj \
             -scheme AlohaSocialUITests \
             -destination "platform=iOS Simulator,name=$device" \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM=""
+            DEVELOPMENT_TEAM="" \
+            >"$RUNNER_TEMP/ui-tours.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/ui-tours.log"
+          exit $status
 
   # A pull request that fails to lint does not merge (docs/12 §6).
   lint:
