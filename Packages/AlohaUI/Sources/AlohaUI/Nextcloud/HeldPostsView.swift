@@ -51,7 +51,13 @@ public struct HeldPostsView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .overlay {
-            if isLoading && held.isEmpty { ProgressView() }
+            if isLoading && held.isEmpty {
+                // A first page arriving is a list in progress, not a blank
+                // screen with a spinner floating over it.
+                SkeletonListRow(text: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
         }
         .navigationTitle(Text("Waiting to be looked at", comment: "Screen title"))
         .task { await load() }
