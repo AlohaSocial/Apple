@@ -421,13 +421,9 @@ extension Endpoint {
             func decision(_ d: NotificationPolicy.Decision) -> String {
                 d.isUnknown ? NotificationPolicy.Decision.accept.rawValue : d.rawValue
             }
-            let payload: [String: String] = [
-                "for_not_following": decision(policy.forNotFollowing),
-                "for_not_followers": decision(policy.forNotFollowers),
-                "for_new_accounts": decision(policy.forNewAccounts),
-                "for_private_mentions": decision(policy.forPrivateMentions),
-                "for_limited_accounts": decision(policy.forLimitedAccounts),
-            ]
+            let payload: [String: String] = NotificationPolicy.decisionKeys.reduce(into: [:]) {
+                $0[$1] = decision(policy.decision(for: $1))
+            }
             let data = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data("{}".utf8)
             return Endpoint(
                 method: .patch,

@@ -30,49 +30,25 @@ public struct NotificationPolicyView: View {
             }
 
             if let policy {
-                // Typed locals, not a static table: a key-path literal is
-                // inferred as an existential inside a view builder, and a
-                // `static let` of one is a mutable global in Swift 6.
-                let forNotFollowing:
-                    ReferenceWritableKeyPath<
-                        NotificationPolicy, NotificationPolicy.Decision
-                    > = \.forNotFollowing
-                let forNotFollowers:
-                    ReferenceWritableKeyPath<
-                        NotificationPolicy, NotificationPolicy.Decision
-                    > = \.forNotFollowers
-                let forNewAccounts:
-                    ReferenceWritableKeyPath<
-                        NotificationPolicy, NotificationPolicy.Decision
-                    > = \.forNewAccounts
-                let forPrivateMentions:
-                    ReferenceWritableKeyPath<
-                        NotificationPolicy, NotificationPolicy.Decision
-                    > = \.forPrivateMentions
-                let forLimitedAccounts:
-                    ReferenceWritableKeyPath<
-                        NotificationPolicy, NotificationPolicy.Decision
-                    > = \.forLimitedAccounts
-
                 Section {
                     policyRow(
-                        key: forNotFollowing,
+                        key: "for_not_following",
                         title: Text("People you don't follow", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: forNotFollowers,
+                        key: "for_not_followers",
                         title: Text("People who don't follow you", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: forNewAccounts,
+                        key: "for_new_accounts",
                         title: Text("New accounts", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: forPrivateMentions,
+                        key: "for_private_mentions",
                         title: Text("Unsolicited private mentions", comment: "Policy row"),
                         policy: policy)
                     policyRow(
-                        key: forLimitedAccounts,
+                        key: "for_limited_accounts",
                         title: Text("Limited accounts", comment: "Policy row"),
                         policy: policy)
                 } footer: {
@@ -131,18 +107,22 @@ public struct NotificationPolicyView: View {
         .task { await load() }
     }
 
+    /// One decision row.
+    ///
+    /// The key is the server's own raw key — `for_not_following` and its four
+    /// siblings — which is both the in-flight guard's identity and the field
+    /// the model writes to. No key paths: the compiler infers a key-path
+    /// literal inside a view builder as an existential, which then cannot be
+    /// passed where a concrete one is expected.
     private func policyRow(
-        key: ReferenceWritableKeyPath<NotificationPolicy, NotificationPolicy.Decision>,
+        key: String,
         title: Text,
         policy: NotificationPolicy
     ) -> some View {
-        // The key path's string is the row's identity: it is what the
-        // in-flight guard uses, and what SwiftUI needs to tell the rows apart.
-        let id = "\(key)"
-        let isUpdating = updatingIDs.contains(id)
+        let isUpdating = updatingIDs.contains(key)
         return Picker(
             selection: Binding(
-                get: { policy[keyPath: key] },
+                get: { policy.decision(for: key) },
                 set: { newValue in
                     guard !isUpdating else { return }
                     Task { await update(key: key, value: newValue) }
@@ -176,14 +156,11 @@ public struct NotificationPolicyView: View {
         }
     }
 
-    private func update(
-        key: ReferenceWritableKeyPath<NotificationPolicy, NotificationPolicy.Decision>,
-        value: NotificationPolicy.Decision
-    ) async {
-        guard var policy, !updatingIDs.contains("\(key)") else { return }
-        updatingIDs.insert("\(key)")
-        defer { updatingIDs.remove("\(key)") }
-        policy[keyPath: key] = value
+    private func update(key: String, value: NotificationPolicy.Decision) async {
+        guard var policy, !updatingIDs.contains(key) else { return }
+        updatingIDs.insert(key)
+        defer { updatingIDs.remove(key) }
+        policy.setDecision(key, to: value)
         let useV2 = session.capabilities.notificationPolicy
         let endpoint = Endpoint.notifications.updatePolicy(v2: useV2, policy: policy)
         do {

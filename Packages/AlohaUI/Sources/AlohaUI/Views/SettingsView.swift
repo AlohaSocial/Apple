@@ -102,43 +102,12 @@ public struct SettingsView: View {
                 let activeAccountID = environment.activeSession?.id
                 Section {
                     ForEach(environment.sessions) { session in
-                        let isActiveAccount = session.id == activeAccountID
-                        Button {
-                            environment.setActiveAccount(session.id)
-                        } label: {
-                            HStack(spacing: AlohaMetrics.space3) {
-                                AvatarView(
-                                    account: session.snapshot.asAccount,
-                                    size: AlohaMetrics().avatarSize
-                                )
-                                .accessibilityHidden(true)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(session.snapshot.bestDisplayName).font(.body)
-                                    Text(session.snapshot.qualifiedHandle)
-                                        .font(.caption)
-                                        .foregroundStyle(palette.secondaryLabel)
-                                }
-                                Spacer()
-                                if session.needsReauthentication {
-                                    Text("Sign in again", comment: "Account state")
-                                        .font(.caption)
-                                        .foregroundStyle(palette.destructive)
-                                }
-                                if isActiveAccount {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(palette.accent)
-                                        .accessibilityHidden(true)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accountLabel(session))
-                        .accessibilityAddTraits(
-                            isActiveAccount
-                                ? [.isButton, .isSelected] : .isButton
+                        // One row per account, extracted so the builder can be
+                        // checked: the compiler refuses an expression this
+                        // large ("unable to type-check in reasonable time").
+                        accountRow(
+                            session,
+                            isActiveAccount: session.id == activeAccountID
                         )
                         .swipeActions {
                             Button(role: .destructive) {
@@ -941,6 +910,50 @@ public struct SettingsView: View {
 extension SettingsView {
     /// A handle is not a sentence. Read aloud it should be words, not
     /// punctuation — "alice at cloud.example.test".
+    /// One account row: face, name, handle, and a check when it is the active
+    /// one. Extracted from the accounts section because a builder this large
+    /// is more than the compiler will check in one go — the check and the
+    /// reauth badge are the part of the row that is a fact, not layout.
+    private func accountRow(_ session: AccountSession, isActiveAccount: Bool) -> some View {
+        Button {
+            environment.setActiveAccount(session.id)
+        } label: {
+            HStack(spacing: AlohaMetrics.space3) {
+                AvatarView(
+                    account: session.snapshot.asAccount,
+                    size: AlohaMetrics().avatarSize
+                )
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.snapshot.bestDisplayName).font(.body)
+                    Text(session.snapshot.qualifiedHandle)
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryLabel)
+                }
+                Spacer()
+                if session.needsReauthentication {
+                    Text("Sign in again", comment: "Account state")
+                        .font(.caption)
+                        .foregroundStyle(palette.destructive)
+                }
+                if isActiveAccount {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(palette.accent)
+                        .accessibilityHidden(true)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accountLabel(session))
+        .accessibilityAddTraits(
+            isActiveAccount
+                ? [.isButton, .isSelected] : .isButton
+        )
+    }
+
     fileprivate func accountLabel(_ session: AccountSession) -> Text {
         let handle = session.snapshot.qualifiedHandle
             .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
