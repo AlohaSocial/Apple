@@ -137,6 +137,13 @@ public struct InterestsView: View {
                 .listRowSeparator(.hidden)
             }
 
+            // A first page arriving is a list in progress, not a blank screen.
+            if isLoading && statuses.isEmpty {
+                SkeletonListRow(person: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+
             if statuses.isEmpty && !isLoading && errorMessage == nil {
                 emptyState
                     .listRowBackground(palette.background)
@@ -145,9 +152,6 @@ public struct InterestsView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
-        .overlay {
-            if isLoading && statuses.isEmpty { ProgressView() }
-        }
         .refreshable { await refresh() }
     }
 
