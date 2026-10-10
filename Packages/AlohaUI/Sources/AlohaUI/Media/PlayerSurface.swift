@@ -3,8 +3,8 @@
 import AVFoundation
 import AVKit
 import Combine
-import SwiftUI
 import OSLog
+import SwiftUI
 
 /// The one place a video is drawn.
 ///
@@ -18,17 +18,19 @@ struct PlayerSurface: View {
 
     var body: some View {
         Group {
-        #if os(macOS)
-            MacPlayerView(player: player, showsControls: showsControls)
-        #else
-            VideoPlayer(player: player)
-                .disabled(!showsControls)
-        #endif
+            #if os(macOS)
+                MacPlayerView(player: player, showsControls: showsControls)
+            #else
+                VideoPlayer(player: player)
+                    .disabled(!showsControls)
+            #endif
         }
         // AVPlayer's mute control is independent from the system audio
         // session. Activate audible playback only when sound is requested;
         // silent previews must not interrupt somebody else's music.
-        .onReceive(player.publisher(for: \.isMuted).removeDuplicates().receive(on: DispatchQueue.main)) { muted in
+        .onReceive(
+            player.publisher(for: \.isMuted).removeDuplicates().receive(on: DispatchQueue.main)
+        ) { muted in
             if !muted { PlaybackAudioSession.activate() }
         }
     }
@@ -43,7 +45,9 @@ enum PlaybackAudioSession {
                 try session.setCategory(.playback, mode: .moviePlayback)
                 try session.setActive(true)
             } catch {
-                PlaybackLog.logger.error("Audio session activation failed: \(error.localizedDescription, privacy: .public)")
+                PlaybackLog.logger.error(
+                    "Audio session activation failed: \(error.localizedDescription, privacy: .public)"
+                )
             }
         #endif
     }
@@ -196,7 +200,6 @@ enum PlaybackReadiness {
         return "\(host) — \(error.localizedDescription)"
     }
 }
-
 
 #if os(macOS)
     private struct MacPlayerView: NSViewRepresentable {

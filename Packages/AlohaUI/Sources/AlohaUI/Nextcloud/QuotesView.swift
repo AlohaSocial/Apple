@@ -124,7 +124,8 @@ public struct QuotesView: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Quotes could not be loaded. Please try again.")
         }
     }
@@ -149,7 +150,8 @@ public struct QuotesView: View {
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
             retryOlder = true
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "More quotes could not be loaded. Please try again.")
         }
     }

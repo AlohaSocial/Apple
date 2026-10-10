@@ -54,7 +54,8 @@ public struct NotificationsView: View {
                         }
                     }
                     if let summary = notificationPolicy?.summary,
-                        summary.pendingRequestsCount > 0 {
+                        summary.pendingRequestsCount > 0
+                    {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
                                 Image(systemName: AlohaSymbol.filter)
@@ -77,7 +78,9 @@ public struct NotificationsView: View {
 
             if !isLoading && errorMessage == nil && groups.isEmpty && flat.isEmpty {
                 emptyState
-            } else if !isLoading && errorMessage == nil && visibleGroups.isEmpty && visibleFlat.isEmpty {
+            } else if !isLoading && errorMessage == nil && visibleGroups.isEmpty
+                && visibleFlat.isEmpty
+            {
                 ContentUnavailableView {
                     Text("No matching activities")
                 } description: {
@@ -127,23 +130,26 @@ public struct NotificationsView: View {
         guard let markerID = caughtUpNotificationID,
             let markerIdx = notifications.firstIndex(where: { $0.id == markerID })
         else {
-            return AnyView(ForEach(notifications) { notification in
-                flatRow(notification)
-                    .listRowBackground(palette.background)
-            })
+            return AnyView(
+                ForEach(notifications) { notification in
+                    flatRow(notification)
+                        .listRowBackground(palette.background)
+                })
         }
         // Insert divider after the marker
         var rows: [AnyView] = []
         for (idx, notification) in notifications.enumerated() {
-            rows.append(AnyView(
-                flatRow(notification)
-                    .listRowBackground(palette.background)
-            ))
-            if idx == markerIdx {
-                rows.append(AnyView(
-                    caughtUpDivider(after: markerID)
+            rows.append(
+                AnyView(
+                    flatRow(notification)
                         .listRowBackground(palette.background)
                 ))
+            if idx == markerIdx {
+                rows.append(
+                    AnyView(
+                        caughtUpDivider(after: markerID)
+                            .listRowBackground(palette.background)
+                    ))
             }
         }
         return AnyView(
@@ -152,7 +158,9 @@ public struct NotificationsView: View {
             })
     }
 
-    nonisolated static func matches(_ kind: NotificationKind, selected: Set<NotificationKind>) -> Bool {
+    nonisolated static func matches(
+        _ kind: NotificationKind, selected: Set<NotificationKind>
+    ) -> Bool {
         selected.isEmpty || selected.contains(kind)
             || (kind == .followRequest && selected.contains(.follow))
     }
@@ -211,7 +219,8 @@ public struct NotificationsView: View {
         .buttonStyle(.plain)
         .glassEffect(
             .regular.tint(isSelected ? palette.accent : nil).interactive(),
-            in: Capsule())
+            in: Capsule()
+        )
         .glassEffectID(label, in: chipIndicator)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
@@ -226,25 +235,24 @@ public struct NotificationsView: View {
 
     /// A group renders as one row: "Alice, Bob and 34 others favourited your
     /// post", with a stacked avatar row.
-private func groupRow(_ group: NotificationGroup) -> some View {
-            let sample = group.sampleAccountIDs.compactMap { accounts[$0] }
-            let status = group.statusID.flatMap { statuses[$0] }
-            let canMuteConversation = status != nil &&
-                (group.type == .mention || group.type == .reply)
+    private func groupRow(_ group: NotificationGroup) -> some View {
+        let sample = group.sampleAccountIDs.compactMap { accounts[$0] }
+        let status = group.statusID.flatMap { statuses[$0] }
+        let canMuteConversation = status != nil && (group.type == .mention || group.type == .reply)
 
-            return Button {
-                if let status {
-                    onAction(.open(status))
-                } else if let account = sample.first {
-                    onAction(.openProfile(account))
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
-                    HStack(spacing: AlohaMetrics.space2) {
-                        Image(systemName: symbol(for: group.type))
-                            .foregroundStyle(tint(for: group.type))
-                            .font(.footnote)
-                            .accessibilityHidden(true)
+        return Button {
+            if let status {
+                onAction(.open(status))
+            } else if let account = sample.first {
+                onAction(.openProfile(account))
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                HStack(spacing: AlohaMetrics.space2) {
+                    Image(systemName: symbol(for: group.type))
+                        .foregroundStyle(tint(for: group.type))
+                        .font(.footnote)
+                        .accessibilityHidden(true)
 
                     HStack(spacing: -8) {
                         ForEach(sample.prefix(4), id: \.id) { account in
@@ -254,14 +262,16 @@ private func groupRow(_ group: NotificationGroup) -> some View {
                         }
                     }
 
-                    Text(summary(
-                        for: group, sample: sample,
-                        showsCounts: session.settings.showPopularityCounts
-                    ))
-                        .font(.subheadline)
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(
+                        summary(
+                            for: group, sample: sample,
+                            showsCounts: session.settings.showPopularityCounts
+                        )
+                    )
+                    .font(.subheadline)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Spacer(minLength: 0)
                 }
@@ -300,9 +310,12 @@ private func groupRow(_ group: NotificationGroup) -> some View {
                 // server reports for it. Where the group below this one has
                 // been seen, the reader has passed the divider.
                 if let markerID = caughtUpNotificationID,
-                   let idx = visibleGroups.firstIndex(where: { $0.mostRecentNotificationID == markerID }),
-                   idx + 1 < visibleGroups.count,
-                   visibleGroups[idx + 1].mostRecentNotificationID != markerID {
+                    let idx = visibleGroups.firstIndex(where: {
+                        $0.mostRecentNotificationID == markerID
+                    }),
+                    idx + 1 < visibleGroups.count,
+                    visibleGroups[idx + 1].mostRecentNotificationID != markerID
+                {
                     advanceCaughtUpNotificationMarker(
                         to: visibleGroups[idx + 1].mostRecentNotificationID)
                 }
@@ -352,7 +365,8 @@ private func groupRow(_ group: NotificationGroup) -> some View {
         )
     }
 
-    private func flatRow(_ notification: MastodonNotification) -> some View {        Button {
+    private func flatRow(_ notification: MastodonNotification) -> some View {
+        Button {
             if let status = notification.status {
                 onAction(.open(status))
             } else {
@@ -388,8 +402,9 @@ private func groupRow(_ group: NotificationGroup) -> some View {
             .padding(.vertical, AlohaMetrics.space2)
             .contentShape(Rectangle())
             .contextMenu {
-                let canMute = notification.status != nil &&
-                    (notification.type == .mention || notification.type == .reply)
+                let canMute =
+                    notification.status != nil
+                    && (notification.type == .mention || notification.type == .reply)
                 if canMute, let status = notification.status {
                     Button {
                         onAction(.muteConversation(status))
@@ -406,9 +421,10 @@ private func groupRow(_ group: NotificationGroup) -> some View {
                 // Advance the "caught up" marker when the first notification
                 // below the divider appears.
                 if let markerID = caughtUpNotificationID,
-                   let idx = visibleFlat.firstIndex(where: { $0.id == markerID }),
-                   idx + 1 < visibleFlat.count,
-                   visibleFlat[idx + 1].id == notification.id {
+                    let idx = visibleFlat.firstIndex(where: { $0.id == markerID }),
+                    idx + 1 < visibleFlat.count,
+                    visibleFlat[idx + 1].id == notification.id
+                {
                     advanceCaughtUpNotificationMarker(to: notification.id)
                 }
             }
@@ -508,7 +524,9 @@ private func groupRow(_ group: NotificationGroup) -> some View {
         }
     }
 
-    private func summary(for group: NotificationGroup, sample: [Account], showsCounts: Bool = true)
+    private func summary(
+        for group: NotificationGroup, sample: [Account], showsCounts: Bool = true
+    )
         -> String
     {
         let name =
@@ -572,10 +590,10 @@ private func groupRow(_ group: NotificationGroup) -> some View {
         do {
             try session.supportStore.repositories.advanceMarker(
                 accountID: session.id, timeline: "notifications", to: notificationID)
-        } catch { }
+        } catch {}
         Task {
             let endpoint = Endpoint.markers.write(home: nil, notifications: notificationID)
-            do { _ = try await session.client.send(endpoint) } catch { }
+            do { _ = try await session.client.send(endpoint) } catch {}
         }
     }
 

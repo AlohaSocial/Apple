@@ -86,7 +86,8 @@ public struct VideoWatchView: View {
     @ViewBuilder
     private var player: some View {
         if let target = status?.displayed,
-           let attachment = target.mediaAttachments.first(where: { $0.isVideo }) {
+            let attachment = target.mediaAttachments.first(where: { $0.isVideo })
+        {
             let isCovered =
                 target.sensitive
                 && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal

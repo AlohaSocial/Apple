@@ -147,7 +147,9 @@ public struct ModerationAccountsView: View {
             guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
             guard loadID == requestID else { return }
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Accounts could not be loaded. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Accounts could not be loaded. Please try again.")
         }
     }
 }
@@ -328,7 +330,9 @@ struct ModerationAccountSheet: View {
             dismiss()
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The account action could not be completed. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The account action could not be completed. Please try again.")
         }
     }
 }

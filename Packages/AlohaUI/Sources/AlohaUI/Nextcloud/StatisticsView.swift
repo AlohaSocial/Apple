@@ -150,8 +150,10 @@ public struct StatisticsView: View {
                     .foregroundStyle(palette.tertiaryLabel)
                 }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)],
-                alignment: .leading, spacing: AlohaMetrics.space3) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space3
+            ) {
                 stat(
                     statistics.posts["total"] ?? statistics.posts["count"]
                         ?? Double(statistics.window?.counted ?? 0),
@@ -511,7 +513,8 @@ public struct StatisticsView: View {
         defer { if loadID == request { isLoading = false } }
         do {
             let response = try await session.client.decode(
-                AccountStatistics.self, from: Endpoint.statistics.overview(days: requestedDays, fresh: fresh)
+                AccountStatistics.self,
+                from: Endpoint.statistics.overview(days: requestedDays, fresh: fresh)
             )
             guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
             statistics = response
@@ -521,7 +524,8 @@ public struct StatisticsView: View {
             guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Statistics could not be loaded. Please try again.")
         }
     }
@@ -533,19 +537,23 @@ public struct StatisticsView: View {
         errorMessage = nil
         defer { isExporting = false }
         do {
-            let response = try await session.client.send(Endpoint.statistics.export(days: requestedDays))
+            let response = try await session.client.send(
+                Endpoint.statistics.export(days: requestedDays))
             guard !Task.isCancelled else { return }
             let directory = FileManager.default.temporaryDirectory
                 .appending(path: "aloha-statistics-\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let url = directory.appending(path:
-                "social-statistics-\(Date.now.formatted(.iso8601.year().month().day())).csv")
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true)
+            let url = directory.appending(
+                path:
+                    "social-statistics-\(Date.now.formatted(.iso8601.year().month().day())).csv")
             try response.data.write(to: url, options: .atomic)
             exportURL = url
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Statistics could not be exported. Please try again.")
         }
     }

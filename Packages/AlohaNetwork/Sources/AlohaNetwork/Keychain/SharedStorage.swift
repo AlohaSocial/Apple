@@ -38,8 +38,8 @@ public enum AppGroup {
     /// the app was still entitled to.
     public static let keychainAccessGroup: String? =
         Bundle.main.object(forInfoDictionaryKey: "AlohaKeychainSharingEnabled") as? Bool ?? true
-            ? "com.nextcloud.alohasocial"
-            : nil
+        ? "com.nextcloud.alohasocial"
+        : nil
 
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"

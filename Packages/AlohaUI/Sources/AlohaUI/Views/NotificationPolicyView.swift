@@ -68,7 +68,8 @@ public struct NotificationPolicyView: View {
                 }
 
                 if let summary = policy.summary,
-                    summary.pendingRequestsCount > 0 {
+                    summary.pendingRequestsCount > 0
+                {
                     Section {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
@@ -81,7 +82,9 @@ public struct NotificationPolicyView: View {
                             }
                         }
                         .accessibilityLabel(
-                            Text("Filtered notifications: \(summary.pendingRequestsCount) waiting", comment: "Filtered count"))
+                            Text(
+                                "Filtered notifications: \(summary.pendingRequestsCount) waiting",
+                                comment: "Filtered count"))
                     }
                 }
 
@@ -112,13 +115,16 @@ public struct NotificationPolicyView: View {
         // in-flight guard uses, and what SwiftUI needs to tell the rows apart.
         let id = "\(key)"
         let isUpdating = updatingIDs.contains(id)
-        return Picker(selection: Binding(
-            get: { policy[keyPath: key] },
-            set: { newValue in
-                guard !isUpdating else { return }
-                Task { await update(key: key, value: newValue) }
-            })) {
-            ForEach(NotificationPolicy.Decision.allCases.filter { !$0.isUnknown }, id: \.self) { decision in
+        return Picker(
+            selection: Binding(
+                get: { policy[keyPath: key] },
+                set: { newValue in
+                    guard !isUpdating else { return }
+                    Task { await update(key: key, value: newValue) }
+                })
+        ) {
+            ForEach(NotificationPolicy.Decision.allCases.filter { !$0.isUnknown }, id: \.self) {
+                decision in
                 Text(decision.rawValue.capitalized, comment: "Policy decision").tag(decision)
             }
         } label: {
@@ -127,7 +133,10 @@ public struct NotificationPolicyView: View {
         .disabled(isUpdating)
     }
 
-    private func update(key: KeyPath<NotificationPolicy, NotificationPolicy.Decision>, value: NotificationPolicy.Decision) async {
+    private func update(
+        key: KeyPath<NotificationPolicy, NotificationPolicy.Decision>,
+        value: NotificationPolicy.Decision
+    ) async {
         guard var policy, !updatingIDs.contains("\(key)") else { return }
         updatingIDs.insert("\(key)")
         defer { updatingIDs.remove("\(key)") }

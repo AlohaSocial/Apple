@@ -85,11 +85,12 @@ public struct LocalNotifier: Sendable {
             content.title = title(for: notification, payload: payload)
             content.body = payload?.body ?? ""
             if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
-            content.categoryIdentifier = switch notification.kind {
+            content.categoryIdentifier =
+                switch notification.kind {
                 case .mention: "mention"
                 case .reply: "reply"
                 default: "generic"
-            }
+                }
             content.interruptionLevel = notification.kind == .mention ? .active : .passive
             content.threadIdentifier = payload?.statusID ?? notification.serverID
             content.userInfo = [
@@ -105,8 +106,9 @@ public struct LocalNotifier: Sendable {
             let trigger: UNNotificationTrigger?
             if deliveryMode == .digest {
                 // Mentions and DMs from followed accounts always come through immediately.
-                let isBreaking = notification.kind == .mention ||
-                    (notification.kind == .followRequest && payload?.followsYou == true)
+                let isBreaking =
+                    notification.kind == .mention
+                    || (notification.kind == .followRequest && payload?.followsYou == true)
                 if isBreaking {
                     trigger = nil
                 } else {
@@ -161,7 +163,7 @@ public struct LocalNotifier: Sendable {
             guard let start = quietStart, let end = quietEnd else { return false }
             if start <= end {
                 return h >= start && h < end
-            } else { // wraps midnight
+            } else {  // wraps midnight
                 return h >= start || h < end
             }
         }
@@ -171,14 +173,15 @@ public struct LocalNotifier: Sendable {
         while inQuietHours(h) && checked < times.count {
             // Skip to next digest time
             if let idx = times.firstIndex(of: h),
-               idx + 1 < times.count {
+                idx + 1 < times.count
+            {
                 h = times[idx + 1]
             } else {
                 h = times.first!
             }
             checked += 1
         }
-        if inQuietHours(h) { return nil } // all digest times are in quiet hours
+        if inQuietHours(h) { return nil }  // all digest times are in quiet hours
 
         // Build date for the target hour (today or tomorrow).
         var comps = cal.dateComponents([.year, .month, .day], from: now)
@@ -188,7 +191,9 @@ public struct LocalNotifier: Sendable {
         comps.hour = h
         comps.minute = 0
         guard let date = cal.date(from: comps) else { return nil }
-        return UNCalendarNotificationTrigger(dateMatching: cal.dateComponents([.hour, .minute, .day, .month, .year], from: date), repeats: false)
+        return UNCalendarNotificationTrigger(
+            dateMatching: cal.dateComponents([.hour, .minute, .day, .month, .year], from: date),
+            repeats: false)
     }
 
     private func title(

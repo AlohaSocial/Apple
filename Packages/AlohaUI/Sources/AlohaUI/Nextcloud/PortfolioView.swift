@@ -233,7 +233,9 @@ public struct PortfolioView: View {
     private var previewPage: some View {
         if let page = hasChanges ? draftPage : (preview ?? draftPage) {
             ScrollView {
-                if let loaded, settings.source != loaded.source || settings.collectionID != loaded.collectionID {
+                if let loaded,
+                    settings.source != loaded.source || settings.collectionID != loaded.collectionID
+                {
                     Text("Save your changes to preview photos from the newly selected source.")
                         .font(.footnote)
                         .foregroundStyle(palette.secondaryLabel)
@@ -259,7 +261,8 @@ public struct PortfolioView: View {
     /// sent along with them — so a draft can be looked at before publishing.
     private var draftPage: PortfolioPage? {
         if let preview {
-            return PortfolioPreview.applying(settings, to: preview,
+            return PortfolioPreview.applying(
+                settings, to: preview,
                 fallbackTitle: session.snapshot.bestDisplayName)
         }
         let source = loaded ?? settings
@@ -317,7 +320,8 @@ public struct PortfolioView: View {
 
     private func save() async {
         guard !isSaving, !isLoading, loaded != nil, hasChanges,
-            PortfolioPreview.canSave(settings) else { return }
+            PortfolioPreview.canSave(settings)
+        else { return }
         isSaving = true
         previewID = UUID()
         errorMessage = nil

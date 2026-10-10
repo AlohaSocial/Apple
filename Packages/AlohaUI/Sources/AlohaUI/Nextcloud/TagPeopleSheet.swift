@@ -141,7 +141,8 @@ public struct TagPeopleSheet: View {
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Tagged people could not be loaded. Please try again.")
         }
     }

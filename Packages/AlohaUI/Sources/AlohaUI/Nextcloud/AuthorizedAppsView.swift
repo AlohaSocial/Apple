@@ -173,7 +173,9 @@ public struct AuthorizedAppsView: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Authorized apps could not be loaded. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Authorized apps could not be loaded. Please try again.")
         }
     }
 
@@ -189,7 +191,9 @@ public struct AuthorizedAppsView: View {
             apps.removeAll { $0.id == app.id }
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Access could not be revoked. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Access could not be revoked. Please try again.")
         }
     }
 }

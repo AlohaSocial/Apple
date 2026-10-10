@@ -56,7 +56,8 @@ public enum VideoSourceResolver {
         // player: Nextcloud's CSP forbids it and it would disclose the viewer
         // to a server they never chose to talk to (docs/06 §3).
         if let url = attachment.url, isVideoResource(url),
-            !isRemote || isLocal(url, apiBase: apiBase) {
+            !isRemote || isLocal(url, apiBase: apiBase)
+        {
             sources.append(VideoSource(url: url, kind: .progressive))
         } else if isRemote, attachment.hlsURL == nil {
             // A federated PeerTube video with no local file needs the server
@@ -80,7 +81,9 @@ public enum VideoSourceResolver {
     /// "Cannot Open" error. Reject known image resources before the player is
     /// created; `preview_url` remains exclusively for the poster image.
     private static func isVideoResource(_ url: URL) -> Bool {
-        let imageExtensions: Set<String> = ["apng", "avif", "gif", "heic", "heif", "jpeg", "jpg", "png", "webp"]
+        let imageExtensions: Set<String> = [
+            "apng", "avif", "gif", "heic", "heif", "jpeg", "jpg", "png", "webp",
+        ]
         return !imageExtensions.contains(url.pathExtension.lowercased())
     }
 

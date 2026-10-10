@@ -84,7 +84,9 @@ public struct ComposerView: View {
                 editor
 
                 if !model.pendingGames.isEmpty { gamesHint }
-                if model.canBeCard && (showsCardOptions || model.cardBackgroundID != nil) { cardRow }
+                if model.canBeCard && (showsCardOptions || model.cardBackgroundID != nil) {
+                    cardRow
+                }
 
                 if let place = model.place { placeChip(place) }
                 if model.isNextcloud && model.hasVideoAttachment { videoMetaFields }
@@ -494,8 +496,9 @@ public struct ComposerView: View {
                                 .frame(width: 96)
                             Text(
                                 "^[\(model.describedCount) of \(model.describeAllTotal)](inflect: false)",
-                                comment: "Alt text batch progress")
-                                .font(.caption2.monospacedDigit())
+                                comment: "Alt text batch progress"
+                            )
+                            .font(.caption2.monospacedDigit())
                             Button(role: .cancel) {
                                 model.cancelDescribeAll()
                             } label: {
@@ -506,7 +509,10 @@ public struct ComposerView: View {
                             .foregroundStyle(palette.secondaryLabel)
                         }
                         .frame(width: 96, height: 96)
-                        .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
+                        .background(
+                            palette.surfaceRaised,
+                            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall)
+                        )
                         .accessibilityLabel(
                             Text(
                                 "Describing images: \(model.describedCount) of \(model.describeAllTotal) done",
@@ -522,12 +528,15 @@ public struct ComposerView: View {
                                     .font(.caption2.weight(.semibold))
                                 Text(
                                     "^[\(model.imagesAwaitingDescription) image](inflect: true)",
-                                    comment: "Alt text batch count")
-                                    .font(.caption2.monospacedDigit())
+                                    comment: "Alt text batch count"
+                                )
+                                .font(.caption2.monospacedDigit())
                             }
                             .foregroundStyle(palette.accent)
                             .frame(width: 96, height: 96)
-                            .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
+                            .background(
+                                palette.surfaceRaised,
+                                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(
@@ -727,29 +736,34 @@ public struct ComposerView: View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
             Text(
                 "Add at least two choices. People can vote after you publish the post.",
-                comment: "Poll editor guidance")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                comment: "Poll editor guidance"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
             ForEach(model.pollOptions.indices, id: \.self) { index in
                 HStack {
-                TextField(
-                    text: Binding(
-                        get: { model.pollOptions.indices.contains(index) ? model.pollOptions[index] : "" },
-                        set: { value in
-                            guard model.pollOptions.indices.contains(index) else { return }
-                            model.pollOptions[index] = value
-                        }),
-                    prompt: Text("Choice \(index + 1)", comment: "Poll option placeholder")
-                ) {
-                    Text("Choice", comment: "Poll option label")
-                }
-                .textFieldStyle(.plain)
-                .padding(.horizontal, AlohaMetrics.space3)
-                .frame(minHeight: 44)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                    TextField(
+                        text: Binding(
+                            get: {
+                                model.pollOptions.indices.contains(index)
+                                    ? model.pollOptions[index] : ""
+                            },
+                            set: { value in
+                                guard model.pollOptions.indices.contains(index) else { return }
+                                model.pollOptions[index] = value
+                            }),
+                        prompt: Text("Choice \(index + 1)", comment: "Poll option placeholder")
+                    ) {
+                        Text("Choice", comment: "Poll option label")
+                    }
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .frame(minHeight: 44)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                     Button(role: .destructive) {
                         guard model.pollOptions.count > 2,
-                              model.pollOptions.indices.contains(index) else { return }
+                            model.pollOptions.indices.contains(index)
+                        else { return }
                         model.pollOptions.remove(at: index)
                     } label: {
                         Image(systemName: "minus.circle")
@@ -773,10 +787,10 @@ public struct ComposerView: View {
                 Spacer()
             }
             .font(.footnote)
-                Toggle(isOn: $model.pollMultiple) {
-                    Text("Multiple choice", comment: "Poll option")
-                }
-                .toggleStyle(.switch)
+            Toggle(isOn: $model.pollMultiple) {
+                Text("Multiple choice", comment: "Poll option")
+            }
+            .toggleStyle(.switch)
         }
         .padding(AlohaMetrics.space3)
     }
@@ -1063,7 +1077,10 @@ public struct ComposerView: View {
                         .padding(.top, 6)
                     TextField(
                         text: Binding(
-                            get: { model.threadSegments.indices.contains(index) ? model.threadSegments[index] : "" },
+                            get: {
+                                model.threadSegments.indices.contains(index)
+                                    ? model.threadSegments[index] : ""
+                            },
                             set: { value in
                                 guard model.threadSegments.indices.contains(index) else { return }
                                 model.threadSegments[index] = value

@@ -105,8 +105,10 @@ public struct DeliverySheet: View {
             )
             .font(.subheadline.weight(.semibold))
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)],
-                alignment: .leading, spacing: AlohaMetrics.space2) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space2
+            ) {
                 if report.sending > 0 {
                     count(report.sending, state: .sending)
                 }

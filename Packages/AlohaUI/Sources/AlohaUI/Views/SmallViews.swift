@@ -104,7 +104,8 @@ public struct DraftsView: View {
                 try await session.supportStore.deleteDraft(id: draft.id)
                 drafts.removeAll { $0.id == draft.id }
             } catch {
-                errorMessage = String(localized: "The draft could not be deleted. Please try again.")
+                errorMessage = String(
+                    localized: "The draft could not be deleted. Please try again.")
             }
         }
     }

@@ -105,27 +105,31 @@ public struct ExploreView: View {
 
     private var switcher: some View {
         ScrollView(.horizontal) {
-          GlassEffectContainer(spacing: AlohaMetrics.space2) {
-            HStack(spacing: AlohaMetrics.space2) {
-            ForEach(sections) { option in
-                Button {
-                    section = option
-                } label: {
-                    title(for: option)
-                        .font(.subheadline.weight(section == option ? .semibold : .regular))
-                        .fixedSize()
-                        .padding(.horizontal, AlohaMetrics.space3)
-                        .frame(minHeight: 44)
-                        .foregroundStyle(section == option ? palette.onAccent : palette.label)
+            GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                HStack(spacing: AlohaMetrics.space2) {
+                    ForEach(sections) { option in
+                        Button {
+                            section = option
+                        } label: {
+                            title(for: option)
+                                .font(.subheadline.weight(section == option ? .semibold : .regular))
+                                .fixedSize()
+                                .padding(.horizontal, AlohaMetrics.space3)
+                                .frame(minHeight: 44)
+                                .foregroundStyle(
+                                    section == option ? palette.onAccent : palette.label)
+                        }
+                        .buttonStyle(.plain)
+                        .glassEffect(
+                            .regular.tint(section == option ? palette.accent : nil).interactive(),
+                            in: Capsule()
+                        )
+                        .accessibilityAddTraits(section == option ? .isSelected : [])
+                    }
                 }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.tint(section == option ? palette.accent : nil).interactive(), in: Capsule())
-                .accessibilityAddTraits(section == option ? .isSelected : [])
+                .padding(.horizontal, AlohaMetrics.space3)
+                .padding(.vertical, AlohaMetrics.space2)
             }
-            }
-            .padding(.horizontal, AlohaMetrics.space3)
-            .padding(.vertical, AlohaMetrics.space2)
-          }
         }
         .scrollIndicators(.hidden)
         .accessibilityLabel(Text("Section", comment: "Discover section picker"))
@@ -736,7 +740,11 @@ public struct ExploreView: View {
         isSearching = true
         // Only the search still matching what is on screen may put the
         // spinner down; a newer one owns it from here.
-        defer { if query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed { isSearching = false } }
+        defer {
+            if query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed {
+                isSearching = false
+            }
+        }
         // Wait for typing to settle before every keystroke becomes a request.
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }

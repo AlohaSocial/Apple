@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import SwiftUI
+
 #if canImport(UIKit)
     import UIKit
 #endif
@@ -356,22 +357,22 @@ public enum PlatformBehavior {
     /// iPhone uses tab bar, others use sidebar
     public static var usesSidebar: Bool {
         #if os(iOS)
-        return false // Determined at runtime by size class
+            return false  // Determined at runtime by size class
         #else
-        return true
+            return true
         #endif
     }
 
     /// Default navigation style per platform
     public static var defaultNavigation: NavigationStyle {
         #if os(iOS)
-        return .tabBar
+            return .tabBar
         #elseif os(macOS) || os(visionOS) || os(tvOS)
-        return .splitView
+            return .splitView
         #elseif os(watchOS)
-        return .stack
+            return .stack
         #else
-        return .stack
+            return .stack
         #endif
     }
 
@@ -384,80 +385,82 @@ public enum PlatformBehavior {
     /// Glass material preference per platform
     public static var preferredGlass: AlohaGlass {
         #if os(visionOS)
-        return .subtle
+            return .subtle
         #elseif os(tvOS)
-        return .regular
+            return .regular
         #elseif os(watchOS)
-        return .subtle
+            return .subtle
         #else
-        return .regular
+            return .regular
         #endif
     }
 
     /// Default density per platform
     public static var defaultDensity: AlohaMetrics.Density {
         #if os(iOS) || os(visionOS)
-        return .comfortable
+            return .comfortable
         #elseif os(macOS)
-        return .spacious
+            return .spacious
         #elseif os(tvOS)
-        return .spacious
+            return .spacious
         #elseif os(watchOS)
-        return .compact
+            return .compact
         #else
-        return .comfortable
+            return .comfortable
         #endif
     }
 
     /// Touch target minimum size
     public static var touchTarget: CGFloat {
         #if os(watchOS)
-        return 32
+            return 32
         #elseif os(tvOS)
-        return 60
+            return 60
         #else
-        return 44
+            return 44
         #endif
     }
 
     /// Keyboard shortcut modifier
     public static var commandModifier: EventModifiers {
         #if os(macOS) || os(visionOS) || os(iOS)
-        return .command
+            return .command
         #else
-        return .command
+            return .command
         #endif
     }
 }
 
-/// Platform-adaptive view modifier for native behavior
+/// Platform-adaptive view modifier for native behavior.
+///
+/// The closures are stored as `AnyView` producers rather than as
+/// `(() -> some View)?` — an opaque result type is only legal in a function's
+/// declared return position, and a *stored property* of a closure returning
+/// `some View` does not compile. The type is erased once, at construction,
+/// which is the only place the concrete type is known.
 public struct PlatformAdaptive: ViewModifier {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
-    let compact: (() -> some View)?
-    let regular: (() -> some View)?
+    private let compact: (() -> AnyView)?
+    private let regular: (() -> AnyView)?
 
-    public init(compact: (() -> some View)? = nil, regular: (() -> some View)? = nil) {
-        self.compact = compact
-        self.regular = regular
+    public init<Compact: View, Regular: View>(
+        @ViewBuilder compact: (() -> Compact)? = nil,
+        @ViewBuilder regular: (() -> Regular)? = nil
+    ) {
+        self.compact = compact.map { build in { AnyView(build()) } }
+        self.regular = regular.map { build in { AnyView(build()) } }
     }
 
     public func body(content: Content) -> some View {
         #if os(iOS)
-        if horizontalSizeClass == .compact {
-            content
-        } else if let regular {
-            regular()
-        } else {
-            content
-        }
+            if horizontalSizeClass == .compact {
+                if let compact { compact() } else { content }
+            } else {
+                if let regular { regular() } else { content }
+            }
         #else
-        if let regular {
-            regular()
-        } else {
-            content
-        }
+            if let regular { regular() } else { content }
         #endif
     }
 }
@@ -487,12 +490,17 @@ public enum AlohaGlass: Sendable {
 }
 
 extension View {
-    /// Applies platform-adaptive behavior
-    public func platformAdaptive(
-        compact: (() -> some View)? = nil,
-        regular: (() -> some View)? = nil
+    /// Applies platform-adaptive behaviour: one layout on a compact width,
+    /// another on a regular one, and the receiver where no replacement was
+    /// offered.
+    public func platformAdaptive<Compact: View, Regular: View>(
+        @ViewBuilder compact: (() -> Compact)? = nil,
+        @ViewBuilder regular: (() -> Regular)? = nil
     ) -> some View {
-        modifier(PlatformAdaptive(compact: compact, regular: regular))
+        modifier(
+            PlatformAdaptive(
+                compact: compact.map { build in { build() } },
+                regular: regular.map { build in { build() } }))
     }
 
     /// Applies native glass effects based on platform
@@ -563,7 +571,8 @@ extension View {
             case .subtle: return [Color.white.opacity(0.08), Color.white.opacity(0.02)]
             }
         }()
-        return self
+        return
+            self
             .background(
                 LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
                     .background(.ultraThinMaterial)
@@ -678,6 +687,7 @@ extension View {
             UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
         }
 
-        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context)
+        {}
     }
 #endif

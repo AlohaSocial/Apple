@@ -344,7 +344,9 @@ public struct SubscriptionsView: View {
 
     /// The rows are already gone from the screen; a refusal puts them back
     /// rather than leaving a follow that silently survived.
-    private func unfollow(_ targets: [SubscriptionFeed], restoring previous: [SubscriptionFeed])
+    private func unfollow(
+        _ targets: [SubscriptionFeed], restoring previous: [SubscriptionFeed]
+    )
         async
     {
         var refused = false

@@ -93,7 +93,11 @@ public struct ListMembershipSheet: View {
                                 Text("Add", comment: "New list action")
                             }
                             .buttonStyle(.glass)
-                            .disabled(isSaving || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .disabled(
+                                isSaving
+                                    || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        .isEmpty
+                            )
                         }
                     } else {
                         Button {
@@ -189,7 +193,9 @@ public struct ListMembershipSheet: View {
         } catch {
             if wasMember { memberOf.insert(list.id) } else { memberOf.remove(list.id) }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "List membership could not be updated. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "List membership could not be updated. Please try again.")
         }
     }
 
@@ -210,7 +216,11 @@ public struct ListMembershipSheet: View {
             await toggle(created)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The list could not be created. Your text has been kept; please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized:
+                        "The list could not be created. Your text has been kept; please try again.")
         }
     }
 }

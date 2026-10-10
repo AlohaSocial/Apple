@@ -4,7 +4,7 @@
 import PackageDescription
 
 let settings: [SwiftSetting] = [
-    .swiftLanguageMode(.v6),
+    .swiftLanguageMode(.v6)
 ]
 
 let package = Package(
@@ -15,13 +15,13 @@ let package = Package(
         .library(name: "AlohaHTML", targets: ["AlohaHTML"])
     ],
     dependencies: [
-        .package(path: "../AlohaModels"),
+        .package(path: "../AlohaModels")
     ],
     targets: [
         .target(
             name: "AlohaHTML",
             dependencies: [
-                .product(name: "AlohaModels", package: "AlohaModels"),
+                .product(name: "AlohaModels", package: "AlohaModels")
             ],
             resources: [.process("Resources")],
             swiftSettings: settings

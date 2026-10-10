@@ -8,7 +8,8 @@ enum StatisticsNumbers {
         guard value.isFinite, value >= 0 else { return "—" }
         let count = value.rounded(.towardZero)
         if compact {
-            return count.formatted(.number.notation(.compactName).precision(.fractionLength(0)).locale(locale))
+            return count.formatted(
+                .number.notation(.compactName).precision(.fractionLength(0)).locale(locale))
         }
         return count.formatted(.number.precision(.fractionLength(0)).locale(locale))
     }

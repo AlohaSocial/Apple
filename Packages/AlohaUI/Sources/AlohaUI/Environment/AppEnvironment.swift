@@ -236,7 +236,8 @@ public final class AppEnvironment {
         lastReprobe[session.id] = now
 
         let probe = ServerProbe(transport: transport)
-        guard let address = ServerProbe.ServerAddress(
+        guard
+            let address = ServerProbe.ServerAddress(
                 apiBase: session.capabilities.apiBase),
             let outcome = try? await probe.discover(address)
         else { return }

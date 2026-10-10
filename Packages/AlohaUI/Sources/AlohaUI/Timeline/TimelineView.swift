@@ -107,7 +107,11 @@ public struct TimelineView: View {
                 if model.isRefreshing {
                     ForEach(0..<3, id: \.self) { index in
                         SkeletonRow(hasMedia: index == 1)
-                            .listRowInsets(EdgeInsets(top: 0, leading: metrics.space4, bottom: 0, trailing: metrics.space4))
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: 0, leading: metrics.space4, bottom: 0,
+                                    trailing: metrics.space4)
+                            )
                             .listRowBackground(palette.background)
                             .listRowSeparator(.hidden)
                     }
@@ -129,7 +133,11 @@ public struct TimelineView: View {
                         showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
-                    .listRowInsets(EdgeInsets(top: metrics.space1, leading: metrics.space4, bottom: metrics.space1, trailing: metrics.space4))
+                    .listRowInsets(
+                        EdgeInsets(
+                            top: metrics.space1, leading: metrics.space4, bottom: metrics.space1,
+                            trailing: metrics.space4)
+                    )
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                     .id(status.id)
@@ -158,7 +166,10 @@ public struct TimelineView: View {
                             // The divider sits below the last-read post: when
                             // it becomes visible the reader has passed it, so
                             // the marker moves to the post that follows.
-                            guard let idx = model.rows.firstIndex(where: { $0.id == "caughtUp-\(after)" }),
+                            guard
+                                let idx = model.rows.firstIndex(where: {
+                                    $0.id == "caughtUp-\(after)"
+                                }),
                                 idx + 1 < model.rows.count,
                                 case .status(let next) = model.rows[idx + 1]
                             else { return }

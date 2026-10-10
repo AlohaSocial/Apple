@@ -77,7 +77,9 @@ public struct ServerProbe: Sendable {
             self.pathHint = path.isEmpty ? nil : path
         }
 
-        public init(scheme: String = "https", host: String, pathHint: String? = nil, port: Int? = nil) {
+        public init(
+            scheme: String = "https", host: String, pathHint: String? = nil, port: Int? = nil
+        ) {
             self.scheme = scheme
             self.host = host
             self.pathHint = pathHint

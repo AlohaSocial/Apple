@@ -181,7 +181,8 @@ public struct HeldPostsView: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Pending posts could not be loaded. Please try again.")
         }
     }
@@ -198,7 +199,8 @@ public struct HeldPostsView: View {
             held.removeAll { $0.id == post.id }
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The post could not be withdrawn. Please try again.")
         }
     }

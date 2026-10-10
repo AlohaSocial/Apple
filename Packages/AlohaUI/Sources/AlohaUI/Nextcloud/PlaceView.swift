@@ -202,7 +202,8 @@ public struct PlaceView: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Posts from this place could not be loaded. Please try again.")
         }
         // The place itself is worth showing even when its posts failed.
@@ -231,7 +232,8 @@ public struct PlaceView: View {
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
             retryOlder = true
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "More posts could not be loaded. Please try again.")
         }
     }

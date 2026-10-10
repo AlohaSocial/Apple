@@ -100,11 +100,12 @@ public struct WelcomeView: View {
             if isLast {
                 Text(
                     "You will need the address of your server — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
-                    comment: "Onboarding footnote")
-                    .font(.caption)
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .multilineTextAlignment(.center)
-                    .transition(.opacity)
+                    comment: "Onboarding footnote"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.tertiaryLabel)
+                .multilineTextAlignment(.center)
+                .transition(.opacity)
             } else {
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -146,7 +147,8 @@ private struct OnboardingPageView: View {
                 .unifiedGlass(
                     .regular,
                     in: RoundedRectangle(
-                        cornerRadius: AlohaMetrics.cornerLarge * 2, style: .continuous))
+                        cornerRadius: AlohaMetrics.cornerLarge * 2, style: .continuous)
+                )
                 .accessibilityHidden(true)
 
             VStack(spacing: metrics.space3) {
@@ -288,16 +290,21 @@ public struct SidebarView: View {
                 }
 
                 row(
-                    "Direct messages", symbol: selectedRoute == .conversations ? "envelope.fill" : AlohaSymbol.envelope, route: .conversations,
+                    "Direct messages",
+                    symbol: selectedRoute == .conversations
+                        ? "envelope.fill" : AlohaSymbol.envelope, route: .conversations,
                     comment: "Sidebar item")
                 row(
-                    "Discover", symbol: selectedRoute == .explore ? "safari.fill" : "safari", route: .explore,
+                    "Discover", symbol: selectedRoute == .explore ? "safari.fill" : "safari",
+                    route: .explore,
                     comment: "Sidebar item")
             }
 
             Section {
                 row(
-                    "Your lists", symbol: selectedRoute == .lists ? "list.bullet.rectangle.fill" : "list.bullet.rectangle", route: .lists,
+                    "Your lists",
+                    symbol: selectedRoute == .lists
+                        ? "list.bullet.rectangle.fill" : "list.bullet.rectangle", route: .lists,
                     comment: "Sidebar item")
                 if session.capabilities.isNextcloudSocial {
                     row(

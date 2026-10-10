@@ -140,7 +140,9 @@ public struct ChannelsView: View {
             guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
             guard loadID == requestID else { return }
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Video channels could not be loaded. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Video channels could not be loaded. Please try again.")
         }
     }
 
@@ -239,7 +241,8 @@ struct ChannelEditor: View {
                     }
                     TextField(
                         String(localized: "Name", comment: "Channel name placeholder"),
-                        text: $draft.name)
+                        text: $draft.name
+                    )
                     .accessibilityLabel(Text("Name", comment: "Channel field"))
                     TextField(
                         String(

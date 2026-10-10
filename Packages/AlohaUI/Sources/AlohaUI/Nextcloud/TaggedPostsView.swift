@@ -195,7 +195,8 @@ struct TaggedGrid: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Tagged posts could not be loaded. Please try again.")
         }
     }
@@ -218,7 +219,8 @@ struct TaggedGrid: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "More tagged posts could not be loaded. Please try again.")
         }
     }
@@ -226,7 +228,8 @@ struct TaggedGrid: View {
     /// Optimistic removal rolls back only this row, preserving other results.
     private func untag(_ status: Status) async {
         guard !isLoading, let index = statuses.firstIndex(where: { $0.id == status.id }),
-            removing.insert(status.id).inserted else { return }
+            removing.insert(status.id).inserted
+        else { return }
         defer { removing.remove(status.id) }
         errorMessage = nil
         statuses.removeAll { $0.id == status.id }
@@ -238,7 +241,8 @@ struct TaggedGrid: View {
                 statuses.insert(status, at: min(index, statuses.count))
             }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Your tag could not be removed. Please try again.")
         }
     }

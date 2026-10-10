@@ -147,10 +147,10 @@ public struct SettingsView: View {
                 }
             }
 
-                if shows(
-                    "Appearance",
-                    "appearance theme density serif icon counts numbers text size compact")
-                {
+            if shows(
+                "Appearance",
+                "appearance theme density serif icon counts numbers text size compact")
+            {
                 Section {
                     Picker(selection: $environment.theme) {
                         ForEach(AlohaTheme.allCases) { theme in
@@ -189,9 +189,10 @@ public struct SettingsView: View {
                                 Text("Show numbers", comment: "Settings item")
                                 Text(
                                     "Reply, boost and favourite counts, follower and post counts, and view counts.",
-                                    comment: "Settings explanation")
-                                    .font(.footnote)
-                                    .foregroundStyle(palette.secondaryLabel)
+                                    comment: "Settings explanation"
+                                )
+                                .font(.footnote)
+                                .foregroundStyle(palette.secondaryLabel)
                             }
                         }
                     }
@@ -286,7 +287,7 @@ public struct SettingsView: View {
                             Image(systemName: AlohaSymbol.block)
                         }
                     }
-NavigationLink(value: Route.notificationRequests) {
+                    NavigationLink(value: Route.notificationRequests) {
                         Label {
                             Text("Filtered notifications", comment: "Settings item")
                         } icon: {
@@ -718,7 +719,9 @@ NavigationLink(value: Route.notificationRequests) {
                 selection: Binding(
                     get: { session.settings.notificationDeliveryMode },
                     set: { value in
-                        Task { await session.updateSettings { $0.notificationDeliveryMode = value } }
+                        Task {
+                            await session.updateSettings { $0.notificationDeliveryMode = value }
+                        }
                     })
             ) {
                 Text("As they arrive", comment: "Notification delivery mode")
@@ -798,11 +801,14 @@ NavigationLink(value: Route.notificationRequests) {
                 HStack {
                     Text("Quiet hours start", comment: "Settings item")
                     Spacer()
-                    Picker("", selection: Binding(
-                        get: { session.settings.quietHoursStart ?? 22 },
-                        set: { value in
-                            Task { await session.updateSettings { $0.quietHoursStart = value } }
-                        })) {
+                    Picker(
+                        "",
+                        selection: Binding(
+                            get: { session.settings.quietHoursStart ?? 22 },
+                            set: { value in
+                                Task { await session.updateSettings { $0.quietHoursStart = value } }
+                            })
+                    ) {
                         ForEach(0..<24) { hour in
                             Text("\(hour):00").tag(hour)
                         }
@@ -812,11 +818,14 @@ NavigationLink(value: Route.notificationRequests) {
                 HStack {
                     Text("Quiet hours end", comment: "Settings item")
                     Spacer()
-                    Picker("", selection: Binding(
-                        get: { session.settings.quietHoursEnd ?? 7 },
-                        set: { value in
-                            Task { await session.updateSettings { $0.quietHoursEnd = value } }
-                        })) {
+                    Picker(
+                        "",
+                        selection: Binding(
+                            get: { session.settings.quietHoursEnd ?? 7 },
+                            set: { value in
+                                Task { await session.updateSettings { $0.quietHoursEnd = value } }
+                            })
+                    ) {
                         ForEach(0..<24) { hour in
                             Text("\(hour):00").tag(hour)
                         }

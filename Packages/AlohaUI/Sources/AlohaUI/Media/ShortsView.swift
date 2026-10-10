@@ -535,7 +535,8 @@ struct ShortPlayer: View {
     @State private var playbackFailed = false
 
     private var sources: [VideoSource] {
-        VideoSourceResolver.sources(for: attachment, statusID: statusID, apiBase: apiBase,
+        VideoSourceResolver.sources(
+            for: attachment, statusID: statusID, apiBase: apiBase,
             isRemote: VideoSourceResolver.isRemote(attachment))
     }
 
@@ -558,7 +559,8 @@ struct ShortPlayer: View {
                     PlayerSurface(player: player, showsControls: false)
                 } else {
                     RemoteImage(
-                        url: attachment.previewURL, blurhash: attachment.blurhash, contentMode: .fill)
+                        url: attachment.previewURL, blurhash: attachment.blurhash,
+                        contentMode: .fill)
                 }
             }
             if isCurrent && !isCovered && !isReady {
@@ -606,7 +608,8 @@ struct ShortPlayer: View {
             let source = sources[index]
             guard !Task.isCancelled, isCurrent else { return }
             let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
-            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero) {
+            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero)
+            {
             case .playable(let newPlayer, let item, let ready):
                 guard !Task.isCancelled, isCurrent else {
                     newPlayer.replaceCurrentItem(with: nil)
@@ -636,7 +639,8 @@ struct ShortPlayer: View {
                     isReady = true
                 case .failed:
                     PlaybackLog.logger.error(
-                        "short failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
+                        "short failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)"
+                    )
                     teardown()
                     if rung + 1 < sources.count {
                         sourceIndex = rung + 1

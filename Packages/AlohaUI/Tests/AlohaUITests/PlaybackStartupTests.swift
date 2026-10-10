@@ -2,6 +2,7 @@
 import AVFoundation
 import Foundation
 import Testing
+
 @testable import AlohaUI
 
 @Suite("Active video startup")

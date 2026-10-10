@@ -147,8 +147,8 @@ func writePreview(_ image: CGImage?, named name: String) {
     let folder = catalog.appending(path: "AppIconPreviews")
     try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     try? """
-        { "info" : { "author" : "xcode", "version" : 1 } }
-        """.write(
+    { "info" : { "author" : "xcode", "version" : 1 } }
+    """.write(
         to: folder.appending(path: "Contents.json"), atomically: true, encoding: .utf8)
     let set = folder.appending(path: "\(name).imageset")
     try? FileManager.default.createDirectory(at: set, withIntermediateDirectories: true)

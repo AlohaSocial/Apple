@@ -99,7 +99,8 @@ public struct PhotosModeView: View {
                         .labelStyle(.iconOnly)
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(
-                            layout == option ? palette.onAccent : palette.secondaryLabel)
+                            layout == option ? palette.onAccent : palette.secondaryLabel
+                        )
                         .padding(.horizontal, AlohaMetrics.space3)
                         .padding(.vertical, AlohaMetrics.space2)
                         .frame(minWidth: 44, minHeight: 44)
@@ -854,8 +855,9 @@ public struct StoryPlayer: View {
     private func media(_ story: Story) -> some View {
         if story.type.isPlayable, let url = story.url {
             StoryVideoSurface(
-                url: url, preview: story.previewURL, isPaused: isPaused, session: session)
-                .ignoresSafeArea()
+                url: url, preview: story.previewURL, isPaused: isPaused, session: session
+            )
+            .ignoresSafeArea()
         } else {
             RemoteImage(url: story.url, contentMode: .fit)
                 .ignoresSafeArea()

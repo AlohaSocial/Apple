@@ -5,10 +5,10 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
+import Combine
 import Foundation
 import OSLog
 import Observation
-import Combine
 
 /// Drives one timeline: cache-first paint, anchored paging, gap handling, and
 /// the client-side filtering a server without the narrowings forces.
@@ -92,7 +92,8 @@ public final class TimelineModel {
                 accountID: session.id, timeline: "home", to: statusID)
         } catch {
             logger.debug(
-                "could not advance local home marker: \(String(describing: error), privacy: .public)")
+                "could not advance local home marker: \(String(describing: error), privacy: .public)"
+            )
         }
         // Server sync (fire-and-forget)
         Task {
@@ -112,7 +113,10 @@ public final class TimelineModel {
         else { return }
         // Already present?
         if rows.indices.contains(idx + 1),
-            case .caughtUpDivider = rows[idx + 1] { return }
+            case .caughtUpDivider = rows[idx + 1]
+        {
+            return
+        }
         rows.insert(.caughtUpDivider(after: markerID), at: idx + 1)
     }
 

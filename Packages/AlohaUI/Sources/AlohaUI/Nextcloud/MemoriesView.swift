@@ -117,7 +117,8 @@ public struct MemoriesView: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Memories could not be loaded. Please try again.")
         }
         // A server without the recap route has no recap; the rest of the
@@ -134,18 +135,22 @@ public struct MemoriesView: View {
         defer { isSaving = false }
         do {
             _ = try await session.client.send(Endpoint.memories.setRecap(enabled: enabled))
-            recap = WeeklyRecap(enabled: enabled, thisWeek: previous.thisWeek, lastWeek: previous.lastWeek)
+            recap = WeeklyRecap(
+                enabled: enabled, thisWeek: previous.thisWeek, lastWeek: previous.lastWeek)
             // A failed count refresh must not undo a setting already saved by the server.
             if enabled {
                 if let refreshed = try? await session.client.decode(
-                    WeeklyRecap.self, from: Endpoint.memories.recap) {
+                    WeeklyRecap.self, from: Endpoint.memories.recap)
+                {
                     recap = refreshed
                 }
             }
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
-                ?? String(localized: "The weekly recap setting could not be saved. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The weekly recap setting could not be saved. Please try again.")
         }
     }
 }

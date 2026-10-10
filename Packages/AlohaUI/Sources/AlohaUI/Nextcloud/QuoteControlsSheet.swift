@@ -36,13 +36,19 @@ public struct QuoteControlsSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Picker(selection: Binding(get: { policy }, set: { new in
-                        guard !isLoading, !isSaving, revoking.isEmpty, new != policy else { return }
-                        let previous = policy
-                        policy = new
-                        isSaving = true
-                        Task { await save(new, revertingTo: previous) }
-                    })) {
+                    Picker(
+                        selection: Binding(
+                            get: { policy },
+                            set: { new in
+                                guard !isLoading, !isSaving, revoking.isEmpty, new != policy else {
+                                    return
+                                }
+                                let previous = policy
+                                policy = new
+                                isSaving = true
+                                Task { await save(new, revertingTo: previous) }
+                            })
+                    ) {
                         Text("Anybody", comment: "Quote policy").tag(QuoteApprovalPolicy.public)
                         Text("People who follow me", comment: "Quote policy")
                             .tag(QuoteApprovalPolicy.followers)
@@ -157,7 +163,8 @@ public struct QuoteControlsSheet: View {
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Quotes could not be loaded. Please try again.")
         }
     }
@@ -171,14 +178,16 @@ public struct QuoteControlsSheet: View {
         do {
             let updated = try await session.client.decode(
                 Status.self, from: Endpoint.statusExtras.setQuotePolicy(status.id, new))
-            policy = updated.quoteApprovalPolicy.flatMap { QuoteApprovalPolicy(rawValue: $0) } ?? new
+            policy =
+                updated.quoteApprovalPolicy.flatMap { QuoteApprovalPolicy(rawValue: $0) } ?? new
             try? await session.timelineStore.updateStatus(accountID: session.id, status: updated)
             errorMessage = nil
         } catch {
             policy = previous
             retryPolicy = new
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The quote setting could not be saved. Please try again.")
         }
     }
@@ -186,7 +195,8 @@ public struct QuoteControlsSheet: View {
     private func revoke(_ quote: Status) async {
         guard !isLoading, !isSaving,
             let index = quotes.firstIndex(where: { $0.id == quote.id }),
-            revoking.insert(quote.id).inserted else { return }
+            revoking.insert(quote.id).inserted
+        else { return }
         defer { revoking.remove(quote.id) }
         errorMessage = nil
         retryPolicy = nil
@@ -201,7 +211,8 @@ public struct QuoteControlsSheet: View {
                 quotes.insert(quote, at: min(index, quotes.count))
             }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The quote could not be detached. Please try again.")
         }
     }

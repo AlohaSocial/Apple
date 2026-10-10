@@ -33,7 +33,9 @@ final class NextVideoPreloader {
         Key(accountID: accountID, statusID: statusID, attachmentID: attachmentID)
     }
 
-    nonisolated static func permits(networkAllowed: Bool, lowPower: Bool, autoplay: Bool, covered: Bool) -> Bool {
+    nonisolated static func permits(
+        networkAllowed: Bool, lowPower: Bool, autoplay: Bool, covered: Bool
+    ) -> Bool {
         networkAllowed && !lowPower && autoplay && !covered
     }
 
@@ -48,7 +50,9 @@ final class NextVideoPreloader {
     }
 
     func take(key: Key) -> (AVPlayer, AVPlayerItem)? {
-        guard let cached = cached.removeValue(forKey: key), cached.item.status != .failed else { return nil }
+        guard let cached = cached.removeValue(forKey: key), cached.item.status != .failed else {
+            return nil
+        }
         cached.player.cancelPendingPrerolls()
         return (cached.player, cached.item)
     }
@@ -66,25 +70,33 @@ final class NextVideoPreloader {
         requestID = UUID()
         let token = requestID
         let target = status.displayed
-        for key in Array(cached.keys) where key.accountID != session.id
-            || (key.statusID != currentStatusID && key.statusID != target.id) {
+        for key in Array(cached.keys)
+        where key.accountID != session.id
+            || (key.statusID != currentStatusID && key.statusID != target.id)
+        {
             let entry = cached.removeValue(forKey: key)
             entry?.player.cancelPendingPrerolls()
             entry?.player.replaceCurrentItem(with: nil)
         }
-        guard Self.permits(networkAllowed: allowsPrefetch,
-            lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
-            autoplay: session.settings.autoplayVideo,
-            covered: target.sensitive && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal),
+        guard
+            Self.permits(
+                networkAllowed: allowsPrefetch,
+                lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled,
+                autoplay: session.settings.autoplayVideo,
+                covered: target.sensitive
+                    && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal),
             let attachment = target.mediaAttachments.first(where: { $0.isVideo })
         else {
             retainCurrent(statusID: currentStatusID, accountID: session.id)
             return
         }
-        let targetKey = Self.key(accountID: session.id, statusID: target.id, attachmentID: attachment.id)
+        let targetKey = Self.key(
+            accountID: session.id, statusID: target.id, attachmentID: attachment.id)
         if cached[targetKey] != nil { return }
-        let sources = VideoSourceResolver.sources(for: attachment, statusID: target.id,
-            apiBase: session.capabilities.apiBase, isRemote: VideoSourceResolver.isRemote(attachment))
+        let sources = VideoSourceResolver.sources(
+            for: attachment, statusID: target.id,
+            apiBase: session.capabilities.apiBase,
+            isRemote: VideoSourceResolver.isRemote(attachment))
         for source in sources {
             guard !Task.isCancelled, requestID == token else { return }
             let headers = await session.client.mediaRequestHeaders(for: source.url)
@@ -97,8 +109,10 @@ final class NextVideoPreloader {
                 player.isMuted = true
                 item.preferredForwardBufferDuration = 3
                 item.preferredPeakBitRate = 1_500_000
-                cached[Self.key(accountID: session.id, statusID: target.id,
-                    attachmentID: attachment.id)] = (player, item)
+                cached[
+                    Self.key(
+                        accountID: session.id, statusID: target.id,
+                        attachmentID: attachment.id)] = (player, item)
                 if ready, player.status == .readyToPlay {
                     player.preroll(atRate: 1, completionHandler: nil)
                 }

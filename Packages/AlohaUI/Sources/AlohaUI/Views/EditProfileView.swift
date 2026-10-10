@@ -148,9 +148,12 @@ public struct EditProfileView: View {
             }
         }
         .sensoryFeedback(.success, trigger: didSave)
-        .alert("Image could not be loaded", isPresented: Binding(
-            get: { photoError != nil }, set: { if !$0 { photoError = nil } }
-        )) {
+        .alert(
+            "Image could not be loaded",
+            isPresented: Binding(
+                get: { photoError != nil }, set: { if !$0 { photoError = nil } }
+            )
+        ) {
             Button("OK", role: .cancel) { photoError = nil }
         } message: {
             Text(photoError ?? "")
@@ -214,7 +217,8 @@ public struct EditProfileView: View {
                 .frame(height: 96)
                 .frame(maxWidth: .infinity)
                 .clipShape(
-                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+                )
                 .accessibilityHidden(true)
 
                 HStack(spacing: AlohaMetrics.space3) {
@@ -486,7 +490,8 @@ public struct EditProfileView: View {
                         await session.refreshServerState()
                     } catch {
                         await session.handle(error)
-                        errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+                        errorMessage =
+                            (error as? APIError)?.errorDescription ?? error.localizedDescription
                         return
                     }
                 }
@@ -572,7 +577,10 @@ public struct EditProfileView: View {
             guard !Task.isCancelled,
                 name == "avatar" ? avatarItem == item : headerItem == item
             else { return nil }
-            photoError = String(localized: "Please choose another image or try downloading it from your photo library first.")
+            photoError = String(
+                localized:
+                    "Please choose another image or try downloading it from your photo library first."
+            )
             return nil
         }
         let type = item.supportedContentTypes.first
@@ -587,7 +595,9 @@ public struct EditProfileView: View {
             data: data, filename: "\(name).\(ext)", mimeType: mimeType)
     }
 
-    private func fieldBinding(at index: Int, keyPath: WritableKeyPath<Account.Field, String>) -> Binding<String> {
+    private func fieldBinding(
+        at index: Int, keyPath: WritableKeyPath<Account.Field, String>
+    ) -> Binding<String> {
         Binding(
             get: { Self.fieldValue(in: fields, at: index, keyPath: keyPath) },
             set: { value in

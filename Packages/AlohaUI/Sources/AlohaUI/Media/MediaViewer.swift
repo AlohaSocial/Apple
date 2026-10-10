@@ -199,10 +199,14 @@ public struct MediaViewer: View {
             }
             .onEnded { value in
                 isDragging = false
-                if abs(value.translation.height) > 140 || (value.predictedEndTranslation.height > 200) {
+                if abs(value.translation.height) > 140
+                    || (value.predictedEndTranslation.height > 200)
+                {
                     dismiss()
                 } else {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { dragOffset = .zero }
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        dragOffset = .zero
+                    }
                 }
             }
     }
@@ -387,7 +391,8 @@ public struct VideoAttachmentPlayer: View {
             PlaybackLog.logger.info(
                 "opening video rung \(index) \(source.url.absoluteString, privacy: .public)")
 
-            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero) {
+            switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero)
+            {
             case .playable(let newPlayer, let item, let isReady):
                 guard !Task.isCancelled else {
                     newPlayer.replaceCurrentItem(with: nil)
@@ -402,13 +407,17 @@ public struct VideoAttachmentPlayer: View {
                 startTicking(newPlayer, item: item)
                 watch(item, at: index)
                 PlaybackLog.logger.notice(
-                    "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .public)")
+                    "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .public)"
+                )
             case .rejected(let reason):
                 PlaybackLog.logger.error("video rung rejected: \(reason, privacy: .public)")
             }
         }
 
-        playbackError = String(localized: "This video could not be played. Please check your connection and try again.", comment: "Video playback failure")
+        playbackError = String(
+            localized:
+                "This video could not be played. Please check your connection and try again.",
+            comment: "Video playback failure")
     }
 
     /// A rung that opens can still collapse later — a master playlist that
@@ -424,7 +433,8 @@ public struct VideoAttachmentPlayer: View {
                     isRevealed = true
                 case .failed:
                     PlaybackLog.logger.error(
-                        "video failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)")
+                        "video failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)"
+                    )
                     releasePlayer()
                     isRevealed = false
                     if rung + 1 < sources.count {
@@ -462,13 +472,17 @@ public struct VideoAttachmentPlayer: View {
     private func startTicking(_ player: AVPlayer, item: AVPlayerItem) {
         guard let session, session.capabilities.watchPositions else { return }
         ticker = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: WatchPositionRules.reportInterval, preferredTimescale: 600),
+            forInterval: CMTime(
+                seconds: WatchPositionRules.reportInterval, preferredTimescale: 600),
             queue: .main
         ) { time in
             let duration = item.duration.seconds
             guard duration.isFinite, duration > 0, time.seconds.isFinite else { return }
             _ = MainActor.assumeIsolated {
-                Task { await Self.report(session, statusID: statusID, position: time.seconds, duration: duration) }
+                Task {
+                    await Self.report(
+                        session, statusID: statusID, position: time.seconds, duration: duration)
+                }
             }
         }
     }

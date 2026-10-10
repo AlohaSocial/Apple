@@ -161,7 +161,9 @@ struct DiscoverMediaGrid: View {
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Media could not be loaded. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Media could not be loaded. Please try again.")
         }
     }
 }

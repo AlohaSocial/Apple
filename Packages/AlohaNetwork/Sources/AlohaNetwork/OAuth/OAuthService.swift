@@ -66,7 +66,8 @@ public struct OAuthService: Sendable {
         else { return fallback }
 
         return Endpoints(
-            authorization: endpoint(metadata.authorizationEndpoint, fallback: fallback.authorization),
+            authorization: endpoint(
+                metadata.authorizationEndpoint, fallback: fallback.authorization),
             token: endpoint(metadata.tokenEndpoint, fallback: fallback.token),
             revocation: endpoint(metadata.revocationEndpoint, fallback: fallback.revocation),
             supportsPKCE: metadata.supportsPKCE

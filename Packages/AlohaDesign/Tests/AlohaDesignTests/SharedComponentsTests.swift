@@ -3,11 +3,11 @@
 import SwiftUI
 import Testing
 
+@testable import AlohaDesign
+
 #if canImport(UIKit)
     import UIKit
 #endif
-
-@testable import AlohaDesign
 
 /// The shared list furniture — one error strip and one skeleton — has to hold
 /// its shape across every appearance, because these are the components every

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 import AlohaModels
 import AlohaStore
-import Testing
 import Foundation
+import Testing
+
 @testable import AlohaUI
 
 @Suite("Live status reconciliation")
@@ -21,7 +22,8 @@ struct LiveStatusTests {
                 continuation.resume(returning: update.status)
             }
             Task.detached {
-                NotificationCenter.default.post(name: TimelineStatusUpdate.notification,
+                NotificationCenter.default.post(
+                    name: TimelineStatusUpdate.notification,
                     object: TimelineStatusUpdate(accountID: accountID, status: status))
             }
         }
@@ -35,9 +37,11 @@ struct LiveStatusTests {
         let original = Status(id: "post", account: account)
         let wrapper = Status(id: "boost", account: account, reblog: Box(original))
         let unrelated = Status(id: "other", account: account)
-        let confirmed = Status(id: "post", account: account, repliesCount: 8,
+        let confirmed = Status(
+            id: "post", account: account, repliesCount: 8,
             reblogsCount: 4, favouritesCount: 12, favourited: true, reblogged: true)
-        let rows = TimelineModel.replacing(confirmed,
+        let rows = TimelineModel.replacing(
+            confirmed,
             in: [.status(original), .status(wrapper), .status(unrelated)])
         #expect(rows[0].status == confirmed)
         #expect(rows[1].status?.id == "boost")

@@ -198,7 +198,9 @@ public struct FeaturedTagsView: View {
         } catch {
             guard !Task.isCancelled, requestID == loadID else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "Featured hashtags could not be loaded. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Featured hashtags could not be loaded. Please try again.")
         }
     }
 
@@ -218,7 +220,9 @@ public struct FeaturedTagsView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The hashtag could not be featured. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The hashtag could not be featured. Please try again.")
         }
     }
 
@@ -239,11 +243,15 @@ public struct FeaturedTagsView: View {
                     LossyArray<FeaturedTagSuggestion>.self, from: Endpoint.featuredTags.suggestions))?
                 .elements ?? suggestions
         } catch {
-            if !featured.contains(where: { $0.id == tag.id || $0.name.lowercased() == tag.name.lowercased() }) {
+            if !featured.contains(where: {
+                $0.id == tag.id || $0.name.lowercased() == tag.name.lowercased()
+            }) {
                 featured.insert(tag, at: min(index, featured.count))
             }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The featured hashtag could not be removed. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The featured hashtag could not be removed. Please try again.")
         }
     }
 }

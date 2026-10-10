@@ -109,7 +109,8 @@ struct TimelineSourceToggle: View {
         .buttonStyle(.plain)
         .glassEffect(
             .regular.tint(isSelected ? palette.accent : nil).interactive(),
-            in: Capsule())
+            in: Capsule()
+        )
         .glassEffectID(option, in: indicator)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)

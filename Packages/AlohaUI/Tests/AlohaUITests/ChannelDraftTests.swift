@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import Testing
+
 @testable import AlohaUI
 
 @Suite("Channel form submission")

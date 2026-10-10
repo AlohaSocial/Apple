@@ -279,7 +279,9 @@ struct MentionsProvider: AppIntentTimelineProvider {
     func timeline(
         for configuration: WidgetAccount, in context: Context
     ) async -> Timeline<MentionsEntry> {
-        Timeline(entries: [await entry(for: configuration)], policy: .after(Date().addingTimeInterval(600)))
+        Timeline(
+            entries: [await entry(for: configuration)],
+            policy: .after(Date().addingTimeInterval(600)))
     }
 
     private func entry(for configuration: WidgetAccount) async -> MentionsEntry {
@@ -346,9 +348,12 @@ struct MentionsView: View {
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                Text(mention.createdAt, format: .relative(presentation: .numeric, unitsStyle: .narrow))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                Text(
+                    mention.createdAt,
+                    format: .relative(presentation: .numeric, unitsStyle: .narrow)
+                )
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             }
             Text(mention.text)
                 .font(.caption2)

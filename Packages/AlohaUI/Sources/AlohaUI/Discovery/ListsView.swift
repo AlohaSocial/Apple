@@ -137,7 +137,11 @@ public struct ListsView: View {
                             Text("Add", comment: "New list action")
                         }
                         .buttonStyle(.glass)
-                        .disabled(isSaving || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(
+                            isSaving
+                                || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    .isEmpty
+                        )
                     }
                 } else {
                     Button {
@@ -268,7 +272,9 @@ public struct ListsView: View {
                 lists.insert(list, at: min(index, lists.count))
             }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The list could not be deleted. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The list could not be deleted. Please try again.")
         }
     }
 
@@ -519,7 +525,9 @@ struct ListEditorView: View {
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            memberLoadError = (error as? APIError)?.errorDescription ?? String(localized: "List members could not be loaded. Please try again.")
+            memberLoadError =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "List members could not be loaded. Please try again.")
         }
     }
 

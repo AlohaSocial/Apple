@@ -3,8 +3,8 @@
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
-import SwiftData
 import Foundation
+import SwiftData
 
 /// Reads the shared store. Deliberately narrow: the widget process has a tight
 /// memory budget and must not stand up the app's whole object graph.

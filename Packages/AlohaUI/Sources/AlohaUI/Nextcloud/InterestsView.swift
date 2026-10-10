@@ -231,7 +231,8 @@ public struct InterestsView: View {
             guard !Task.isCancelled, refreshID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, refreshID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Your interests feed could not be loaded. Please try again.")
         }
     }
@@ -263,7 +264,8 @@ public struct InterestsView: View {
             guard !Task.isCancelled, refreshID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, refreshID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "More posts could not be loaded. Please try again.")
         }
     }
@@ -277,7 +279,8 @@ public struct InterestsView: View {
         } catch {
             withAnimation { _ = hiddenIDs.remove(id) }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Your feed preference could not be saved. Please try again.")
         }
     }
@@ -584,7 +587,8 @@ struct InterestsSettingsView: View {
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Interests could not be loaded. Please try again.")
         }
     }
@@ -602,15 +606,17 @@ struct InterestsSettingsView: View {
             return true
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Your interests could not be updated. Please try again.")
             return false
         }
     }
 
     @discardableResult
-    private func save(learning: Bool? = nil, paused: Bool? = nil, languages: [String]? = nil) async -> Bool
-    {
+    private func save(
+        learning: Bool? = nil, paused: Bool? = nil, languages: [String]? = nil
+    ) async -> Bool {
         guard isLoaded, !isWorking, !isLoadingState else { return false }
         isWorking = true
         errorMessage = nil
@@ -627,7 +633,8 @@ struct InterestsSettingsView: View {
             return true
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Interest settings could not be saved. Please try again.")
             return false
         }
@@ -704,7 +711,8 @@ struct InterestCloud: View {
                         if tag.pinned {
                             Image(systemName: "pin.fill")
                                 .font(.caption2)
-                                .accessibilityLabel(Text("Pinned", comment: "Interest pinned state"))
+                                .accessibilityLabel(
+                                    Text("Pinned", comment: "Interest pinned state"))
                         }
                         Text(verbatim: "#\(tag.tag)")
                             .font(font(for: tag))
@@ -766,10 +774,15 @@ struct InterestCloud: View {
     private func font(for tag: InterestTag) -> Font {
         let weight = min(max(tag.score / maximum, 0), 1)
         let base: Font
-        if weight < 0.25 { base = .caption }
-        else if weight < 0.5 { base = .footnote }
-        else if weight < 0.75 { base = .subheadline }
-        else { base = .title3 }
+        if weight < 0.25 {
+            base = .caption
+        } else if weight < 0.5 {
+            base = .footnote
+        } else if weight < 0.75 {
+            base = .subheadline
+        } else {
+            base = .title3
+        }
         return tag.pinned ? base.weight(.semibold) : base
     }
 }

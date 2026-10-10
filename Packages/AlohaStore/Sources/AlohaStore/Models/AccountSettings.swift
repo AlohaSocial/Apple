@@ -66,7 +66,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         }
     }
 
-public init(
+    public init(
         defaultVisibility: Visibility = .public,
         defaultLanguage: String? = nil,
         defaultSensitive: Bool = false,
@@ -85,9 +85,9 @@ public init(
         enabledModes: [FeedMode] = FeedMode.defaultEnabled,
         localNotificationKinds: Set<String> = Set(
             [
-            NotificationKind.mention, .reblog, .favourite, .follow, .followRequest,
-            .poll, .status, .update, .moderationWarning, .severedRelationships,
-        ].map(\.rawValue)),
+                NotificationKind.mention, .reblog, .favourite, .follow, .followRequest,
+                .poll, .status, .update, .moderationWarning, .severedRelationships,
+            ].map(\.rawValue)),
         pollFrequency: PollFrequency = .normal,
         quietHoursStart: Int? = nil,
         quietHoursEnd: Int? = nil,

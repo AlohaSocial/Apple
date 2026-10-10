@@ -129,7 +129,9 @@ public struct FiltersView: View {
             }
             try? await session.supportStore.replaceFilters(filters, accountID: session.id)
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription ?? String(localized: "The filter could not be deleted. Please try again.")
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The filter could not be deleted. Please try again.")
         }
     }
 }
@@ -356,7 +358,9 @@ struct FilterEditorView: View {
     private var canSave: Bool {
         !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !draft.contexts.isEmpty
-            && draft.keywords.contains { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            && draft.keywords.contains {
+                !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
     }
 
     private var expiryChoices: [FilterExpiry] {
@@ -520,7 +524,9 @@ struct FilterEditorView: View {
     nonisolated static func replacing(
         _ keyword: FilterDraft.Keyword, in keywords: [FilterDraft.Keyword]
     ) -> [FilterDraft.Keyword] {
-        guard let index = keywords.firstIndex(where: { $0.id == keyword.id }) else { return keywords }
+        guard let index = keywords.firstIndex(where: { $0.id == keyword.id }) else {
+            return keywords
+        }
         var updated = keywords
         updated[index] = keyword
         return updated

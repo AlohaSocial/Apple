@@ -123,8 +123,10 @@ public struct AnnualReportView: View {
                 .font(AlohaType.section)
                 .foregroundStyle(palette.label)
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)],
-                alignment: .leading, spacing: AlohaMetrics.space3) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space3
+            ) {
                 figure(report.data.totalStatuses, Text("Posts", comment: "Annual report figure"))
                 // A year in review is one's own activity; the follower
                 // figures are not, and a reader who turned "Show numbers"
@@ -327,7 +329,9 @@ public struct AnnualReportView: View {
                 WrappedAnnualReports.self, from: Endpoint.annualReports.all)
             guard !Task.isCancelled, loadID == request else { return }
             wrapped = response
-            if let selectedYear, !response.annualReports.contains(where: { $0.year == selectedYear }) {
+            if let selectedYear,
+                !response.annualReports.contains(where: { $0.year == selectedYear })
+            {
                 self.selectedYear = nil
             }
             errorMessage = nil
@@ -340,7 +344,8 @@ public struct AnnualReportView: View {
             guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
             guard !Task.isCancelled, loadID == request else { return }
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "Your annual report could not be loaded. Please try again.")
         }
     }

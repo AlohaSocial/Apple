@@ -212,7 +212,9 @@ struct PaletteTests {
                 return Float(v <= 0.0031308 ? v * 12.92 : 1.055 * pow(v, 1 / 2.4) - 0.055)
             }
 
-            let r = toLinear(colour.red), g = toLinear(colour.green), b = toLinear(colour.blue)
+            let r = toLinear(colour.red)
+            let g = toLinear(colour.green)
+            let b = toLinear(colour.blue)
             let matrix = rows
             return Color.Resolved(
                 red: toGamma(matrix[0][0] * r + matrix[0][1] * g + matrix[0][2] * b),

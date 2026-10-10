@@ -189,7 +189,8 @@ public struct MigrationView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The export could not be prepared. Please try again.")
         }
     }
@@ -315,7 +316,8 @@ public struct MigrationView: View {
         case .archive: endpoint = .migration.importArchive(data, filename: filename)
         case .list(let list): endpoint = .migration.importList(list, csv: data, filename: filename)
         case .posts:
-            endpoint = .migration.importPosts(data, filename: filename, fetchMedia: shouldFetchMedia)
+            endpoint = .migration.importPosts(
+                data, filename: filename, fetchMedia: shouldFetchMedia)
         case .instagram: endpoint = .migration.instagramPeople(data, filename: filename)
         }
         do {
@@ -332,7 +334,8 @@ public struct MigrationView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The import could not be completed. Please try again.")
         }
     }
@@ -346,12 +349,14 @@ public struct MigrationView: View {
         do {
             reports["video"] = try await session.client.decode(
                 MigrationReport.self,
-                from: Endpoint.migration.importVideo(url: submittedURL, fetchMedia: shouldFetchMedia))
+                from: Endpoint.migration.importVideo(
+                    url: submittedURL, fetchMedia: shouldFetchMedia))
             if videoURL == submittedURL { videoURL = "" }
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The video could not be imported. Please try again.")
         }
     }
@@ -432,7 +437,9 @@ public struct MigrationView: View {
                 }
                 .buttonStyle(.glass)
                 .controlSize(.small)
-                .disabled(busy.contains("alias") || busy.contains("alias-load") || !newAlias.contains("@"))
+                .disabled(
+                    busy.contains("alias") || busy.contains("alias-load") || !newAlias.contains("@")
+                )
             }
         } header: {
             Text("Move", comment: "Migration section")
@@ -447,7 +454,8 @@ public struct MigrationView: View {
         guard !busy.contains("alias"), busy.insert("alias-load").inserted else { return }
         defer { busy.remove("alias-load") }
         if let response = try? await session.client.decode(
-            MigrationAliases.self, from: Endpoint.migration.aliases) {
+            MigrationAliases.self, from: Endpoint.migration.aliases)
+        {
             guard !Task.isCancelled else { return }
             aliases = response.aliases
         }
@@ -473,7 +481,8 @@ public struct MigrationView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The alias could not be added. Please try again.")
         }
     }
@@ -489,7 +498,8 @@ public struct MigrationView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The alias could not be removed. Please try again.")
         }
     }
@@ -524,7 +534,9 @@ public struct MigrationView: View {
                 Button("Try again") { Task { await findPeople() } }
                     .buttonStyle(.glass)
             }
-            if !instagramHandles.isEmpty && didLookup && !lookup.contains(where: { $0.found }) && !busy.contains("find") {
+            if !instagramHandles.isEmpty && didLookup && !lookup.contains(where: { $0.found })
+                && !busy.contains("find")
+            {
                 Text(
                     "^[\(instagramHandles.count) handle](inflect: true) found in the archive, none of them on the fediverse yet.",
                     comment: "Migration Instagram no matches"
@@ -553,15 +565,16 @@ public struct MigrationView: View {
                             if busy.contains("follow.\(account.id)") {
                                 ProgressView()
                             } else {
-                            (followed.contains(account.id)
-                                ? Text("Following", comment: "Migration follow state")
-                                : Text("Follow", comment: "Migration follow action"))
-                                .font(.footnote.weight(.semibold))
+                                (followed.contains(account.id)
+                                    ? Text("Following", comment: "Migration follow state")
+                                    : Text("Follow", comment: "Migration follow action"))
+                                    .font(.footnote.weight(.semibold))
                             }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .disabled(followed.contains(account.id) || busy.contains("follow.\(account.id)"))
+                        .disabled(
+                            followed.contains(account.id) || busy.contains("follow.\(account.id)"))
                     }
                 }
             }
@@ -591,7 +604,8 @@ public struct MigrationView: View {
         } catch {
             guard !Task.isCancelled, instagramHandles == handles else { return false }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "People could not be looked up. Please try again.")
             return false
         }
@@ -607,7 +621,8 @@ public struct MigrationView: View {
             followed.insert(account.id)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
                 ?? String(localized: "The account could not be followed. Please try again.")
         }
     }

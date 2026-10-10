@@ -94,7 +94,8 @@ public struct AppShell: View {
                 environment.sync.setForeground(phase == .active)
             }
             .onOpenURL { url in handle(url) }
-            .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) { _ in
+            .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) {
+                _ in
                 // The compose deep link — from the quick-compose widget, or a
                 // Shortcut — reached here because the composer is a sheet the
                 // shell owns, not a navigation destination.

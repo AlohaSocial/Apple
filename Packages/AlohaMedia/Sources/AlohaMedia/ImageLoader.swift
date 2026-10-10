@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaNetwork
 import CoreGraphics
 import CryptoKit
-import AlohaNetwork
 import Foundation
 import ImageIO
 import OSLog
@@ -34,7 +34,8 @@ public actor ImageLoader {
             ? FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: AppGroup.identifier)
             : nil
-        let base = groupBase
+        let base =
+            groupBase
             ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
 
         diskDirectory = base?.appending(path: "ImageCache")
@@ -109,7 +110,8 @@ public actor ImageLoader {
 
         do {
             var request = URLRequest(url: url)
-            request.setValue("image/avif,image/webp,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+            request.setValue(
+                "image/avif,image/webp,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
             request.timeoutInterval = 20
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode)
@@ -124,7 +126,8 @@ public actor ImageLoader {
             return image
         } catch {
             logger.debug(
-                "image request failed for \(url.host() ?? "unknown", privacy: .public): \(error.localizedDescription, privacy: .public)")
+                "image request failed for \(url.host() ?? "unknown", privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
             return nil
         }
     }

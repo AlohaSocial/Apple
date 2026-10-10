@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AlohaModels
 import Testing
+
 @testable import AlohaUI
 
 @Suite("Activity filtering")

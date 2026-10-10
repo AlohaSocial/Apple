@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import Foundation
 import Testing
+
 @testable import AlohaUI
 
 @Suite("Statistics number formatting")

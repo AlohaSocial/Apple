@@ -167,7 +167,8 @@ public struct ProfileView: View {
                     .buttonStyle(.plain)
                     .glassEffect(
                         .regular.tint(tab == option ? palette.accent : nil).interactive(),
-                        in: Capsule())
+                        in: Capsule()
+                    )
                     .accessibilityAddTraits(tab == option ? [.isButton, .isSelected] : .isButton)
                 }
             }
@@ -407,11 +408,15 @@ public struct ProfileView: View {
         return HStack(spacing: AlohaMetrics.space4) {
             stat(showsCounts ? account.statusesCount : nil, Text("Posts", comment: "Profile stat"))
             NavigationLink(value: Route.following(accountID: accountID)) {
-                stat(showsCounts ? account.followingCount : nil, Text("Following", comment: "Profile stat"))
+                stat(
+                    showsCounts ? account.followingCount : nil,
+                    Text("Following", comment: "Profile stat"))
             }
             .buttonStyle(.plain)
             NavigationLink(value: Route.followers(accountID: accountID)) {
-                stat(showsCounts ? account.followersCount : nil, Text("Followers", comment: "Profile stat"))
+                stat(
+                    showsCounts ? account.followersCount : nil,
+                    Text("Followers", comment: "Profile stat"))
             }
             .buttonStyle(.plain)
         }

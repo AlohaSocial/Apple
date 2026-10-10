@@ -540,7 +540,8 @@ public struct StoryComposerSheet: View {
     /// not, and never at all when it is over the ceiling.
     private func prepareStoryVideo(at url: URL) async throws -> MediaPreparer.Prepared {
         let mimeType = preparer.mimeType(for: url)
-        let size = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int)
+        let size =
+            ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int)
             ?? 0
 
         switch UploadPreflight.check(
@@ -560,8 +561,9 @@ public struct StoryComposerSheet: View {
 
         case .tooLarge(let size, let limit, _):
             throw StoryComposerError.message(
-                UploadPreflight.explanation(for: .tooLarge(
-                    size: size, limit: limit, isVideo: true))
+                UploadPreflight.explanation(
+                    for: .tooLarge(
+                        size: size, limit: limit, isVideo: true))
                     ?? String(
                         localized: "That story couldn't be shared.",
                         comment: "Story composer failure"))
