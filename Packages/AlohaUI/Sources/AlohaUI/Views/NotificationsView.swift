@@ -50,7 +50,7 @@ public struct NotificationsView: View {
                         Label {
                             Text("Notification policy", comment: "Notifications header")
                         } icon: {
-                            Image(systemName: AlohaSymbol.shield)
+                            Image(systemName: "lock.shield")
                         }
                     }
                     if let summary = notificationPolicy?.summary,
@@ -425,7 +425,7 @@ public struct NotificationsView: View {
                     idx + 1 < visibleFlat.count,
                     visibleFlat[idx + 1].id == notification.id
                 {
-                    advanceCaughtUpNotificationMarker(to: notification.id)
+                    Task { await advanceCaughtUpNotificationMarker(to: notification.id) }
                 }
             }
         }
@@ -584,17 +584,22 @@ public struct NotificationsView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func advanceCaughtUpNotificationMarker(to notificationID: String) {
+    /// Advances the notifications marker past the divider.
+    ///
+    /// Async because the local marker lives in an actor: this is the one write
+    /// that must not be attempted from a synchronous function, and the server
+    /// sync folds into the same await rather than a Task inside a Task.
+    private func advanceCaughtUpNotificationMarker(to notificationID: String) async {
         guard caughtUpNotificationID != nil else { return }
         caughtUpNotificationID = notificationID
+
         do {
-            try session.supportStore.repositories.advanceMarker(
+            try await session.supportStore.advanceMarker(
                 accountID: session.id, timeline: "notifications", to: notificationID)
         } catch {}
-        Task {
-            let endpoint = Endpoint.markers.write(home: nil, notifications: notificationID)
-            do { _ = try await session.client.send(endpoint) } catch {}
-        }
+
+        let endpoint = Endpoint.markers.write(home: nil, notifications: notificationID)
+        do { _ = try await session.client.send(endpoint) } catch {}
     }
 
     private func caughtUpDivider(after notificationID: String) -> some View {

@@ -5,6 +5,7 @@ import AlohaIntelligence
 import AlohaMedia
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct SettingsView: View {
@@ -97,6 +98,11 @@ public struct SettingsView: View {
             if shows("Accounts", "account accounts add sign switch remove") {
                 Section {
                     ForEach(environment.sessions) { session in
+                        // Hoisted out of the row: the compiler cannot check a
+                        // builder this shape in reasonable time, and the
+                        // comparison is a fact about the row rather than part
+                        // of its layout.
+                        let isActiveAccount = session.id == environment.activeSession?.id
                         Button {
                             environment.setActiveAccount(session.id)
                         } label: {
@@ -119,7 +125,7 @@ public struct SettingsView: View {
                                         .font(.caption)
                                         .foregroundStyle(palette.destructive)
                                 }
-                                if session.id == environment.activeSession?.id {
+                                if isActiveAccount {
                                     Image(systemName: "checkmark")
                                         .foregroundStyle(palette.accent)
                                         .accessibilityHidden(true)
@@ -131,7 +137,7 @@ public struct SettingsView: View {
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(accountLabel(session))
                         .accessibilityAddTraits(
-                            session.id == environment.activeSession?.id
+                            isActiveAccount
                                 ? [.isButton, .isSelected] : .isButton
                         )
                         .swipeActions {
@@ -295,12 +301,14 @@ public struct SettingsView: View {
                         Label {
                             Text("Filtered notifications", comment: "Settings item")
                         } icon: {
-                            Image(systemName: AlohaSymbol.filter)
+                            Image(systemName: "line.3.horizontal.decrease.circle")
                         }
                     }
                     // The notification policy screen is only shown when the server
                     // supports it (Mastodon 4.3+ / Nextcloud Social with v2).
-                    if session.capabilities.notificationPolicy {
+                    if let session = environment.activeSession,
+                        session.capabilities.notificationPolicy
+                    {
                         NavigationLink(value: Route.notificationPolicy) {
                             Label {
                                 Text("Notification policy", comment: "Settings item")

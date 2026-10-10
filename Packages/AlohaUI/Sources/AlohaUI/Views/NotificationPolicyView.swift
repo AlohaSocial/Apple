@@ -125,7 +125,7 @@ public struct NotificationPolicyView: View {
         ) {
             ForEach(NotificationPolicy.Decision.allCases.filter { !$0.isUnknown }, id: \.self) {
                 decision in
-                Text(decisionTitle(decision)).tag(decision)
+                decisionTitle(decision).tag(decision)
             }
         } label: {
             title
