@@ -352,85 +352,6 @@ extension View {
     }
 }
 
-/// Platform-adaptive behavior for native-feeling UI across all Apple platforms.
-public enum PlatformBehavior {
-    /// iPhone uses tab bar, others use sidebar
-    public static var usesSidebar: Bool {
-        #if os(iOS)
-            return false  // Determined at runtime by size class
-        #else
-            return true
-        #endif
-    }
-
-    /// Default navigation style per platform
-    public static var defaultNavigation: NavigationStyle {
-        #if os(iOS)
-            return .tabBar
-        #elseif os(macOS) || os(visionOS) || os(tvOS)
-            return .splitView
-        #elseif os(watchOS)
-            return .stack
-        #else
-            return .stack
-        #endif
-    }
-
-    public enum NavigationStyle: Sendable {
-        case tabBar
-        case splitView
-        case stack
-    }
-
-    /// Glass material preference per platform
-    public static var preferredGlass: AlohaGlass {
-        #if os(visionOS)
-            return .subtle
-        #elseif os(tvOS)
-            return .regular
-        #elseif os(watchOS)
-            return .subtle
-        #else
-            return .regular
-        #endif
-    }
-
-    /// Default density per platform
-    public static var defaultDensity: AlohaMetrics.Density {
-        #if os(iOS) || os(visionOS)
-            return .comfortable
-        #elseif os(macOS)
-            return .spacious
-        #elseif os(tvOS)
-            return .spacious
-        #elseif os(watchOS)
-            return .compact
-        #else
-            return .comfortable
-        #endif
-    }
-
-    /// Touch target minimum size
-    public static var touchTarget: CGFloat {
-        #if os(watchOS)
-            return 32
-        #elseif os(tvOS)
-            return 60
-        #else
-            return 44
-        #endif
-    }
-
-    /// Keyboard shortcut modifier
-    public static var commandModifier: EventModifiers {
-        #if os(macOS) || os(visionOS) || os(iOS)
-            return .command
-        #else
-            return .command
-        #endif
-    }
-}
-
 /// Modern glass material intensities for native UI layering.
 ///
 /// A card over content, a sheet over the screen, a toolbar over the list —
@@ -455,35 +376,6 @@ public enum AlohaGlass: Sendable {
     }
 }
 
-extension View {
-
-    /// Applies native glass effects based on platform
-    public func nativeGlass(_ style: AlohaGlass = PlatformBehavior.preferredGlass) -> some View {
-        self.unifiedGlass(style)
-    }
-
-    /// Platform-aware touch target sizing
-    public func nativeTouchTarget() -> some View {
-        self.frame(minWidth: PlatformBehavior.touchTarget, minHeight: PlatformBehavior.touchTarget)
-    }
-
-    /// Platform-aware navigation style
-    @ViewBuilder
-    public func nativeNavigation<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                TabView { content() }
-            } else {
-                NavigationSplitView { content() }
-            }
-        #else
-            NavigationSplitView { content() }
-        #endif
-    }
-}
-
 /// Glass effect modifiers for modern native UI layering.
 ///
 /// `unifiedGlass` is the one every view uses: on iOS 17 and macOS 14 it is a
@@ -496,7 +388,7 @@ extension View {
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
     public func alohaGlass(
         _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+        in shape: some InsetttableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
         self
             .background(style.material, in: shape)
@@ -505,18 +397,12 @@ extension View {
 
     /// The material alone, for when something else draws the edge.
     @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
-    public func alohaGlassBackground(
-        _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
-    ) -> some View {
-        self.background(style.material, in: shape)
-    }
 
     /// A fallback for older systems: a gradient over ultra-thin material rather
     /// than a plain colour, so a card still reads as a layer.
     public func alohaGlassFallback(
         _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+        in shape: some InsetttableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
         let colors: [Color] = {
             switch style {
@@ -539,7 +425,7 @@ extension View {
     /// available, the gradient fallback everywhere else.
     public func unifiedGlass(
         _ style: AlohaGlass = AlohaGlass.regular,
-        in shape: some Shape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
+        in shape: some InsetttableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
         if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
             return self.alohaGlass(style, in: shape)
@@ -547,101 +433,4 @@ extension View {
             return self.alohaGlassFallback(style, in: shape)
         }
     }
-
-    /// A glass card with the app's shared corner.
-    public func alohaCard(
-        _ style: AlohaGlass = AlohaGlass.regular,
-        cornerRadius: CGFloat = AlohaMetrics.cornerMedium
-    ) -> some View {
-        self.unifiedGlass(style, in: RoundedRectangle(cornerRadius: cornerRadius))
-    }
-
-    /// A tab or toolbar's background: nothing to draw, nothing to hit-test.
-    public func glassToolbarBackground() -> some View {
-        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
-            return self.background(.thickMaterial)
-        } else {
-            return self.background(.ultraThinMaterial)
-        }
-    }
 }
-
-/// SafeAreaInsets awareness for native feel
-extension View {
-    public func respectSafeArea(edges: Edge.Set = .all) -> some View {
-        self.safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
-    }
-
-    /// Native scroll behavior
-    public func nativeScrollBehavior() -> some View {
-        self.scrollContentBackground(.hidden)
-            .scrollDismissesKeyboard(.interactively)
-    }
-}
-
-/// Native accessibility helpers
-extension View {
-    public func nativeAccessibilityLabel(_ label: String) -> some View {
-        self.accessibilityLabel(Text(label))
-    }
-
-    public func nativeAccessibilityHint(_ hint: String) -> some View {
-        self.accessibilityHint(Text(hint))
-    }
-
-    public func nativeAccessibilityAction(
-        _ name: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        self.accessibilityAction(named: Text(name), action)
-    }
-}
-
-/// Dynamic island / live activity ready content
-extension View {
-    public func liveActivityReady() -> some View {
-        self
-    }
-}
-
-/// Native share sheet integration
-extension View {
-    /// Opens the system share sheet (iOS and tvOS only).
-    ///
-    /// A Mac or a watch gets no share sheet from a modifier — use
-    /// SwiftUI's `ShareLink`, which is the native control there.
-    @available(watchOS, unavailable)
-    @available(macOS, unavailable)
-    public func nativeShareSheet(
-        items: [Any],
-        isPresented: Binding<Bool>
-    ) -> some View {
-        #if canImport(UIKit) && !os(watchOS) && !os(macOS)
-            return self.sheet(isPresented: isPresented) {
-                ShareSheet(activityItems: items)
-            }
-        #else
-            return self
-        #endif
-    }
-}
-
-/// ShareSheet wrapper for the system share sheet.
-///
-/// iOS, tvOS and visionOS only: UIKit's activity view controller has no
-/// SwiftUI equivalent, and a Mac reaches the share sheet through `ShareLink`
-/// and a watchOS app has no sheet to open. `nativeShareSheet` is unavailable
-/// on those platforms rather than silently doing nothing.
-#if canImport(UIKit) && !os(watchOS) && !os(macOS)
-    private struct ShareSheet: UIViewControllerRepresentable {
-        let activityItems: [Any]
-
-        func makeUIViewController(context: Context) -> UIActivityViewController {
-            UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-        }
-
-        func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context)
-        {}
-    }
-#endif
