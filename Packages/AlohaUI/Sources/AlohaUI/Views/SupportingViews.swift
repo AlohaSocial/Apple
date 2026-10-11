@@ -732,6 +732,14 @@ public struct SidebarView: View {
         .buttonStyle(.plain)
     }
 
+    /// Submitting the system's search bar navigates to the results, rather
+    /// than leaving the typed query where the system put it.
+    private func submitSearch() {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        selection = .route(.search(query: query))
+    }
+
     private var myProfile: Route {
         .profile(accountID: session.snapshot.serverAccountID)
     }
