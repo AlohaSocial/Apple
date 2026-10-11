@@ -72,56 +72,44 @@ public struct LocalNotifier: Sendable {
         let quietStart = session.settings.quietHoursStart
         let quietEnd = session.settings.quietHoursEnd
 
-        for notification in eligible {
-            guard !isQuiet else {
-                announced.append(notification.serverID)
-                continue
-            }
+        let announcements = eligible.filter { !isQuiet }
 
-            let content = UNMutableNotificationContent()
-            let payload = NotificationPayload.decode(notification.payload)
-
-            content.title = title(for: notification, payload: payload)
-            content.body = payload?.body ?? ""
-            if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
-            content.categoryIdentifier =
-                switch notification.kind {
-                // A reply is a mention: Mastodon's own API has no separate
-                // "reply" kind, and the mention category carries the actions
-                // people want on both.
-                case .mention: "mention"
-                default: "generic"
+        if deliveryMode == .digest {
+            // A mention is the thing somebody wants answered, so it always
+            // comes through immediately even in digest mode. Everything else
+            // waits for the next digest time and is posted there as ONE
+            // summary, grouped by kind — not as seventeen separate
+            // notifications at the same minute (docs/08 §8).
+            let breaking = announcements.filter { $0.kind == .mention }
+            for notification in breaking {
+                let content = content(
+                    for: notification, session: session, showAccountName: showAccountName)
+                let request = UNNotificationRequest(
+                    identifier: "\(session.id.uuidString)-\(notification.serverID)",
+                    content: content, trigger: nil)
+                do {
+                    try await center.add(request)
+                    announced.append(notification.serverID)
+                } catch {
+                    logger.error(
+                        "could not raise a notification: \(String(describing: error), privacy: .public)"
+                    )
                 }
-            content.interruptionLevel = notification.kind == .mention ? .active : .passive
-            content.threadIdentifier = payload?.statusID ?? notification.serverID
-            content.userInfo = [
-                "accountID": session.id.uuidString,
-                "statusID": payload?.statusID ?? "",
-                "notificationID": notification.serverID,
-            ]
-            if notification.kind != .follow {
-                content.sound = nil
             }
+            let held = announcements.filter { $0.kind != .mention }
+            try await postDigestSummary(
+                held, session: session, times: digestTimes, quietStart: quietStart,
+                quietEnd: quietEnd)
+            announced.append(contentsOf: held.map(\.serverID))
+            return announced
+        }
 
-            // Determine trigger based on delivery mode.
-            let trigger: UNNotificationTrigger?
-            if deliveryMode == .digest {
-                // A mention is the thing somebody wants answered, so it always
-                // comes through immediately even in digest mode.
-                let isBreaking = notification.kind == .mention
-                if isBreaking {
-                    trigger = nil
-                } else {
-                    trigger = nextDigestTrigger(
-                        times: digestTimes, quietStart: quietStart, quietEnd: quietEnd)
-                }
-            } else {
-                trigger = nil
-            }
-
+        for notification in announcements {
+            let content = content(
+                for: notification, session: session, showAccountName: showAccountName)
             let request = UNNotificationRequest(
                 identifier: "\(session.id.uuidString)-\(notification.serverID)",
-                content: content, trigger: trigger)
+                content: content, trigger: nil)
 
             do {
                 try await center.add(request)
@@ -133,6 +121,131 @@ public struct LocalNotifier: Sendable {
             }
         }
         return announced
+    }
+
+    /// One request for everything held since the last digest.
+    ///
+    /// The id is the digest *time*, not a notification: a later poll replaces
+    /// the pending summary rather than stacking a second one, which means a
+    /// person who receives four things through the day gets one notification
+    /// at 08:00 that says what they were, not four.
+    ///
+    /// The running totals live in the request's own `userInfo`: a replace
+    /// needs to know what the previous summary said, or the count would go
+    /// back down each time.
+    private func postDigestSummary(
+        _ held: [StoredNotification],
+        session: AccountSession,
+        times: [Int],
+        quietStart: Int?,
+        quietEnd: Int?
+    ) async throws {
+        guard !held.isEmpty else { return }
+        guard
+            let trigger = nextDigestTrigger(
+                times: times, quietStart: quietStart, quietEnd: quietEnd),
+            let calendarTrigger = trigger as? UNCalendarNotificationTrigger,
+            let nextDate = calendarTrigger.nextTriggerDate()
+        else { return }
+
+        // One identity per digest time, so successive polls replace.
+        let digestID = "\(session.id.uuidString)-digest-\(Int(nextDate.timeIntervalSince1970))"
+
+        // Whatever is already pending for this digest, plus what arrived now.
+        let pending = await pendingRequests(withIDs: [digestID])
+        var totals = pending.first.flatMap { self.digestCounts(of: $0) } ?? [:]
+        for notification in held {
+            totals[notification.kind.rawValue, default: 0] += 1
+        }
+
+        let content = UNMutableNotificationContent()
+        let total = totals.values.reduce(0, +)
+        content.title =
+            total == 1
+            ? String(localized: "1 notification", comment: "Digest summary title")
+            : String(
+                localized: "\(total) notifications",
+                comment: "Digest summary title")
+        content.body =
+            totals
+            .sorted { $0.key < $1.key }
+            .map { "\($0.value) \(kindName($0.key))" }
+            .joined(separator: " · ")
+        // A summary is not a conversation, so it does not need a sound and
+        // does not interrupt: it is the day's mail, not a message.
+        content.sound = nil
+        content.interruptionLevel = .passive
+        content.userInfo = [
+            "accountID": session.id.uuidString,
+            "digestCounts": totals,
+        ]
+
+        let request = UNNotificationRequest(
+            identifier: digestID, content: content, trigger: trigger)
+        try await center.add(request)
+    }
+
+    /// The pending requests this app has already scheduled for the given ids.
+    private func pendingRequests(withIDs: [String]) async -> [UNNotificationRequest] {
+        await withCheckedContinuation { continuation in
+            center.getPendingNotificationRequests { requests in
+                continuation.resume(returning: requests.filter { withIDs.contains($0.identifier) })
+            }
+        }
+    }
+
+    /// The per-kind counts a pending digest summary carries, if it is ours.
+    private func digestCounts(of request: UNNotificationRequest) -> [String: Int]? {
+        request.content.userInfo["digestCounts"] as? [String: Int]
+    }
+
+    /// A notification kind as it reads in a summary line: "5 favourites".
+    private func kindName(_ raw: String) -> String {
+        switch NotificationKind(rawValue: raw) {
+        case .mention: String(localized: "mention", comment: "Digest summary kind")
+        case .reblog: String(localized: "boost", comment: "Digest summary kind")
+        case .favourite: String(localized: "favourite", comment: "Digest summary kind")
+        case .follow: String(localized: "follow", comment: "Digest summary kind")
+        case .followRequest: String(localized: "request", comment: "Digest summary kind")
+        case .poll: String(localized: "poll", comment: "Digest summary kind")
+        case .status: String(localized: "reply", comment: "Digest summary kind")
+        case .update: String(localized: "update", comment: "Digest summary kind")
+        case .adminSignUp: String(localized: "sign-up", comment: "Digest summary kind")
+        case .adminReport: String(localized: "report", comment: "Digest summary kind")
+        case nil, .unknownCase: raw
+        }
+    }
+
+    /// The content for one notification, as it is announced on its own.
+    private func content(
+        for notification: StoredNotification, session: AccountSession,
+        showAccountName: Bool
+    ) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        let payload = NotificationPayload.decode(notification.payload)
+
+        content.title = title(for: notification, payload: payload)
+        content.body = payload?.body ?? ""
+        if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
+        content.categoryIdentifier =
+            switch notification.kind {
+            // A reply is a mention: Mastodon's own API has no separate
+            // "reply" kind, and the mention category carries the actions
+            // people want on both.
+            case .mention: "mention"
+            default: "generic"
+            }
+        content.interruptionLevel = notification.kind == .mention ? .active : .passive
+        content.threadIdentifier = payload?.statusID ?? notification.serverID
+        content.userInfo = [
+            "accountID": session.id.uuidString,
+            "statusID": payload?.statusID ?? "",
+            "notificationID": notification.serverID,
+        ]
+        if notification.kind != .follow {
+            content.sound = nil
+        }
+        return content
     }
 
     /// Returns the next digest trigger after now, skipping quiet hours.
