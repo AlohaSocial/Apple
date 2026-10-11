@@ -281,45 +281,14 @@ public struct LocalNotifier: Sendable {
         let hour = cal.component(.hour, from: now)
         let minute = cal.component(.minute, from: now)
 
-        // Find the next digest hour >= current hour (or tomorrow's first).
-        let candidateHours = times.sorted()
-        var nextHour: Int?
-        for h in candidateHours {
-            if h > hour || (h == hour && minute == 0) {
-                nextHour = h
-                break
-            }
-        }
-        if nextHour == nil { nextHour = candidateHours.first }
+        guard
+            let h = Self.nextDigestHour(
+                times: times, quietStart: quietStart, quietEnd: quietEnd,
+                hour: hour, minute: minute)
+        else { return nil }  // every digest time falls inside quiet hours
 
-        guard let nextHour else { return nil }
-
-        // Check quiet hours: if the digest hour falls in quiet hours, skip to next.
-        func inQuietHours(_ h: Int) -> Bool {
-            guard let start = quietStart, let end = quietEnd else { return false }
-            if start <= end {
-                return h >= start && h < end
-            } else {  // wraps midnight
-                return h >= start || h < end
-            }
-        }
-
-        var h = nextHour
-        var checked = 0
-        while inQuietHours(h) && checked < times.count {
-            // Skip to next digest time
-            if let idx = times.firstIndex(of: h),
-                idx + 1 < times.count
-            {
-                h = times[idx + 1]
-            } else {
-                h = times.first!
-            }
-            checked += 1
-        }
-        if inQuietHours(h) { return nil }  // all digest times are in quiet hours
-
-        // Build date for the target hour (today or tomorrow).
+        // Build the date for the target hour, today when the hour has not
+        // passed and tomorrow when it has.
         var comps = cal.dateComponents([.year, .month, .day], from: now)
         if h < hour || (h == hour && minute > 0) {
             comps.day = (comps.day ?? 1) + 1
@@ -330,6 +299,44 @@ public struct LocalNotifier: Sendable {
         return UNCalendarNotificationTrigger(
             dateMatching: cal.dateComponents([.hour, .minute, .day, .month, .year], from: date),
             repeats: false)
+    }
+
+    /// The hour of the next digest, as a pure function of the clock.
+    ///
+    /// The rule, in the order it decides: the first picked hour still ahead of
+    /// now — the same hour counts only while the minute is exactly zero —
+    /// otherwise the earliest picked hour, treated as tomorrow. An hour inside
+    /// quiet hours is skipped forward, and when every picked hour is quiet the
+    /// answer is nil, because quiet hours win over a digest time (docs/08 §8).
+    ///
+    /// Static and pure, so the rule is testable without a clock or a
+    /// notification centre.
+    static func nextDigestHour(
+        times: [Int], quietStart: Int?, quietEnd: Int?, hour: Int, minute: Int
+    ) -> Int? {
+        let sorted = times.sorted()
+        guard !sorted.isEmpty else { return nil }
+
+        func inQuietHours(_ h: Int) -> Bool {
+            guard let start = quietStart, let end = quietEnd else { return false }
+            return start > end
+                ? h >= start || h < end  // wraps midnight
+                : h >= start && h < end
+        }
+
+        var h = sorted.first { $0 > hour || ($0 == hour && minute == 0) } ?? sorted[0]
+
+        // Quiet hours can only skip *forward*, so the candidate list is walked
+        // in order; the wrap is bounded so a pathological list cannot loop.
+        var checked = 0
+        while inQuietHours(h), checked < times.count {
+            if let idx = sorted.firstIndex(of: h) {
+                h = sorted[(idx + 1) % sorted.count]
+            }
+            checked += 1
+        }
+
+        return inQuietHours(h) ? nil : h
     }
 
     private func title(
