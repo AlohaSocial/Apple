@@ -153,7 +153,7 @@ public struct LocalNotifier: Sendable {
 
         // Whatever is already pending for this digest, plus what arrived now.
         let pending = await pendingRequests(withIDs: [digestID])
-        var totals = pending.first.flatMap { self.digestCounts(of: $0) } ?? [:]
+        var totals = pending.first.map { digestCounts(of: $0) } ?? [:]
         for notification in held {
             totals[notification.kind.rawValue, default: 0] += 1
         }
@@ -201,7 +201,8 @@ public struct LocalNotifier: Sendable {
 
     /// A notification kind as it reads in a summary line: "5 favourites".
     private func kindName(_ raw: String) -> String {
-        switch NotificationKind(rawValue: raw) {
+        let kind = NotificationKind(rawValue: raw)
+        switch kind {
         case .mention: String(localized: "mention", comment: "Digest summary kind")
         case .reblog: String(localized: "boost", comment: "Digest summary kind")
         case .favourite: String(localized: "favourite", comment: "Digest summary kind")
@@ -227,14 +228,11 @@ public struct LocalNotifier: Sendable {
         content.title = title(for: notification, payload: payload)
         content.body = payload?.body ?? ""
         if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
+        // A reply is a mention: Mastodon's own API has no separate
+        // "reply" kind, and the mention category carries the actions
+        // people want on both.
         content.categoryIdentifier =
-            switch notification.kind {
-            // A reply is a mention: Mastodon's own API has no separate
-            // "reply" kind, and the mention category carries the actions
-            // people want on both.
-            case .mention: "mention"
-            default: "generic"
-            }
+            notification.kind == .mention ? "mention" : "generic"
         content.interruptionLevel = notification.kind == .mention ? .active : .passive
         content.threadIdentifier = payload?.statusID ?? notification.serverID
         content.userInfo = [
