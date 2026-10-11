@@ -382,7 +382,7 @@ public struct ExploreView: View {
                     popular.isEmpty, directory.isEmpty
                 {
                     if isLoading {
-                        loadingRow
+                        SkeletonListRow(person: 5)
                     } else if peopleError == nil {
                         ContentUnavailableView {
                             Text("Nobody to suggest yet", comment: "Empty Discover people")
@@ -415,7 +415,7 @@ public struct ExploreView: View {
         }
 
         if isSearching, found.isEmpty, foundElsewhere.accounts.isEmpty {
-            loadingRow
+            SkeletonListRow(person: 4)
         }
 
         if !found.isEmpty {
@@ -454,17 +454,6 @@ public struct ExploreView: View {
                 .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
         }
-    }
-
-    /// One row of the three states a plain list has between content: waiting.
-    private var loadingRow: some View {
-        HStack {
-            Spacer()
-            ProgressView()
-            Spacer()
-        }
-        .listRowBackground(palette.background)
-        .listRowSeparator(.hidden)
     }
 
     /// What a failed read was, so the retry runs that read rather than
@@ -591,7 +580,7 @@ public struct ExploreView: View {
 
             if trendingTags.isEmpty && elsewhereTags.isEmpty && trendingLinks.isEmpty {
                 if isLoading {
-                    loadingRow
+                    SkeletonListRow(person: 4)
                 } else if trendsError == nil {
                     ContentUnavailableView {
                         Text("Nothing trending", comment: "Empty Explore")
