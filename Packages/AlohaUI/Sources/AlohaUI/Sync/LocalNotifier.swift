@@ -236,8 +236,9 @@ public struct LocalNotifier: Sendable {
         // "reply" kind, and the mention category carries the actions
         // people want on both.
         content.categoryIdentifier =
-            notification.kind == .mention ? "mention" : "generic"
-        content.interruptionLevel = notification.kind == .mention ? .active : .passive
+            notification.kind == NotificationKind.mention ? "mention" : "generic"
+        content.interruptionLevel =
+            notification.kind == NotificationKind.mention ? .active : .passive
         content.threadIdentifier = payload?.statusID ?? notification.serverID
         content.userInfo = [
             "accountID": session.id.uuidString,
