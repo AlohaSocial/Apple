@@ -52,11 +52,9 @@ public struct DeliverySheet: View {
                             comment: "Delivery retention footer")
                     }
                 } else if isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
+                    // The shape of the report arriving, not a spinner over
+                    // nothing: three server rows.
+                    SkeletonListRow(text: 3)
                 }
             }
             .alohaGround(palette)

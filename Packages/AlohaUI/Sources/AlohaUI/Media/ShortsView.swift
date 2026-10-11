@@ -70,7 +70,12 @@ public struct ShortsView: View {
     public var body: some View {
         GeometryReader { proxy in
             ZStack {
-                if shorts.isEmpty {
+                // Three states, not two: the first page arriving is the shape
+                // of the feed; the empty state only shows once the server has
+                // actually said there is nothing there.
+                if shorts.isEmpty && model.isRefreshing {
+                    shortsSkeleton
+                } else if shorts.isEmpty {
                     emptyState
                 } else {
                     ScrollView(.vertical) {
@@ -467,6 +472,27 @@ public struct ShortsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+
+    /// The shape of the feed arriving: one phone-shaped page of stub, which
+    /// is what the screen is about to be. It replaces the empty state while
+    /// the first page is on the wire — an empty state that says "no shorts
+    /// yet" before the server has been asked is a lie.
+    private var shortsSkeleton: some View {
+        VStack(spacing: AlohaMetrics.space4) {
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
+                .fill(palette.surfaceRaised)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, AlohaMetrics.space2)
+            HStack {
+                Spacer()
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 56, height: 8)
+                Spacer()
+            }
+        }
+        .accessibilityLabel(Text("Loading shorts", comment: "Shorts loading"))
     }
 
     private var emptyState: some View {
