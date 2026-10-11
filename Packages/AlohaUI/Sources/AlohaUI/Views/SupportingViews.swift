@@ -2,6 +2,7 @@
 
 import AlohaDesign
 import AlohaModels
+import AlohaNetwork
 import SwiftUI
 
 public struct WelcomeView: View {
