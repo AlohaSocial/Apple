@@ -508,6 +508,10 @@ public struct SidebarView: View {
     /// Collapsed until asked for, as the web is.
     @State private var isAccountExpanded = false
     @State private var searchText = ""
+    /// How many conversations are unread, for the badge on "Direct messages".
+    /// The messages list writes it to the app group so this and the widgets
+    /// read the same number (docs/05 §5).
+    @State private var unreadConversations = 0
 
     private let onAddAccount: () -> Void
     private let onSwitchAccount: (UUID) -> Void
@@ -541,11 +545,21 @@ public struct SidebarView: View {
                     modeRow(mode)
                 }
 
-                row(
-                    "Direct messages",
-                    symbol: selectedRoute == .conversations
-                        ? "envelope.fill" : AlohaSymbol.envelope, route: .conversations,
-                    comment: "Sidebar item")
+                Label {
+                    Text("Direct messages", comment: "Sidebar item")
+                } icon: {
+                    Image(
+                        systemName: selectedRoute == .conversations
+                            ? "envelope.fill" : AlohaSymbol.envelope)
+                }
+                .badge(unreadConversations)
+                .tag(SidebarItem.route(.conversations))
+                .accessibilityLabel(
+                    unreadConversations > 0
+                        ? Text(
+                            "Direct messages, \(unreadConversations) unread",
+                            comment: "Sidebar item with badge")
+                        : Text("Direct messages", comment: "Sidebar item"))
                 row(
                     "Discover", symbol: selectedRoute == .explore ? "safari.fill" : "safari",
                     route: .explore,
@@ -680,6 +694,13 @@ public struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .onAppear {
+            // The messages list writes the badge count when it loads; read it
+            // back each time the sidebar appears so the badge is not a value
+            // from the last launch.
+            unreadConversations = AppGroup.defaults.integer(
+                forKey: AppGroup.unreadConversationsKey)
+        }
         // The system's own search bar, in the sidebar's slot: it widens the
         // navigation on iPad the way the system apps do, for free.
         .searchable(

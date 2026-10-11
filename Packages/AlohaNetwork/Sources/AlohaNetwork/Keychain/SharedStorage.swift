@@ -44,6 +44,10 @@ public enum AppGroup {
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"
     public static let unreadTotalKey = "aloha.unreadTotal"
+    /// How many conversations are unread, per account id. The sidebar's
+    /// badge on "Direct messages" reads it, and it is written by the
+    /// messages list — the one place that already holds the answer.
+    public static let unreadConversationsKey = "aloha.unreadConversations"
     public static let pendingRouteKey = "aloha.pendingRoute"
 }
 

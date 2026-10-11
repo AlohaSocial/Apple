@@ -383,6 +383,11 @@ public struct ConversationsView: View {
                 LossyArray<Conversation>.self, from: Endpoint.timelines.conversations())
             guard !Task.isCancelled, loadID == requestID else { return }
             conversations = page.elements
+            // The sidebar's badge on "Direct messages" reads this, so it is
+            // written here — the one place that already holds the answer
+            // (docs/05 §5).
+            AppGroup.defaults.set(
+                conversations.filter(\.unread).count, forKey: AppGroup.unreadConversationsKey)
             errorMessage = nil
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
