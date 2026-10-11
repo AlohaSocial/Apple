@@ -84,7 +84,10 @@ public struct FiltersView: View {
         }
         .alohaGround(palette)
         .overlay {
-            if isLoading && filters.isEmpty { ProgressView() }
+            if isLoading && filters.isEmpty {
+                // The shape of the list arriving.
+                SkeletonListRow(text: 4)
+            }
         }
         .navigationTitle(Text("Filtered words", comment: "Screen title"))
         .refreshable { await load() }

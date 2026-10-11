@@ -126,7 +126,11 @@ public struct EditProfileView: View {
         }
         .disabled(isLoading || isSaving)
         .overlay {
-            if isLoading { ProgressView() }
+            if isLoading {
+                // The shape of the form arriving: rows of fields, not a
+                // spinner over a blank screen.
+                SkeletonListRow(person: 5)
+            }
         }
         .task { await load() }
         .onChange(of: avatarItem) { _, item in
