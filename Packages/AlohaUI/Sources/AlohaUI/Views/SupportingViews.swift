@@ -324,21 +324,21 @@ private struct ReadingPreview: View {
     @Environment(\.alohaMetrics) private var metrics
 
     var body: some View {
-        VStack(spacing: metrics.space2) {
+        VStack(spacing: AlohaMetrics.space2) {
             // The new-posts pill: what arrived since, waiting to be asked for.
-            HStack(spacing: metrics.space1) {
+            HStack(spacing: AlohaMetrics.space1) {
                 Image(systemName: "arrow.up")
                     .font(.caption2)
                 Text("12 new posts", comment: "Onboarding preview pill")
                     .font(.caption.weight(.semibold))
             }
             .foregroundStyle(palette.onAccent)
-            .padding(.horizontal, metrics.space3)
-            .padding(.vertical, metrics.space1)
+            .padding(.horizontal, AlohaMetrics.space3)
+            .padding(.vertical, AlohaMetrics.space1)
             .background(palette.accent, in: Capsule())
 
             // Where you left off.
-            VStack(spacing: metrics.space2) {
+            VStack(spacing: AlohaMetrics.space2) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(palette.surfaceRaised)
                     .frame(height: 10)
@@ -348,15 +348,15 @@ private struct ReadingPreview: View {
                     .frame(height: 10)
                     .frame(maxWidth: 200, alignment: .leading)
             }
-            .padding(metrics.space3)
+            .padding(AlohaMetrics.space3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 palette.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: metrics.cornerMedium, style: .continuous)
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
             )
 
             // The line itself.
-            HStack(spacing: metrics.space2) {
+            HStack(spacing: AlohaMetrics.space2) {
                 Spacer()
                 Rectangle()
                     .fill(palette.separator)
@@ -371,7 +371,7 @@ private struct ReadingPreview: View {
             }
 
             // What arrived since.
-            VStack(spacing: metrics.space2) {
+            VStack(spacing: AlohaMetrics.space2) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(palette.surfaceRaised)
                     .frame(height: 10)
@@ -381,11 +381,11 @@ private struct ReadingPreview: View {
                     .frame(height: 10)
                     .frame(maxWidth: 160, alignment: .leading)
             }
-            .padding(metrics.space3)
+            .padding(AlohaMetrics.space3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 palette.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: metrics.cornerMedium, style: .continuous)
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
             )
         }
         .frame(maxWidth: 320)
@@ -399,7 +399,7 @@ private struct DeviceRow: View {
     @Environment(\.alohaMetrics) private var metrics
 
     var body: some View {
-        HStack(spacing: metrics.space4) {
+        HStack(spacing: AlohaMetrics.space4) {
             device("iphone", label: "iPhone")
             device("ipad", label: "iPad")
             device("macbook", label: "Mac")
@@ -412,14 +412,14 @@ private struct DeviceRow: View {
     }
 
     private func device(_ symbol: String, label: String) -> some View {
-        VStack(spacing: metrics.space2) {
+        VStack(spacing: AlohaMetrics.space2) {
             Image(systemName: symbol)
                 .font(.title2)
                 .foregroundStyle(palette.accent)
                 .frame(width: 44, height: 44)
                 .unifiedGlass(
                     .subtle,
-                    in: RoundedRectangle(cornerRadius: metrics.cornerSmall, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
                 )
             Text(verbatim: label)
                 .font(.caption2)
