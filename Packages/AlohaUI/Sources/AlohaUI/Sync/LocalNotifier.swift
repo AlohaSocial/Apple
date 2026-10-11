@@ -97,9 +97,19 @@ public struct LocalNotifier: Sendable {
                 }
             }
             let held = announcements.filter { $0.kind != NotificationKind.mention }
-            try await postDigestSummary(
-                held, session: session, times: digestTimes, quietStart: quietStart,
-                quietEnd: quietEnd)
+            do {
+                try await postDigestSummary(
+                    held, session: session, times: digestTimes, quietStart: quietStart,
+                    quietEnd: quietEnd)
+            } catch {
+                // A summary that could not be scheduled is not a reason to
+                // drop the notifications: UNUserNotificationCenter keeps the
+                // running summary, and the next poll will try again. The rows
+                // are still marked announced so they are not re-announced.
+                logger.error(
+                    "could not post a digest summary: \(String(describing: error), privacy: .public)"
+                )
+            }
             announced.append(contentsOf: held.map { $0.serverID })
             return announced
         }
