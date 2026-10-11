@@ -330,11 +330,13 @@ public enum SidebarItem: Hashable, Sendable {
 }
 
 public struct SidebarView: View {
-    @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
 
     private let session: AccountSession
     @Binding private var selection: SidebarItem
+    /// Bound for the app shell to write into when a feed source changes; the
+    /// sidebar itself no longer reads it, because a source is a property of
+    /// the mode's screen rather than of the navigation.
     @Binding private var selectedSource: TimelineSource
     /// Collapsed until asked for, as the web is.
     @State private var isAccountExpanded = false
@@ -358,84 +360,18 @@ public struct SidebarView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            searchField
-            sidebarList
-        }
-        .background(palette.background)
-        .navigationTitle(Text("Aloha Social", comment: "App name"))
-        .safeAreaInset(edge: .bottom) { accountDrawer }
-    }
-
-    /// The web puts a search bar at the top of its navigation, above the
-    /// timelines, rather than a magnifier in the toolbar.
-    private var searchField: some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Image(systemName: AlohaSymbol.search)
-                .font(.footnote)
-                .foregroundStyle(palette.secondaryLabel)
-            TextField(
-                text: $searchText,
-                prompt: Text("Search", comment: "Sidebar search field")
-            ) {
-                Text("Search", comment: "Sidebar search field")
-            }
-            .textFieldStyle(.plain)
-            .font(.subheadline)
-            .onSubmit(submitSearch)
-            #if os(iOS)
-                .submitLabel(.search)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            #endif
-
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(palette.tertiaryLabel)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Clear search", comment: "Sidebar search field"))
-            }
-        }
-        .padding(.horizontal, AlohaMetrics.space3)
-        .padding(.vertical, AlohaMetrics.space2)
-        // Glass, the way a field in a sidebar is drawn: a material with a
-        // hairline edge, not a flat fill that ignores what is behind it.
-        .unifiedGlass(
-            .subtle,
-            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
-        )
-        .padding(.horizontal, AlohaMetrics.space3)
-        .padding(.top, AlohaMetrics.space2)
-        .padding(.bottom, AlohaMetrics.space1)
-    }
-
-    private func submitSearch() {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return }
-        selection = .route(.search(query: query))
-    }
-
-    private var sidebarList: some View {
-        // iOS requires an optional (or Set) selection binding; macOS accepts a
-        // plain one. Bridging here keeps the caller's binding non-optional.
-        // The shape of Nextcloud Social's own navigation: one primary group of
-        // timelines, then Explore, then everything about your own account.
-        //
-        // `.sidebar` is the style that makes the list *be* a sidebar: the
-        // system's own insets, section headings and — the point — the selected
-        // row's highlight. Drawing our own on top of the default style is what
-        // made this look like a List wearing a sidebar costume.
+        // One list, with the system's own sidebar style, search bar, insets
+        // and selection. It used to be a custom search pill floating above a
+        // list whose rows carried their own selected background and their own
+        // button hover, which is what made it look like a mock-up of a
+        // sidebar rather than a sidebar.
         List(selection: optionalSelection) {
+            // The shape of Nextcloud Social's own navigation: one primary
+            // group of timelines and messages, then Explore, then everything
+            // about your own account at the foot.
             Section {
                 ForEach(session.visibleModes, id: \.self) { mode in
                     modeRow(mode)
-                        .tag(SidebarItem.mode(mode))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
                 }
 
                 row(
@@ -471,236 +407,162 @@ public struct SidebarView: View {
             } header: {
                 Text("Explore", comment: "Sidebar section")
             }
+
+            // Everything about your own account, behind your own face, at the
+            // foot where Nextcloud Social puts it (`NcAppNavigationSettings`).
+            //
+            // A section of the same list rather than a block pasted onto the
+            // bottom: one scroll, one selection, the system's own insets, and
+            // nothing to keep in step with the list's text inset.
+            Section {
+                Button {
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                        isAccountExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: AlohaMetrics.space3) {
+                        AvatarView(account: session.snapshot.asAccount, size: 32)
+                            .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(session.snapshot.bestDisplayName)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                            Text(session.snapshot.qualifiedHandle)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        // The system's own affordance for a drawer that opens
+                        // and closes, rather than a chevron that rotates.
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(
+                    Text(
+                        "\(session.snapshot.bestDisplayName), account menu",
+                        comment: "Accessibility label for the account drawer toggle")
+                )
+                .accessibilityValue(
+                    isAccountExpanded
+                        ? Text("Expanded", comment: "Accessibility state")
+                        : Text("Collapsed", comment: "Accessibility state")
+                )
+                .accessibilityAddTraits(.isButton)
+
+                if isAccountExpanded {
+                    drawerRow("My profile", symbol: "person.crop.circle", route: myProfile)
+                    // Activities is about you rather than about a feed, so it
+                    // sits with the rest of what is yours.
+                    drawerRow(
+                        "Activities", symbol: AlohaSymbol.notifications, route: .notifications)
+                    drawerRow(
+                        "Follow requests", symbol: "person.badge.clock", route: .followRequests)
+                    drawerRow("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
+                    drawerRow("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
+                    if session.capabilities.isNextcloudSocial {
+                        drawerRow("Archived posts", symbol: "archivebox", route: .archived)
+                        drawerRow("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
+                    }
+                    drawerRow("Blocking", symbol: "hand.raised", route: .safety)
+                    drawerRow("Settings", symbol: AlohaSymbol.settings, route: .settings)
+
+                    // The web is one account per Nextcloud; this app is not,
+                    // so switching belongs with everything else that is about
+                    // who you are.
+                    if environment.sessions.count > 1 {
+                        ForEach(environment.sessions.filter { $0.id != session.id }) { other in
+                            Button {
+                                onSwitchAccount(other.id)
+                            } label: {
+                                Label {
+                                    Text(other.snapshot.bestDisplayName)
+                                } icon: {
+                                    Image(systemName: "arrow.left.arrow.right")
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(
+                                Text(
+                                    "Switch to \(other.snapshot.qualifiedHandle)",
+                                    comment: "Account switcher action")
+                            )
+                        }
+                    }
+
+                    Button {
+                        onAddAccount()
+                    } label: {
+                        Label {
+                            Text("Add account…", comment: "Account switcher action")
+                        } icon: {
+                            Image(systemName: "person.badge.plus")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Add account", comment: "Account switcher action"))
+                }
+            }
         }
         .listStyle(.sidebar)
+        // The system's own search bar, in the sidebar's slot: it widens the
+        // navigation on iPad the way the system apps do, for free.
+        .searchable(
+            text: $searchText,
+            placement: .sidebar,
+            prompt: Text("Search", comment: "Sidebar search field")
+        )
+        .onSubmit(of: .search, submitSearch)
         // The sidebar is the one column that should not scroll under the
         // content: it is navigation, and a navigation item that moves while
         // you are reading is a moving target.
         .scrollContentBackground(.hidden)
+        .navigationTitle(Text("Aloha Social", comment: "App name"))
     }
 
     /// A mode row: the symbol in its own tile, filled while selected. A tile
     /// gives every row the same weight, which a bare symbol never does when
     /// one icon is a house and the next is a stack.
+    /// A mode row: the same Label the fixed destinations use, with the tag
+    /// that makes the system draw its own selection.
+    ///
+    /// It used to be a Button carrying its own icon tile and its own selected
+    /// background, inside a list that already selects — so a selected row had
+    /// two highlights drawn on it, one by the system and one by hand, and the
+    /// row answered the pointer with the hover of a button rather than the
+    /// highlight of a row.
     private func modeRow(_ mode: FeedMode) -> some View {
         let isSelected = selection == .mode(mode)
-        return Button {
-            selection = .mode(mode)
-        } label: {
-            HStack(spacing: AlohaMetrics.space3) {
-                Image(systemName: isSelected ? mode.selectedSymbolName : mode.symbolName)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
-                    .frame(width: 28, height: 28)
-                    .background(
-                        isSelected ? palette.accent.opacity(0.14) : palette.surfaceRaised,
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    )
-                Text(title(for: mode))
-                    .fontWeight(isSelected ? .semibold : .regular)
-                Spacer(minLength: 0)
-            }
+        return Label {
+            Text(title(for: mode))
+        } icon: {
+            Image(systemName: isSelected ? mode.selectedSymbolName : mode.symbolName)
         }
-        .buttonStyle(.plain)
+        .tag(SidebarItem.mode(mode))
         .accessibilityLabel(Text(title(for: mode)))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// Everything about your own account, behind your own face.
-    ///
-    /// Nextcloud Social puts this at the foot of its navigation as
-    /// `NcAppNavigationSettings`: the avatar and display name are the toggle,
-    /// the drawer is collapsed until you click it, and it holds the pages that
-    /// are about you rather than about a timeline.
-    ///
-    /// Everything in the drawer is native: sidebar rows, the system's
-    /// borderless button style, `Label` with `.titleAndIcon`, and insets that
-    /// match the list above it. The hand-rolled selection pill it used to draw
-    /// is gone — a selected sidebar row takes the accent on its own label, the
-    /// way Mail and Notes highlight theirs.
-    private var accountDrawer: some View {
-        // One container for every glass shape in the drawer, the way Apple's
-        // Landmarks sample groups its badges and toggle: neighbouring shapes
-        // blend rather than each blurring alone, and the toggle can morph into
-        // the drawer it opens.
-        GlassEffectContainer(spacing: AlohaMetrics.space3) {
-            VStack(spacing: 0) {
-                Divider()
-                    .padding(.leading, AlohaMetrics.space3)
-
-                if isAccountExpanded {
-                    // Sized to its rows, and only scrolls when there are more
-                    // than fit: a ScrollView on its own claims all the height
-                    // offered.
-                    ViewThatFits(in: .vertical) {
-                        drawerContent
-                        ScrollView { drawerContent }
-                    }
-                    .glassEffectID("drawer", in: drawerNamespace)
-                    .glassEffectTransition(.materialize)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-
-                accountToggle
-                    .glassEffectID("toggle", in: drawerNamespace)
-            }
-        }
-        .background(palette.surface)
-    }
-
-    /// The namespace that lets the toggle morph into the drawer it opens,
-    /// rather than two unrelated blurs appearing and disappearing.
-    @Namespace private var drawerNamespace
-
-    private var drawerContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            drawerRow("My profile", symbol: "person.crop.circle", route: myProfile)
-            // Activities is about you rather than about a feed, so it sits with
-            // the rest of what is yours rather than among the timelines.
-            drawerRow("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
-            drawerRow("Follow requests", symbol: "person.badge.clock", route: .followRequests)
-            drawerRow("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
-            drawerRow("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
-            if session.capabilities.isNextcloudSocial {
-                drawerRow("Archived posts", symbol: "archivebox", route: .archived)
-                drawerRow("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
-            }
-            drawerRow("Blocking", symbol: "hand.raised", route: .safety)
-            drawerRow("Settings", symbol: AlohaSymbol.settings, route: .settings)
-
-            // The web is one account per Nextcloud; this app is not, so
-            // switching belongs with everything else that is about who you are.
-            if environment.sessions.count > 1 {
-                insetDivider
-                ForEach(environment.sessions.filter { $0.id != session.id }) { other in
-                    drawerButton(
-                        other.snapshot.bestDisplayName,
-                        symbol: "arrow.left.arrow.right",
-                        accessibilityLabel: Text(
-                            "Switch to \(other.snapshot.qualifiedHandle)",
-                            comment: "Account switcher action")
-                    ) {
-                        onSwitchAccount(other.id)
-                    }
-                }
-            }
-
-            insetDivider
-            drawerButton(
-                String(localized: "Add account…", comment: "Account switcher action"),
-                symbol: "person.badge.plus",
-                accessibilityLabel: Text("Add account", comment: "Account switcher action"),
-                action: onAddAccount)
-        }
-        .padding(.vertical, AlohaMetrics.space2)
-    }
-
-    /// A divider that starts where the text starts, the way a grouped list
-    /// separates its sections rather than running a rule under the whole row.
-    private var insetDivider: some View {
-        Divider()
-            .padding(.leading, AlohaMetrics.space3 + AlohaMetrics.space3 + 20)
-            .padding(.vertical, AlohaMetrics.space1)
-    }
-
-    private var accountToggle: some View {
-        Button {
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                isAccountExpanded.toggle()
-            }
-        } label: {
-            HStack(spacing: AlohaMetrics.space3) {
-                AvatarView(account: session.snapshot.asAccount, size: 32)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(session.snapshot.bestDisplayName)
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(palette.label)
-                        .lineLimit(1)
-                    Text(session.snapshot.qualifiedHandle)
-                        .font(.caption2)
-                        .foregroundStyle(palette.secondaryLabel)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-
-                Spacer(minLength: 0)
-
-                // The system's own affordance for a drawer that opens and
-                // closes, rather than a chevron that rotates by hand.
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(palette.tertiaryLabel)
-            }
-            .padding(AlohaMetrics.space3)
-            .contentShape(Rectangle())
-            // The toggle's own glass, so it has a material to morph from and
-            // to: an id without a shape is an id with nothing to match.
-            .glassEffect(.regular.interactive())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            Text(
-                "\(session.snapshot.bestDisplayName), account menu",
-                comment: "Accessibility label for the account drawer toggle")
-        )
-        .accessibilityValue(
-            isAccountExpanded
-                ? Text("Expanded", comment: "Accessibility state")
-                : Text("Collapsed", comment: "Accessibility state")
-        )
-        .accessibilityAddTraits(.isButton)
-    }
-
-    /// A drawer row that selects a destination, closing the drawer behind it —
-    /// the web's drawer does the same rather than staying open over the page
-    /// it just opened.
+    /// A drawer row that closes the section behind it — the web's drawer does
+    /// the same rather than staying open over the page it just opened.
     private func drawerRow(
         _ title: String.LocalizationValue, symbol: String, route: Route
     ) -> some View {
-        drawerButton(
-            String(localized: title, comment: "Sidebar item"), symbol: symbol,
-            accessibilityLabel: Text(String(localized: title, comment: "Sidebar item")),
-            isSelected: selection == .route(route)
-        ) {
+        Button {
             selection = .route(route)
             withAnimation(.easeOut(duration: 0.2)) { isAccountExpanded = false }
+        } label: {
+            row(title, symbol: symbol, route: route, comment: "Sidebar item")
         }
-    }
-
-    private func drawerButton(
-        _ title: String, symbol: String, accessibilityLabel: Text,
-        isSelected: Bool = false, action: @escaping () -> Void
-    ) -> some View {
-        // Native sidebar rows: a label, the borderless style, and a selection
-        // that tints the row's own content instead of a drawn-on pill.
-        Button(action: action) {
-            Label {
-                Text(title)
-                    .foregroundStyle(isSelected ? palette.accent : palette.label)
-            } icon: {
-                Image(systemName: symbol)
-                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
-            }
-            .labelStyle(.titleAndIcon)
-            .font(.subheadline)
-            .padding(.horizontal, AlohaMetrics.space3)
-            .padding(.vertical, AlohaMetrics.space2)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                isSelected ? palette.accent.opacity(0.12) : .clear,
-                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
-            )
-            .padding(.horizontal, AlohaMetrics.space2)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        // Interactive glass: a row answers the pointer and the touch, so its
-        // material responds the way the system's own controls do.
-        .selectedGlass(isSelected, tint: palette.accent)
+        .buttonStyle(.plain)
     }
 
     private var myProfile: Route {
