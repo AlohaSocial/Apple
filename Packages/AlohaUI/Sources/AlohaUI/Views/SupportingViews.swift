@@ -17,7 +17,8 @@ public struct WelcomeView: View {
     }
 
     /// The introduction, in the order a person can agree with it: what this
-    /// is, what it looks like, what it will not do to you, and where to start.
+    /// is, what it looks like, whose it is, what it will not do to you, what a
+    /// day in it feels like, where else you'll find it, and where to start.
     /// The last page is the beginning itself, not a button that begins.
     private var pages: [OnboardingPage] {
         [
@@ -36,11 +37,31 @@ public struct WelcomeView: View {
                     comment: "Onboarding detail"),
                 showsModeTour: true),
             OnboardingPage(
+                symbol: "server.rack",
+                title: Text("Your server, your rules", comment: "Onboarding title"),
+                detail: Text(
+                    "Aloha Social is a client, not a platform. Sign in to the Nextcloud Social or Mastodon server you already use — your posts, photos and messages stay there.",
+                    comment: "Onboarding detail")),
+            OnboardingPage(
                 symbol: "lock.shield.fill",
                 title: Text("Quiet by default", comment: "Onboarding title"),
                 detail: Text(
                     "Media behind a content warning stays blurred. Popularity counts can be switched off entirely. Digest notifications wait for the times you pick.",
                     comment: "Onboarding detail")),
+            OnboardingPage(
+                symbol: "sun.horizon",
+                title: Text("A day, not a stream", comment: "Onboarding title"),
+                detail: Text(
+                    "Open the app and it tells you where you left off. New posts wait above the line until you ask for them.",
+                    comment: "Onboarding detail"),
+                showsReadingPreview: true),
+            OnboardingPage(
+                symbol: "applewatch",
+                title: Text("Every screen you own", comment: "Onboarding title"),
+                detail: Text(
+                    "iPhone, iPad, Mac, Apple Watch and Apple TV. One account, and every screen reads the same way.",
+                    comment: "Onboarding detail"),
+                showsDeviceRow: true),
         ]
     }
 
@@ -142,7 +163,7 @@ public struct WelcomeView: View {
     private var footer: some View {
         VStack(spacing: AlohaMetrics.space3) {
             // Owned rather than `.tabViewStyle(.page)`'s indicator: that style
-            // does not exist on every platform, and four dots are cheap.
+            // does not exist on every platform, and dots are cheap.
             HStack(spacing: AlohaMetrics.space2) {
                 ForEach(0..<pageCount, id: \.self) { index in
                     Circle()
@@ -161,6 +182,25 @@ public struct WelcomeView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.alohaProminent)
+                .overlay(alignment: .leading) {
+                    // Every page but the first can go back: an introduction is
+                    // a tour, and a tour you cannot reverse is a slide show.
+                    if page > 0 {
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                page -= 1
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.footnote.weight(.semibold))
+                                .padding(AlohaMetrics.space3)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .accessibilityLabel(Text("Back", comment: "Onboarding action"))
+                    }
+                }
 
                 Button {
                     // Straight to the page you sign in on, where the address
@@ -201,6 +241,11 @@ private struct OnboardingPage: Identifiable {
     /// The hero page carries the app's own lockup rather than a symbol in a
     /// glass tile — an app's first screen should look like that app.
     var isHero: Bool = false
+    /// Where the page also shows the reading experience: where you left off,
+    /// and what waits above the line.
+    var showsReadingPreview: Bool = false
+    /// Where the page also shows the screens the app runs on.
+    var showsDeviceRow: Bool = false
 }
 
 private struct OnboardingPageView: View {
@@ -255,9 +300,131 @@ private struct OnboardingPageView: View {
                 ModeTour()
             }
 
+            if page.showsReadingPreview {
+                ReadingPreview()
+            }
+
+            if page.showsDeviceRow {
+                DeviceRow()
+            }
+
             Spacer(minLength: 0)
         }
         .padding(.horizontal, AlohaMetrics.space5)
+    }
+}
+
+/// The reading experience, as it appears: the line between where you left off
+/// and what arrived since.
+///
+/// This is the app's own idea — a feed that knows when you stopped reading —
+/// and a page that *shows* it lands where a sentence about it would not.
+private struct ReadingPreview: View {
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+
+    var body: some View {
+        VStack(spacing: metrics.space2) {
+            // The new-posts pill: what arrived since, waiting to be asked for.
+            HStack(spacing: metrics.space1) {
+                Image(systemName: "arrow.up")
+                    .font(.caption2)
+                Text("12 new posts", comment: "Onboarding preview pill")
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(palette.onAccent)
+            .padding(.horizontal, metrics.space3)
+            .padding(.vertical, metrics.space1)
+            .background(palette.accent, in: Capsule())
+
+            // Where you left off.
+            VStack(spacing: metrics.space2) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(height: 10)
+                    .frame(maxWidth: 240, alignment: .leading)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(height: 10)
+                    .frame(maxWidth: 200, alignment: .leading)
+            }
+            .padding(metrics.space3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                palette.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: metrics.cornerMedium, style: .continuous)
+            )
+
+            // The line itself.
+            HStack(spacing: metrics.space2) {
+                Spacer()
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(width: 56, height: 1)
+                Text("You're caught up", comment: "Onboarding preview caption")
+                    .font(.caption)
+                    .foregroundStyle(palette.tertiaryLabel)
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(width: 56, height: 1)
+                Spacer()
+            }
+
+            // What arrived since.
+            VStack(spacing: metrics.space2) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(height: 10)
+                    .frame(maxWidth: 220, alignment: .leading)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(height: 10)
+                    .frame(maxWidth: 160, alignment: .leading)
+            }
+            .padding(metrics.space3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                palette.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: metrics.cornerMedium, style: .continuous)
+            )
+        }
+        .frame(maxWidth: 320)
+        .accessibilityLabel(Text("A preview of a timeline", comment: "Onboarding preview"))
+    }
+}
+
+/// The screens the app runs on, as the devices themselves.
+private struct DeviceRow: View {
+    @Environment(\.alohaPalette) private var palette
+    @Environment(\.alohaMetrics) private var metrics
+
+    var body: some View {
+        HStack(spacing: metrics.space4) {
+            device("iphone", label: "iPhone")
+            device("ipad", label: "iPad")
+            device("macbook", label: "Mac")
+            device("applewatch", label: "Watch")
+            device("appletv", label: "TV")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            Text("iPhone, iPad, Mac, Apple Watch and Apple TV", comment: "Onboarding devices"))
+    }
+
+    private func device(_ symbol: String, label: String) -> some View {
+        VStack(spacing: metrics.space2) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .foregroundStyle(palette.accent)
+                .frame(width: 44, height: 44)
+                .unifiedGlass(
+                    .subtle,
+                    in: RoundedRectangle(cornerRadius: metrics.cornerSmall, style: .continuous)
+                )
+            Text(verbatim: label)
+                .font(.caption2)
+                .foregroundStyle(palette.secondaryLabel)
+        }
     }
 }
 
