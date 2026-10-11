@@ -162,8 +162,8 @@ public struct LocalNotifier: Sendable {
         let digestID = "\(session.id.uuidString)-digest-\(Int(nextDate.timeIntervalSince1970))"
 
         // Whatever is already pending for this digest, plus what arrived now.
-        let pending = await pendingRequests(withIDs: [digestID])
-        var totals = pending.first.flatMap { digestCounts(of: $0) } ?? [:]
+        let pendingCounts = await pendingDigestCounts(withIDs: [digestID])
+        var totals = pendingCounts.first ?? [:]
         for notification in held {
             totals[notification.kind.rawValue, default: 0] += 1
         }
@@ -179,7 +179,11 @@ public struct LocalNotifier: Sendable {
         content.body =
             totals
             .sorted { $0.key < $1.key }
-            .map { "\($0.value) \(kindName($0.key))" }
+            .compactMap { NotificationKind(rawValue: $0.key) }
+            .map { kind in
+                let label = kindName(kind)
+                return "\(totals[kind.rawValue] ?? 0) \(label)"
+            }
             .joined(separator: " · ")
         // A summary is not a conversation, so it does not need a sound and
         // does not interrupt: it is the day's mail, not a message.
@@ -195,23 +199,26 @@ public struct LocalNotifier: Sendable {
         try await center.add(request)
     }
 
-    /// The pending requests this app has already scheduled for the given ids.
-    private func pendingRequests(withIDs: [String]) async -> [UNNotificationRequest] {
+    /// The pending summaries this app has already scheduled for the given ids.
+    ///
+    /// `UNNotificationRequest` is not Sendable, so the counts are read inside
+    /// the centre's callback and only `[String: Int]` crosses the boundary.
+    private func pendingDigestCounts(withIDs: [String]) async -> [[String: Int]] {
         await withCheckedContinuation { continuation in
             center.getPendingNotificationRequests { requests in
-                continuation.resume(returning: requests.filter { withIDs.contains($0.identifier) })
+                let counts =
+                    requests
+                    .filter { withIDs.contains($0.identifier) }
+                    .compactMap {
+                        $0.content.userInfo["digestCounts"] as? [String: Int]
+                    }
+                continuation.resume(returning: counts)
             }
         }
     }
 
-    /// The per-kind counts a pending digest summary carries, if it is ours.
-    private func digestCounts(of request: UNNotificationRequest) -> [String: Int]? {
-        request.content.userInfo["digestCounts"] as? [String: Int]
-    }
-
     /// A notification kind as it reads in a summary line: "5 favourites".
-    private func kindName(_ raw: String) -> String {
-        let kind = NotificationKind(rawValue: raw)
+    private func kindName(_ kind: NotificationKind) -> String {
         switch kind {
         case .mention: String(localized: "mention", comment: "Digest summary kind")
         case .reblog: String(localized: "boost", comment: "Digest summary kind")
@@ -223,11 +230,14 @@ public struct LocalNotifier: Sendable {
         case .update: String(localized: "update", comment: "Digest summary kind")
         case .adminSignUp: String(localized: "sign-up", comment: "Digest summary kind")
         case .adminReport: String(localized: "report", comment: "Digest summary kind")
+        case .moderationWarning: String(localized: "warning", comment: "Digest summary kind")
+        case .severedRelationships: String(localized: "separation", comment: "Digest summary kind")
+        case .annualReport: String(localized: "report", comment: "Digest summary kind")
         default:
-            // Everything this app has no name for — the kinds a newer
-            // server can add, and the ones deliberately without one —
-            // reads as the server's own words rather than being dropped.
-            raw
+            // Everything this app has no name for — the kinds a newer server
+            // can add — reads as the server's own raw value rather than being
+            // dropped by a switch that must be exhaustive.
+            kind.rawValue
         }
     }
 
