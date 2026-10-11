@@ -100,7 +100,7 @@ public struct LocalNotifier: Sendable {
             try await postDigestSummary(
                 held, session: session, times: digestTimes, quietStart: quietStart,
                 quietEnd: quietEnd)
-            announced.append(contentsOf: held.map(\.serverID))
+            announced.append(contentsOf: held.map { $0.serverID })
             return announced
         }
 
@@ -153,7 +153,7 @@ public struct LocalNotifier: Sendable {
 
         // Whatever is already pending for this digest, plus what arrived now.
         let pending = await pendingRequests(withIDs: [digestID])
-        var totals = pending.first.map { digestCounts(of: $0) } ?? [:]
+        var totals = pending.first.flatMap { digestCounts(of: $0) } ?? [:]
         for notification in held {
             totals[notification.kind.rawValue, default: 0] += 1
         }
@@ -213,7 +213,11 @@ public struct LocalNotifier: Sendable {
         case .update: String(localized: "update", comment: "Digest summary kind")
         case .adminSignUp: String(localized: "sign-up", comment: "Digest summary kind")
         case .adminReport: String(localized: "report", comment: "Digest summary kind")
-        case nil, .unknownCase: raw
+        default:
+            // Everything this app has no name for — the kinds a newer
+            // server can add, and the ones deliberately without one —
+            // reads as the server's own words rather than being dropped.
+            raw
         }
     }
 
