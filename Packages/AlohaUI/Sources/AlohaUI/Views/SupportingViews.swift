@@ -695,9 +695,6 @@ public struct SidebarView: View {
         .navigationTitle(Text("Aloha Social", comment: "App name"))
     }
 
-    /// A mode row: the symbol in its own tile, filled while selected. A tile
-    /// gives every row the same weight, which a bare symbol never does when
-    /// one icon is a house and the next is a stack.
     /// A mode row: the same Label the fixed destinations use, with the tag
     /// that makes the system draw its own selection.
     ///
@@ -746,6 +743,12 @@ public struct SidebarView: View {
 
     /// One row, so the list reads as a list rather than as forty lines of
     /// `Label`.
+    ///
+    /// Deliberately no `.listRowBackground(.clear)` and no hidden separator:
+    /// both of those switch off what the system draws for a selected sidebar
+    /// row, and a row that cannot look selected is the grobness a reviewer
+    /// would notice first. The row background is the system's own, tinted by
+    /// the accent.
     @ViewBuilder
     private func row(
         _ title: String.LocalizationValue, symbol: String, route: Route, comment: StaticString
