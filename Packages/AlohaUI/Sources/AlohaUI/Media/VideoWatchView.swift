@@ -59,9 +59,10 @@ public struct VideoWatchView: View {
                     .padding(.horizontal, AlohaMetrics.space3)
                     .padding(.vertical, AlohaMetrics.space3)
                 } else if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, AlohaMetrics.space6)
+                    // The shape of the watch screen arriving: the player's
+                    // black box, then the rows beneath it. A lone spinner under
+                    // a title-less screen reads as broken.
+                    watchSkeleton
                 }
 
                 if let errorMessage {
@@ -79,6 +80,37 @@ public struct VideoWatchView: View {
         #endif
         .task { await load() }
         .refreshable { await load() }
+    }
+
+    /// The shape of the watch screen arriving: a black 16:9 box, then the
+    /// rows that sit under a video.
+    private var watchSkeleton: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+            Color.black
+                .aspectRatio(16.0 / 9.0, contentMode: .fill)
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 240, height: 18)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 120, height: 12)
+            }
+
+            HStack(spacing: AlohaMetrics.space2) {
+                ForEach(0..<4, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+                        .fill(palette.surfaceRaised)
+                        .frame(height: 32)
+                }
+            }
+        }
+        .padding(.horizontal, AlohaMetrics.space3)
+        .padding(.vertical, AlohaMetrics.space3)
+        .accessibilityLabel(Text("Loading video", comment: "Video watch loading"))
     }
 
     // MARK: - Player
