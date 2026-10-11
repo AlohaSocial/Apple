@@ -811,7 +811,7 @@ extension View {
             // behind a sheet must be resizable to look like a normal window
             // at all, and the media viewer is full-screen on every other
             // platform, so it takes the window here.
-            .sheet(item: item, content: content)
+            self.sheet(item: item, content: content)
         #else
             fullScreenCover(item: item, content: content)
         #endif
