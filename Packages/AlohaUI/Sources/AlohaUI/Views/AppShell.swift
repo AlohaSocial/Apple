@@ -807,7 +807,11 @@ extension View {
         item: Binding<Item?>, @ViewBuilder content: @escaping (Item) -> Content
     ) -> some View {
         #if os(macOS)
-            sheet(item: item, content: content)
+            // A sheet, and macOS would run two sheets without it: a window
+            // behind a sheet must be resizable to look like a normal window
+            // at all, and the media viewer is full-screen on every other
+            // platform, so it takes the window here.
+            .sheet(item: item, content: content)
         #else
             fullScreenCover(item: item, content: content)
         #endif
