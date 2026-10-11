@@ -72,7 +72,7 @@ public struct LocalNotifier: Sendable {
         let quietStart = session.settings.quietHoursStart
         let quietEnd = session.settings.quietHoursEnd
 
-        let announcements = eligible.filter { !isQuiet }
+        let announcements = isQuiet ? [] : eligible
 
         if deliveryMode == .digest {
             // A mention is the thing somebody wants answered, so it always
@@ -80,7 +80,7 @@ public struct LocalNotifier: Sendable {
             // waits for the next digest time and is posted there as ONE
             // summary, grouped by kind — not as seventeen separate
             // notifications at the same minute (docs/08 §8).
-            let breaking = announcements.filter { $0.kind == .mention }
+            let breaking = announcements.filter { $0.kind == NotificationKind.mention }
             for notification in breaking {
                 let content = content(
                     for: notification, session: session, showAccountName: showAccountName)
@@ -96,7 +96,7 @@ public struct LocalNotifier: Sendable {
                     )
                 }
             }
-            let held = announcements.filter { $0.kind != .mention }
+            let held = announcements.filter { $0.kind != NotificationKind.mention }
             try await postDigestSummary(
                 held, session: session, times: digestTimes, quietStart: quietStart,
                 quietEnd: quietEnd)
