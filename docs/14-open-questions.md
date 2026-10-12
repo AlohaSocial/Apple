@@ -274,10 +274,6 @@ avatar as the account switcher. The Mac already had one in its sidebar.
   a composer cannot be presented from a notification response without a view
   of ours on screen to present it from. Favourite, boost and Mute conversation
   carry out immediately.
-- **Digest batching into one summary per digest time.** The delivery mode, the
-  picked hours and the quiet-hours rule all work, and LocalNotifier schedules
-  each notification at the right hour; what is still missing is grouping what
-  was held into a single summary notification per digest time, grouped by kind.
 - **The visionOS-specific behaviour of docs/09 §3.** The app *runs* on visionOS —
   the iOS target declares `xros`, and the shell picks the split view — but three
   things that are only right there are not built: the media viewer and the video
@@ -289,6 +285,18 @@ avatar as the account switcher. The Mac already had one in its sidebar.
 ### Built since the last review pass, and left listed because a list that
 lies about what is built is worse than no list
 
+- **Digest batching.** Every notification held for the next digest hour arrived
+  as its own alert at that hour, so four things held through the day was four
+  interruptions at 08:00. It is one summary now: the count with the kinds
+  listed beneath it, passive, no sound — the day's mail, not a message. The
+  request's id is the digest time, so a later poll replaces what is pending
+  instead of stacking a second summary, and the running totals live in its
+  userInfo so the number grows through the day. Mentions still break through
+  immediately. The rule that picks the hour is a pure static function with
+  nineteen tests (`nextDigestHour`), and the tests found three wrong
+  expectations on their first run.
+- **An unread badge on Direct messages** in the iPad and Mac sidebar. The
+  count is the one the messages list already holds, not a second fetch.
 - **The macOS client.** docs/09 §2 had described one in detail — the sidebar
   shell, the menu bar, the shortcuts — and there was no Mac target at all: four
   app targets, and macOS missing from every one of them. The target is thin
