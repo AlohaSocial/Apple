@@ -1957,6 +1957,9 @@
     "More archived posts could not be loaded. Please try again." : {
 
     },
+    "More options" : {
+      "comment" : "Composer additional actions"
+    },
     "More posts could not be loaded. Please try again." : {
 
     },
@@ -2592,7 +2595,7 @@
       "comment" : "Schedule action"
     },
     "Post it as a card" : {
-      "comment" : "Composer card section"
+      "comment" : "Composer action\nComposer card section"
     },
     "Post something and come back." : {
       "comment" : "Statistics empty detail"
