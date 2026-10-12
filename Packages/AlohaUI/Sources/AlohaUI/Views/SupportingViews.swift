@@ -589,7 +589,11 @@ public struct SidebarView: View {
                         comment: "Sidebar item")
                 }
             } header: {
-                Text("Explore", comment: "Sidebar section")
+                // "Explore" was wrong over these: Discover is already in the
+                // top group, and this section is lists, interests,
+                // subscriptions and albums — the things a person gathers, not
+                // where they stumble on new ones.
+                Text("Library", comment: "Sidebar section")
             }
 
             // Everything about your own account, behind your own face, at the
