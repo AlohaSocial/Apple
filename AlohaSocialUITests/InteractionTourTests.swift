@@ -301,6 +301,32 @@ import XCTest
             shoot("55-video-watch")
         }
 
+        func testWelcomeAtAccessibilityTextSize() {
+            app = XCUIApplication()
+            app.launchArguments = [
+                "-AlohaMockServer", "-AlohaMockNoAccount",
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            ]
+            app.launch()
+            let skip = app.buttons["Skip"].firstMatch
+            XCTAssertTrue(skip.waitForExistence(timeout: 10))
+            skip.tap()
+            let field = app.textFields.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            if !field.isHittable { app.scrollViews["welcome-sign-in-content"].swipeUp() }
+            XCTAssertTrue(field.isHittable, "Server field unreachable with large text")
+            field.tap()
+            field.typeText("cloud.example.test")
+            let next = app.buttons["Continue"].firstMatch
+            for _ in 0..<3 where !next.isHittable {
+                app.scrollViews["welcome-sign-in-content"].swipeUp()
+            }
+            XCTAssertTrue(next.isHittable, "Continue unreachable above keyboard")
+            shoot("46-welcome-large-text")
+            next.tap()
+            XCTAssertTrue(app.labelled("Before you start").waitForExistence(timeout: 5))
+        }
+
         func testWelcomeAndSignIn() {
             app = XCUIApplication()
             app.launchArguments = ["-AlohaMockServer", "-AlohaMockNoAccount"]

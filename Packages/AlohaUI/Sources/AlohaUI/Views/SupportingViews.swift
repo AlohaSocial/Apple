@@ -7,7 +7,7 @@ import SwiftUI
 
 public struct WelcomeView: View {
     @Environment(\.alohaPalette) private var palette
-    @Environment(\.alohaMetrics) private var metrics
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Called with what the last page's field holds, so the sign-in screen
     /// opens with the address already in it rather than asking again.
@@ -67,6 +67,8 @@ public struct WelcomeView: View {
             .transition(.opacity)
 
             footer
+                .frame(maxWidth: 460)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, AlohaMetrics.space5)
                 .padding(.bottom, AlohaMetrics.space5)
         }
@@ -76,61 +78,76 @@ public struct WelcomeView: View {
     /// The last page is the beginning: the server address, here, rather than a
     /// button that opens somewhere else and asks again.
     private var signInPage: some View {
-        VStack(spacing: AlohaMetrics.space4) {
-            Spacer(minLength: 0)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: AlohaMetrics.space4) {
+                    VStack(spacing: AlohaMetrics.space2) {
+                        Text("Where do you socialize?", comment: "Onboarding sign-in title")
+                            .font(.title2.weight(.semibold))
+                            .multilineTextAlignment(.center)
 
-            VStack(spacing: AlohaMetrics.space2) {
-                Text("Where do you socialize?", comment: "Onboarding sign-in title")
-                    .font(.title2.weight(.semibold))
+                        Text(
+                            "Your server's address — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
+                            comment: "Onboarding sign-in detail"
+                        )
+                        .font(.body)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 380)
+                    }
+
+                    TextField(
+                        text: $serverAddress,
+                        prompt: Text("cloud.example.com", comment: "Server address placeholder")
+                    ) {
+                        Text("Server", comment: "Server address field")
+                    }
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    #if os(iOS)
+                        // Every one of these is an iPhone keyboard concern: a Mac
+                        // has no keyboard type and no text-content type, and the
+                        // suite compiles on one.
+                        .textContentType(.URL)
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                        .submitLabel(.go)
+                    #endif
+                    .focused($isAddressFocused)
+                    .onSubmit(start)
+                    // The field is never disabled: a field that refuses the first
+                    // character because there is not yet a second is a field that
+                    // cannot be used at all. Only the action it feeds waits.
+                    .frame(maxWidth: 380)
+
+                    Button(action: start) {
+                        Text("Continue", comment: "Onboarding sign-in action")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.large)
+                    .disabled(serverAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .frame(maxWidth: 380)
+
+                    Text(
+                        "Don't know your address? Your server's website has it, or ask whoever runs it.",
+                        comment: "Onboarding footnote"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
                     .multilineTextAlignment(.center)
 
-                Text(
-                    "Your server's address — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
-                    comment: "Onboarding sign-in detail"
-                )
-                .font(.body)
-                .foregroundStyle(palette.secondaryLabel)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 380)
+                }
+                .padding(.horizontal, AlohaMetrics.space5)
+                .padding(.vertical, AlohaMetrics.space4)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geometry.size.height)
             }
-
-            TextField(
-                text: $serverAddress,
-                prompt: Text("cloud.example.com", comment: "Server address placeholder")
-            ) {
-                Text("Server", comment: "Server address field")
-            }
-            .textFieldStyle(.roundedBorder)
-            .controlSize(.large)
-            #if os(iOS)
-                // Every one of these is an iPhone keyboard concern: a Mac
-                // has no keyboard type and no text-content type, and the
-                // suite compiles on one.
-                .textContentType(.URL)
-                .keyboardType(.URL)
-                .autocapitalization(.none)
-                .autocorrectionDisabled()
-                .submitLabel(.go)
-            #endif
-            .focused($isAddressFocused)
-            .onSubmit(start)
-            // The field is never disabled: a field that refuses the first
-            // character because there is not yet a second is a field that
-            // cannot be used at all. Only the action it feeds waits.
-            .frame(maxWidth: 380)
-
-            Button(action: start) {
-                Text("Continue", comment: "Onboarding sign-in action")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(serverAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .frame(maxWidth: 380)
-
-            Spacer(minLength: 0)
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .accessibilityIdentifier("welcome-sign-in-content")
         }
-        .padding(.horizontal, AlohaMetrics.space5)
     }
 
     /// Hands what was typed to the sign-in flow, so the address is typed once
@@ -152,14 +169,16 @@ public struct WelcomeView: View {
                     Circle()
                         .fill(index == page ? palette.accent : palette.tertiaryLabel.opacity(0.35))
                         .frame(width: 7, height: 7)
-                        .animation(.easeInOut(duration: 0.2), value: page)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: page)
                 }
             }
             .accessibilityHidden(true)
 
             if page < pageCount - 1 {
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { page += 1 }
+                    withAnimation(
+                        reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)
+                    ) { page += 1 }
                 } label: {
                     Text("Continue", comment: "Onboarding action")
                         .frame(maxWidth: .infinity)
@@ -173,7 +192,9 @@ public struct WelcomeView: View {
                         // is a tour, and a tour you cannot reverse is a slide
                         // show.
                         Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            withAnimation(
+                                reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)
+                            ) {
                                 page -= 1
                             }
                         } label: {
@@ -193,7 +214,9 @@ public struct WelcomeView: View {
                     Button {
                         // Straight to the page you sign in on, where the address
                         // already is.
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        withAnimation(
+                            reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)
+                        ) {
                             page = pageCount - 1
                             isAddressFocused = true
                         }
@@ -206,7 +229,7 @@ public struct WelcomeView: View {
             } else {
                 Button {
                     isAddressFocused = false
-                    withAnimation(.easeInOut(duration: 0.2)) { page -= 1 }
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { page -= 1 }
                 } label: {
                     Label {
                         Text("Back", comment: "Onboarding action")
@@ -215,17 +238,10 @@ public struct WelcomeView: View {
                     }
                 }
                 .buttonStyle(.borderless)
-                Text(
-                    "Don't know your address? Your server's website has it, or ask whoever runs it.",
-                    comment: "Onboarding footnote"
-                )
-                .font(.footnote)
-                .foregroundStyle(palette.tertiaryLabel)
-                .multilineTextAlignment(.center)
-                .transition(.opacity)
+
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: page)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: page)
     }
 }
 
@@ -253,50 +269,55 @@ private struct OnboardingPageView: View {
     @Environment(\.alohaPalette) private var palette
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: AlohaMetrics.space4) {
-                if page.isHero {
-                    // The app's own mark and wordmark: the first screen a person
-                    // sees should look like the app they are about to use.
-                    AlohaLogo()
-                } else {
-                    Image(systemName: page.symbol)
-                        .font(.system(size: 44))
-                        .foregroundStyle(palette.accent)
-                        .accessibilityHidden(true)
-                }
-
-                VStack(spacing: AlohaMetrics.space2) {
-                    if !page.isHero {
-                        page.title
-                            .font(.title2.weight(.semibold))
-                            .multilineTextAlignment(.center)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: AlohaMetrics.space4) {
+                    if page.isHero {
+                        // The app's own mark and wordmark: the first screen a person
+                        // sees should look like the app they are about to use.
+                        AlohaLogo()
+                    } else {
+                        Image(systemName: page.symbol)
+                            .font(.system(size: 44))
+                            .foregroundStyle(palette.accent)
+                            .accessibilityHidden(true)
                     }
-                    page.detail
-                        .font(.body)
-                        .foregroundStyle(palette.secondaryLabel)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 380)
-                }
 
-                if page.showsModeTour {
-                    // The six feeds as they actually appear, with the same symbols
-                    // the sidebar uses — an introduction that shows the app rather
-                    // than describing it.
-                    ModeTour()
-                }
+                    VStack(spacing: AlohaMetrics.space2) {
+                        if !page.isHero {
+                            page.title
+                                .font(.title2.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                        }
+                        page.detail
+                            .font(.body)
+                            .foregroundStyle(palette.secondaryLabel)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 380)
+                    }
 
-                if page.showsReadingPreview {
-                    ReadingPreview()
-                }
+                    if page.showsModeTour {
+                        // The six feeds as they actually appear, with the same symbols
+                        // the sidebar uses — an introduction that shows the app rather
+                        // than describing it.
+                        ModeTour()
+                    }
 
-                if page.showsDeviceRow {
-                    DeviceRow()
+                    if page.showsReadingPreview {
+                        ReadingPreview()
+                    }
+
+                    if page.showsDeviceRow {
+                        DeviceRow()
+                    }
                 }
+                .frame(maxWidth: 460)
+                .padding(.top, AlohaMetrics.space6)
+                .padding(.bottom, AlohaMetrics.space4)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geometry.size.height)
             }
-            .frame(maxWidth: 460)
-            .padding(.top, AlohaMetrics.space6)
-            .padding(.bottom, AlohaMetrics.space4)
+            .scrollIndicators(.hidden)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, AlohaMetrics.space5)

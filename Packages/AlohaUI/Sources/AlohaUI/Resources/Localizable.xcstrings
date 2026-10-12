@@ -172,9 +172,6 @@
         }
       }
     },
-    "%lld" : {
-
-    },
     "%lld notifications" : {
       "comment" : "Digest summary title"
     },
@@ -188,9 +185,6 @@
           }
         }
       }
-    },
-    "%lld:00" : {
-
     },
     "%lld/%lld" : {
       "comment" : "Alt text character count\nStory caption counter\nText story counter",
@@ -360,9 +354,6 @@
     },
     "A calmer client for the social web. Read, post, photograph and message — on your own server, in your own time." : {
       "comment" : "Onboarding detail"
-    },
-    "A day, not a stream" : {
-      "comment" : "Onboarding title"
     },
     "A draft is private. Once published, anybody with the address can see the page without signing in." : {
       "comment" : "Portfolio publish explanation"
@@ -607,9 +598,6 @@
     },
     "Aloha Social" : {
       "comment" : "App name"
-    },
-    "Aloha Social is a client, not a platform. Sign in to the Nextcloud Social or Mastodon server you already use — your posts, photos and messages stay there." : {
-      "comment" : "Onboarding detail"
     },
     "Aloha Social is open source under the MIT licence." : {
       "comment" : "Settings footer"
@@ -885,10 +873,10 @@
       "comment" : "Portfolio collection placeholder"
     },
     "Choose an album before publishing your portfolio." : {
-
+      "comment" : "Portfolio validation"
     },
     "Choose another filter to see more activities." : {
-
+      "comment" : "Notification filter empty state guidance"
     },
     "Choose file…" : {
       "comment" : "Migration import action"
@@ -1187,6 +1175,7 @@
       "comment" : "Quote controls action"
     },
     "Digest %lld: %lld:00" : {
+      "comment" : "Digest schedule accessibility label",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1325,9 +1314,6 @@
     "Estimated reach" : {
       "comment" : "Statistics tile"
     },
-    "Every screen you own" : {
-      "comment" : "Onboarding title"
-    },
     "Everybody on this server who asked to be listed. Nobody appears here without opting in." : {
       "comment" : "Directory explanation"
     },
@@ -1443,7 +1429,7 @@
       "comment" : "Conversations filter picker\nNotification policy decision: held in the requests inbox\nServer info peer filter"
     },
     "Filtered notifications" : {
-      "comment" : "Screen title\nSettings item"
+      "comment" : "Filtered notifications section\nScreen title\nSettings item"
     },
     "Filtered notifications: %lld waiting" : {
       "comment" : "Filtered count"
@@ -1705,9 +1691,6 @@
     },
     "iPhone, iPad, Mac, Apple Watch and Apple TV" : {
       "comment" : "Onboarding devices"
-    },
-    "iPhone, iPad, Mac, Apple Watch and Apple TV. One account, and every screen reads the same way." : {
-      "comment" : "Onboarding detail"
     },
     "It cannot be undone." : {
       "comment" : "Delete account warning"
@@ -2138,7 +2121,7 @@
       "comment" : "Empty News mode"
     },
     "No matching activities" : {
-
+      "comment" : "Notification filter empty state"
     },
     "No mentions." : {
       "comment" : "Text displayed in a dialog when the user has no mentions.",
@@ -2433,9 +2416,6 @@
     },
     "Open profile" : {
       "comment" : "Accessibility action\nConstellation action\nModeration action"
-    },
-    "Open the app and it tells you where you left off. New posts wait above the line until you ask for them." : {
-      "comment" : "Onboarding detail"
     },
     "Open the approval page again" : {
       "comment" : "Nextcloud connect action"
@@ -2960,7 +2940,7 @@
       "comment" : "Statistics export action"
     },
     "Save your changes to preview photos from the newly selected source." : {
-
+      "comment" : "Portfolio preview guidance"
     },
     "Say something…" : {
       "comment" : "Text story field prompt"
@@ -3636,7 +3616,7 @@
       "comment" : "Edit history empty detail"
     },
     "This video could not be played." : {
-      "comment" : "Video playback failure"
+      "comment" : "Short video playback error\nVideo playback failure"
     },
     "This video could not be played. Please check your connection and try again." : {
       "comment" : "Video playback failure"
@@ -3690,7 +3670,7 @@
       "comment" : "Empty search hint"
     },
     "Try again" : {
-      "comment" : "Hashtag tag reload action\nReport send retry\nSign-in failure action\nStarter pack retry action\nSubscriptions retry action"
+      "comment" : "Hashtag tag reload action\nReport send retry\nRetry media playback\nSign-in failure action\nStarter pack retry action\nSubscriptions retry action"
     },
     "Type the name of a town, a venue, a park." : {
       "comment" : "Place picker hint"
@@ -4147,9 +4127,6 @@
     },
     "Your server manages your name and picture. Change them in your Nextcloud settings." : {
       "comment" : "Profile editing note for a managed account"
-    },
-    "Your server, your rules" : {
-      "comment" : "Onboarding title"
     },
     "Your server's address — for example aloha.example.org. You sign in on your server; Aloha Social only connects." : {
       "comment" : "Onboarding sign-in detail"
