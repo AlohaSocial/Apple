@@ -25,6 +25,13 @@ public struct AppShell: View {
     /// The address typed on the introduction, for the sign-in screen to open
     /// with — or empty when the person chose "skip" and will type it there.
     @State private var signInAddress = ""
+    /// The terms sheet, shown after the introduction rather than before it.
+    /// The first thing a person should see is what the app is; the rules
+    /// belong after that, once they care (docs/09 §4).
+    @State private var isShowingTerms = false
+    /// Which feeds the person wants, chosen once after the first sign-in.
+    /// Nil once the choice has been made.
+    @State private var chosenModes: Set<FeedMode>?
     @State private var composing: ComposerPresentation?
     @Namespace private var mediaTransition
     @State private var isCelebrating = false
@@ -112,27 +119,121 @@ public struct AppShell: View {
             }
     }
 
+    /// What a person sees, in the order it is fair to ask it of them:
+    ///
+    /// 1. the introduction — what this app is, and where to sign in;
+    /// 2. only then the terms, which nobody can agree to before they know
+    ///    what they are agreeing inside;
+    /// 3. the feeds they want, once there is a server whose answer to that
+    ///    question is knowable;
+    /// 4. the app.
+    ///
+    /// This used to lead with the terms, so the first screen a person ever
+    /// saw was a page of dense rules — which is why the introduction behind
+    /// it read as if it were not there.
     @ViewBuilder
     private var root: some View {
         if environment.isLoading {
-            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if !hasAcceptedTerms {
-            TermsGate(
-                onAccept: { hasAcceptedTerms = true },
-                onDecline: { hasAcceptedTerms = false })
+            // Not a bare spinner: the app is saying what it is while it
+            // loads, which is the only thing it can honestly say yet.
+            VStack(spacing: AlohaMetrics.space4) {
+                AlohaLogoMark(size: 96)
+                Text("Aloha Social", comment: "App name")
+                    .font(AlohaType.title.weight(.bold))
+                    .fontDesign(.rounded)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.background)
         } else if let session = environment.activeSession {
+            promptForModesIfNeeded(session)
             shell(session)
                 // Switching accounts has to change view identity: every
                 // timeline holds its model in `@State`, and without this the
                 // previous account's posts stay on screen and its client keeps
                 // serving the actions (docs/03 §6).
                 .id(session.id)
+                .sheet(
+                    item: Binding(
+                        get: { self.chosenModes.map { ModeSelection($0) } },
+                        set: { newValue in
+                            guard let newValue else { return }
+                            self.chosenModes = nil
+                            Self.recordChosenModes(newValue.modes)
+                        })
+                ) { selection in
+                    NavigationStack {
+                        ModeSelectionView(
+                            selected: Binding(
+                                get: { selection.modes },
+                                set: { newValue in self.chosenModes = newValue }),
+                            capabilities: session.capabilities,
+                            onContinue: { self.chosenModes = nil }
+                        )
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button {
+                                    guard let modes = self.chosenModes else { return }
+                                    Self.recordChosenModes(modes)
+                                    self.chosenModes = nil
+                                } label: {
+                                    Text("Continue", comment: "Settings action")
+                                        .font(.body.weight(.semibold))
+                                }
+                                .disabled(
+                                    self.chosenModes == nil || self.chosenModes?.isEmpty == true)
+                            }
+                        }
+                    }
+                }
+        } else if !hasAcceptedTerms {
+            introduction(offeringTerms: true)
         } else {
-            WelcomeView { address in
-                signInAddress = address ?? ""
+            introduction(offeringTerms: false)
+        }
+    }
+
+    /// Offers the mode choice once, after the first sign-in — the one point at
+    /// which the server's answer to "which feeds exist" is knowable. Without
+    /// this `ModeSelectionView` was dead code that never appeared.
+    private func promptForModesIfNeeded(_ session: AccountSession) {
+        guard chosenModes == nil else { return }
+        guard UserDefaults.standard.stringArray(forKey: Self.chosenModesKey) == nil else {
+            return
+        }
+        chosenModes = Set(session.visibleModes)
+    }
+
+    /// The introduction, and — for a first launch only — the terms behind it.
+    private func introduction(offeringTerms: Bool) -> some View {
+        WelcomeView { address in
+            signInAddress = address ?? ""
+            if offeringTerms {
+                isShowingTerms = true
+            } else {
                 isPresentingSignIn = true
             }
         }
+        .sheet(isPresented: $isShowingTerms) {
+            TermsGate(
+                onAccept: {
+                    isShowingTerms = false
+                    isPresentingSignIn = true
+                },
+                onDecline: { isShowingTerms = false })
+        }
+    }
+
+    /// The feeds chosen once, so `chosenModes` can hold a value.
+    private struct ModeSelection: Hashable, Identifiable {
+        let modes: Set<FeedMode>
+        var id: Set<FeedMode> { modes }
+    }
+
+    private static let chosenModesKey = "aloha.chosenModes"
+
+    private static func recordChosenModes(_ modes: Set<FeedMode>) {
+        UserDefaults.standard.set(
+            modes.map(\.rawValue).sorted(), forKey: chosenModesKey)
     }
 
     private func start() async {
