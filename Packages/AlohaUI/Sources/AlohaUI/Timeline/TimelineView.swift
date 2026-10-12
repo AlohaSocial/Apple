@@ -142,6 +142,7 @@ public struct TimelineView: View {
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                     .id(status.id)
+                    .alohaRowHighlight()
                     .overlay(alignment: .leading) {
                         if focusedStatusID == status.id {
                             Capsule()

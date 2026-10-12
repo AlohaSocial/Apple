@@ -84,6 +84,7 @@ public struct ConversationsView: View {
                     ForEach(0..<6, id: \.self) { _ in
                         ConversationSkeletonRow()
                             .listRowSeparator(.hidden)
+                            .alohaRowHighlight()
                     }
                 } else {
                     ForEach(visible) { conversation in

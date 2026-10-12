@@ -783,6 +783,7 @@ public struct SidebarView: View {
         .tag(SidebarItem.route(route))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
+        .alohaRowHighlight()
     }
 
     private var optionalSelection: Binding<SidebarItem?> {

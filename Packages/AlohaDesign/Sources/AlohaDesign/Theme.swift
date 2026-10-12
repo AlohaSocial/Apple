@@ -451,3 +451,20 @@ extension View {
         }
     }
 }
+
+/// `hoverEffect(.highlight)` on the platforms that have it, nothing
+/// everywhere else.
+///
+/// visionOS is the only platform with a hover interaction — a look at a row
+/// lights it up — so this is a no-op by construction everywhere else and the
+/// call sites do not need their own `#if os(visionOS)`.
+extension View {
+    @ViewBuilder
+    public func alohaRowHighlight() -> some View {
+        #if os(visionOS)
+            hoverEffect(.highlight)
+        #else
+            self
+        #endif
+    }
+}
