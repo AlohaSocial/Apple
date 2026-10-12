@@ -87,9 +87,28 @@ import XCTest
             app.buttons["Cancel"].firstMatch.tap()
         }
 
+        func testPhotosStartsWithPostFeedAndCanShowGrid() {
+            launch(["-AlohaMockResetPhotoLayout"])
+            app.tabBars.buttons["Photos"].tap()
+            let feed = app.scrollViews["photos.feed"].firstMatch
+            XCTAssertTrue(feed.waitForExistence(timeout: 10), "Photos did not default to the post feed")
+            XCTAssertTrue(app.buttons["Favourite"].firstMatch.exists, "Photo post actions missing")
+            XCTAssertTrue(app.buttons["More actions"].firstMatch.exists, "Photo post header missing")
+            shoot("56-photos-feed")
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Grid"].firstMatch.tap()
+            XCTAssertFalse(feed.exists, "Grid switch did not change the layout")
+            shoot("57-photos-grid")
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Feed"].firstMatch.tap()
+            XCTAssertTrue(feed.waitForExistence(timeout: 5))
+        }
+
         func testMediaViewerOpensFromPhotos() {
             launch()
             app.tabBars.buttons["Photos"].tap()
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Grid"].firstMatch.tap()
             let tile = app.buttons.matching(
                 NSPredicate(format: "label CONTAINS 'photograph'")
             ).firstMatch

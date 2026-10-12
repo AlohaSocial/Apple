@@ -221,10 +221,10 @@ For Pixelfed-style image posts.
 
 ### Layout
 
-- **Grid** (default): a 3-column square grid on iPhone, adaptive on larger
-  screens, blurhash placeholders, multi-attachment posts carrying a stack badge.
-- **Feed**: a single-column large-image feed with full captions and the action
-  row — the layout people expect from a photo app.
+- **Feed** (default): an Instagram-style sequence of large images with author,
+  caption and actions. The reading column is bounded on larger screens.
+- **Grid**: a 3-column square grid on iPhone, adaptive on larger screens,
+  blurhash placeholders, multi-attachment posts carrying a stack badge.
 - The toggle lives in the mode's toolbar and is remembered.
 
 ### Detail
