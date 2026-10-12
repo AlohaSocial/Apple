@@ -274,13 +274,14 @@ avatar as the account switcher. The Mac already had one in its sidebar.
   a composer cannot be presented from a notification response without a view
   of ours on screen to present it from. Favourite, boost and Mute conversation
   carry out immediately.
-- **The visionOS-specific behaviour of docs/09 §3.** The app *runs* on visionOS —
-  the iOS target declares `xros`, and the shell picks the split view — but three
-  things that are only right there are not built: the media viewer and the video
-  player opening as **separate windows** so a video can be parked in space while
-  reading continues, **Shorts as a full ornamented window** rather than a plain
-  one, and **`.hoverEffect(.highlight)` on the interactive rows**. Glass
-  materials and the no-immersive-spaces rule are already honoured.
+- **The visionOS-specific behaviour of docs/09 §3, two of three.** The app
+  *runs* on visionOS — the iOS target declares `xros`, and the shell picks the
+  split view. `.hoverEffect(.highlight)` on the interactive rows is built: one
+  modifier, `alohaRowHighlight()`, that is `hoverEffect` on visionOS and the
+  view itself everywhere else. Still open are the media viewer and video player
+  opening as **separate windows** so a video can be parked in space while
+  reading continues, and **Shorts as a full ornamented window** rather than a
+  plain one.
 
 ### Built since the last review pass, and left listed because a list that
 lies about what is built is worse than no list
