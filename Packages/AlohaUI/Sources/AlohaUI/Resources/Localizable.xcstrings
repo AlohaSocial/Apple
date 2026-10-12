@@ -1840,6 +1840,9 @@
     "Load the posts in between" : {
       "comment" : "Timeline gap row"
     },
+    "Loading photos" : {
+      "comment" : "Photos loading state"
+    },
     "Loading shorts" : {
       "comment" : "Shorts loading"
     },
@@ -2503,6 +2506,9 @@
     },
     "Period" : {
       "comment" : "Trend period picker"
+    },
+    "Photo layout" : {
+      "comment" : "Photos layout menu"
     },
     "Photos" : {
       "comment" : "Feed mode\nMode title"
