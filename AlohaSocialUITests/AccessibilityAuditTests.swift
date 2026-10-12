@@ -153,6 +153,8 @@ import XCTest
 
         func testMediaViewerIsAccessible() throws {
             app.tabBars.buttons["Photos"].tap()
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Grid"].firstMatch.tap()
             let tile = app.buttons.matching(
                 NSPredicate(format: "label CONTAINS 'photograph'")
             ).firstMatch
@@ -173,21 +175,27 @@ import XCTest
             let fresh = XCUIApplication()
             fresh.launchArguments = ["-AlohaMockServer", "-AlohaMockNoAccount"]
             fresh.launch()
-            XCTAssertTrue(fresh.labelled("Before you start").waitForExistence(timeout: 10))
-            try fresh.performAccessibilityAudit(for: auditTypes) { issue in
-                Self.record(
-                    "[Terms] \(issue.compactDescription) — "
-                        + "label='\(issue.element?.label ?? "")'")
-                return false
-            }
-            fresh.buttons["Agree and continue"].firstMatch.tap()
-            sleep(1)
+            XCTAssertTrue(fresh.labelled("A calmer client").waitForExistence(timeout: 10))
             try fresh.performAccessibilityAudit(for: auditTypes) { issue in
                 Self.record(
                     "[Welcome] \(issue.compactDescription) — "
                         + "label='\(issue.element?.label ?? "")'")
                 return false
             }
+            fresh.buttons["Skip"].firstMatch.tap()
+            let server = fresh.textFields.firstMatch
+            XCTAssertTrue(server.waitForExistence(timeout: 5))
+            server.tap()
+            server.typeText("cloud.example.test")
+            fresh.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(fresh.labelled("Before you start").waitForExistence(timeout: 5))
+            try fresh.performAccessibilityAudit(for: auditTypes) { issue in
+                Self.record(
+                    "[Terms] \(issue.compactDescription) — "
+                        + "label='\(issue.element?.label ?? "")'")
+                return false
+            }
+
         }
 
         /// Dynamic Type is excluded: the audit flags any text that cannot grow,

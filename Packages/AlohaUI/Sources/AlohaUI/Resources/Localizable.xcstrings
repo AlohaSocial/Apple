@@ -1931,7 +1931,7 @@
       "comment" : "Conversation field label\nProfile action"
     },
     "Messages" : {
-      "comment" : "Screen title\nTab title"
+      "comment" : "Screen title"
     },
     "Messages could not be loaded. Pull down to try again." : {
 

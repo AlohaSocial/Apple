@@ -404,6 +404,29 @@ public struct PhotoPostCard: View {
             details
         }
         .padding(.bottom, AlohaMetrics.space4)
+        #if !os(iOS)
+            .overlay {
+                if attachments.count > 1 {
+                    HStack {
+                        Button { page = max(0, page - 1) } label: {
+                            Image(systemName: "chevron.left")
+                                .frame(width: 44, height: 44)
+                        }
+                        .disabled(page == 0)
+                        .accessibilityLabel(Text("Previous photo", comment: "Photo carousel action"))
+                        Spacer()
+                        Button { page = min(attachments.count - 1, page + 1) } label: {
+                            Image(systemName: "chevron.right")
+                                .frame(width: 44, height: 44)
+                        }
+                        .disabled(page >= attachments.count - 1)
+                        .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
+                    }
+                    .buttonStyle(.glass)
+                    .padding(AlohaMetrics.space2)
+                }
+            }
+        #endif
         .overlay(alignment: .bottom) { Divider().foregroundStyle(palette.separator) }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.\(displayed.id)")
@@ -471,14 +494,16 @@ public struct PhotoPostCard: View {
     private var media: some View {
         ZStack {
             if attachments.count > 1 {
-                TabView(selection: $page) {
-                    ForEach(Array(attachments.enumerated()), id: \.element.id) {
-                        offset, attachment in
-                        picture(attachment).tag(offset)
-                    }
-                }
                 #if os(iOS)
+                    TabView(selection: $page) {
+                        ForEach(Array(attachments.enumerated()), id: \.element.id) {
+                            offset, attachment in
+                            picture(attachment).tag(offset)
+                        }
+                    }
                     .tabViewStyle(.page(indexDisplayMode: .never))
+                #else
+                    picture(attachments[min(page, attachments.count - 1)])
                 #endif
             } else if let first = attachments.first {
                 picture(first)
@@ -534,7 +559,10 @@ public struct PhotoPostCard: View {
                 ? Text("Tap to show", comment: "Covered media hint")
                 : Text("Opens the media viewer", comment: "Accessibility hint"))
         .accessibilityAction(named: Text("Favourite", comment: "Accessibility action")) { heart() }
-        .mediaTransitionSource(id: attachments.first?.id ?? displayed.id, in: mediaTransition)
+        .mediaTransitionSource(
+            id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
+            in: mediaTransition)
+        .onChange(of: attachments.map(\.id)) { _, _ in page = 0 }
     }
 
     private func picture(_ attachment: MediaAttachment) -> some View {

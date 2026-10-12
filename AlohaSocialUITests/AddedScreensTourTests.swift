@@ -184,6 +184,7 @@ import XCTest
             editor.tap()
             editor.typeText("Short enough to be a card")
 
+            app.buttons["More options"].firstMatch.tap()
             XCTAssertTrue(
                 app.labelled("Post it as a card").waitForExistence(timeout: 5),
                 "A short post was not offered as a card")
