@@ -130,6 +130,16 @@ extension MediaAttachment {
 
     public var duration: Double? { meta?.original?.duration }
 
+    /// True only for visual video attachments. Audio is playable, but must
+    /// never enter the video or Shorts feeds.
+    public var isVideo: Bool { type == .video || type == .gifv }
+
+    /// The URL suitable for an image view. A playable attachment's `url` is
+    /// media bytes, never a fallback thumbnail.
+    public var displayImageURL: URL? {
+        type.isPlayable ? previewURL : (previewURL ?? url)
+    }
+
     /// A sensible box to lay out in before the bytes arrive, so nothing shifts.
     public var displayAspectRatio: Double { aspectRatio ?? 4.0 / 3.0 }
 }

@@ -72,6 +72,80 @@ public final class ComposerModel {
     /// Focal points set here, by attachment id, so the strip can show a mark.
     public private(set) var focalPoints: [String: CGPoint] = [:]
 
+    // MARK: - Describing every image at once
+
+    /// How many images are still waiting for a description, out of the images
+    /// that can carry one. Four pictures is the common case, and asking for
+    /// each one separately is four round trips through the same sheet
+    /// (docs/10 §5).
+    public var imagesAwaitingDescription: Int {
+        uploader.attachments.filter { $0.type == .image && !$0.hasAltText }.count
+    }
+
+    public private(set) var isDescribingAll = false
+    public private(set) var describedCount = 0
+    public private(set) var describeAllTotal = 0
+    public private(set) var describeAllError: String?
+    /// Set when the person stops the run early; the ones already done stay
+    /// done, which is the only behaviour that makes Cancel worth pressing.
+    private var describeAllCancelled = false
+
+    /// Describes every image that has no description, one at a time.
+    ///
+    /// Sequential rather than concurrent on purpose: the language model is the
+    /// scarce resource, four at once queues behind it anyway and reports a
+    /// single failure for four attempts.
+    public func describeAllImages(environment: AppEnvironment) async {
+        guard !isDescribingAll else { return }
+        let pending = uploader.attachments.filter { $0.type == .image && !$0.hasAltText }
+        guard !pending.isEmpty else { return }
+
+        isDescribingAll = true
+        describedCount = 0
+        describeAllTotal = pending.count
+        describeAllError = nil
+        describeAllCancelled = false
+        defer { isDescribingAll = false }
+
+        for attachment in pending {
+            if describeAllCancelled { break }
+
+            guard let url = attachment.displayImageURL,
+                let (data, _) = try? await URLSession.shared.data(from: url)
+            else {
+                describeAllError = String(
+                    localized: "Couldn't read that image.", comment: "Alt text generation failure")
+                continue
+            }
+
+            do {
+                let generated = try await environment.intelligence.describeImage(data)
+                guard AltTextGuidance.looksAcceptable(generated) else {
+                    describeAllError = String(
+                        localized: "One description didn't come out usable.",
+                        comment: "Alt text generation rejected")
+                    continue
+                }
+                await uploader.updateDescription(generated, for: attachment.id)
+            } catch {
+                // One picture that could not be described does not undo the
+                // ones that were: the run continues and says so at the end.
+                describeAllError = String(
+                    localized: "One description couldn't be generated.",
+                    comment: "Alt text generation failure")
+                continue
+            }
+
+            describedCount += 1
+        }
+    }
+
+    /// Stops a run after the image it is on. Already-described images keep
+    /// their descriptions.
+    public func cancelDescribeAll() {
+        describeAllCancelled = true
+    }
+
     public enum QuotePolicy: String, CaseIterable, Identifiable, Sendable {
         case `public`, followers, nobody
         public var id: String { rawValue }
