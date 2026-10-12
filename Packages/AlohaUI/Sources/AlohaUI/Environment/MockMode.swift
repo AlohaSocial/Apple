@@ -47,8 +47,18 @@ import Foundation
             // system theme follows the system only passed when nothing had
             // chosen one first. The mock always starts from the same place.
             environment.theme = .system
+            // Screen tours skip the optional first-account choice; its own test
+            // requests it explicitly so launch behaviour is independent of test order.
+            if CommandLine.arguments.contains("-AlohaMockModeSelection") {
+                UserDefaults.standard.removeObject(forKey: "aloha.chosenModes")
+            } else {
+                UserDefaults.standard.set(FeedMode.allCases.map(\.rawValue), forKey: "aloha.chosenModes")
+            }
             guard !startsSignedOut else { return }
             TermsGate.recordAcceptance()
+            for session in environment.sessions {
+                await session.updateSettings { $0.enabledModes = FeedMode.defaultEnabled }
+            }
             guard environment.sessions.isEmpty else { return }
 
             let apiBase = URL(string: "https://\(host)/")!

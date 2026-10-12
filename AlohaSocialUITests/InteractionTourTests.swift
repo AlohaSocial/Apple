@@ -301,6 +301,27 @@ import XCTest
             shoot("55-video-watch")
         }
 
+        func testInitialFeedChoiceChangesTabs() {
+            app = XCUIApplication()
+            app.launchArguments = ["-AlohaMockServer", "-AlohaMockModeSelection"]
+            app.launch()
+            let title = app.labelled("Which feeds do you want?")
+            XCTAssertTrue(title.waitForExistence(timeout: 15))
+            for name in ["Photos", "Video", "Shorts"] {
+                let choice = app.buttons.matching(
+                    NSPredicate(format: "label BEGINSWITH %@", name + ",")
+                ).firstMatch
+                XCTAssertTrue(choice.waitForExistence(timeout: 5), "Feed choice missing: \(name)")
+                choice.tap()
+                XCTAssertTrue(title.exists, "Changing a feed dismissed its sheet")
+            }
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(app.tabBars.buttons["My Feed"].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.tabBars.buttons["Photos"].exists)
+            XCTAssertFalse(app.tabBars.buttons["Shorts"].exists)
+
+        }
+
         func testWelcomeAtAccessibilityTextSize() {
             app = XCUIApplication()
             app.launchArguments = [

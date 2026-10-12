@@ -156,14 +156,18 @@ public struct AppShell: View {
                 // moment the shell appears, not to the evaluation of this
                 // body: `chosenModes` is state, and a `@ViewBuilder` will not
                 // take a statement that returns `()` anyway.
-                .onAppear { promptForModesIfNeeded(session) }
+                .onAppear {
+                    repairFeedSelection(session.visibleModes)
+                    promptForModesIfNeeded(session)
+                }
+                .onChange(of: session.visibleModes) { _, modes in
+                    repairFeedSelection(modes)
+                }
                 .sheet(
                     item: Binding(
                         get: { self.chosenModes.map { ModeSelection(modes: $0) } },
                         set: { newValue in
-                            guard let newValue else { return }
-                            self.chosenModes = nil
-                            Self.recordChosenModes(newValue.modes)
+                            if newValue == nil { self.chosenModes = nil }
                         })
                 ) { selection in
                     NavigationStack {
@@ -173,17 +177,13 @@ public struct AppShell: View {
                                 set: { newValue in self.chosenModes = newValue }),
                             capabilities: session.capabilities,
                             onContinue: {
-                                guard let modes = self.chosenModes, !modes.isEmpty else { return }
-                                Self.recordChosenModes(modes)
-                                self.chosenModes = nil
+                                finishModeSelection(session)
                             }
                         )
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
                                 Button {
-                                    guard let modes = self.chosenModes else { return }
-                                    Self.recordChosenModes(modes)
-                                    self.chosenModes = nil
+                                    finishModeSelection(session)
                                 } label: {
                                     Text("Continue", comment: "Settings action")
                                         .font(.body.weight(.semibold))
@@ -210,6 +210,33 @@ public struct AppShell: View {
             return
         }
         chosenModes = Set(session.visibleModes)
+    }
+
+    private func finishModeSelection(_ session: AccountSession) {
+        guard let chosenModes, !chosenModes.isEmpty else { return }
+        let ordered = FeedMode.allCases.filter {
+            chosenModes.contains($0) && session.capabilities.supports($0)
+        }
+        guard !ordered.isEmpty else { return }
+        self.chosenModes = nil
+        Task {
+            await session.updateSettings { $0.enabledModes = ordered }
+            Self.recordChosenModes(Set(ordered))
+        }
+    }
+
+    /// A removed feed must not remain the selection of a tab that no longer exists.
+    private func repairFeedSelection(_ modes: [FeedMode]) {
+        guard let fallback = modes.first else { return }
+        if !modes.contains(selectedMode) { selectedMode = fallback }
+        if case .mode(let mode) = selectedTab, !modes.contains(mode) {
+            selectedTab = .mode(fallback)
+            path = []
+        }
+        if case .mode(let mode) = sidebarItem, !modes.contains(mode) {
+            sidebarItem = .mode(fallback)
+            path = []
+        }
     }
 
     /// The introduction, and — for a first launch only — the terms behind it.
