@@ -23,10 +23,7 @@
       "comment" : "Decoding failure"
     },
     "Your server wouldn't allow that." : {
-      "comment" : "HTTP 403"
-    },
-    "Your sign-in has expired." : {
-      "comment" : "Error when a token is revoked"
+      "comment" : "HTTP 401\nHTTP 403"
     }
   },
   "version" : "1.0"

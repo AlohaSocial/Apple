@@ -17,10 +17,8 @@ public struct WelcomeView: View {
         self.onAddAccount = onAddAccount
     }
 
-    /// The introduction, in the order a person can agree with it: what this
-    /// is, what it looks like, whose it is, what it will not do to you, what a
-    /// day in it feels like, where else you'll find it, and where to start.
-    /// The last page is the beginning itself, not a button that begins.
+    /// Three short pages introduce the app before the server address.
+    /// Optional feature details belong in the app rather than delaying sign-in.
     private var pages: [OnboardingPage] {
         [
             OnboardingPage(
@@ -38,31 +36,11 @@ public struct WelcomeView: View {
                     comment: "Onboarding detail"),
                 showsModeTour: true),
             OnboardingPage(
-                symbol: "server.rack",
-                title: Text("Your server, your rules", comment: "Onboarding title"),
-                detail: Text(
-                    "Aloha Social is a client, not a platform. Sign in to the Nextcloud Social or Mastodon server you already use — your posts, photos and messages stay there.",
-                    comment: "Onboarding detail")),
-            OnboardingPage(
                 symbol: "lock.shield.fill",
                 title: Text("Quiet by default", comment: "Onboarding title"),
                 detail: Text(
                     "Media behind a content warning stays blurred. Popularity counts can be switched off entirely. Digest notifications wait for the times you pick.",
                     comment: "Onboarding detail")),
-            OnboardingPage(
-                symbol: "sun.horizon",
-                title: Text("A day, not a stream", comment: "Onboarding title"),
-                detail: Text(
-                    "Open the app and it tells you where you left off. New posts wait above the line until you ask for them.",
-                    comment: "Onboarding detail"),
-                showsReadingPreview: true),
-            OnboardingPage(
-                symbol: "applewatch",
-                title: Text("Every screen you own", comment: "Onboarding title"),
-                detail: Text(
-                    "iPhone, iPad, Mac, Apple Watch and Apple TV. One account, and every screen reads the same way.",
-                    comment: "Onboarding detail"),
-                showsDeviceRow: true),
         ]
     }
 
@@ -77,18 +55,16 @@ public struct WelcomeView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            TabView(selection: $page) {
-                ForEach(Array(pages.enumerated()), id: \.offset) { index, content in
-                    OnboardingPageView(page: content)
-                        .tag(index)
+            Group {
+                if page < pages.count {
+                    OnboardingPageView(page: pages[page])
+                } else {
+                    signInPage
                 }
-
-                signInPage
-                    .tag(pages.count)
             }
-            #if os(iOS)
-                .tabViewStyle(.page(indexDisplayMode: .never))
-            #endif
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .id(page)
+            .transition(.opacity)
 
             footer
                 .padding(.horizontal, AlohaMetrics.space5)
@@ -103,51 +79,54 @@ public struct WelcomeView: View {
         VStack(spacing: AlohaMetrics.space4) {
             Spacer(minLength: 0)
 
-            Text("Where do you socialize?", comment: "Onboarding sign-in title")
-                .font(.title2.weight(.bold))
-                .multilineTextAlignment(.center)
-
-            Text(
-                "Your server's address — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
-                comment: "Onboarding sign-in detail"
-            )
-            .font(.subheadline)
-            .foregroundStyle(palette.secondaryLabel)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: 400)
-
             VStack(spacing: AlohaMetrics.space2) {
-                TextField(
-                    text: $serverAddress,
-                    prompt: Text("cloud.example.com", comment: "Server address placeholder")
-                ) {
-                    Label {
-                        Text("Server", comment: "Server address field")
-                    } icon: {
-                        Image(systemName: "server.rack")
-                    }
-                }
-                #if os(iOS)
-                    // Every one of these is an iPhone keyboard concern: a Mac
-                    // has no keyboard type and no text-content type, and the
-                    // suite compiles on one.
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled()
-                    .submitLabel(.go)
-                #endif
-                .focused($isAddressFocused)
-                .onSubmit(start)
-                .disabled(serverAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+                Text("Where do you socialize?", comment: "Onboarding sign-in title")
+                    .font(.title2.weight(.semibold))
+                    .multilineTextAlignment(.center)
 
-                Button(action: start) {
-                    Text("Continue", comment: "Onboarding sign-in action")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.alohaProminent)
-                .disabled(serverAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+                Text(
+                    "Your server's address — for example aloha.example.org. You sign in on your server; Aloha Social only connects.",
+                    comment: "Onboarding sign-in detail"
+                )
+                .font(.body)
+                .foregroundStyle(palette.secondaryLabel)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
             }
+
+            TextField(
+                text: $serverAddress,
+                prompt: Text("cloud.example.com", comment: "Server address placeholder")
+            ) {
+                Text("Server", comment: "Server address field")
+            }
+            .textFieldStyle(.roundedBorder)
+            .controlSize(.large)
+            #if os(iOS)
+                // Every one of these is an iPhone keyboard concern: a Mac
+                // has no keyboard type and no text-content type, and the
+                // suite compiles on one.
+                .textContentType(.URL)
+                .keyboardType(.URL)
+                .autocapitalization(.none)
+                .autocorrectionDisabled()
+                .submitLabel(.go)
+            #endif
+            .focused($isAddressFocused)
+            .onSubmit(start)
+            // The field is never disabled: a field that refuses the first
+            // character because there is not yet a second is a field that
+            // cannot be used at all. Only the action it feeds waits.
+            .frame(maxWidth: 380)
+
+            Button(action: start) {
+                Text("Continue", comment: "Onboarding sign-in action")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(serverAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .frame(maxWidth: 380)
 
             Spacer(minLength: 0)
         }
@@ -158,19 +137,22 @@ public struct WelcomeView: View {
     /// here rather than again on the next screen.
     private func start() {
         let typed = serverAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-        onAddAccount(typed.isEmpty ? nil : typed)
+        guard !typed.isEmpty else { return }
+        isAddressFocused = false
+        onAddAccount(typed)
     }
 
+    /// Dots, then the action, then the way back and the way out.
     private var footer: some View {
         VStack(spacing: AlohaMetrics.space3) {
             // Owned rather than `.tabViewStyle(.page)`'s indicator: that style
             // does not exist on every platform, and dots are cheap.
-            HStack(spacing: AlohaMetrics.space2) {
+            HStack(spacing: 6) {
                 ForEach(0..<pageCount, id: \.self) { index in
                     Circle()
-                        .fill(index == page ? palette.accent : palette.separator)
-                        .frame(width: index == page ? 9 : 6, height: index == page ? 9 : 6)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: page)
+                        .fill(index == page ? palette.accent : palette.tertiaryLabel.opacity(0.35))
+                        .frame(width: 7, height: 7)
+                        .animation(.easeInOut(duration: 0.2), value: page)
                 }
             }
             .accessibilityHidden(true)
@@ -182,45 +164,62 @@ public struct WelcomeView: View {
                     Text("Continue", comment: "Onboarding action")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.alohaProminent)
-                .overlay(alignment: .leading) {
-                    // Every page but the first can go back: an introduction is
-                    // a tour, and a tour you cannot reverse is a slide show.
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+
+                HStack {
                     if page > 0 {
+                        // Every page but the first can go back: an introduction
+                        // is a tour, and a tour you cannot reverse is a slide
+                        // show.
                         Button {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                 page -= 1
                             }
                         } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.footnote.weight(.semibold))
-                                .padding(AlohaMetrics.space3)
-                                .contentShape(Rectangle())
+                            Label {
+                                Text("Back", comment: "Onboarding action")
+                            } icon: {
+                                Image(systemName: "chevron.left")
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                         .foregroundStyle(palette.secondaryLabel)
                         .accessibilityLabel(Text("Back", comment: "Onboarding action"))
                     }
-                }
 
-                Button {
-                    // Straight to the page you sign in on, where the address
-                    // already is.
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        page = pageCount - 1
-                        isAddressFocused = true
+                    Spacer(minLength: 0)
+
+                    Button {
+                        // Straight to the page you sign in on, where the address
+                        // already is.
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            page = pageCount - 1
+                            isAddressFocused = true
+                        }
+                    } label: {
+                        Text("Skip", comment: "Onboarding action")
                     }
-                } label: {
-                    Text("Skip", comment: "Onboarding action")
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(palette.secondaryLabel)
                 }
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(palette.secondaryLabel)
             } else {
+                Button {
+                    isAddressFocused = false
+                    withAnimation(.easeInOut(duration: 0.2)) { page -= 1 }
+                } label: {
+                    Label {
+                        Text("Back", comment: "Onboarding action")
+                    } icon: {
+                        Image(systemName: "chevron.left")
+                    }
+                }
+                .buttonStyle(.borderless)
                 Text(
                     "Don't know your address? Your server's website has it, or ask whoever runs it.",
                     comment: "Onboarding footnote"
                 )
-                .font(.caption)
+                .font(.footnote)
                 .foregroundStyle(palette.tertiaryLabel)
                 .multilineTextAlignment(.center)
                 .transition(.opacity)
@@ -252,69 +251,58 @@ private struct OnboardingPage: Identifiable {
 private struct OnboardingPageView: View {
     let page: OnboardingPage
     @Environment(\.alohaPalette) private var palette
-    @Environment(\.alohaMetrics) private var metrics
 
     var body: some View {
-        VStack(spacing: AlohaMetrics.space5) {
-            Spacer(minLength: 0)
-
-            if page.isHero {
-                // The app's own mark and wordmark: the first screen a person
-                // sees should look like the app they are about to use.
-                AlohaLogo()
-            } else {
-                Image(systemName: page.symbol)
-                    .font(.system(size: 62))
-                    .foregroundStyle(palette.accent)
-                    .frame(width: 148, height: 148)
-                    .unifiedGlass(
-                        .regular,
-                        in: RoundedRectangle(
-                            cornerRadius: AlohaMetrics.cornerLarge * 2, style: .continuous)
-                    )
-                    .accessibilityHidden(true)
-            }
-
-            VStack(spacing: AlohaMetrics.space3) {
+        ScrollView {
+            VStack(spacing: AlohaMetrics.space4) {
                 if page.isHero {
-                    page.detail
-                        .font(.body)
-                        .foregroundStyle(palette.secondaryLabel)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
+                    // The app's own mark and wordmark: the first screen a person
+                    // sees should look like the app they are about to use.
+                    AlohaLogo()
                 } else {
-                    page.title
-                        .font(.title.weight(.bold))
-                        .multilineTextAlignment(.center)
+                    Image(systemName: page.symbol)
+                        .font(.system(size: 44))
+                        .foregroundStyle(palette.accent)
+                        .accessibilityHidden(true)
+                }
+
+                VStack(spacing: AlohaMetrics.space2) {
+                    if !page.isHero {
+                        page.title
+                            .font(.title2.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                    }
                     page.detail
                         .font(.body)
                         .foregroundStyle(palette.secondaryLabel)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
+                        .frame(maxWidth: 380)
+                }
+
+                if page.showsModeTour {
+                    // The six feeds as they actually appear, with the same symbols
+                    // the sidebar uses — an introduction that shows the app rather
+                    // than describing it.
+                    ModeTour()
+                }
+
+                if page.showsReadingPreview {
+                    ReadingPreview()
+                }
+
+                if page.showsDeviceRow {
+                    DeviceRow()
                 }
             }
-
-            if page.showsModeTour {
-                // The six feeds as they actually appear, with the same symbols
-                // the sidebar uses — an introduction that shows the app rather
-                // than describing it.
-                ModeTour()
-            }
-
-            if page.showsReadingPreview {
-                ReadingPreview()
-            }
-
-            if page.showsDeviceRow {
-                DeviceRow()
-            }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: 460)
+            .padding(.top, AlohaMetrics.space6)
+            .padding(.bottom, AlohaMetrics.space4)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, AlohaMetrics.space5)
+        .scrollIndicators(.hidden)
     }
 }
-
 /// The reading experience, as it appears: the line between where you left off
 /// and what arrived since.
 ///
@@ -322,82 +310,43 @@ private struct OnboardingPageView: View {
 /// and a page that *shows* it lands where a sentence about it would not.
 private struct ReadingPreview: View {
     @Environment(\.alohaPalette) private var palette
-    @Environment(\.alohaMetrics) private var metrics
 
     var body: some View {
-        VStack(spacing: AlohaMetrics.space2) {
-            // The new-posts pill: what arrived since, waiting to be asked for.
-            HStack(spacing: AlohaMetrics.space1) {
-                Image(systemName: "arrow.up")
-                    .font(.caption2)
-                Text("12 new posts", comment: "Onboarding preview pill")
-                    .font(.caption.weight(.semibold))
-            }
-            .foregroundStyle(palette.onAccent)
-            .padding(.horizontal, AlohaMetrics.space3)
-            .padding(.vertical, AlohaMetrics.space1)
-            .background(palette.accent, in: Capsule())
-
-            // Where you left off.
-            VStack(spacing: AlohaMetrics.space2) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(palette.surfaceRaised)
-                    .frame(height: 10)
-                    .frame(maxWidth: 240, alignment: .leading)
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(palette.surfaceRaised)
-                    .frame(height: 10)
-                    .frame(maxWidth: 200, alignment: .leading)
-            }
-            .padding(AlohaMetrics.space3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                palette.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-            )
-
-            // The line itself.
-            HStack(spacing: AlohaMetrics.space2) {
-                Spacer()
-                Rectangle()
-                    .fill(palette.separator)
-                    .frame(width: 56, height: 1)
-                Text("You're caught up", comment: "Onboarding preview caption")
-                    .font(.caption)
-                    .foregroundStyle(palette.tertiaryLabel)
-                Rectangle()
-                    .fill(palette.separator)
-                    .frame(width: 56, height: 1)
-                Spacer()
-            }
-
-            // What arrived since.
-            VStack(spacing: AlohaMetrics.space2) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(palette.surfaceRaised)
-                    .frame(height: 10)
-                    .frame(maxWidth: 220, alignment: .leading)
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(palette.surfaceRaised)
-                    .frame(height: 10)
-                    .frame(maxWidth: 160, alignment: .leading)
-            }
-            .padding(AlohaMetrics.space3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                palette.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-            )
+        // Two rows the way rows look everywhere else: a face, a name, a line.
+        // No mock content, no grey bars — the page's own sentence already says
+        // what the feed does.
+        VStack(spacing: 0) {
+            previewRow(name: "Ada", text: "Shipping the new timeline today")
+            Divider().padding(.leading, 52)
+            previewRow(name: "Linus", text: "Photos from the lake")
         }
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 340)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("A preview of a timeline", comment: "Onboarding preview"))
+    }
+
+    private func previewRow(name: String, text: String) -> some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Circle()
+                .fill(palette.separator.opacity(0.5))
+                .frame(width: 36, height: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: name)
+                    .font(.subheadline.weight(.semibold))
+                Text(verbatim: text)
+                    .font(.subheadline)
+                    .foregroundStyle(palette.secondaryLabel)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, AlohaMetrics.space2)
     }
 }
 
 /// The screens the app runs on, as the devices themselves.
 private struct DeviceRow: View {
     @Environment(\.alohaPalette) private var palette
-    @Environment(\.alohaMetrics) private var metrics
 
     var body: some View {
         HStack(spacing: AlohaMetrics.space4) {
@@ -413,15 +362,10 @@ private struct DeviceRow: View {
     }
 
     private func device(_ symbol: String, label: String) -> some View {
-        VStack(spacing: AlohaMetrics.space2) {
+        VStack(spacing: 4) {
             Image(systemName: symbol)
-                .font(.title2)
-                .foregroundStyle(palette.accent)
-                .frame(width: 44, height: 44)
-                .unifiedGlass(
-                    .subtle,
-                    in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
-                )
+                .font(.title3)
+                .foregroundStyle(palette.secondaryLabel)
             Text(verbatim: label)
                 .font(.caption2)
                 .foregroundStyle(palette.secondaryLabel)
@@ -438,29 +382,24 @@ private struct ModeTour: View {
 
     var body: some View {
         LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 96), spacing: AlohaMetrics.space2)],
-            spacing: AlohaMetrics.space2
+            columns: [GridItem(.adaptive(minimum: 110), spacing: AlohaMetrics.space4)],
+            spacing: AlohaMetrics.space4
         ) {
             ForEach(FeedMode.allCases) { mode in
-                VStack(spacing: AlohaMetrics.space2) {
+                VStack(spacing: 4) {
                     Image(systemName: mode.symbolName)
                         .font(.title3)
-                        .foregroundStyle(mode == .home ? palette.accent : palette.secondaryLabel)
-                        .frame(width: 44, height: 44)
-                        .unifiedGlass(
-                            .subtle,
-                            in: RoundedRectangle(
-                                cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
-                        )
+                        .foregroundStyle(palette.secondaryLabel)
                     Text(modeTitle(mode))
-                        .font(.caption.weight(.medium))
+                        .font(.footnote)
+                        .foregroundStyle(palette.secondaryLabel)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
             }
         }
-        .frame(maxWidth: 420)
+        .frame(maxWidth: 380)
         .accessibilityLabel(
             Text(
                 "The six feeds: Home, Photos, Video, Shorts, News and Audio.",
@@ -532,12 +471,13 @@ public struct SidebarView: View {
     }
 
     public var body: some View {
-        // One list, with the system's own sidebar style, search bar, insets
-        // and selection. It used to be a custom search pill floating above a
-        // list whose rows carried their own selected background and their own
-        // button hover, which is what made it look like a mock-up of a
-        // sidebar rather than a sidebar.
-        List(selection: optionalSelection) {
+        // The feeds scroll; the account drawer under them does not. It used to
+        // be the list's last section, so reading a long timeline pushed the
+        // profile out of sight — the one row that says who is reading. It is
+        // fixed at the foot now, where Nextcloud Social puts it
+        // (`NcAppNavigationSettings`) and where a Mac sidebar keeps it.
+        VStack(alignment: .leading, spacing: 0) {
+            List(selection: optionalSelection) {
             // The shape of Nextcloud Social's own navigation: one primary
             // group of timelines and messages, then Explore, then everything
             // about your own account at the foot.
@@ -554,8 +494,11 @@ public struct SidebarView: View {
                             ? "envelope.fill" : AlohaSymbol.envelope)
                 }
                 // `badge(0)` is not "no badge": it draws a zero, so every
-                // account with an empty inbox would wear one.
-                .badge(unreadConversations > 0 ? unreadConversations : nil)
+                // account with an empty inbox would wear one. The optional
+                // `Text` overload is the one that can mean "nothing at all".
+                .badge(
+                    unreadConversations > 0
+                        ? Text(verbatim: String(unreadConversations)) : nil)
                 .tag(SidebarItem.route(.conversations))
                 .accessibilityLabel(
                     unreadConversations > 0
@@ -596,111 +539,12 @@ public struct SidebarView: View {
                 Text("Library", comment: "Sidebar section")
             }
 
-            // Everything about your own account, behind your own face, at the
-            // foot where Nextcloud Social puts it (`NcAppNavigationSettings`).
-            //
-            // A section of the same list rather than a block pasted onto the
-            // bottom: one scroll, one selection, the system's own insets, and
-            // nothing to keep in step with the list's text inset.
-            Section {
-                Button {
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                        isAccountExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: AlohaMetrics.space3) {
-                        AvatarView(account: session.snapshot.asAccount, size: 32)
-                            .accessibilityHidden(true)
-
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(session.snapshot.bestDisplayName)
-                                .font(.subheadline)
-                                .lineLimit(1)
-                            Text(session.snapshot.qualifiedHandle)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-
-                        Spacer(minLength: 0)
-
-                        // The system's own affordance for a drawer that opens
-                        // and closes, rather than a chevron that rotates.
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(
-                    Text(
-                        "\(session.snapshot.bestDisplayName), account menu",
-                        comment: "Accessibility label for the account drawer toggle")
-                )
-                .accessibilityValue(
-                    isAccountExpanded
-                        ? Text("Expanded", comment: "Accessibility state")
-                        : Text("Collapsed", comment: "Accessibility state")
-                )
-                .accessibilityAddTraits(.isButton)
-
-                if isAccountExpanded {
-                    drawerRow("My profile", symbol: "person.crop.circle", route: myProfile)
-                    // Activities is about you rather than about a feed, so it
-                    // sits with the rest of what is yours.
-                    drawerRow(
-                        "Activities", symbol: AlohaSymbol.notifications, route: .notifications)
-                    drawerRow(
-                        "Follow requests", symbol: "person.badge.clock", route: .followRequests)
-                    drawerRow("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
-                    drawerRow("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
-                    if session.capabilities.isNextcloudSocial {
-                        drawerRow("Archived posts", symbol: "archivebox", route: .archived)
-                        drawerRow("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
-                    }
-                    drawerRow("Blocking", symbol: "hand.raised", route: .safety)
-                    drawerRow("Settings", symbol: AlohaSymbol.settings, route: .settings)
-
-                    // The web is one account per Nextcloud; this app is not,
-                    // so switching belongs with everything else that is about
-                    // who you are.
-                    if environment.sessions.count > 1 {
-                        ForEach(environment.sessions.filter { $0.id != session.id }) { other in
-                            Button {
-                                onSwitchAccount(other.id)
-                            } label: {
-                                Label {
-                                    Text(other.snapshot.bestDisplayName)
-                                } icon: {
-                                    Image(systemName: "arrow.left.arrow.right")
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(
-                                Text(
-                                    "Switch to \(other.snapshot.qualifiedHandle)",
-                                    comment: "Account switcher action")
-                            )
-                        }
-                    }
-
-                    Button {
-                        onAddAccount()
-                    } label: {
-                        Label {
-                            Text("Add account…", comment: "Account switcher action")
-                        } icon: {
-                            Image(systemName: "person.badge.plus")
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("Add account", comment: "Account switcher action"))
-                }
             }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+
+            accountFooter
         }
-        .listStyle(.sidebar)
         .onAppear {
             // The messages list writes the badge count when it loads; read it
             // back each time the sidebar appears so the badge is not a value
@@ -716,11 +560,123 @@ public struct SidebarView: View {
             prompt: Text("Search", comment: "Sidebar search field")
         )
         .onSubmit(of: .search, submitSearch)
-        // The sidebar is the one column that should not scroll under the
-        // content: it is navigation, and a navigation item that moves while
-        // you are reading is a moving target.
-        .scrollContentBackground(.hidden)
         .navigationTitle(Text("Aloha Social", comment: "App name"))
+    }
+
+    /// The foot of the sidebar: who is reading, and everything about them.
+    ///
+    /// Outside the list on purpose. Inside it the drawer was one more section
+    /// in a column that scrolls, so the profile moved as the feeds did — and on
+    /// a short window it sat below the fold entirely. Here it cannot move: the
+    /// list takes what is left, the drawer takes what it needs.
+    private var accountFooter: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Divider()
+
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                    isAccountExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: AlohaMetrics.space3) {
+                    AvatarView(account: session.snapshot.asAccount, size: 32)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(session.snapshot.bestDisplayName)
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Text(session.snapshot.qualifiedHandle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    // The system's own affordance for a drawer that opens
+                    // and closes, rather than a chevron that rotates.
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, AlohaMetrics.space3)
+                .padding(.vertical, AlohaMetrics.space2)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                Text(
+                    "\(session.snapshot.bestDisplayName), account menu",
+                    comment: "Accessibility label for the account drawer toggle")
+            )
+            .accessibilityValue(
+                isAccountExpanded
+                    ? Text("Expanded", comment: "Accessibility state")
+                    : Text("Collapsed", comment: "Accessibility state")
+            )
+            .accessibilityAddTraits(.isButton)
+
+            if isAccountExpanded {
+                ScrollView {
+                    drawerRows
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .padding(.bottom, AlohaMetrics.space3)
+                }
+                .frame(maxHeight: 340)
+                .scrollIndicators(.hidden)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The system's own bar material: the list scrolls behind this, and
+        // nothing from it may show through the foot.
+        .background(.bar)
+    }
+
+    /// Everything behind the profile: your own pages, then the accounts you
+    /// switch between.
+    @ViewBuilder
+    private var drawerRows: some View {
+        drawerRow("My profile", symbol: "person.crop.circle", route: myProfile)
+        // Activities is about you rather than about a feed, so it sits with
+        // the rest of what is yours.
+        drawerRow("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
+        drawerRow("Follow requests", symbol: "person.badge.clock", route: .followRequests)
+        drawerRow("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
+        drawerRow("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
+        if session.capabilities.isNextcloudSocial {
+            drawerRow("Archived posts", symbol: "archivebox", route: .archived)
+            drawerRow("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
+        }
+        drawerRow("Blocking", symbol: "hand.raised", route: .safety)
+        drawerRow("Settings", symbol: AlohaSymbol.settings, route: .settings)
+
+        // The web is one account per Nextcloud; this app is not, so switching
+        // belongs with everything else that is about who you are.
+        if environment.sessions.count > 1 {
+            ForEach(environment.sessions.filter { $0.id != session.id }) { other in
+                SidebarFooterRow(
+                    title: Text(other.snapshot.bestDisplayName),
+                    symbol: "arrow.left.arrow.right",
+                    accessibilityLabel: Text(
+                        "Switch to \(other.snapshot.qualifiedHandle)",
+                        comment: "Account switcher action")
+                ) {
+                    onSwitchAccount(other.id)
+                }
+            }
+        }
+
+        SidebarFooterRow(
+            title: Text("Add account…", comment: "Account switcher action"),
+            symbol: "person.badge.plus",
+            accessibilityLabel: Text("Add account", comment: "Account switcher action")
+        ) {
+            onAddAccount()
+        }
     }
 
     /// A mode row: the same Label the fixed destinations use, with the tag
@@ -743,18 +699,19 @@ public struct SidebarView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// A drawer row that closes the section behind it — the web's drawer does
+    /// A drawer row that closes the drawer behind it — the web's drawer does
     /// the same rather than staying open over the page it just opened.
     private func drawerRow(
         _ title: String.LocalizationValue, symbol: String, route: Route
     ) -> some View {
-        Button {
+        SidebarFooterRow(
+            title: Text(String(localized: title, comment: "Sidebar item")),
+            symbol: symbol,
+            isSelected: selectedRoute == route
+        ) {
             selection = .route(route)
             withAnimation(.easeOut(duration: 0.2)) { isAccountExpanded = false }
-        } label: {
-            row(title, symbol: symbol, route: route, comment: "Sidebar item")
         }
-        .buttonStyle(.plain)
     }
 
     /// Submitting the system's search bar navigates to the results, rather
@@ -811,5 +768,59 @@ public struct SidebarView: View {
         case .news: String(localized: "News", comment: "Mode title")
         case .audio: String(localized: "Audio", comment: "Mode title")
         }
+    }
+}
+
+/// One row in the sidebar's foot — the drawer behind the profile.
+///
+/// Drawn rather than listed: it sits outside the list, so the system's own
+/// row highlight has nothing to draw. What it draws instead is the system's
+/// own idea of a highlighted sidebar row — a rounded tint behind the label,
+/// in the accent, on hover or when the row is what is on screen.
+private struct SidebarFooterRow: View {
+    let title: Text
+    let symbol: String
+    var isSelected: Bool = false
+    /// Where the row's spoken name differs from what it says: "Add account"
+    /// is spoken without the ellipsis, and a switch row names the account it
+    /// switches to rather than the one it leaves.
+    var accessibilityLabel: Text?
+    let action: () -> Void
+
+    @Environment(\.alohaPalette) private var palette
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: AlohaMetrics.space3) {
+                Image(systemName: symbol)
+                    .font(.body)
+                    .frame(width: 22)
+                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
+
+                title
+                    .font(.subheadline)
+                    .foregroundStyle(isSelected ? palette.accent : palette.label)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, AlohaMetrics.space3)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .background(
+                highlight,
+                in: RoundedRectangle(
+                    cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .accessibilityLabel(accessibilityLabel ?? title)
+    }
+
+    private var highlight: Color {
+        if isSelected { return palette.accent.opacity(0.18) }
+        if isHovering { return palette.accent.opacity(0.12) }
+        return .clear
     }
 }

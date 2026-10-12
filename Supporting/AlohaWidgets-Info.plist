@@ -4,9 +4,6 @@
 <dict>
 	<key>AlohaAppGroupEnabled</key>
 	<false/>
-	<!-- INFOPLIST_KEY_NSExtensionPointIdentifier is not a generated-plist key
-	     and was silently ignored, which left every extension without this
-	     dictionary and made the app uninstallable on iOS. -->
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

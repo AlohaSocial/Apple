@@ -4,6 +4,9 @@
     "Aloha" : {
       "comment" : "App icon name"
     },
+    "Aloha Social" : {
+      "comment" : "App name"
+    },
     "Black" : {
       "comment" : "Theme name"
     },
@@ -24,6 +27,9 @@
     },
     "Ocean" : {
       "comment" : "App icon name"
+    },
+    "Retry" : {
+      "comment" : "Error strip action"
     },
     "Rose" : {
       "comment" : "App icon name"

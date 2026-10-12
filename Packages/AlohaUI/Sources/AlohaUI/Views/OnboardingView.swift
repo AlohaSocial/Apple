@@ -30,84 +30,79 @@ public struct TermsGate: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AlohaMetrics.space4) {
-                Text("Before you start", comment: "Terms gate title")
-                    .font(.largeTitle.weight(.bold))
-
+        Form {
+            Section {
                 Text(
                     "Aloha Social shows posts from servers across the fediverse. Those servers are run by other people, and this app does not control what they publish.",
                     comment: "Terms gate explanation")
+            } header: {
+                Text("Before you start", comment: "Terms gate title")
+            }
 
-                VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
-                    rule(
-                        symbol: AlohaSymbol.block,
-                        text: String(
-                            localized:
-                                "There is zero tolerance for objectionable content and abusive behaviour.",
-                            comment: "Terms rule"))
-                    rule(
-                        symbol: AlohaSymbol.report,
-                        text: String(
-                            localized:
-                                "You can report any post or account, and block or mute anyone, from anywhere in the app.",
-                            comment: "Terms rule"))
-                    rule(
-                        symbol: AlohaSymbol.sensitive,
-                        text: String(
-                            localized:
-                                "Reports go to your server's moderators, and optionally to the poster's server too.",
-                            comment: "Terms rule"))
-                    rule(
-                        symbol: "hand.raised.slash",
-                        text: String(
-                            localized:
-                                "Accounts that abuse other people are removed from your view as soon as you block them.",
-                            comment: "Terms rule"))
-                }
-                .padding(AlohaMetrics.space4)
-                .background(
-                    palette.surfaceRaised,
-                    in: RoundedRectangle(
-                        cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+            Section {
+                rule(
+                    symbol: AlohaSymbol.block,
+                    text: String(
+                        localized:
+                            "There is zero tolerance for objectionable content and abusive behaviour.",
+                        comment: "Terms rule"))
+                rule(
+                    symbol: AlohaSymbol.report,
+                    text: String(
+                        localized:
+                            "You can report any post or account, and block or mute anyone, from anywhere in the app.",
+                        comment: "Terms rule"))
+                rule(
+                    symbol: AlohaSymbol.sensitive,
+                    text: String(
+                        localized:
+                            "Reports go to your server's moderators, and optionally to the poster's server too.",
+                        comment: "Terms rule"))
+                rule(
+                    symbol: "hand.raised.slash",
+                    text: String(
+                        localized:
+                            "Accounts that abuse other people are removed from your view as soon as you block them.",
+                        comment: "Terms rule"))
+            }
 
+            Section {
                 Text(
                     "By continuing you agree to use Aloha Social without posting or promoting objectionable content, and to accept that other people's servers set their own rules.",
                     comment: "Terms agreement"
                 )
                 .font(.footnote)
                 .foregroundStyle(palette.secondaryLabel)
-
-                VStack(spacing: AlohaMetrics.space2) {
-                    Button {
-                        Self.recordAcceptance()
-                        onAccept()
-                    } label: {
-                        Text("Agree and continue", comment: "Terms action")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .tint(palette.accent)
-
-                    Button(role: .cancel, action: onDecline) {
-                        Text("Not now", comment: "Terms action")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .controlSize(.large)
-                }
             }
-            .padding(AlohaMetrics.space5)
+
+            Section {
+                Button {
+                    Self.recordAcceptance()
+                    onAccept()
+                } label: {
+                    Text("Agree and continue", comment: "Terms action")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button(role: .cancel, action: onDecline) {
+                    Text("Not now", comment: "Terms action")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderless)
+            }
         }
-        .background(palette.background)
+        .formStyle(.grouped)
+        .alohaGround(palette)
     }
 
     private func rule(symbol: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: AlohaMetrics.space3) {
+        Label {
+            Text(text).font(.subheadline)
+        } icon: {
             Image(systemName: symbol)
                 .foregroundStyle(palette.accent)
-                .frame(width: 24)
-            Text(text).font(.footnote)
         }
     }
 }
@@ -130,63 +125,63 @@ public struct ModeSelectionView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: AlohaMetrics.space4) {
-            Text("Which feeds do you want?", comment: "Mode selection title")
-                .font(.title2.weight(.bold))
-
-            Text(
-                "Each one is its own screen, built for what it shows. You can change these later.",
-                comment: "Mode selection explanation"
-            )
-            .font(.footnote)
-            .foregroundStyle(palette.secondaryLabel)
-
-            ForEach(FeedMode.allCases.filter { capabilities.supports($0) }) { mode in
-                Button {
-                    if selected.contains(mode) {
-                        selected.remove(mode)
-                    } else {
-                        selected.insert(mode)
-                    }
-                } label: {
-                    HStack(spacing: AlohaMetrics.space3) {
-                        Image(systemName: mode.symbolName)
-                            .frame(width: 28)
-                            .foregroundStyle(palette.accent)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(title(mode)).font(.body)
-                            Text(detail(mode))
-                                .font(.caption)
-                                .foregroundStyle(palette.secondaryLabel)
+        List {
+            Section {
+                ForEach(FeedMode.allCases.filter { capabilities.supports($0) }) { mode in
+                    Button {
+                        if selected.contains(mode) {
+                            selected.remove(mode)
+                        } else {
+                            selected.insert(mode)
                         }
-                        Spacer()
-                        Image(
-                            systemName: selected.contains(mode)
-                                ? "checkmark.circle.fill" : "circle"
-                        )
-                        .foregroundStyle(
-                            selected.contains(mode) ? palette.accent : palette.tertiaryLabel)
+                    } label: {
+                        HStack(spacing: AlohaMetrics.space3) {
+                            Image(systemName: mode.symbolName)
+                                .frame(width: 28)
+                                .foregroundStyle(palette.accent)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(title(mode))
+                                    .font(.body)
+                                    .foregroundStyle(palette.label)
+                                Text(detail(mode))
+                                    .font(.caption)
+                                    .foregroundStyle(palette.secondaryLabel)
+                            }
+                            Spacer()
+                            if selected.contains(mode) {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(palette.accent)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .contentShape(Rectangle())
                     }
-                    .padding(AlohaMetrics.space3)
-                    .background(
-                        palette.surfaceRaised,
-                        in: RoundedRectangle(
-                            cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        Text("\(title(mode)), \(selected.contains(mode) ? "on" : "off")"))
                 }
-                .buttonStyle(.plain)
+            } header: {
+                Text("Which feeds do you want?", comment: "Mode selection title")
+            } footer: {
+                Text(
+                    "Each one is its own screen, built for what it shows. You can change these later in Settings.",
+                    comment: "Mode selection explanation"
+                )
             }
 
-            Spacer()
-
-            Button(action: onContinue) {
-                Text("Continue", comment: "Mode selection action")
-                    .frame(maxWidth: .infinity)
+            Section {
+                Button(action: onContinue) {
+                    Text("Continue", comment: "Mode selection action")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(selected.isEmpty)
             }
-            .buttonStyle(.alohaProminent)
-            .disabled(selected.isEmpty)
+            .listRowBackground(Color.clear)
         }
-        .padding(AlohaMetrics.space5)
-        .background(palette.background)
+        .formStyle(.grouped)
+        .alohaGround(palette)
     }
 
     private func title(_ mode: FeedMode) -> String {

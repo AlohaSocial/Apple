@@ -75,9 +75,9 @@ public struct NotificationPolicyView: View {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
-                                Text("Filtered notifications")
+                                Text("Filtered notifications", comment: "Filtered notifications section")
                                 Spacer()
-                                Text("\(summary.pendingRequestsCount)")
+                                Text(verbatim: "\(summary.pendingRequestsCount)")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(palette.accent)
                             }

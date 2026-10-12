@@ -306,26 +306,28 @@ import XCTest
             app.launchArguments = ["-AlohaMockServer", "-AlohaMockNoAccount"]
             app.launch()
             XCTAssertTrue(
-                app.labelled("Before you start").waitForExistence(timeout: 10), "Terms gate missing"
-            )
+                app.labelled("A calmer client").waitForExistence(timeout: 10),
+                "Introduction missing")
+            shoot("44-welcome")
+            app.buttons["Skip"].firstMatch.tap()
+            let field = app.textFields.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5), "Server address missing")
+            XCTAssertFalse(app.buttons["Continue"].firstMatch.isEnabled)
+            app.buttons["Back"].firstMatch.tap()
+            XCTAssertTrue(app.labelled("Quiet by default").waitForExistence(timeout: 5))
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.tap()
+            field.typeText("cloud.example.test")
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(
+                app.labelled("Before you start").waitForExistence(timeout: 5),
+                "Terms gate missing after introduction")
             shoot("43-terms")
             app.buttons["Agree and continue"].firstMatch.tap()
-            sleep(1)
-            shoot("44-welcome")
-            let add = app.buttons.matching(
-                NSPredicate(
-                    format:
-                        "label CONTAINS[c] 'server' OR label CONTAINS[c] 'sign in' OR label CONTAINS[c] 'add'"
-                )
-            ).firstMatch
-            if add.waitForExistence(timeout: 3) { add.tap() }
-            let field = app.textFields.firstMatch
-            if field.waitForExistence(timeout: 5) {
-                field.tap()
-                field.typeText("cloud.example.test")
-                app.buttons["Continue"].firstMatch.tap()
-                sleep(3)
-            }
+            XCTAssertTrue(
+                app.textFields.firstMatch.waitForExistence(timeout: 5),
+                "Sign-in did not open")
             shoot("45-sign-in")
         }
     }

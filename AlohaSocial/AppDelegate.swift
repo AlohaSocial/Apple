@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import AlohaUI
 import SwiftUI
 import UserNotifications
@@ -81,8 +82,10 @@ import UserNotifications
                 let session = Self.environment?.sessions.first(where: { $0.id == accountID })
             else { return }
 
+            // `TimelineStore` is a `@ModelActor` and this delegate callback is
+            // outside it, so the read is awaited rather than reached into.
             guard
-                let status = try? session.timelineStore.statuses(
+                let status = try? await session.timelineStore.statuses(
                     accountID: session.id, ids: [statusID]
                 )[statusID]
             else { return }

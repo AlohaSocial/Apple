@@ -8,6 +8,7 @@ import SwiftUI
 public struct AppShell: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.alohaPalette) private var palette
 
     /// A tab bar selection that can be a mode *or* the messages tab.
     /// Tagging the extra tab with `FeedMode.home` made the two collide.
@@ -139,22 +140,26 @@ public struct AppShell: View {
             VStack(spacing: AlohaMetrics.space4) {
                 AlohaLogoMark(size: 96)
                 Text("Aloha Social", comment: "App name")
-                    .font(AlohaType.title.weight(.bold))
+                    .font(AlohaType.wordmark.weight(.bold))
                     .fontDesign(.rounded)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(palette.background)
         } else if let session = environment.activeSession {
-            promptForModesIfNeeded(session)
             shell(session)
                 // Switching accounts has to change view identity: every
                 // timeline holds its model in `@State`, and without this the
                 // previous account's posts stay on screen and its client keeps
                 // serving the actions (docs/03 §6).
                 .id(session.id)
+                // Deciding which feeds a first session gets belongs to the
+                // moment the shell appears, not to the evaluation of this
+                // body: `chosenModes` is state, and a `@ViewBuilder` will not
+                // take a statement that returns `()` anyway.
+                .onAppear { promptForModesIfNeeded(session) }
                 .sheet(
                     item: Binding(
-                        get: { self.chosenModes.map { ModeSelection($0) } },
+                        get: { self.chosenModes.map { ModeSelection(modes: $0) } },
                         set: { newValue in
                             guard let newValue else { return }
                             self.chosenModes = nil
@@ -167,7 +172,11 @@ public struct AppShell: View {
                                 get: { selection.modes },
                                 set: { newValue in self.chosenModes = newValue }),
                             capabilities: session.capabilities,
-                            onContinue: { self.chosenModes = nil }
+                            onContinue: {
+                                guard let modes = self.chosenModes, !modes.isEmpty else { return }
+                                Self.recordChosenModes(modes)
+                                self.chosenModes = nil
+                            }
                         )
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
@@ -226,7 +235,7 @@ public struct AppShell: View {
     /// The feeds chosen once, so `chosenModes` can hold a value.
     private struct ModeSelection: Hashable, Identifiable {
         let modes: Set<FeedMode>
-        var id: Set<FeedMode> { modes }
+        var id: String { "mode-selection" }
     }
 
     private static let chosenModesKey = "aloha.chosenModes"
@@ -348,39 +357,10 @@ public struct AppShell: View {
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
             }
-            // The one way to write something: a button beside the tab bar, not
-            // a toolbar icon and not a floating circle. A toolbar puts it four
-            // taps from the content and a floating button duplicates the tab
-            // bar's thumb zone — the accessory slot is where Apple puts the
-            // primary action of a tab app.
-            .tabViewBottomAccessory {
-                composeAccessory
-            }
+            // No bottom accessory: composing lives in the toolbar, where the
+            // platform puts it, rather than in a second bar above the tab bar.
         }
     #endif
-
-    /// New post in the tab bar's accessory slot: labelled, always on screen,
-    /// out of the way of the thumb.
-    @available(iOS 18.0, tvOS 18.0, visionOS 2.0, *)
-    private var composeAccessory: some View {
-        Button {
-            composing = ComposerPresentation()
-        } label: {
-            Label {
-                Text("New post", comment: "Compose accessory")
-            } icon: {
-                Image(systemName: AlohaSymbol.compose)
-            }
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.glassProminent)
-        .keyboardShortcut("n", modifiers: .command)
-        .accessibilityLabel(Text("New post", comment: "Compose button"))
-        // No tint: the accent the app already wears is the one this button
-        // takes. Re-deriving it here from the theme created a second source
-        // of truth that ignored the server's colour and the colour scheme.
-    }
 
     // MARK: - iPad, Mac, Vision
 
@@ -404,6 +384,11 @@ public struct AppShell: View {
                 }
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
+            // The window's own ground, not the system's. A reading column is
+            // centred in this space, and without this the space around it was
+            // window background — a cool white the app never uses — so the
+            // column read as a sheet of paper dropped on the wrong desk.
+            .background(palette.background.ignoresSafeArea())
         }
         // A sidebar the width of its content, not the default narrow sliver:
         // "Direct messages" and "Subscriptions" are two-line labels at the
