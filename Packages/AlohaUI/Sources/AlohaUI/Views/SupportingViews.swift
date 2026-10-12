@@ -553,7 +553,9 @@ public struct SidebarView: View {
                         systemName: selectedRoute == .conversations
                             ? "envelope.fill" : AlohaSymbol.envelope)
                 }
-                .badge(unreadConversations)
+                // `badge(0)` is not "no badge": it draws a zero, so every
+                // account with an empty inbox would wear one.
+                .badge(unreadConversations > 0 ? unreadConversations : nil)
                 .tag(SidebarItem.route(.conversations))
                 .accessibilityLabel(
                     unreadConversations > 0
@@ -781,9 +783,6 @@ public struct SidebarView: View {
             Image(systemName: symbol)
         }
         .tag(SidebarItem.route(route))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .alohaRowHighlight()
     }
 
     private var optionalSelection: Binding<SidebarItem?> {
