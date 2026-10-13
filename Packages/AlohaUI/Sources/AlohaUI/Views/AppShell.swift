@@ -118,6 +118,12 @@ public struct AppShell: View {
                 // Where Handoff arrives.
                 if let route = note.userInfo?["route"] as? Route { open(route) }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .alohaAddAccount)) { _ in
+                // Where the Settings scene's "Add account" row arrives: the
+                // sign-in sheet belongs to this shell, wherever the request
+                // came from.
+                isPresentingSignIn = true
+            }
     }
 
     /// What a person sees, in the order it is fair to ask it of them:
@@ -434,7 +440,10 @@ public struct AppShell: View {
             if case .mode(let mode) = item { selectedMode = mode }
         }
         .toolbar {
-            ToolbarItem {
+            // Pinned to the window's trailing edge on Mac and iPad: an
+            // unplaced item drifts, while the primary action belongs where
+            // Mail and Notes put theirs.
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     composing = ComposerPresentation()
                 } label: {
@@ -734,15 +743,11 @@ public struct AppShell: View {
             case .hashtag(let name, _):
                 path.append(.hashtag(name))
             case .web(let url):
-                #if canImport(UIKit)
-                    UIApplication.shared.open(url)
-                #endif
+                openURL(url)
             }
         case .openCard(let card):
             if let url = card.url {
-                #if canImport(UIKit)
-                    UIApplication.shared.open(url)
-                #endif
+                openURL(url)
             }
         case .report(let status):
             reportTarget = ReportTarget(
@@ -805,6 +810,18 @@ public struct AppShell: View {
             if let view = NSApplication.shared.keyWindow?.contentView {
                 picker.show(relativeTo: .zero, of: view, preferredEdge: .minY)
             }
+        #endif
+    }
+
+    /// Links inside posts and cards open in the browser on every platform.
+    /// Without the AppKit branch a tap on a link did nothing on the Mac:
+    /// the UIKit-only `open` compiled away and the action fell through
+    /// silently, so no web content was reachable from a timeline there.
+    private func openURL(_ url: URL) {
+        #if canImport(UIKit)
+            UIApplication.shared.open(url)
+        #elseif canImport(AppKit)
+            NSWorkspace.shared.open(url)
         #endif
     }
 

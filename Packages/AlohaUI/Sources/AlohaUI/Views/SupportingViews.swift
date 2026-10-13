@@ -127,6 +127,10 @@ public struct WelcomeView: View {
                     }
                     .buttonStyle(.glassProminent)
                     .controlSize(.large)
+                    // Return continues on a hardware keyboard: on the Mac the
+                    // introduction is a window, and a primary action without a
+                    // default shortcut is one a keyboard cannot reach.
+                    .keyboardShortcut(.defaultAction)
                     .disabled(serverAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .frame(maxWidth: 380)
 
@@ -185,6 +189,9 @@ public struct WelcomeView: View {
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.large)
+                // The tour is keyboard-navigable on iPad and Mac: Return
+                // advances, so the introduction never traps keyboard users.
+                .keyboardShortcut(.defaultAction)
 
                 HStack {
                     if page > 0 {
@@ -277,9 +284,15 @@ private struct OnboardingPageView: View {
                         // sees should look like the app they are about to use.
                         AlohaLogo()
                     } else {
+                        // The symbol in Liquid Glass: on iPad and Mac a bare
+                        // glyph on the window ground reads as an unfinished
+                        // icon, while a glass tile reads as the app's own
+                        // material — the same layer rows and toolbars use.
                         Image(systemName: page.symbol)
-                            .font(.system(size: 44))
+                            .font(.system(size: 34))
                             .foregroundStyle(palette.accent)
+                            .frame(width: 84, height: 84)
+                            .glassEffect(.regular.tint(palette.accent.opacity(0.12)).interactive(), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                             .accessibilityHidden(true)
                     }
 
@@ -407,16 +420,18 @@ private struct ModeTour: View {
             spacing: AlohaMetrics.space4
         ) {
             ForEach(FeedMode.allCases) { mode in
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
                     Image(systemName: mode.symbolName)
                         .font(.title3)
-                        .foregroundStyle(palette.secondaryLabel)
+                        .foregroundStyle(palette.accent)
                     Text(modeTitle(mode))
-                        .font(.footnote)
-                        .foregroundStyle(palette.secondaryLabel)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(palette.label)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, AlohaMetrics.space3)
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
                 .accessibilityElement(children: .combine)
             }
         }
@@ -833,6 +848,10 @@ private struct SidebarFooterRow: View {
                 highlight,
                 in: RoundedRectangle(
                     cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+            // The selected drawer row in the system's own material — the same
+            // Liquid Glass the sidebar rows above it get — rather than a
+            // hand-painted wash beside native ones.
+            .selectedGlass(isSelected, tint: palette.accent)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
@@ -840,8 +859,7 @@ private struct SidebarFooterRow: View {
     }
 
     private var highlight: Color {
-        if isSelected { return palette.accent.opacity(0.18) }
-        if isHovering { return palette.accent.opacity(0.12) }
+        if !isSelected, isHovering { return palette.accent.opacity(0.12) }
         return .clear
     }
 }

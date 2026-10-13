@@ -85,6 +85,9 @@ public struct TermsGate: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                // Return agrees on a hardware keyboard: the terms sheet is a
+                // Mac window, and its primary action must answer Return.
+                .keyboardShortcut(.defaultAction)
 
                 Button(role: .cancel, action: onDecline) {
                     Text("Not now", comment: "Terms action")
@@ -176,6 +179,7 @@ public struct ModeSelectionView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
                 .disabled(selected.isEmpty)
             }
             .listRowBackground(Color.clear)

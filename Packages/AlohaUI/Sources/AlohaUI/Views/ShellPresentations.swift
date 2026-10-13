@@ -62,7 +62,13 @@ struct ShellSheets: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $isPresentingSignIn) {
-                SignInView(serverAddress: signInAddress)
+                SignInView(serverAddress: $signInAddress)
+                    #if os(macOS)
+                        // A sign-in form at the sheet default is a cramped
+                        // column: the address field, the server card and the
+                        // rules all compete. A Mac sheet earns a real size.
+                        .frame(minWidth: 520, idealWidth: 560, minHeight: 480, idealHeight: 560)
+                    #endif
             }
             .sheet(item: whenSignedIn($composing)) { request in
                 if let session = environment.activeSession {
@@ -76,6 +82,11 @@ struct ShellSheets: ViewModifier {
                         // inside a half-height sheet.
                         .presentationDetents(
                             horizontalSizeClass == .regular ? [.large] : [.medium, .large])
+                    #elseif os(macOS)
+                        // The same writing surface on the Mac: a sheet that
+                        // hugs its content leaves the editor two lines tall.
+                        // A composer is a window for thinking, not a popover.
+                        .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 640)
                     #endif
                 }
             }
@@ -106,6 +117,9 @@ struct ShellSheets: ViewModifier {
                 if let session = environment.activeSession {
                     ComposerView(
                         session: session, editing: request.status, source: request.source)
+                    #if os(macOS)
+                        .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 640)
+                    #endif
                 }
             }
             .fullScreenCoverIfAvailable(item: $mediaPresentation) { presentation in

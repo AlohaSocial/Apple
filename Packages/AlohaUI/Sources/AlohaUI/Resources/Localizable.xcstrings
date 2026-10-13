@@ -212,6 +212,9 @@
     "^[%lld character](inflect: true) left" : {
       "comment" : "Composer counter"
     },
+    "^[%lld connected server](inflect: true)" : {
+      "comment" : "Instance server count"
+    },
     "^[%lld dislike](inflect: true)" : {
       "comment" : "Watch page fact"
     },
@@ -278,7 +281,7 @@
       "comment" : "Multi-image badge"
     },
     "^[%lld post](inflect: true)" : {
-      "comment" : "Album post count\nFeatured tag use count\nHashtag usage count\nReport badge"
+      "comment" : "Album post count\nFeatured tag use count\nHashtag usage count\nInstance post count\nReport badge"
     },
     "^[%lld post](inflect: true) in the last twelve weeks" : {
       "comment" : "Profile highlights count"
@@ -601,6 +604,9 @@
     },
     "Aloha Social is open source under the MIT licence." : {
       "comment" : "Settings footer"
+    },
+    "Aloha Social on GitHub" : {
+      "comment" : "Menu item"
     },
     "Aloha Social shows posts from servers across the fediverse. Those servers are run by other people, and this app does not control what they publish." : {
       "comment" : "Terms gate explanation"
@@ -1204,7 +1210,7 @@
       "comment" : "Nextcloud connect action"
     },
     "Discover" : {
-      "comment" : "Screen title"
+      "comment" : "Menu item\nScreen title"
     },
     "Dislike" : {
       "comment" : "Status action"
@@ -1931,7 +1937,7 @@
       "comment" : "Conversation field label\nProfile action"
     },
     "Messages" : {
-      "comment" : "Screen title"
+      "comment" : "Menu item\nScreen title\nTab title"
     },
     "Messages could not be loaded. Pull down to try again." : {
 
@@ -2054,6 +2060,9 @@
     "New post" : {
       "comment" : "Composer title\nToolbar action"
     },
+    "New Post" : {
+      "comment" : "Menu item"
+    },
     "New posts pill" : {
       "comment" : "Settings item"
     },
@@ -2068,6 +2077,9 @@
     },
     "News" : {
       "comment" : "Feed mode\nMode title"
+    },
+    "Next photo" : {
+      "comment" : "Photo carousel action"
     },
     "Next post" : {
       "comment" : "Keyboard shortcut"
@@ -2314,7 +2326,7 @@
       "comment" : "Notifications header\nScreen title\nSettings item"
     },
     "Notifications" : {
-      "comment" : "Filter context\nSettings section"
+      "comment" : "Filter context\nMenu item\nSettings section"
     },
     "Notifications are grouped and delivered at these hours (local time). Direct messages and mentions from accounts you follow always come through immediately. Quiet hours override digest times." : {
       "comment" : "Digest times explanation"
@@ -2669,6 +2681,9 @@
     "Preview" : {
       "comment" : "Portfolio section"
     },
+    "Previous photo" : {
+      "comment" : "Photo carousel action"
+    },
     "Previous post" : {
       "comment" : "Keyboard shortcut"
     },
@@ -2773,6 +2788,15 @@
     },
     "Recently active" : {
       "comment" : "Directory order"
+    },
+    "Registrations closed" : {
+      "comment" : "Instance detail"
+    },
+    "Registrations open" : {
+      "comment" : "Instance detail"
+    },
+    "Registrations open, approval required" : {
+      "comment" : "Instance detail"
     },
     "Related hashtags" : {
       "comment" : "Related hashtags row"
@@ -3638,6 +3662,9 @@
     },
     "Through" : {
       "comment" : "Constellation star section"
+    },
+    "Timeline" : {
+
     },
     "Timeline source" : {
       "comment" : "Accessibility label"
