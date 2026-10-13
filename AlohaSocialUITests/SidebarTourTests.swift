@@ -33,6 +33,7 @@ import XCTest
 
         /// Deeper than the sidebar: the screens a click on content reaches.
         func testContentScreensOnSplitShell() throws {
+            continueAfterFailure = false
             #if os(iOS)
                 try XCTSkipIf(
                     UIDevice.current.userInterfaceIdiom != .pad, "Sidebar exists on iPad only")
@@ -40,16 +41,19 @@ import XCTest
             XCTAssertTrue(app.labelled("Alice").waitForExistence(timeout: 20))
 
             // Thread from a row body.
-            let body = app.labelled("Test post number 1 with")
+            let body = app.staticTexts.matching(
+                NSPredicate(format: "label BEGINSWITH 'Test post number 1 with'")
+            ).firstMatch
             XCTAssertTrue(body.waitForExistence(timeout: 5))
-            body.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.06)).tapOrClick()
+            body.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tapOrClick()
             XCTAssertTrue(
                 app.labelled("Reply 1 to that").waitForExistence(timeout: 8), "Thread did not open")
             shoot("22-split-thread")
 
             // Profile from the avatar in the focused post.
-            app.labelled("Test post number 1 with")
-                .coordinate(withNormalizedOffset: CGVector(dx: 0.035, dy: 0.05)).tapOrClick()
+            let profile = app.collectionViews.staticTexts["Alice"].firstMatch
+            XCTAssertTrue(profile.waitForExistence(timeout: 5))
+            profile.tapOrClick()
             XCTAssertTrue(
                 app.labelled("Followers").waitForExistence(timeout: 8), "Profile did not open")
             shoot("23-split-profile")
@@ -67,7 +71,7 @@ import XCTest
             // Explore with data.
             app.sidebarRow("Discover").tapOrClick()
             XCTAssertTrue(
-                app.labelled("photography").waitForExistence(timeout: 8), "Explore has no trends")
+                app.labelled("People to follow").waitForExistence(timeout: 8), "Discover has no people section")
             shoot("25-split-explore")
 
             // Lists with data.
@@ -81,7 +85,7 @@ import XCTest
             shoot("27-split-conversations")
 
             // The search field at the top of the sidebar, where the web has it.
-            let field = app.textFields.firstMatch
+            let field = app.searchFields.firstMatch
             XCTAssertTrue(field.waitForExistence(timeout: 5), "No search field in the sidebar")
             field.tapOrClick()
             field.typeText("alice\n")

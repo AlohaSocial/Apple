@@ -418,6 +418,7 @@ public struct AppShell: View {
                 }
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
+            .toolbar { composeToolbar }
             // The window's own ground, not the system's. A reading column is
             // centred in this space, and without this the space around it was
             // window background — a cool white the app never uses — so the
@@ -441,23 +442,29 @@ public struct AppShell: View {
             path = []
             if case .mode(let mode) = item { selectedMode = mode }
         }
-        .toolbar {
-            // Pinned to the window's trailing edge on Mac and iPad: an
-            // unplaced item drifts, while the primary action belongs where
-            // Mail and Notes put theirs.
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    composing = ComposerPresentation()
-                } label: {
-                    Label {
-                        Text("New post", comment: "Toolbar action")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.compose)
-                    }
+    }
+
+
+    @ToolbarContentBuilder
+    private var composeToolbar: some ToolbarContent {
+        ToolbarItem(id: "compose-post", placement: composeToolbarPlacement) {
+            Button { composing = ComposerPresentation() } label: {
+                Label {
+                    Text("New post", comment: "Toolbar action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.compose)
                 }
-                .keyboardShortcut("n", modifiers: .command)
             }
+            .keyboardShortcut("n", modifiers: .command)
         }
+    }
+
+    private var composeToolbarPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+            .topBarTrailing
+        #else
+            .primaryAction
+        #endif
     }
 
     @ViewBuilder
@@ -574,8 +581,15 @@ public struct AppShell: View {
             #endif
     }
 
-    @ViewBuilder
     private func destination(_ route: Route, session: AccountSession) -> some View {
+        destinationContent(route, session: session)
+            .toolbar {
+                if usesSidebar { composeToolbar }
+            }
+    }
+
+    @ViewBuilder
+    private func destinationContent(_ route: Route, session: AccountSession) -> some View {
         switch route {
         case .thread(let statusID):
             ThreadView(statusID: statusID, session: session) { handle($0, session: session) }
