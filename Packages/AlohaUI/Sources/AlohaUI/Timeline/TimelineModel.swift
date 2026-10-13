@@ -268,6 +268,7 @@ public final class TimelineModel {
             if direction == .cold || rows.isEmpty {
                 rows = filtered
                 nextCursor = harvest.nextCursor
+                hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
                 ensureCaughtUpDivider()
             } else {
                 // Hold new rows behind a pill rather than moving what the person
@@ -361,6 +362,7 @@ public final class TimelineModel {
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
+            hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
             Task { await Self.warmRichText(harvest.statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
