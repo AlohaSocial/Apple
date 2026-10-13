@@ -37,6 +37,9 @@ public struct TermsGate: View {
                     comment: "Terms gate explanation")
             } header: {
                 Text("Before you start", comment: "Terms gate title")
+                    .font(.headline)
+                    .foregroundStyle(palette.label)
+                    .textCase(nil)
             }
 
             Section {
