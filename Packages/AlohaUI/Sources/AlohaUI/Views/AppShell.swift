@@ -405,6 +405,7 @@ public struct AppShell: View {
                 selectedSource: $selectedSource,
                 onAddAccount: { isPresentingSignIn = true },
                 onSwitchAccount: { environment.setActiveAccount($0) })
+                .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
             NavigationStack(path: $path) {
                 Group {
@@ -427,8 +428,9 @@ public struct AppShell: View {
         // "Direct messages" and "Subscriptions" are two-line labels at the
         // default, and this is the navigation for a reading app on a big
         // screen.
-        .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
-        #if os(macOS)
+        #if os(iOS)
+            .navigationSplitViewStyle(.balanced)
+        #elseif os(macOS)
             // The Mac's own convention: the content leads and the sidebar is
             // the affordance beside it. On iPad the balanced split is the one
             // Apple uses, and it is the default there.

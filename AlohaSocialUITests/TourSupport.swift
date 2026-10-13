@@ -88,10 +88,12 @@ extension XCUIApplication {
 
     /// A sidebar row on iPad (collection view) or Mac (outline).
     func sidebarRow(_ title: String) -> XCUIElement {
+        let label = NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@", title, title + ",")
         #if os(macOS)
-            return outlines.cells.containing(.staticText, identifier: title).firstMatch
+            return outlines.cells.containing(label).firstMatch
         #else
-            return collectionViews.cells.containing(.staticText, identifier: title).firstMatch
+            return collectionViews.cells.containing(label).firstMatch
         #endif
     }
 
