@@ -18,7 +18,7 @@ Changes are pushed to draft PR #8 from `SchBenedikt:codex/liquid-glass-quality`.
 | Other screens | Earlier navigation checks cover the main tabs and Settings | Notifications, conversations, profile/thread, safety and error states |
 | iPhone sizes | Recent interaction checks used iPhone 18 Pro | iPhone 17e audit in progress; first-run contrast failures recorded. Landscape and large text remain open |
 | iPad | Native sidebar routing and deep-content tour passed: thread, profile, publishing, discovery, lists, conversations, search and account drawer | Landscape, resizing, large text and appearance checks |
-| Packages | 96 UI-package tests passed after the buffering and navigation changes; all eight suites passed in the earlier baseline | Re-run relevant suites when source changes require it |
+| Packages | 100 UI-package tests passed after the buffering, navigation and network-recovery changes; all eight suites passed in the earlier baseline | Re-run relevant suites when source changes require it |
 
 A build, an empty test suite, and a test-runner restart do not prove that a
 screen works. Runtime tests and screenshots must be evaluated against the
@@ -35,3 +35,7 @@ file-backed store instead of inferred from a mock app relaunch.
 - Thread details paint cached posts before fetching fresh context and counts.
 - iPad sidebar width is configured on the sidebar column. Compose controls
   are attached to navigation destinations so pushed profiles keep the action.
+
+Buffered paging is also integration-tested with delayed responses: overlapping
+near-end events issue one request, and a successful retry clears the offline
+state while failed requests retain cached posts.

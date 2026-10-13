@@ -349,6 +349,8 @@ public final class TimelineModel {
 
         do {
             let harvest = try await fetch(anchor: nextCursor.map { .url($0) } ?? .olderThan(oldest))
+            isOffline = false
+            errorMessage = nil
             guard !harvest.statuses.isEmpty else {
                 // A client-side media filter can leave a fetched page empty
                 // even though the server still has another cursor.
