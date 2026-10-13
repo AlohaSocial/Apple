@@ -4,8 +4,21 @@ import AlohaDesign
 import AlohaModels
 import SwiftUI
 
-/// The root. A tab bar on iPhone, a split view everywhere else.
+/// Applies the theme before the shell reads its palette, including presentations.
 public struct AppShell: View {
+    @Environment(AppEnvironment.self) private var environment
+
+    public init() {}
+
+    public var body: some View {
+        ThemedAppShell()
+            .alohaTheme(
+                environment.theme, metrics: environment.metrics, accent: environment.serverAccent)
+    }
+}
+
+/// The root. A tab bar on iPhone, a split view everywhere else.
+private struct ThemedAppShell: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.alohaPalette) private var palette
@@ -46,28 +59,9 @@ public struct AppShell: View {
     @State private var sheet: ShellSheet?
     @Environment(\.scenePhase) private var scenePhase
 
-    public init() {}
+    init() {}
 
-    /// The theme wraps everything the shell can put on screen, including its
-    /// presentations. It cannot be one more link in the chain below.
-    ///
-    /// `alohaTheme` works by writing into the environment, and a `.sheet`
-    /// attached *above* that write does not inherit it — the presentation is a
-    /// sibling of the environment modifier, not a descendant. With the theme
-    /// applied mid-chain, every sheet the shell owns — composer, sign-in,
-    /// report, edit, and the media viewer — fell back to the `@Entry` default
-    /// in `AlohaDesign`, which is Warm Light. The app ran in Black and the
-    /// composer opened cream.
-    ///
-    /// Nesting rather than appending is what makes that unrepeatable: a
-    /// `.sheet` added to `content` later is inside the wrap by construction,
-    /// wherever in the chain it lands.
-    public var body: some View {
-        content
-            .alohaTheme(
-                environment.theme, metrics: environment.metrics, accent: environment.serverAccent
-            )
-    }
+    var body: some View { content }
 
     private var content: some View {
         root
@@ -404,8 +398,9 @@ public struct AppShell: View {
                 selection: $sidebarItem,
                 selectedSource: $selectedSource,
                 onAddAccount: { isPresentingSignIn = true },
-                onSwitchAccount: { environment.setActiveAccount($0) })
-                .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
+                onSwitchAccount: { environment.setActiveAccount($0) }
+            )
+            .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
             NavigationStack(path: $path) {
                 Group {
@@ -419,6 +414,9 @@ public struct AppShell: View {
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
             .toolbar { composeToolbar }
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
             // The window's own ground, not the system's. A reading column is
             // centred in this space, and without this the space around it was
             // window background — a cool white the app never uses — so the
@@ -444,11 +442,12 @@ public struct AppShell: View {
         }
     }
 
-
     @ToolbarContentBuilder
     private var composeToolbar: some ToolbarContent {
         ToolbarItem(id: "compose-post", placement: composeToolbarPlacement) {
-            Button { composing = ComposerPresentation() } label: {
+            Button {
+                composing = ComposerPresentation()
+            } label: {
                 Label {
                     Text("New post", comment: "Toolbar action")
                 } icon: {
@@ -524,7 +523,9 @@ public struct AppShell: View {
                 // The home mode is whichever of the three you are reading, so
                 // the title says which rather than always "My Feed".
                 .navigationTitle(sourceTitle)
-                .readerColumn
+                #if !os(iOS)
+                    .readerColumn
+                #endif
                 .onAppear { environment.sync.noteTimelineVisible(for: session.id) },
                 session: session)
         }
@@ -923,8 +924,8 @@ extension View {
     ///
     /// Full window width runs a post's text to twelve hundred point, which is
     /// unreadable — the eye cannot find the start of the next line. Mail and
-    /// Reader constrain their columns on the Mac, and so does this: a 680-point
-    /// column, centred, with the rest of the window quiet around it. On a phone
+    /// Reader constrain their columns, and so does this: 820 points on iPad
+    /// and 680 on Mac, centred, with the rest of the window quiet around it. On a phone
     /// the tab shell already fills the screen and the constraint would only
     /// add margins, so it does nothing there.
     @ViewBuilder
@@ -933,17 +934,15 @@ extension View {
             if UIDevice.current.userInterfaceIdiom == .phone {
                 self
             } else {
-                column
+                column(width: 820)
             }
         #else
-            column
+            column(width: 680)
         #endif
     }
 
-    private var column: some View {
-        self
-            .frame(maxWidth: 680)
-            .frame(maxWidth: .infinity)
+    private func column(width: CGFloat) -> some View {
+        modifier(ReaderColumn(width: width))
     }
 
     /// `fullScreenCover` does not exist on macOS; a sheet is the right
@@ -969,3 +968,16 @@ extension View {
 #elseif canImport(AppKit)
     import AppKit
 #endif
+
+/// The surrounding canvas must inherit the same theme as the reading surface.
+private struct ReaderColumn: ViewModifier {
+    @Environment(\.alohaPalette) private var palette
+    let width: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: width)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.background.ignoresSafeArea())
+    }
+}

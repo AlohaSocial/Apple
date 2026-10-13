@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import UIKit
 import XCTest
 
 #if os(iOS)
@@ -27,6 +28,7 @@ import XCTest
 
         override func tearDown() async throws {
             XCUIDevice.shared.appearance = .light
+            XCUIDevice.shared.orientation = .portrait
         }
 
         func testEveryThemeRenders() {
@@ -101,6 +103,32 @@ import XCTest
             }
         }
 
+        /// A narrow dark list used to sit inside the light default shell palette.
+        func testIPadCanvasUsesChosenThemeInBothOrientations() throws {
+            try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .pad, "iPad split shell only")
+            continueAfterFailure = false
+            for (theme, isDark) in [("Black", true), ("Warm Light", false)] {
+                launchAndChoose(theme: theme)
+                for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+                    XCUIDevice.shared.orientation = orientation
+                    sleep(2)
+                    let screen = XCUIScreen.main.screenshot()
+                    // Empty detail margin at the far right, away from sidebar and posts.
+                    let luminance = try XCTUnwrap(
+                        meanLuminance(
+                            of: CGRect(x: 0.988, y: 0.35, width: 0.008, height: 0.3), in: screen))
+                    if isDark {
+                        XCTAssertLessThan(luminance, 0.15, "Dark theme lost at detail margin")
+                    } else {
+                        XCTAssertGreaterThan(luminance, 0.85, "Light theme lost at detail margin")
+                    }
+                    XCTAssertTrue(app.buttons["New post"].firstMatch.isHittable)
+                    shoot("97-ipad-\(theme)-\(orientation.rawValue)")
+                }
+                app.terminate()
+            }
+        }
+
         private enum Brightness {
             case dark
             case light
@@ -125,7 +153,14 @@ import XCTest
             XCTAssertTrue(option.waitForExistence(timeout: 5), "\(theme): not offered")
             option.tap()
             sleep(1)
-            app.navigationBars.buttons.firstMatch.tap()
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                let home = app.sidebarRow("My Feed")
+                XCTAssertTrue(home.waitForExistence(timeout: 5), "Sidebar did not remain available")
+                home.tap()
+            } else {
+                app.navigationBars.buttons.firstMatch.tap()
+            }
+            XCTAssertTrue(app.labelled("Test post number 1").waitForExistence(timeout: 8))
             sleep(1)
         }
     }

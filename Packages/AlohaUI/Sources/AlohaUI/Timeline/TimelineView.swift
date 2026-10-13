@@ -66,32 +66,43 @@ public struct TimelineView: View {
 
     private var list: some View {
         ScrollViewReader { proxy in
-            rows
-                // "Return to where I was": once the first page is in, scroll to
-                // the last-read post rather than to the top. Off, the timeline
-                // opens at the newest post, which is what a storefront expects.
-                .onChange(of: model.rows.isEmpty) { _, isEmpty in
-                    guard
-                        !isEmpty, !didRestorePosition,
-                        session.settings.restoreTimelinePosition,
-                        let markerID = model.caughtUpMarkerID,
-                        model.rows.contains(where: { $0.id == markerID })
-                    else { return }
-                    didRestorePosition = true
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        proxy.scrollTo(markerID, anchor: .top)
-                    }
+            GeometryReader { geometry in
+                rows(horizontalInset: readingInset(for: geometry.size.width))
+            }
+            // "Return to where I was": once the first page is in, scroll to
+            // the last-read post rather than to the top. Off, the timeline
+            // opens at the newest post, which is what a storefront expects.
+            .onChange(of: model.rows.isEmpty) { _, isEmpty in
+                guard
+                    !isEmpty, !didRestorePosition,
+                    session.settings.restoreTimelinePosition,
+                    let markerID = model.caughtUpMarkerID,
+                    model.rows.contains(where: { $0.id == markerID })
+                else { return }
+                didRestorePosition = true
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo(markerID, anchor: .top)
                 }
-                .onChange(of: focusedStatusID) { _, id in
-                    guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        proxy.scrollTo(id, anchor: .center)
-                    }
+            }
+            .onChange(of: focusedStatusID) { _, id in
+                guard let id else { return }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    proxy.scrollTo(id, anchor: .center)
                 }
+            }
         }
     }
 
-    private var rows: some View {
+    private func readingInset(for width: CGFloat) -> CGFloat {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                return max(24, (width - 820) / 2)
+            }
+        #endif
+        return AlohaMetrics.space4
+    }
+
+    private func rows(horizontalInset: CGFloat) -> some View {
         List {
             if session.needsReauthentication { reauthenticationBanner }
             if model.isOffline { offlineStrip }
@@ -109,8 +120,8 @@ public struct TimelineView: View {
                         SkeletonRow(hasMedia: index == 1)
                             .listRowInsets(
                                 EdgeInsets(
-                                    top: 0, leading: AlohaMetrics.space4, bottom: 0,
-                                    trailing: AlohaMetrics.space4)
+                                    top: 0, leading: horizontalInset, bottom: 0,
+                                    trailing: horizontalInset)
                             )
                             .listRowBackground(palette.background)
                             .listRowSeparator(.hidden)
@@ -135,9 +146,9 @@ public struct TimelineView: View {
                     )
                     .listRowInsets(
                         EdgeInsets(
-                            top: AlohaMetrics.space1, leading: AlohaMetrics.space4,
+                            top: AlohaMetrics.space1, leading: horizontalInset,
                             bottom: AlohaMetrics.space1,
-                            trailing: AlohaMetrics.space4)
+                            trailing: horizontalInset)
                     )
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
