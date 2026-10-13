@@ -509,7 +509,7 @@
       "comment" : "Filter action"
     },
     "Add account" : {
-      "comment" : "Account switcher action\nSign-in screen title"
+      "comment" : "Sign-in screen title"
     },
     "Add account…" : {
       "comment" : "Account switcher action\nSettings action"
@@ -617,9 +617,6 @@
     "Also" : {
       "comment" : "Related hashtags row lead-in"
     },
-    "Also asks %@." : {
-      "comment" : "Discover search footer naming the directories asked"
-    },
     "Also send to their server" : {
       "comment" : "Report option"
     },
@@ -646,9 +643,6 @@
     },
     "Announcements" : {
       "comment" : "Announcements card title"
-    },
-    "Any name or handle, on any server" : {
-      "comment" : "Discover search prompt"
     },
     "Any standing" : {
       "comment" : "Moderation standing filter"
@@ -898,9 +892,6 @@
     },
     "Clear cache" : {
       "comment" : "Settings action"
-    },
-    "Clear search" : {
-      "comment" : "Discover search field"
     },
     "Close" : {
       "comment" : "Media viewer action\nSheet action\nStory action"
@@ -3351,7 +3342,7 @@
     "Suspended" : {
       "comment" : "Account standing\nModeration standing filter"
     },
-    "Switch to %@" : {
+    "Switch account" : {
       "comment" : "Account switcher action"
     },
     "Tag people" : {

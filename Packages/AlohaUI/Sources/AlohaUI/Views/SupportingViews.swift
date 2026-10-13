@@ -292,7 +292,10 @@ private struct OnboardingPageView: View {
                             .font(.system(size: 34))
                             .foregroundStyle(palette.accent)
                             .frame(width: 84, height: 84)
-                            .glassEffect(.regular.tint(palette.accent.opacity(0.12)).interactive(), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            .glassEffect(
+                                .regular.tint(palette.accent.opacity(0.12)).interactive(),
+                                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            )
                             .accessibilityHidden(true)
                     }
 
@@ -431,7 +434,11 @@ private struct ModeTour: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AlohaMetrics.space3)
-                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+                .glassEffect(
+                    .regular.interactive(),
+                    in: RoundedRectangle(
+                        cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                )
                 .accessibilityElement(children: .combine)
             }
         }
@@ -481,8 +488,6 @@ public struct SidebarView: View {
     /// sidebar itself no longer reads it, because a source is a property of
     /// the mode's screen rather than of the navigation.
     @Binding private var selectedSource: TimelineSource
-    /// Collapsed until asked for, as the web is.
-    @State private var isAccountExpanded = false
     @State private var searchText = ""
     /// How many conversations are unread, for the badge on "Direct messages".
     /// The messages list writes it to the app group so this and the widgets
@@ -507,13 +512,7 @@ public struct SidebarView: View {
     }
 
     public var body: some View {
-        // The feeds scroll; the account drawer under them does not. It used to
-        // be the list's last section, so reading a long timeline pushed the
-        // profile out of sight — the one row that says who is reading. It is
-        // fixed at the foot now, where Nextcloud Social puts it
-        // (`NcAppNavigationSettings`) and where a Mac sidebar keeps it.
-        VStack(alignment: .leading, spacing: 0) {
-            List(selection: optionalSelection) {
+        List(selection: optionalSelection) {
             // The shape of Nextcloud Social's own navigation: one primary
             // group of timelines and messages, then Explore, then everything
             // about your own account at the foot.
@@ -534,7 +533,8 @@ public struct SidebarView: View {
                 // `Text` overload is the one that can mean "nothing at all".
                 .badge(
                     unreadConversations > 0
-                        ? Text(verbatim: String(unreadConversations)) : nil)
+                        ? Text(verbatim: String(unreadConversations)) : nil
+                )
                 .tag(SidebarItem.route(.conversations))
                 .accessibilityLabel(
                     unreadConversations > 0
@@ -575,143 +575,26 @@ public struct SidebarView: View {
                 Text("Library", comment: "Sidebar section")
             }
 
-            }
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
+        }
 
-            accountFooter
-        }
+        .listStyle(.sidebar)
         .onAppear {
-            // The messages list writes the badge count when it loads; read it
-            // back each time the sidebar appears so the badge is not a value
-            // from the last launch.
-            unreadConversations = AppGroup.defaults.integer(
-                forKey: AppGroup.unreadConversationsKey)
+            unreadConversations = AppGroup.defaults.integer(forKey: AppGroup.unreadConversationsKey)
         }
-        // The system's own search bar, in the sidebar's slot: it widens the
-        // navigation on iPad the way the system apps do, for free.
         .searchable(
-            text: $searchText,
-            placement: .sidebar,
+            text: $searchText, placement: .sidebar,
             prompt: Text("Search", comment: "Sidebar search field")
         )
         .onSubmit(of: .search, submitSearch)
         .navigationTitle(Text("Aloha Social", comment: "App name"))
-    }
-
-    /// The foot of the sidebar: who is reading, and everything about them.
-    ///
-    /// Outside the list on purpose. Inside it the drawer was one more section
-    /// in a column that scrolls, so the profile moved as the feeds did — and on
-    /// a short window it sat below the fold entirely. Here it cannot move: the
-    /// list takes what is left, the drawer takes what it needs.
-    private var accountFooter: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Divider()
-
-            Button {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                    isAccountExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: AlohaMetrics.space3) {
-                    AvatarView(account: session.snapshot.asAccount, size: 32)
-                        .accessibilityHidden(true)
-
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(session.snapshot.bestDisplayName)
-                            .font(.subheadline)
-                            .lineLimit(1)
-                        Text(session.snapshot.qualifiedHandle)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    // The system's own affordance for a drawer that opens
-                    // and closes, rather than a chevron that rotates.
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, AlohaMetrics.space3)
-                .padding(.vertical, AlohaMetrics.space2)
-                .contentShape(Rectangle())
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                AccountMenuButton(
+                    session: session,
+                    onOpen: { selection = .route($0) },
+                    onAddAccount: onAddAccount,
+                    showsBrowseDestinations: false)
             }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(
-                Text(
-                    "\(session.snapshot.bestDisplayName), account menu",
-                    comment: "Accessibility label for the account drawer toggle")
-            )
-            .accessibilityValue(
-                isAccountExpanded
-                    ? Text("Expanded", comment: "Accessibility state")
-                    : Text("Collapsed", comment: "Accessibility state")
-            )
-            .accessibilityAddTraits(.isButton)
-
-            if isAccountExpanded {
-                ScrollView {
-                    drawerRows
-                        .padding(.horizontal, AlohaMetrics.space3)
-                        .padding(.bottom, AlohaMetrics.space3)
-                }
-                .frame(maxHeight: 340)
-                .scrollIndicators(.hidden)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // The system's own bar material: the list scrolls behind this, and
-        // nothing from it may show through the foot.
-        .background(.bar)
-    }
-
-    /// Everything behind the profile: your own pages, then the accounts you
-    /// switch between.
-    @ViewBuilder
-    private var drawerRows: some View {
-        drawerRow("My profile", symbol: "person.crop.circle", route: myProfile)
-        // Activities is about you rather than about a feed, so it sits with
-        // the rest of what is yours.
-        drawerRow("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
-        drawerRow("Follow requests", symbol: "person.badge.clock", route: .followRequests)
-        drawerRow("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
-        drawerRow("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
-        if session.capabilities.isNextcloudSocial {
-            drawerRow("Archived posts", symbol: "archivebox", route: .archived)
-            drawerRow("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
-        }
-        drawerRow("Blocking", symbol: "hand.raised", route: .safety)
-        drawerRow("Settings", symbol: AlohaSymbol.settings, route: .settings)
-
-        // The web is one account per Nextcloud; this app is not, so switching
-        // belongs with everything else that is about who you are.
-        if environment.sessions.count > 1 {
-            ForEach(environment.sessions.filter { $0.id != session.id }) { other in
-                SidebarFooterRow(
-                    title: Text(other.snapshot.bestDisplayName),
-                    symbol: "arrow.left.arrow.right",
-                    accessibilityLabel: Text(
-                        "Switch to \(other.snapshot.qualifiedHandle)",
-                        comment: "Account switcher action")
-                ) {
-                    onSwitchAccount(other.id)
-                }
-            }
-        }
-
-        SidebarFooterRow(
-            title: Text("Add account…", comment: "Account switcher action"),
-            symbol: "person.badge.plus",
-            accessibilityLabel: Text("Add account", comment: "Account switcher action")
-        ) {
-            onAddAccount()
         }
     }
 
@@ -733,21 +616,6 @@ public struct SidebarView: View {
         .tag(SidebarItem.mode(mode))
         .accessibilityLabel(Text(title(for: mode)))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-    }
-
-    /// A drawer row that closes the drawer behind it — the web's drawer does
-    /// the same rather than staying open over the page it just opened.
-    private func drawerRow(
-        _ title: String.LocalizationValue, symbol: String, route: Route
-    ) -> some View {
-        SidebarFooterRow(
-            title: Text(String(localized: title, comment: "Sidebar item")),
-            symbol: symbol,
-            isSelected: selectedRoute == route
-        ) {
-            selection = .route(route)
-            withAnimation(.easeOut(duration: 0.2)) { isAccountExpanded = false }
-        }
     }
 
     /// Submitting the system's search bar navigates to the results, rather
@@ -804,62 +672,5 @@ public struct SidebarView: View {
         case .news: String(localized: "News", comment: "Mode title")
         case .audio: String(localized: "Audio", comment: "Mode title")
         }
-    }
-}
-
-/// One row in the sidebar's foot — the drawer behind the profile.
-///
-/// Drawn rather than listed: it sits outside the list, so the system's own
-/// row highlight has nothing to draw. What it draws instead is the system's
-/// own idea of a highlighted sidebar row — a rounded tint behind the label,
-/// in the accent, on hover or when the row is what is on screen.
-private struct SidebarFooterRow: View {
-    let title: Text
-    let symbol: String
-    var isSelected: Bool = false
-    /// Where the row's spoken name differs from what it says: "Add account"
-    /// is spoken without the ellipsis, and a switch row names the account it
-    /// switches to rather than the one it leaves.
-    var accessibilityLabel: Text?
-    let action: () -> Void
-
-    @Environment(\.alohaPalette) private var palette
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: AlohaMetrics.space3) {
-                Image(systemName: symbol)
-                    .font(.body)
-                    .frame(width: 22)
-                    .foregroundStyle(isSelected ? palette.accent : palette.secondaryLabel)
-
-                title
-                    .font(.subheadline)
-                    .foregroundStyle(isSelected ? palette.accent : palette.label)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, AlohaMetrics.space3)
-            .padding(.vertical, 7)
-            .contentShape(Rectangle())
-            .background(
-                highlight,
-                in: RoundedRectangle(
-                    cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
-            // The selected drawer row in the system's own material — the same
-            // Liquid Glass the sidebar rows above it get — rather than a
-            // hand-painted wash beside native ones.
-            .selectedGlass(isSelected, tint: palette.accent)
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-        .accessibilityLabel(accessibilityLabel ?? title)
-    }
-
-    private var highlight: Color {
-        if !isSelected, isHovering { return palette.accent.opacity(0.12) }
-        return .clear
     }
 }

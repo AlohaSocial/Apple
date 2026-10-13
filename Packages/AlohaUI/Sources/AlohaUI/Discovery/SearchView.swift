@@ -117,7 +117,9 @@ public struct SearchView: View {
             .searchable(
                 text: $query, isPresented: $isFieldPresented,
                 placement: .navigationBarDrawer(displayMode: .always),
-                prompt: Text("Search", comment: "Search field"))
+                prompt: Text("Search", comment: "Search field")
+            )
+            .searchPresentationToolbarBehavior(.avoidHidingContent)
         #else
             .searchable(
                 text: $query, isPresented: $isFieldPresented,
@@ -133,7 +135,10 @@ public struct SearchView: View {
             }
         }
         .onChange(of: query) { _, value in schedule(value) }
-        .onSubmit(of: .search) { remember(query) }
+        .onSubmit(of: .search) {
+            remember(query)
+            isFieldPresented = false
+        }
         // A pull is somebody asking the same question again, so the search on
         // screen re-runs — every other list in the app refreshes on a pull.
         .refreshable {

@@ -20,7 +20,6 @@ public struct AppShell: View {
 /// The root. A tab bar on iPhone, a split view everywhere else.
 private struct ThemedAppShell: View {
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.alohaPalette) private var palette
 
     /// A tab bar selection that can be a mode *or* the messages tab.
@@ -35,6 +34,7 @@ private struct ThemedAppShell: View {
     @State private var sidebarItem: SidebarItem = .mode(.home)
     @State private var selectedSource: TimelineSource = .home
     @State private var path: [Route] = []
+    @State private var iPadPaths: [SidebarItem: [Route]] = [:]
     @State private var isPresentingSignIn = false
     /// The address typed on the introduction, for the sign-in screen to open
     /// with — or empty when the person chose "skip" and will type it there.
@@ -138,7 +138,7 @@ private struct ThemedAppShell: View {
             // Not a bare spinner: the app is saying what it is while it
             // loads, which is the only thing it can honestly say yet.
             VStack(spacing: AlohaMetrics.space4) {
-                AlohaLogoMark(size: 96)
+                AnimatedAlohaLogoMark(size: 96)
                 Text("Aloha Social", comment: "App name")
                     .font(AlohaType.wordmark.weight(.bold))
                     .fontDesign(.rounded)
@@ -303,38 +303,61 @@ private struct ThemedAppShell: View {
             selectedTab = .mode(key.mode)
             sidebarItem = .mode(key.mode)
             selectedSource = key.source
+            iPadPaths[.mode(key.mode)] = []
             path = []
         } else if !usesSidebar, route == .conversations {
             // On a phone direct messages are a tab, not a push.
             selectedTab = .messages
             path = []
-        } else if usesSidebar, SidebarItem.sidebarRoutes.contains(route) {
+        } else if usesSidebar, rootRoutes.contains(route) {
             // On a split view these are sidebar rows, not pushes.
             sidebarItem = .route(route)
             path = []
         } else {
-            path.append(route)
+            push(route)
         }
+    }
+
+    private var rootRoutes: [Route] {
+        #if os(iOS)
+            return [
+                .conversations, .explore, .lists, .interests, .subscriptions,
+                .collections(accountID: nil), .notifications, .bookmarks, .settings,
+                .search(query: nil),
+            ]
+        #else
+            return SidebarItem.sidebarRoutes
+        #endif
     }
 
     private var usesSidebar: Bool {
         #if os(iOS)
-            sizeClass != .compact
+            UIDevice.current.userInterfaceIdiom == .pad
         #else
             true
         #endif
     }
-    @ViewBuilder
-    private func shell(_ session: AccountSession) -> some View {
+    // Erase at the platform boundary so the root does not embed every tab tree.
+    private func shell(_ session: AccountSession) -> AnyView {
         #if os(iOS)
-            if sizeClass == .compact {
-                tabShell(session)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                return AnyView(tabShell(session))
             } else {
-                splitShell(session)
+                return AnyView(iPadShell(session))
             }
         #else
-            splitShell(session)
+            return AnyView(splitShell(session))
         #endif
+    }
+
+    private func push(_ route: Route) {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                iPadPaths[sidebarItem, default: []].append(route)
+                return
+            }
+        #endif
+        path.append(route)
     }
 
     // MARK: - iPhone
@@ -386,6 +409,155 @@ private struct ThemedAppShell: View {
             }
             // No bottom accessory: composing lives in the toolbar, where the
             // platform puts it, rather than in a second bar above the tab bar.
+        }
+    #endif
+
+    #if os(iOS)
+        private func iPadShell(_ session: AccountSession) -> some View {
+            TabView(selection: $sidebarItem) {
+                ForEach(session.visibleModes) { mode in
+                    Tab(
+                        modeTitle(mode), systemImage: mode.symbolName, value: SidebarItem.mode(mode)
+                    ) {
+                        iPadDestination(.mode(mode), session: session)
+                    }
+                }
+                Tab(
+                    "Direct messages", systemImage: "envelope",
+                    value: SidebarItem.route(.conversations)
+                ) {
+                    iPadDestination(.route(.conversations), session: session)
+                }
+                Tab("Discover", systemImage: "safari", value: SidebarItem.route(.explore)) {
+                    iPadDestination(.route(.explore), session: session)
+                }
+                TabSection("Library") {
+                    Tab(
+                        "Your lists", systemImage: "list.bullet.rectangle",
+                        value: SidebarItem.route(.lists)
+                    ) {
+                        iPadDestination(.route(.lists), session: session)
+                    }
+                    if session.capabilities.isNextcloudSocial {
+                        Tab(
+                            "My interests", systemImage: "sparkles",
+                            value: SidebarItem.route(.interests)
+                        ) {
+                            iPadDestination(.route(.interests), session: session)
+                        }
+                        Tab(
+                            "Subscriptions", systemImage: "dot.radiowaves.up.forward",
+                            value: SidebarItem.route(.subscriptions)
+                        ) {
+                            iPadDestination(.route(.subscriptions), session: session)
+                        }
+                    }
+                    if session.capabilities.collections {
+                        Tab(
+                            "Albums", systemImage: "rectangle.stack",
+                            value: SidebarItem.route(.collections(accountID: nil))
+                        ) {
+                            iPadDestination(.route(.collections(accountID: nil)), session: session)
+                        }
+                    }
+                }
+                .tabPlacement(.sidebarOnly)
+                TabSection("Account") {
+                    Tab("Activities", systemImage: "bell", value: SidebarItem.route(.notifications))
+                    {
+                        iPadDestination(.route(.notifications), session: session)
+                    }
+                    Tab("Bookmarks", systemImage: "bookmark", value: SidebarItem.route(.bookmarks))
+                    {
+                        iPadDestination(.route(.bookmarks), session: session)
+                    }
+                    Tab("Settings", systemImage: "gearshape", value: SidebarItem.route(.settings)) {
+                        iPadDestination(.route(.settings), session: session)
+                    }
+                    Tab("Liked posts", systemImage: "heart", value: SidebarItem.route(.favourites))
+                    {
+                        iPadDestination(.route(.favourites), session: session)
+                    }
+                    Tab(
+                        "Follow requests", systemImage: "person.badge.clock",
+                        value: SidebarItem.route(.followRequests)
+                    ) {
+                        iPadDestination(.route(.followRequests), session: session)
+                    }
+                    Tab("Blocking", systemImage: "hand.raised", value: SidebarItem.route(.safety)) {
+                        iPadDestination(.route(.safety), session: session)
+                    }
+                    if session.capabilities.isNextcloudSocial {
+                        Tab(
+                            "Archived posts", systemImage: "archivebox",
+                            value: SidebarItem.route(.archived)
+                        ) {
+                            iPadDestination(.route(.archived), session: session)
+                        }
+                        Tab(
+                            "Statistics", systemImage: "chart.bar.xaxis",
+                            value: SidebarItem.route(.statistics)
+                        ) {
+                            iPadDestination(.route(.statistics), session: session)
+                        }
+                    }
+                }
+                .tabPlacement(.sidebarOnly)
+                .defaultSectionExpansion(.collapsed)
+                Tab(
+                    "Search", systemImage: "magnifyingglass",
+                    value: SidebarItem.route(.search(query: nil)), role: .search
+                ) {
+                    iPadDestination(.route(.search(query: nil)), session: session)
+                }
+            }
+            .tabViewStyle(.sidebarAdaptable)
+            .tabViewSidebarBottomBar {
+                AccountMenuButton(
+                    session: session, onOpen: open,
+                    onAddAccount: { isPresentingSignIn = true },
+                    showsBrowseDestinations: false, showsName: true, usesCompactMenu: true)
+            }
+            .onChange(of: sidebarItem) { _, item in
+                path = []
+                if case .mode(let mode) = item { selectedMode = mode }
+            }
+        }
+
+        private func iPadDestination(_ item: SidebarItem, session: AccountSession) -> some View {
+            AnyView(
+                NavigationStack(
+                    path: Binding(
+                        get: { iPadPaths[item, default: []] },
+                        set: { iPadPaths[item] = $0 }
+                    )
+                ) {
+                    Group {
+                        switch item {
+                        case .mode(let mode): modeRoot(mode, session: session)
+                        case .route(let route): destination(route, session: session)
+                        }
+                    }
+                    .navigationDestination(for: Route.self) { destination($0, session: session) }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        iPadAccountToolbar(session)
+                        composeToolbar
+                    }
+                    .background(palette.background.ignoresSafeArea())
+                })
+        }
+    #endif
+
+    #if os(iOS)
+        @ToolbarContentBuilder
+        private func iPadAccountToolbar(_ session: AccountSession) -> some ToolbarContent {
+            ToolbarItem(id: "account-menu", placement: .topBarLeading) {
+                AccountMenuButton(
+                    session: session, onOpen: open,
+                    onAddAccount: { isPresentingSignIn = true },
+                    showsBrowseDestinations: false, usesCompactMenu: true)
+            }
         }
     #endif
 
@@ -554,7 +726,7 @@ private struct ThemedAppShell: View {
                     // Only on the phone: the split shell carries both of these
                     // in the sidebar — the account drawer at its foot, and a
                     // search field at its head.
-                    if sizeClass == .compact {
+                    if !usesSidebar {
                         ToolbarItem(placement: .topBarLeading) {
                             AccountMenuButton(
                                 session: session,
@@ -583,9 +755,12 @@ private struct ThemedAppShell: View {
     }
 
     private func destination(_ route: Route, session: AccountSession) -> some View {
-        destinationContent(route, session: session)
+        AnyView(destinationContent(route, session: session))
             .toolbar {
                 if usesSidebar { composeToolbar }
+                #if os(iOS)
+                    if usesSidebar { iPadAccountToolbar(session) }
+                #endif
             }
     }
 
@@ -615,18 +790,22 @@ private struct ThemedAppShell: View {
                 .readerColumn
         case .settings:
             SettingsView(onAddAccount: { isPresentingSignIn = true })
+                .readerColumn
         case .explore:
             ExploreView(session: session) { handle($0, session: session) }
-                .readerColumn
         case .search(let query):
             SearchView(session: session, initialQuery: query) { handle($0, session: session) }
                 .readerColumn
         case .lists:
             ListsView(session: session)
+                .readerColumn
         case .filters:
             FiltersView(session: session)
+                .readerColumn
         case .safety:
             SafetyListsView(session: session)
+                .readerColumn
+                .readerColumn
         case .conversations:
             ConversationsView(
                 session: session,
@@ -743,11 +922,11 @@ private struct ThemedAppShell: View {
     private func handle(_ action: StatusRowAction, session: AccountSession) {
         switch action {
         case .open(let status):
-            path.append(.thread(statusID: status.displayed.id))
+            push(.thread(statusID: status.displayed.id))
         case .watch(let status):
-            path.append(.video(statusID: status.displayed.id))
+            push(.video(statusID: status.displayed.id))
         case .openProfile(let account):
-            path.append(.profile(accountID: account.id))
+            push(.profile(accountID: account.id))
         case .openMedia(let status, let index):
             mediaPresentation = MediaPresentation(
                 statusID: status.id, attachments: status.mediaAttachments, index: index)
@@ -756,9 +935,9 @@ private struct ThemedAppShell: View {
         case .followLink(let link):
             switch link {
             case .mention(let accountID, let acct, _):
-                path.append(accountID.map { Route.profile(accountID: $0) } ?? .handle(acct))
+                push(accountID.map { Route.profile(accountID: $0) } ?? .handle(acct))
             case .hashtag(let name, _):
-                path.append(.hashtag(name))
+                push(.hashtag(name))
             case .web(let url):
                 openURL(url)
             }
@@ -863,7 +1042,7 @@ private struct ThemedAppShell: View {
             selectedSource = key.source
             path = []
         } else {
-            path.append(route)
+            push(route)
         }
     }
 }

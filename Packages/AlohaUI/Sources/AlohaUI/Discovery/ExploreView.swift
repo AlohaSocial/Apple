@@ -14,6 +14,8 @@ import SwiftUI
 /// are Mastodon's own.
 public struct ExploreView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.alohaMetrics) private var metrics
 
     private let session: AccountSession
@@ -82,13 +84,13 @@ public struct ExploreView: View {
 
             Group {
                 switch section {
-                case .people: people
-                case .packs: StarterPacksView(session: session, onAction: onAction)
+                case .people: people.readerColumn
+                case .packs: StarterPacksView(session: session, onAction: onAction).readerColumn
                 case .pictures:
                     DiscoverMediaGrid(session: session, media: .image, onAction: onAction)
                 case .videos:
                     DiscoverMediaGrid(session: session, media: .video, onAction: onAction)
-                case .hashtags: hashtags
+                case .hashtags: hashtags.readerColumn
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -104,35 +106,24 @@ public struct ExploreView: View {
     // MARK: - Chrome
 
     private var switcher: some View {
-        ScrollView(.horizontal) {
-            GlassEffectContainer(spacing: AlohaMetrics.space2) {
-                HStack(spacing: AlohaMetrics.space2) {
-                    ForEach(sections) { option in
-                        Button {
-                            section = option
-                        } label: {
-                            title(for: option)
-                                .font(.subheadline.weight(section == option ? .semibold : .regular))
-                                .fixedSize()
-                                .padding(.horizontal, AlohaMetrics.space3)
-                                .frame(minHeight: 44)
-                                .foregroundStyle(
-                                    section == option ? palette.onAccent : palette.label)
-                        }
-                        .buttonStyle(.plain)
-                        .glassEffect(
-                            .regular.tint(section == option ? palette.accent : nil).interactive(),
-                            in: Capsule()
-                        )
-                        .accessibilityAddTraits(section == option ? .isSelected : [])
-                    }
-                }
-                .padding(.horizontal, AlohaMetrics.space3)
-                .padding(.vertical, AlohaMetrics.space2)
+        Group {
+            if sizeClass == .regular && !typeSize.isAccessibilitySize {
+                sectionPicker.pickerStyle(.segmented)
+            } else {
+                sectionPicker.pickerStyle(.menu)
             }
         }
-        .scrollIndicators(.hidden)
-        .accessibilityLabel(Text("Section", comment: "Discover section picker"))
+        .frame(maxWidth: 600)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+    }
+    private var sectionPicker: some View {
+        Picker(selection: $section) {
+            ForEach(sections) { option in title(for: option).tag(option) }
+        } label: {
+            Text("Section", comment: "Discover section picker")
+        }
     }
 
     private func title(for section: Section) -> Text {
@@ -211,55 +202,8 @@ public struct ExploreView: View {
             if let peopleError {
                 errorStrip(peopleError, retry: .people)
             }
-
-            SwiftUI.Section {
-                HStack(spacing: AlohaMetrics.space2) {
-                    Image(systemName: AlohaSymbol.search)
-                        .foregroundStyle(palette.secondaryLabel)
-                    TextField(
-                        String(
-                            localized: "Any name or handle, on any server",
-                            comment: "Discover search prompt"),
-                        text: $query
-                    )
-                    .textFieldStyle(.plain)
-                    #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                    #endif
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .accessibilityLabel(Text("Search people", comment: "Discover search field"))
-                    if isSearching {
-                        ProgressView().controlSize(.small)
-                    } else if !query.isEmpty {
-                        Button {
-                            query = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(palette.tertiaryLabel)
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text("Clear search", comment: "Discover search field"))
-                    }
-                }
-                .padding(.horizontal, AlohaMetrics.space3)
-                .frame(minHeight: 44)
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge))
-                .listRowInsets(
-                    EdgeInsets(
-                        top: AlohaMetrics.space2, leading: AlohaMetrics.space3,
-                        bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space3)
-                )
-                .listRowBackground(palette.background)
-                .listRowSeparator(.hidden)
-            } footer: {
-                if isNextcloud, !directories.isEmpty, query.isEmpty {
-                    Text(
-                        "Also asks \(directories.map(\.label).formatted(.list(type: .and))).",
-                        comment: "Discover search footer naming the directories asked")
-                }
+            if isSearching {
+                ProgressView().frame(maxWidth: .infinity)
             }
 
             if !query.isEmpty {
@@ -278,13 +222,11 @@ public struct ExploreView: View {
                                 onAction: onAction
                             )
                             .listRowInsets(EdgeInsets())
-                            .listRowBackground(palette.background)
                         }
                         Toggle(isOn: $showsConstellation) {
                             Text("Draw it as a constellation", comment: "Discover section option")
                                 .font(.footnote)
                         }
-                        .listRowBackground(palette.background)
                         ForEach(showsConstellation ? [] : followGraph.suggestions) { suggestion in
                             accountButton(suggestion.account) {
                                 if suggestion.count > 0 {
@@ -296,7 +238,6 @@ public struct ExploreView: View {
                                     .foregroundStyle(palette.tertiaryLabel)
                                 }
                             }
-                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Followed by people you follow", comment: "Discover section")
@@ -326,7 +267,6 @@ public struct ExploreView: View {
                                 .accessibilityLabel(
                                     Text("Not interested", comment: "Suggestion action"))
                             }
-                            .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("People to follow", comment: "Explore section")
@@ -337,7 +277,6 @@ public struct ExploreView: View {
                     SwiftUI.Section {
                         ForEach(popular) { account in
                             accountButton(account) { EmptyView() }
-                                .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("Popular here", comment: "Discover section")
@@ -362,12 +301,10 @@ public struct ExploreView: View {
                         }
                         .pickerStyle(.menu)
                         .accessibilityLabel(Text("Order", comment: "Directory order picker"))
-                        .listRowBackground(palette.background)
                         .listRowSeparator(.hidden)
 
                         ForEach(directory) { account in
                             accountButton(account) { EmptyView() }
-                                .listRowBackground(palette.background)
                         }
                     } header: {
                         Text("The directory", comment: "Discover section")
@@ -391,13 +328,17 @@ public struct ExploreView: View {
                                 "Follow a few people and the server will find more like them.",
                                 comment: "Empty Discover people detail")
                         }
-                        .listRowBackground(palette.background)
                         .listRowSeparator(.hidden)
                     }
                 }
             }
         }
-        .listStyle(.plain)
+        #if os(iOS)
+            .listStyle(.insetGrouped)
+        #else
+            .listStyle(.inset)
+        #endif
+        .searchable(text: $query, prompt: Text("Search people", comment: "Discover search field"))
         .alohaGround(palette)
         // Unavailable on visionOS, where there is no keyboard over the
         // content to dismiss.
@@ -422,7 +363,6 @@ public struct ExploreView: View {
             SwiftUI.Section {
                 ForEach(found) { account in
                     accountButton(account) { EmptyView() }
-                        .listRowBackground(palette.background)
                 }
             } header: {
                 Text("Found", comment: "Discover search section")
@@ -433,7 +373,6 @@ public struct ExploreView: View {
             SwiftUI.Section {
                 ForEach(foundElsewhere.accounts) { account in
                     accountButton(account) { EmptyView() }
-                        .listRowBackground(palette.background)
                 }
             } header: {
                 Text("On other servers", comment: "Discover search section")
@@ -451,7 +390,6 @@ public struct ExploreView: View {
             searchError == nil
         {
             ContentUnavailableView.search(text: query)
-                .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
         }
     }
@@ -464,7 +402,6 @@ public struct ExploreView: View {
         AlohaErrorStrip(message: message) {
             Task { await perform(retry) }
         }
-        .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }
 
@@ -571,7 +508,6 @@ public struct ExploreView: View {
                                     top: AlohaMetrics.space2, leading: AlohaMetrics.space4,
                                     bottom: AlohaMetrics.space2, trailing: AlohaMetrics.space4)
                             )
-                            .listRowBackground(palette.background)
                     }
                 } header: {
                     Text("Trending links", comment: "Explore section")
@@ -589,12 +525,15 @@ public struct ExploreView: View {
                             "Your server hasn't seen enough activity to rank anything yet.",
                             comment: "Empty Explore detail")
                     }
-                    .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                 }
             }
         }
-        .listStyle(.plain)
+        #if os(iOS)
+            .listStyle(.insetGrouped)
+        #else
+            .listStyle(.inset)
+        #endif
         .alohaGround(palette)
     }
 
@@ -608,7 +547,6 @@ public struct ExploreView: View {
                 name: tag.name
             ) { await toggleFollow(tag) }
         }
-        .listRowBackground(palette.background)
     }
 
     // MARK: - Loading

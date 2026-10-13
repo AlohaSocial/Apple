@@ -91,9 +91,11 @@ import XCTest
             launch(["-AlohaMockResetPhotoLayout"])
             app.tabBars.buttons["Photos"].tap()
             let feed = app.scrollViews["photos.feed"].firstMatch
-            XCTAssertTrue(feed.waitForExistence(timeout: 10), "Photos did not default to the post feed")
+            XCTAssertTrue(
+                feed.waitForExistence(timeout: 10), "Photos did not default to the post feed")
             XCTAssertTrue(app.buttons["Favourite"].firstMatch.exists, "Photo post actions missing")
-            XCTAssertTrue(app.buttons["More actions"].firstMatch.exists, "Photo post header missing")
+            XCTAssertTrue(
+                app.buttons["More actions"].firstMatch.exists, "Photo post header missing")
             shoot("56-photos-feed")
             app.buttons["Photo layout"].firstMatch.tap()
             app.buttons["Grid"].firstMatch.tap()
@@ -178,8 +180,11 @@ import XCTest
             ).firstMatch
             XCTAssertTrue(switcher.waitForExistence(timeout: 5), "No account switcher")
             switcher.tap()
+            app.buttons["Switch account"].firstMatch.tap()
+            shoot("99-phone-account-options")
+            print("PHONE ACCOUNT OPTIONS:\n\(app.debugDescription)")
             let other = app.buttons.matching(
-                NSPredicate(format: "label CONTAINS 'bob'")
+                NSPredicate(format: "label == %@ OR label CONTAINS %@", "Bob", "@bob@")
             ).firstMatch
             XCTAssertTrue(other.waitForExistence(timeout: 5), "Second account not offered")
             other.tap()
@@ -187,6 +192,10 @@ import XCTest
             XCTAssertTrue(
                 app.labelled("Test post number 1").waitForExistence(timeout: 10),
                 "Timeline did not come back after switching account")
+            XCTAssertTrue(
+                app.buttons.matching(
+                    NSPredicate(format: "label CONTAINS %@", "Bob, account menu")
+                ).firstMatch.waitForExistence(timeout: 5))
             shoot("51-switched-account")
         }
 

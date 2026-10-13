@@ -17,7 +17,7 @@ public struct AlohaLogo: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            AlohaLogoMark(size: 96)
+            AnimatedAlohaLogoMark(size: 96)
             AlohaWordmark()
         }
         .accessibilityElement(children: .combine)
@@ -45,8 +45,29 @@ public struct AlohaLogoMark: View {
                 with: .color(Color(red: 232.0 / 255, green: 96.0 / 255, blue: 76.0 / 255)))
             context.fill(AlohaBrandPaths.glyph(in: bounds), with: .color(.white))
         }
-            .frame(width: size, height: size)
-            .accessibilityHidden(true)
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A quiet breathing mark while loading or welcoming, without delaying launch.
+public struct AnimatedAlohaLogoMark: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isAnimating = false
+    private let size: CGFloat
+
+    public init(size: CGFloat = 96) { self.size = size }
+
+    public var body: some View {
+        AlohaLogoMark(size: size)
+            .scaleEffect(reduceMotion ? 1 : (isAnimating ? 1.025 : 0.975))
+            .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 3 : -3)))
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 2).repeatForever(autoreverses: true),
+                value: isAnimating
+            )
+            .onAppear { isAnimating = !reduceMotion }
+            .onChange(of: reduceMotion) { _, reduced in isAnimating = !reduced }
     }
 }
 

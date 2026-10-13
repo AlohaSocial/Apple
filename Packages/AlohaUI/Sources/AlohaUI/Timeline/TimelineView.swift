@@ -96,7 +96,7 @@ public struct TimelineView: View {
     private func readingInset(for width: CGFloat) -> CGFloat {
         #if os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
-                return max(24, (width - 820) / 2)
+                return max(24, (width - 960) / 2)
             }
         #endif
         return AlohaMetrics.space4

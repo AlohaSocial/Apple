@@ -56,3 +56,33 @@ Validation: iPad Pro 13-inch simulator build and deep-content tour; a screenshot
 luminance regression checks the home feed margin in Black and Warm Light in
 portrait and landscape. The theme-tour helper now returns through the iPad
 sidebar instead of accidentally toggling it while remaining in Settings.
+
+## Native adaptive iPad navigation (2026-10-13)
+
+The iPad shell now uses the system sidebar-adaptable TabView. Collapsing the
+sidebar reveals the native top tab bar, including the system Search tab.
+Library and account destinations use native TabSections; the Account section
+starts collapsed. Narrow iPad windows retain this adaptive shell instead of
+switching to the separate iPhone navigation.
+
+The account control is a system Menu with a checked account Picker. Its iPad
+menu contains profile, settings, switching and adding accounts; other account
+screens live in the sidebar. The custom expanding drawer and its selected-row
+painting have been removed. Account controls remain available on pushed iPad
+detail screens as well as in the sidebar bottom bar.
+
+Each iPad tab owns its navigation path. Platform and tab boundaries erase their
+concrete view types so the root does not embed every navigation tree. Home rows
+use up to 960 points; Discover media grids use the full detail pane. People and
+tag lists use native grouped lists, a system section picker and native search.
+Settings, lists and safety screens retain a bounded reading canvas.
+
+Submitting search ends its expanded presentation while preserving the query
+and results, allowing navigation back to the feed. The loading/welcome logo
+breathes gently without delaying launch; Reduce Motion renders a static mark.
+
+Validated: native sidebar/top-tab transition and the bottom-left account switch
+on iPad Pro 13-inch; Black/Warm Light canvas in portrait and landscape; iPhone
+17e account switching and navigation to Discover and lists; iPad deep navigation
+through profile, publishing, search, settings and the photo viewer; 100 UI package tests.
+Smaller iPads, window resizing and large text remain open runtime checks.
