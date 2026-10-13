@@ -153,9 +153,7 @@ public struct TimelineView: View {
                         }
                     }
                     .onAppear {
-                        if row.id == model.rows.last?.id {
-                            Task { await model.loadOlder() }
-                        }
+                        Task { await model.prefetchOlder(near: status.id) }
                         model.prefetchMedia(around: row.id)
                     }
 

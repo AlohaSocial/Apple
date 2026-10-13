@@ -135,9 +135,8 @@ public struct PhotosModeView: View {
                         onAction: onAction
                     )
                     .onAppear {
-                        if status.id == statuses.last?.id {
-                            Task { await model.loadOlder() }
-                        }
+                        Task { await model.prefetchOlder(near: status.id) }
+                        model.prefetchMedia(around: status.id)
                     }
                 }
 
@@ -176,9 +175,8 @@ public struct PhotosModeView: View {
                     cell(status)
                         .aspectRatio(1, contentMode: .fit)
                         .onAppear {
-                            if status.id == statuses.last?.id {
-                                Task { await model.loadOlder() }
-                            }
+                            Task { await model.prefetchOlder(near: status.id) }
+                            model.prefetchMedia(around: status.id)
                         }
                 }
             }
