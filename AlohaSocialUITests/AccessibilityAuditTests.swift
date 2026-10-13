@@ -176,10 +176,13 @@ import XCTest
             fresh.launchArguments = ["-AlohaMockServer", "-AlohaMockNoAccount"]
             fresh.launch()
             XCTAssertTrue(fresh.labelled("A calmer client").waitForExistence(timeout: 10))
+            shoot("96-welcome-before-audit")
             try fresh.performAccessibilityAudit(for: auditTypes) { issue in
                 Self.record(
                     "[Welcome] \(issue.compactDescription) — "
-                        + "label='\(issue.element?.label ?? "")'")
+                        + "label='\(issue.element?.label ?? "")' "
+                        + "frame=\(String(describing: issue.element?.frame)) "
+                        + issue.detailedDescription)
                 return false
             }
             fresh.buttons["Skip"].firstMatch.tap()
@@ -187,6 +190,8 @@ import XCTest
             XCTAssertTrue(server.waitForExistence(timeout: 5))
             server.tap()
             server.typeText("cloud.example.test")
+            XCTAssertEqual(server.value as? String, "cloud.example.test")
+            XCTAssertTrue(fresh.buttons["Continue"].firstMatch.isEnabled)
             fresh.buttons["Continue"].firstMatch.tap()
             XCTAssertTrue(fresh.labelled("Before you start").waitForExistence(timeout: 5))
             try fresh.performAccessibilityAudit(for: auditTypes) { issue in
