@@ -276,6 +276,13 @@ public struct SignInView: View {
                 .font(.footnote)
                 .foregroundStyle(palette.destructive)
 
+            if let setupURL = failure.setupURL {
+                Link(destination: setupURL) {
+                    Text("Open in browser", comment: "Account setup action")
+                }
+                .buttonStyle(.glassProminent)
+            }
+
             if !failure.attempted.isEmpty {
                 DisclosureGroup {
                     ForEach(failure.attempted) { candidate in

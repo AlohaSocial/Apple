@@ -62,6 +62,50 @@ public enum StatusActions {
         }
     }
 
+    /// Who may reply, changed after posting. The server answers the status,
+    /// which is written back as it is rather than as it was guessed.
+    static func setReplyPolicy(
+        _ status: Status, _ policy: ReplyPolicy, session: AccountSession
+    ) async {
+        let target = status.displayed
+        do {
+            let updated = try await session.client.decode(
+                Status.self, from: Endpoint.replyControls.setReplyPolicy(target.id, policy))
+            try await session.timelineStore.updateStatus(accountID: session.id, status: updated)
+        } catch {
+            await session.handle(error)
+        }
+    }
+
+    /// Hides a reply to one of the reader's own posts, or shows it again.
+    /// Optimistic: the row collapses at once, and comes back if refused.
+    static func hideReply(_ status: Status, session: AccountSession) async {
+        let target = status.displayed
+        let hide = !target.isHiddenByAuthor
+        var optimistic = target
+        optimistic.hiddenByAuthor = hide
+        try? await session.timelineStore.updateStatus(accountID: session.id, status: optimistic)
+        NotificationCenter.default.post(name: replyVisibilityChanged, object: optimistic)
+        do {
+            let endpoint =
+                hide
+                ? Endpoint.replyControls.hide(target.id)
+                : Endpoint.replyControls.unhide(target.id)
+            let updated = try await session.client.decode(Status.self, from: endpoint)
+            try await session.timelineStore.updateStatus(accountID: session.id, status: updated)
+            NotificationCenter.default.post(name: replyVisibilityChanged, object: updated)
+        } catch {
+            try? await session.timelineStore.updateStatus(accountID: session.id, status: target)
+            NotificationCenter.default.post(name: replyVisibilityChanged, object: target)
+            await session.handle(error)
+        }
+    }
+
+    /// Posted with the reply as it now stands, so a thread on screen — which
+    /// holds its replies itself rather than reading the cache — can follow.
+    public static let replyVisibilityChanged = Notification.Name(
+        "alohasocial.reply.visibilityChanged")
+
     public static func perform(_ action: StatusRowAction, session: AccountSession) async {
         // A cue for the three things a finger does to a post, and only while
         // they are being turned *on* — a tick for undoing a like reads as a
@@ -95,6 +139,10 @@ public enum StatusActions {
             await pin(status, session: session)
         case .dislike(let status):
             await dislike(status, session: session)
+        case .setReplyPolicy(let status, let policy):
+            await setReplyPolicy(status, policy, session: session)
+        case .hideReply(let status):
+            await hideReply(status, session: session)
 
         // Answered by the shell, because each presents something or navigates.
         // Listed rather than left to a `default:` — a bare default is how six

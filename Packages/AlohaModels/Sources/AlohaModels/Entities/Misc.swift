@@ -335,6 +335,10 @@ public struct NotificationPolicy: Codable, Sendable, Hashable {
     public var forPrivateMentions: Decision
     public var forLimitedAccounts: Decision
     public var summary: Summary?
+    /// **Aloha Social.** A one-time pointer to this screen, for an account
+    /// from before new accounts started calm. Put away by
+    /// `notice/dismiss`, or by saving the policy. `false` elsewhere.
+    public var notice: Bool
 
     /// The five decisions' raw keys, in the order the server reads them. One
     /// list rather than five hard-coded strings at each call site.
@@ -388,7 +392,7 @@ public struct NotificationPolicy: Codable, Sendable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case summary
+        case summary, notice
         case forNotFollowing = "for_not_following"
         case forNotFollowers = "for_not_followers"
         case forNewAccounts = "for_new_accounts"
@@ -406,13 +410,15 @@ public struct NotificationPolicy: Codable, Sendable, Hashable {
         forLimitedAccounts =
             try c.decodeIfPresent(Decision.self, forKey: .forLimitedAccounts) ?? .accept
         summary = try? c.decodeIfPresent(Summary.self, forKey: .summary)
+        notice = (try? c.decodeIfPresent(LenientBool.self, forKey: .notice))?.wrappedValue ?? false
     }
 
     public init(
         forNotFollowing: Decision = .accept, forNotFollowers: Decision = .accept,
         forNewAccounts: Decision = .accept, forPrivateMentions: Decision = .accept,
-        forLimitedAccounts: Decision = .accept, summary: Summary? = nil
+        forLimitedAccounts: Decision = .accept, summary: Summary? = nil, notice: Bool = false
     ) {
+        self.notice = notice
         self.forNotFollowing = forNotFollowing
         self.forNotFollowers = forNotFollowers
         self.forNewAccounts = forNewAccounts

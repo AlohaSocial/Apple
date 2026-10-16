@@ -42,6 +42,12 @@ public final class ComposerModel {
     public private(set) var quoting: Status?
     /// Who may quote the new post: `public`, `followers` or `nobody`.
     public var quotePolicy: QuotePolicy = .public
+    /// Who may reply to the new post (Aloha Social's `reply_policy`).
+    public var replyPolicy: ReplyPolicy = .everyone
+    /// Says the post was made with AI. There is no API field for it: the
+    /// server reads it from a hashtag (`AiContentService::DEFAULT_TAGS`), so
+    /// the switch adds one, which every other server can read too.
+    public var marksAsAIGenerated = false
     /// The place this post is tagged with, if any.
     public var place: ComposerPlace?
     /// The language this post is written in. Defaults to the account's.
@@ -583,6 +589,18 @@ public final class ComposerModel {
         #endif
     }
 
+    /// The hashtag the server reads as "made with AI", once. A post that
+    /// already carries one of the server's own tags is left as it is.
+    nonisolated static let aiGeneratedTag = "AIgenerated"
+
+    nonisolated static func labelledAsAIGenerated(_ text: String) -> String {
+        let known = ["#aigenerated", "#madewithai", "#ai", "#genai"]
+        let words = text.lowercased().split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+        if words.contains(where: { word in known.contains(String(word)) }) { return text }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "#\(aiGeneratedTag)" : "\(trimmed)\n\n#\(aiGeneratedTag)"
+    }
+
     @discardableResult
     public func post(skippingAltTextCheck: Bool = false) async -> Bool {
         guard canPost else { return false }
@@ -639,6 +657,12 @@ public final class ComposerModel {
         }
         if canQuote, quotePolicy != .public {
             draft.quotePolicy = quotePolicy.rawValue
+        }
+        if isNextcloud, editingStatus == nil, replyPolicy != .everyone {
+            draft.replyPolicy = replyPolicy
+        }
+        if isNextcloud, marksAsAIGenerated {
+            draft.text = Self.labelledAsAIGenerated(draft.text)
         }
         switch place {
         case .known(let known):

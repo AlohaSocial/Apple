@@ -1124,6 +1124,19 @@ private struct ThemedAppShell: View {
 
         case .quotes(let statusID):
             QuotesView(statusID: statusID, session: session) { handle($0, session: session) }
+
+        case .blueskyFeeds:
+            BlueskyFeedsView(session: session)
+        case .blueskyFeed(let uri, let name):
+            BlueskyFeedTimelineView(uri: uri, name: name, session: session) {
+                handle($0, session: session)
+            }
+        case .blueskySettings:
+            BlueskySettingsView(session: session)
+        case .linkTimeline(let url, let title):
+            LinkTimelineView(url: url, title: title, session: session) {
+                handle($0, session: session)
+            }
         }
     }
 

@@ -14,6 +14,10 @@ public enum TimelineSource: Codable, Sendable, Hashable {
     case hashtag(name: String)
     case account(id: String, includeReplies: Bool, onlyMedia: Bool)
     case trending
+    /// A Bluesky feed or list the reader keeps, by its `at://` URI. Aloha
+    /// Social reads it from Bluesky and answers with statuses
+    /// (`GET /api/v1/timelines/bluesky`).
+    case bluesky(feedURI: String)
 
     /// The `{timeline}` path segment, where this maps onto
     /// `/api/v1/timelines/{timeline}/`. `nil` for the ones with routes of their
@@ -24,7 +28,7 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .local, .federated: "public"
         case .direct: "direct"
         case .favourites: "favourites"
-        case .bookmarks, .list, .hashtag, .account, .trending: nil
+        case .bookmarks, .list, .hashtag, .account, .trending, .bluesky: nil
         }
     }
 
@@ -51,6 +55,7 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .account(let id, let replies, let media):
             "account:\(id):\(replies ? 1 : 0):\(media ? 1 : 0)"
         case .trending: "trending"
+        case .bluesky(let uri): "bluesky:\(uri)"
         }
     }
 }
@@ -73,18 +78,27 @@ public struct TimelineKey: Codable, Sendable, Hashable {
     }
 }
 
-/// The three narrowings Nextcloud Social accepts beyond Mastodon's parameters.
+/// The narrowings Nextcloud Social accepts beyond Mastodon's parameters.
 /// `only_video` is the narrower of the first two and wins when both are sent,
 /// since every video is media (docs/02 §2).
 public struct TimelineFilters: Sendable, Hashable {
     public var onlyMedia: Bool
     public var onlyVideo: Bool
     public var onlyNews: Bool
+    /// Short videos only — the server's own rule for what a Short is
+    /// (`PixelfedConfigService`), on top of `only_video`. A server that does
+    /// not know it reads a fixed parameter list and ignores it, which leaves
+    /// `only_video` and the client's own classifier to do the narrowing.
+    public var onlyShort: Bool
 
-    public init(onlyMedia: Bool = false, onlyVideo: Bool = false, onlyNews: Bool = false) {
+    public init(
+        onlyMedia: Bool = false, onlyVideo: Bool = false, onlyNews: Bool = false,
+        onlyShort: Bool = false
+    ) {
         self.onlyMedia = onlyMedia
         self.onlyVideo = onlyVideo
         self.onlyNews = onlyNews
+        self.onlyShort = onlyShort
     }
 
     public static let none = TimelineFilters()
@@ -100,9 +114,13 @@ public struct TimelineFilters: Sendable, Hashable {
             return .none
         case .photos:
             return TimelineFilters(onlyMedia: capabilities.onlyMediaFilter)
-        case .video, .shorts:
+        case .video:
             return capabilities.onlyVideoFilter
                 ? TimelineFilters(onlyVideo: true)
+                : TimelineFilters(onlyMedia: capabilities.onlyMediaFilter)
+        case .shorts:
+            return capabilities.onlyVideoFilter
+                ? TimelineFilters(onlyVideo: true, onlyShort: true)
                 : TimelineFilters(onlyMedia: capabilities.onlyMediaFilter)
         case .news:
             return TimelineFilters(onlyNews: capabilities.onlyNewsFilter)
@@ -111,7 +129,7 @@ public struct TimelineFilters: Sendable, Hashable {
         }
     }
 
-    public var isEmpty: Bool { !onlyMedia && !onlyVideo && !onlyNews }
+    public var isEmpty: Bool { !onlyMedia && !onlyVideo && !onlyNews && !onlyShort }
 }
 
 /// How hard the client has to work to fill a page when the server cannot narrow

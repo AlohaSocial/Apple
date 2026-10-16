@@ -30,6 +30,10 @@ public final class SignInModel {
         /// Only offered where the shape of the failure suggests a Nextcloud
         /// that has not had the rewrite rules applied.
         public var offersServerSnippet: Bool
+        /// Where to finish setting the account up, when that is what is
+        /// wrong: Aloha Social signs a Nextcloud user in, then asks them to
+        /// choose a username in a browser first (`account-not-set-up`).
+        public var setupURL: URL? = nil
     }
 
     public private(set) var phase: Phase = .idle
@@ -183,13 +187,17 @@ public final class SignInModel {
             onSuccess()
         } catch {
             logger.error("sign-in failed: \(String(describing: error), privacy: .public)")
+            let apiError = error as? APIError
             phase = .failed(
                 Failure(
-                    message: (error as? APIError)?.errorDescription
+                    message: apiError?.errorDescription
                         ?? String(
                             localized: "Signing in didn't finish.",
                             comment: "Sign-in authorisation failure"),
-                    attempted: [], offersServerSnippet: false))
+                    attempted: [], offersServerSnippet: false,
+                    setupURL: apiError?.isAccountNotSetUp == true
+                        ? (apiError?.accountSetupURL
+                            ?? URL(string: outcome.apiBase.originString)) : nil))
         }
     }
 

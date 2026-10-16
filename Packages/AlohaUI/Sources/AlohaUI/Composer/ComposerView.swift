@@ -1135,6 +1135,38 @@ public struct ComposerView: View {
                 .accessibilityLabel(Text("Who may quote this", comment: "Composer action"))
             }
 
+            if model.isNextcloud, model.editingStatus == nil {
+                Menu {
+                    Picker(selection: $model.replyPolicy) {
+                        ForEach(ReplyPolicy.allCases, id: \.self) { policy in
+                            ReplyPolicyLabel(policy: policy).tag(policy)
+                        }
+                    } label: {
+                        Text("Who can reply", comment: "Composer picker")
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label {
+                        Text("Who can reply", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: ReplyPolicyLabel.symbol(model.replyPolicy))
+                    }
+                }
+                .accessibilityLabel(Text("Who can reply", comment: "Composer action"))
+
+                Toggle(isOn: $model.marksAsAIGenerated) {
+                    Label {
+                        Text("Made with AI", comment: "Composer toggle")
+                    } icon: {
+                        Image(systemName: "wand.and.sparkles")
+                    }
+                }
+                .accessibilityHint(
+                    Text(
+                        "Adds #AIgenerated, which readers can choose to filter.",
+                        comment: "Composer toggle hint"))
+            }
+
             if !model.teams.isEmpty {
                 Menu {
                     Picker(selection: $model.postAs) {

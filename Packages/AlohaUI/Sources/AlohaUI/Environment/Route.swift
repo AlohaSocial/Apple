@@ -66,6 +66,16 @@ public enum Route: Codable, Hashable, Sendable {
     /// Posts quoting a status.
     case quotes(statusID: String)
 
+    // Aloha Social's own.
+    /// The Bluesky feeds and lists the reader keeps.
+    case blueskyFeeds
+    /// One of them, as a timeline.
+    case blueskyFeed(uri: String, name: String)
+    /// The reader's own account on Bluesky.
+    case blueskySettings
+    /// The posts sharing one link — what a trending link opens.
+    case linkTimeline(url: URL, title: String?)
+
     // Surfaces the web app has, or the server serves and nobody drew.
     /// "Your year": Mastodon's `#Wrapstodon`, which the web app has no page for.
     case annualReport

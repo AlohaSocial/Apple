@@ -545,6 +545,17 @@
         }
       }
     },
+    "A Bluesky mute or block list, kept by somebody else. Everybody on it is muted or blocked for you, and the list stays up to date." : {
+      "comment" : "Shared lists explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Stummschalt- oder Blockierliste von Bluesky, die jemand anderes pflegt. Alle darauf sind für dich stummgeschaltet oder blockiert, und die Liste bleibt aktuell."
+          }
+        }
+      }
+    },
     "A calmer client for the social web. Read, post, photograph and message — on your own server, in your own time." : {
       "comment" : "Onboarding detail"
     },
@@ -621,6 +632,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eine Listen-Timeline ist deine Startseite, beschränkt auf die Mitglieder der Liste – sie zeigt nie etwas, das die Startseite nicht zeigen würde."
+          }
+        }
+      }
+    },
+    "A message from somebody not allowed never reaches you. Conversations you started stay open." : {
+      "comment" : "Who may message you explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Nachricht von jemandem ohne Erlaubnis erreicht dich nie. Unterhaltungen, die du begonnen hast, bleiben offen."
           }
         }
       }
@@ -928,7 +950,7 @@
       }
     },
     "Add %@" : {
-      "comment" : "Interest candidate action\nList member action",
+      "comment" : "Add a suggested Bluesky feed\nInterest candidate action\nList member action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -989,6 +1011,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beschreibung hinzufügen"
+          }
+        }
+      }
+    },
+    "Add a feed" : {
+      "comment" : "Bluesky feeds section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen Feed hinzufügen"
           }
         }
       }
@@ -1154,6 +1187,17 @@
     "Add digest time" : {
       "comment" : "Settings action"
     },
+    "Add feed" : {
+      "comment" : "Bluesky feeds action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed hinzufügen"
+          }
+        }
+      }
+    },
     "Add interest" : {
       "comment" : "Interests add action",
       "localizations" : {
@@ -1271,6 +1315,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adresse eines Videos anderswo"
+          }
+        }
+      }
+    },
+    "Adds #AIgenerated, which readers can choose to filter." : {
+      "comment" : "Composer toggle hint",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt #AIgenerated hinzu, das Lesende herausfiltern können."
           }
         }
       }
@@ -1396,6 +1451,17 @@
         }
       }
     },
+    "All requests" : {
+      "comment" : "Notification requests bulk menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Anfragen"
+          }
+        }
+      }
+    },
     "All time" : {
       "comment" : "Statistics window",
       "localizations" : {
@@ -1472,6 +1538,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auch an deren Server senden"
+          }
+        }
+      }
+    },
+    "Always let through" : {
+      "comment" : "Policy action\nScreen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Immer durchlassen"
           }
         }
       }
@@ -1844,6 +1921,61 @@
         }
       }
     },
+    "Be on Bluesky" : {
+      "comment" : "Bluesky presence switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Bluesky sein"
+          }
+        }
+      }
+    },
+    "Because of what you read" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wegen dem, was du liest"
+          }
+        }
+      }
+    },
+    "Because you follow %@" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weil du %@ folgst"
+          }
+        }
+      }
+    },
+    "Because you follow its hashtags" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weil du seinen Hashtags folgst"
+          }
+        }
+      }
+    },
+    "Because you read about %@" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weil du über %@ liest"
+          }
+        }
+      }
+    },
     "Before you start" : {
       "comment" : "Terms gate title",
       "localizations" : {
@@ -1917,6 +2049,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Domain blockieren"
+          }
+        }
+      }
+    },
+    "Block everybody on it" : {
+      "comment" : "Shared list kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle darauf blockieren"
           }
         }
       }
@@ -2000,6 +2143,39 @@
     },
     "Blocking could not be loaded. Pull down to try again." : {
       "comment" : "Blocking load failure"
+    },
+    "Blocks ^[%lld account](inflect: true)" : {
+      "comment" : "Shared list row detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blockiert ^[%lld Konto](inflect: true)"
+          }
+        }
+      }
+    },
+    "Bluesky" : {
+      "comment" : "Screen title\nSettings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluesky"
+          }
+        }
+      }
+    },
+    "Bluesky feeds" : {
+      "comment" : "Screen title\nSettings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluesky-Feeds"
+          }
+        }
+      }
     },
     "Blur" : {
       "comment" : "Filter action name",
@@ -2436,6 +2612,28 @@
         }
       }
     },
+    "Close to %@, which you read" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ähnlich wie %@, worüber du liest"
+          }
+        }
+      }
+    },
+    "Close to what you read" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ähnlich wie das, was du liest"
+          }
+        }
+      }
+    },
     "Closed" : {
       "comment" : "Poll state",
       "localizations" : {
@@ -2553,6 +2751,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nextcloud verbinden"
+          }
+        }
+      }
+    },
+    "Connect your Nextcloud in Settings to subscribe to shared lists." : {
+      "comment" : "Shared lists need Nextcloud",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinde deine Nextcloud in den Einstellungen, um geteilte Listen zu abonnieren."
           }
         }
       }
@@ -3379,6 +3588,12 @@
     "Digest %lld: %lld:00" : {
       "comment" : "Digest schedule accessibility label",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zusammenfassung %1$lld: %2$lld:00"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
@@ -3402,7 +3617,7 @@
       }
     },
     "Direct messages" : {
-      "comment" : "Sidebar item",
+      "comment" : "Safety section\nSidebar item",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3827,6 +4042,17 @@
         }
       }
     },
+    "Everybody" : {
+      "comment" : "Who may message you",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle"
+          }
+        }
+      }
+    },
     "Everybody on this server who asked to be listed. Nobody appears here without opting in." : {
       "comment" : "Directory explanation",
       "localizations" : {
@@ -3839,7 +4065,7 @@
       }
     },
     "Everyone" : {
-      "comment" : "Moderation origin filter",
+      "comment" : "Moderation origin filter\nWho can reply",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4148,12 +4374,23 @@
       }
     },
     "Feed address" : {
-      "comment" : "Subscriptions add field label",
+      "comment" : "Bluesky feed address field\nSubscriptions add field label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feed-Adresse"
+          }
+        }
+      }
+    },
+    "Feed by @%@" : {
+      "comment" : "Bluesky feed byline",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed von @%@"
           }
         }
       }
@@ -4212,6 +4449,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filtern"
+          }
+        }
+      }
+    },
+    "Filter again" : {
+      "comment" : "Allowed sender action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wieder filtern"
           }
         }
       }
@@ -4281,6 +4529,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Personen zum Folgen finden"
+          }
+        }
+      }
+    },
+    "Finish setting up your account" : {
+      "comment" : "Account setup banner title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Richte dein Konto fertig ein"
           }
         }
       }
@@ -4743,7 +5002,7 @@
       }
     },
     "Got it" : {
-      "comment" : "Announcement dismiss action",
+      "comment" : "Announcement dismiss action\nDismiss the notification policy notice",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4768,7 +5027,7 @@
       }
     },
     "Handle" : {
-      "comment" : "Channel field",
+      "comment" : "Bluesky identity row\nChannel field",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4921,6 +5180,17 @@
         }
       }
     },
+    "Hide posts made with AI" : {
+      "comment" : "Settings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit KI erstellte Beiträge ausblenden"
+          }
+        }
+      }
+    },
     "Hide read" : {
       "comment" : "Announcements card action",
       "localizations" : {
@@ -4928,6 +5198,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gelesene ausblenden"
+          }
+        }
+      }
+    },
+    "Hide reply" : {
+      "comment" : "Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort ausblenden"
           }
         }
       }
@@ -5502,6 +5783,28 @@
         }
       }
     },
+    "List address" : {
+      "comment" : "Shared list address field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listenadresse"
+          }
+        }
+      }
+    },
+    "List by @%@" : {
+      "comment" : "Bluesky feed byline",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liste von @%@"
+          }
+        }
+      }
+    },
     "List members could not be loaded. Please try again." : {},
     "List membership could not be updated. Please try again." : {},
     "List name" : {
@@ -5680,6 +5983,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suche nach der API …"
+          }
+        }
+      }
+    },
+    "Made with AI" : {
+      "comment" : "AI-generated badge\nComposer toggle",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit KI erstellt"
           }
         }
       }
@@ -6019,6 +6333,17 @@
         }
       }
     },
+    "Mute everybody on it" : {
+      "comment" : "Shared list kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle darauf stummschalten"
+          }
+        }
+      }
+    },
     "Mute this account" : {
       "comment" : "Report option",
       "localizations" : {
@@ -6048,6 +6373,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stummgeschaltete Konten"
+          }
+        }
+      }
+    },
+    "Mutes ^[%lld account](inflect: true)" : {
+      "comment" : "Shared list row detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schaltet ^[%lld Konto](inflect: true) stumm"
           }
         }
       }
@@ -6674,6 +7010,17 @@
         }
       }
     },
+    "Nobody" : {
+      "comment" : "Who can reply\nWho may message you",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niemand"
+          }
+        }
+      }
+    },
     "Nobody but me" : {
       "comment" : "Quote policy",
       "localizations" : {
@@ -6729,6 +7076,17 @@
         }
       }
     },
+    "Nobody here has shared it" : {
+      "comment" : "Empty link timeline",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier hat das noch niemand geteilt"
+          }
+        }
+      }
+    },
     "Nobody matches that." : {
       "comment" : "Moderation accounts empty",
       "localizations" : {
@@ -6758,6 +7116,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch keine Vorschläge"
+          }
+        }
+      }
+    },
+    "Nobody yet" : {
+      "comment" : "Empty allowed senders",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch niemand"
           }
         }
       }
@@ -7219,6 +7588,17 @@
         }
       }
     },
+    "Notifications from people you don't know can wait in Filtered notifications instead of your inbox. New accounts start this way; yours can too." : {
+      "comment" : "Notification policy notice detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benachrichtigungen von Leuten, die du nicht kennst, können in den gefilterten Benachrichtigungen warten statt in deinem Posteingang. Neue Konten starten so; deins kann das auch."
+          }
+        }
+      }
+    },
     "Notifications your policy holds back appear here, one row per sender." : {
       "comment" : "Notification requests explanation",
       "localizations" : {
@@ -7306,6 +7686,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Älter"
+          }
+        }
+      }
+    },
+    "On Bluesky a block is public. Off, the accounts you block there are blocked here only." : {
+      "comment" : "Bluesky publish blocks explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Bluesky ist eine Blockierung öffentlich. Ausgeschaltet sind die Konten, die du blockierst, nur hier blockiert."
+          }
+        }
+      }
+    },
+    "On Bluesky as %@" : {
+      "comment" : "Profile Bluesky handle",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Bluesky als %@"
           }
         }
       }
@@ -7451,6 +7853,17 @@
         }
       }
     },
+    "Only people you mention" : {
+      "comment" : "Who can reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur Personen, die du erwähnst"
+          }
+        }
+      }
+    },
     "Only posts in these languages reach the feed. Leave it empty for all of them." : {
       "comment" : "Interests languages explanation",
       "localizations" : {
@@ -7577,6 +7990,28 @@
         }
       }
     },
+    "Open in browser" : {
+      "comment" : "Account setup action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Browser öffnen"
+          }
+        }
+      }
+    },
+    "Open link" : {
+      "comment" : "Trending link action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link öffnen"
+          }
+        }
+      }
+    },
     "Open post" : {
       "comment" : "Album item action\nConversation bubble action\nTagged photo action",
       "localizations" : {
@@ -7654,6 +8089,17 @@
         }
       }
     },
+    "Opens the link" : {
+      "comment" : "Link timeline header hint",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Link"
+          }
+        }
+      }
+    },
     "Opens the media viewer" : {
       "comment" : "Accessibility hint",
       "localizations" : {
@@ -7705,6 +8151,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pakete"
+          }
+        }
+      }
+    },
+    "Paste a feed's or a list's bsky.app address, or its at:// address." : {
+      "comment" : "Bluesky add feed explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge die bsky.app-Adresse eines Feeds oder einer Liste ein, oder ihre at://-Adresse."
           }
         }
       }
@@ -7780,6 +8237,17 @@
         }
       }
     },
+    "People on Bluesky can follow you and reply to you here. Your posts are published there as they are here." : {
+      "comment" : "Bluesky identity explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menschen auf Bluesky können dir folgen und dir hier antworten. Deine Beiträge erscheinen dort so wie hier."
+          }
+        }
+      }
+    },
     "People to follow" : {
       "comment" : "Explore section",
       "localizations" : {
@@ -7820,7 +8288,7 @@
       "comment" : "Policy row"
     },
     "People you follow" : {
-      "comment" : "Migration list",
+      "comment" : "Migration list\nWho can reply\nWho may message you",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7928,6 +8396,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wähle mindestens eines aus."
+          }
+        }
+      }
+    },
+    "Picked for you" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für dich ausgewählt"
+          }
+        }
+      }
+    },
+    "Picked for you: %@" : {
+      "comment" : "For you reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für dich ausgewählt: %@"
           }
         }
       }
@@ -8121,7 +8611,7 @@
       }
     },
     "Popular here" : {
-      "comment" : "Discover section",
+      "comment" : "Discover section\nFor you reason",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8356,6 +8846,17 @@
         }
       }
     },
+    "Posts sharing this link will appear here." : {
+      "comment" : "Empty link timeline detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beiträge, die diesen Link teilen, erscheinen hier."
+          }
+        }
+      }
+    },
     "Posts that quote this one appear here." : {
       "comment" : "Quotes empty detail",
       "localizations" : {
@@ -8363,6 +8864,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beiträge, die diesen zitieren, erscheinen hier."
+          }
+        }
+      }
+    },
+    "Posts that say they were made with AI, by a hashtag or by their pictures, are left out of every timeline." : {
+      "comment" : "AI content filter explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beiträge, die angeben, mit KI erstellt zu sein – per Hashtag oder in ihren Bildern –, erscheinen in keiner Timeline."
           }
         }
       }
@@ -8546,6 +9058,17 @@
         }
       }
     },
+    "Pronouns: %@" : {
+      "comment" : "Profile pronouns",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pronomen: %@"
+          }
+        }
+      }
+    },
     "Proposal" : {
       "comment" : "Rewrite sheet section",
       "localizations" : {
@@ -8597,6 +9120,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffentliche Timelines"
+          }
+        }
+      }
+    },
+    "Publish my blocks" : {
+      "comment" : "Bluesky publish blocks switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Blockierungen veröffentlichen"
           }
         }
       }
@@ -8910,7 +9444,7 @@
       }
     },
     "Remove" : {
-      "comment" : "Account action\nComposer media action\nFilter keyword action\nInterest action\nList member action\nProfile editing action",
+      "comment" : "Account action\nComposer media action\nFilter keyword action\nInterest action\nList member action\nProfile editing action\nRemove a Bluesky feed",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9143,6 +9677,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Antworten"
+          }
+        }
+      }
+    },
+    "Reply hidden by the author" : {
+      "comment" : "Collapsed hidden reply in a thread",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort vom Autor ausgeblendet"
           }
         }
       }
@@ -9665,6 +10210,17 @@
         }
       }
     },
+    "See your profile on Bluesky" : {
+      "comment" : "Bluesky identity action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Profil auf Bluesky ansehen"
+          }
+        }
+      }
+    },
     "Seen by" : {
       "comment" : "Story viewers button\nStory viewers title",
       "localizations" : {
@@ -9932,6 +10488,28 @@
     "Share video" : {
       "comment" : "Video action"
     },
+    "Shared link" : {
+      "comment" : "Screen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geteilter Link"
+          }
+        }
+      }
+    },
+    "Shared lists" : {
+      "comment" : "Safety section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geteilte Listen"
+          }
+        }
+      }
+    },
     "Short vertical clips, full screen" : {
       "comment" : "Mode detail",
       "localizations" : {
@@ -9955,7 +10533,7 @@
       }
     },
     "Show" : {
-      "comment" : "Reports filter\nTrends filter",
+      "comment" : "Reports filter\nReveal a hidden reply\nTrends filter",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9965,7 +10543,17 @@
         }
       }
     },
-    "Show all" : {},
+    "Show all" : {
+      "comment" : "Notification requests bulk action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle anzeigen"
+          }
+        }
+      }
+    },
     "Show anyway" : {
       "comment" : "Reveal a filtered post",
       "localizations" : {
@@ -10065,6 +10653,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Antworten anzeigen"
+          }
+        }
+      }
+    },
+    "Show reply again" : {
+      "comment" : "Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort wieder anzeigen"
           }
         }
       }
@@ -10551,6 +11150,17 @@
         }
       }
     },
+    "Stop asking for all" : {
+      "comment" : "Notification requests bulk action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für alle nicht mehr fragen"
+          }
+        }
+      }
+    },
     "Stop featuring #%@" : {
       "comment" : "Featured tag action",
       "localizations" : {
@@ -10641,6 +11251,17 @@
       }
     },
     "Story viewers could not be loaded. Please try again." : {},
+    "Subscribe" : {
+      "comment" : "Shared list action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abonnieren"
+          }
+        }
+      }
+    },
     "Subscriptions" : {
       "comment" : "Screen title",
       "localizations" : {
@@ -10659,6 +11280,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Konto anderen vorschlagen"
+          }
+        }
+      }
+    },
+    "Suggested by Bluesky" : {
+      "comment" : "Bluesky feeds section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von Bluesky vorgeschlagen"
           }
         }
       }
@@ -10692,6 +11324,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sonnenuntergang"
+          }
+        }
+      }
+    },
+    "Support %@" : {
+      "comment" : "Profile action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ unterstützen"
           }
         }
       }
@@ -10794,6 +11437,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wechsle zwischen den Leuten, denen du folgst, deinem Server und allen, die er kennt."
+          }
+        }
+      }
+    },
+    "Switching off signs every Bluesky app out of your account there. Your handle stays yours, and switching on again brings it back as it was." : {
+      "comment" : "Bluesky presence explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Ausschalten werden alle Bluesky-Apps von deinem Konto dort abgemeldet. Dein Handle bleibt deins, und beim Einschalten ist alles wieder wie zuvor."
           }
         }
       }
@@ -11391,6 +12045,17 @@
         }
       }
     },
+    "Then" : {
+      "comment" : "Shared list kind picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dann"
+          }
+        }
+      }
+    },
     "There is zero tolerance for objectionable content and abusive behaviour." : {
       "comment" : "Terms rule",
       "localizations" : {
@@ -11802,6 +12467,17 @@
         }
       }
     },
+    "Undo" : {
+      "comment" : "Undo show fewer like this",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückgängig"
+          }
+        }
+      }
+    },
     "Undo boost" : {
       "comment" : "Swipe action on a post / Status menu item",
       "localizations" : {
@@ -11831,6 +12507,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "#%@ entfolgen"
+          }
+        }
+      }
+    },
+    "Unhide" : {
+      "comment" : "Show a hidden reply to everybody again",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wieder einblenden"
           }
         }
       }
@@ -11927,6 +12614,17 @@
     },
     "Unsolicited private mentions" : {
       "comment" : "Policy row"
+    },
+    "Unsubscribe" : {
+      "comment" : "Shared list action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abbestellen"
+          }
+        }
+      }
     },
     "Until %@" : {
       "comment" : "Announcement end date\nFilter expiry\nFilter expiry badge",
@@ -12045,6 +12743,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Benutzername"
+          }
+        }
+      }
+    },
+    "Verified" : {
+      "comment" : "Verified account badge",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifiziert"
+          }
+        }
+      }
+    },
+    "Verified by %@" : {
+      "comment" : "Verified account badge",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifiziert von %@"
           }
         }
       }
@@ -12450,6 +13170,17 @@
         }
       }
     },
+    "When you choose to see a filtered sender's notifications, they are listed here, and their notifications always reach you." : {
+      "comment" : "Allowed senders explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du die Benachrichtigungen einer gefilterten Person sehen willst, steht sie hier, und ihre Benachrichtigungen erreichen dich immer."
+          }
+        }
+      }
+    },
     "When your account is locked, people asking to follow you wait here." : {
       "comment" : "Empty follow requests detail",
       "localizations" : {
@@ -12515,6 +13246,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wer dazukam"
+          }
+        }
+      }
+    },
+    "Who can message you" : {
+      "comment" : "Settings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wer dir schreiben darf"
+          }
+        }
+      }
+    },
+    "Who can reply" : {
+      "comment" : "Composer action\nComposer picker\nStatus menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wer antworten darf"
           }
         }
       }
@@ -12893,6 +13646,28 @@
         }
       }
     },
+    "You decide who reaches you" : {
+      "comment" : "Notification policy notice title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du entscheidest, wer dich erreicht"
+          }
+        }
+      }
+    },
+    "You don't keep any Bluesky feeds yet. Add one below, or pick a suggestion." : {
+      "comment" : "Empty Bluesky feeds",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast noch keine Bluesky-Feeds. Füge unten einen hinzu oder wähle einen Vorschlag."
+          }
+        }
+      }
+    },
     "You follow no feeds yet." : {
       "comment" : "Empty subscriptions",
       "localizations" : {
@@ -12960,6 +13735,17 @@
         }
       }
     },
+    "You'll see fewer posts like that." : {
+      "comment" : "Show fewer confirmation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du siehst weniger Beiträge wie diesen."
+          }
+        }
+      }
+    },
     "You're caught up" : {
       "comment" : "Notifications caught up divider\nTimeline caught up divider"
     },
@@ -13007,6 +13793,17 @@
         }
       }
     },
+    "Your Nextcloud account is signed in, but Aloha Social needs you to choose a username first. It takes a moment, in a web browser." : {
+      "comment" : "Account setup banner detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du bist mit deinem Nextcloud-Konto angemeldet, aber Aloha Social braucht zuerst einen Benutzernamen. Das dauert nur einen Moment, in einem Webbrowser."
+          }
+        }
+      }
+    },
     "Your Nextcloud connection has expired. Reconnect it in Settings." : {
       "comment" : "WebDAV auth failure",
       "localizations" : {
@@ -13036,6 +13833,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Konto"
+          }
+        }
+      }
+    },
+    "Your account isn't published on Bluesky. Your server's web interface can set that up." : {
+      "comment" : "No Bluesky identity",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Konto ist nicht auf Bluesky veröffentlicht. Das lässt sich in der Weboberfläche deines Servers einrichten."
+          }
+        }
+      }
+    },
+    "Your account on Bluesky" : {
+      "comment" : "Bluesky settings section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Konto auf Bluesky"
           }
         }
       }
@@ -13085,7 +13904,27 @@
         }
       }
     },
-    "Your feed preference could not be saved. Please try again." : {},
+    "Your feed preference could not be saved. Please try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Feed-Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut."
+          }
+        }
+      }
+    },
+    "Your feeds" : {
+      "comment" : "Bluesky feeds section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Feeds"
+          }
+        }
+      }
+    },
     "Your files" : {
       "comment" : "Nextcloud browser root title",
       "localizations" : {
@@ -13104,6 +13943,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein erstes Video erstellt einen. Oder erstelle jetzt einen und poste darin."
+          }
+        }
+      }
+    },
+    "Your followers" : {
+      "comment" : "Who can reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Follower"
           }
         }
       }
@@ -13154,6 +14004,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Notiz: %@. Bearbeiten"
+          }
+        }
+      }
+    },
+    "Your own domain, %@, no longer points here, so Bluesky shows @%@ instead." : {
+      "comment" : "Bluesky custom handle is broken",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine eigene Domain, %1$@, zeigt nicht mehr hierher, deshalb zeigt Bluesky stattdessen @%2$@."
           }
         }
       }
@@ -13631,6 +14492,17 @@
         }
       }
     },
+    "^[%lld quote](inflect: true)" : {
+      "comment" : "Quote count on a post, opens the quotes",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Zitat](inflect: true)"
+          }
+        }
+      }
+    },
     "^[%lld reply](inflect: true)" : {
       "comment" : "Statistics partner count",
       "localizations" : {
@@ -13676,7 +14548,7 @@
       }
     },
     "^[%lld view](inflect: true)" : {
-      "comment" : "Story view count\nWatch page fact",
+      "comment" : "Story view count\nView count on your own post\nWatch page fact",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13721,6 +14593,28 @@
     },
     "boost" : {
       "comment" : "Digest summary kind"
+    },
+    "bsky.app/profile/…/feed/…" : {
+      "comment" : "Bluesky feed address placeholder",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bsky.app/profile/…/feed/…"
+          }
+        }
+      }
+    },
+    "bsky.app/profile/…/lists/…" : {
+      "comment" : "Shared list address placeholder",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bsky.app/profile/…/lists/…"
+          }
+        }
+      }
     },
     "cloud.example.com" : {
       "comment" : "Server address placeholder"

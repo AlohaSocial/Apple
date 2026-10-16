@@ -22,6 +22,9 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
     /// same video at one size. Never a *replacement* for `url`: the whole file
     /// is always there beside it (docs/02 §2).
     @LenientURL public var hlsURL: URL?
+    /// **Aloha Social extension.** The picture's own metadata said it was
+    /// made with AI (`ImageMetadataService`). `false` everywhere else.
+    @LenientBool public var aiGenerated: Bool
 
     public struct Meta: Codable, Sendable, Hashable {
         public var original: Dimensions?
@@ -144,6 +147,7 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
         case previewURL = "preview_url"
         case remoteURL = "remote_url"
         case hlsURL = "hls_url"
+        case aiGenerated = "ai_generated"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -159,12 +163,13 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
         // fork that sends `[]` for "nothing" must not fail the attachment.
         meta = try? c.decodeIfPresent(Meta.self, forKey: .meta)
         _hlsURL = try c.decode(LenientURL.self, forKey: .hlsURL)
+        _aiGenerated = try c.decode(LenientBool.self, forKey: .aiGenerated)
     }
 
     public init(
         id: String, type: AttachmentKind, url: URL? = nil, previewURL: URL? = nil,
         remoteURL: URL? = nil, description: String? = nil, blurhash: String? = nil,
-        meta: Meta? = nil, hlsURL: URL? = nil
+        meta: Meta? = nil, hlsURL: URL? = nil, aiGenerated: Bool = false
     ) {
         _id = .init(wrappedValue: id)
         self.type = type
@@ -175,6 +180,7 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
         self.blurhash = blurhash
         self.meta = meta
         _hlsURL = .init(wrappedValue: hlsURL)
+        _aiGenerated = .init(wrappedValue: aiGenerated)
     }
 }
 

@@ -160,6 +160,11 @@ public struct TimelineView: View {
                     .id(status.id)
                     .statusRowInteractions(status, session: session, onAction: onAction)
                     .accessibilityRotorEntry(id: status.id, in: rotorNamespace)
+                    .readingSignal(
+                        status,
+                        context: InterestSignal.Context(key: model.key),
+                        session: session
+                    )
                     .overlay(alignment: .leading) {
                         if focusedStatusID == status.id {
                             Capsule()

@@ -68,11 +68,22 @@ extension Endpoint {
 
         /// Reading signals, batched. The server answers 204 whether or not it
         /// is learning, so a caller never needs to know.
-        public static func signals(_ events: [String]) -> Endpoint {
-            Endpoint(
-                method: .post, path: "api/v1/interests/signals",
-                body: .form(.repeated("events", events)))
+        ///
+        /// A JSON body, `{"events": [{status_id, kind, ms, context}]}`: the
+        /// server skips every event that is not an object
+        /// (`InterestService::recordEvents`), so a form of strings taught it
+        /// nothing. At most 100 per request; anything learnable only.
+        public static func signals(_ events: [InterestSignal]) -> Endpoint {
+            struct Body: Encodable {
+                let events: [InterestSignal]
+            }
+            let learnable = Array(events.filter(\.isLearnable).prefix(maximumSignals))
+            let data = (try? JSONEncoder().encode(Body(events: learnable))) ?? Data()
+            return Endpoint(method: .post, path: "api/v1/interests/signals", body: .json(data))
         }
+
+        /// The server's own cap per request (`InterestService::MAX_EVENTS`).
+        public static let maximumSignals = 100
 
         /// "Show fewer like this", and its undo.
         public static func fewerLikeThis(_ statusID: String) -> Endpoint {

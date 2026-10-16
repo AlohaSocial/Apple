@@ -18,6 +18,7 @@ extension MockAPIServer {
             storiesMock,
             videoMock,
             moderationMock,
+            socialMock,
         ]
         for handler in handlers {
             if let answered = handler(route, url, method, query, body) { return answered }

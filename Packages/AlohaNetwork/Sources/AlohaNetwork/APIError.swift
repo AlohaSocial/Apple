@@ -9,6 +9,11 @@ public enum APIError: Error, Sendable {
     /// silently delete anything.
     case unauthorised(message: String?)
     case forbidden(message: String?)
+    /// 403 with `code: "account-not-set-up"`: a Nextcloud user who has not
+    /// chosen a username in Aloha Social yet (`AccountNotSetUpException`).
+    /// Not a sign-in failure — the token is fine — and the way out is the
+    /// page at `setupURL`, in a browser.
+    case accountNotSetUp(message: String?, setupURL: URL?)
     case notFound
     /// 422 — validation. The message is written for a human and is shown
     /// verbatim, after a lead-in saying what the app was trying to do.
@@ -27,7 +32,11 @@ public enum APIError: Error, Sendable {
 
         switch status {
         case 401: return .unauthorised(message: payload.message)
-        case 403: return .forbidden(message: payload.message)
+        case 403:
+            if payload.code == "account-not-set-up" {
+                return .accountNotSetUp(message: payload.message, setupURL: payload.setupURL)
+            }
+            return .forbidden(message: payload.message)
         case 404, 410: return .notFound
         case 422: return .unprocessable(message: payload.message ?? "The server rejected that.")
         case 429:
@@ -40,20 +49,32 @@ public enum APIError: Error, Sendable {
     }
 
     /// Mastodon-shaped errors are `{"error": …, "error_description": …}`.
+    /// Aloha Social adds a machine-readable `code` and, for some, an address
+    /// to go to (`CodedRefusal::toArray`).
     private struct ErrorPayload {
         let message: String?
+        let code: String?
+        let setupURL: URL?
 
         init(data: Data) {
             struct Body: Decodable {
                 let error: String?
                 let errorDescription: String?
+                let code: String?
+                let setupURL: String?
                 enum CodingKeys: String, CodingKey {
-                    case error
+                    case error, code
                     case errorDescription = "error_description"
+                    case setupURL = "setup_url"
                 }
             }
             let body = try? JSONDecoder().decode(Body.self, from: data)
             message = body?.errorDescription ?? body?.error
+            code = body?.code
+            setupURL = body?.setupURL.flatMap(URL.init(string:)).flatMap {
+                // Opened in a browser, so only ever a web address.
+                ["https", "http"].contains($0.scheme?.lowercased() ?? "") ? $0 : nil
+            }
         }
     }
 }
@@ -75,6 +96,17 @@ extension APIError {
         if case .unauthorised = self { return true }
         return false
     }
+
+    /// Where to finish setting the account up, when that is what is wrong.
+    public var accountSetupURL: URL? {
+        if case .accountNotSetUp(_, let url) = self { return url }
+        return nil
+    }
+
+    public var isAccountNotSetUp: Bool {
+        if case .accountNotSetUp = self { return true }
+        return false
+    }
 }
 
 extension APIError: LocalizedError {
@@ -91,6 +123,12 @@ extension APIError: LocalizedError {
             String(localized: "Your server wouldn't allow that.", comment: "HTTP 401")
         case .forbidden:
             String(localized: "Your server wouldn't allow that.", comment: "HTTP 403")
+        case .accountNotSetUp(let message, _):
+            message
+                ?? String(
+                    localized:
+                        "Your account isn't set up yet. Open Aloha Social in a web browser and choose your username.",
+                    comment: "HTTP 403, account not set up")
         case .notFound:
             String(localized: "That isn't there any more.", comment: "HTTP 404")
         case .unprocessable(let message):

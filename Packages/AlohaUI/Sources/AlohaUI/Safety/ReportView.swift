@@ -283,6 +283,10 @@ public struct SafetyListsView: View {
                 errorStrip(errorMessage)
             }
 
+            if session.capabilities.isNextcloudSocial {
+                DirectMessageAudienceSection(session: session)
+            }
+
             Section {
                 ForEach(blocked) { account in
                     HStack {
@@ -362,6 +366,10 @@ public struct SafetyListsView: View {
                 Text(
                     "Blocking a server hides everyone on it and removes your follows there.",
                     comment: "Domain block explanation")
+            }
+
+            if session.capabilities.isNextcloudSocial {
+                SharedModerationListsSection(session: session)
             }
         }
         .alohaGround(palette)
