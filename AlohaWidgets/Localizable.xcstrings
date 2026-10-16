@@ -11,6 +11,28 @@
         }
       }
     },
+    "Favourite" : {
+      "comment" : "Widget intent parameter\nWidget button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favorisieren"
+          }
+        }
+      }
+    },
+    "Favourite a post" : {
+      "comment" : "Widget intent title, not shown in the widget itself",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen Beitrag favorisieren"
+          }
+        }
+      }
+    },
     "Handle" : {
       "localizations" : {
         "de" : {
@@ -65,6 +87,17 @@
         }
       }
     },
+    "Nothing from this day yet." : {
+      "comment" : "Empty memories widget",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von diesem Tag gibt es noch nichts."
+          }
+        }
+      }
+    },
     "Nothing yet" : {
       "comment" : "Empty widget",
       "localizations" : {
@@ -72,6 +105,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch nichts"
+          }
+        }
+      }
+    },
+    "On this day" : {
+      "comment" : "Widget name\nMemories widget heading",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An diesem Tag"
           }
         }
       }
@@ -94,6 +138,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffnet den Editor für eine neue Story."
+          }
+        }
+      }
+    },
+    "Post" : {
+      "comment" : "Widget intent parameter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitrag"
           }
         }
       }
@@ -142,6 +197,17 @@
         }
       }
     },
+    "Unfavourite" : {
+      "comment" : "Widget button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr favorisieren"
+          }
+        }
+      }
+    },
     "Unread notifications" : {
       "comment" : "Widget name",
       "localizations" : {
@@ -171,6 +237,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Medien werden hochgeladen"
+          }
+        }
+      }
+    },
+    "What you posted on this day in earlier years." : {
+      "comment" : "Widget description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was du an diesem Tag in früheren Jahren gepostet hast."
           }
         }
       }

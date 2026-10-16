@@ -148,6 +148,7 @@ private struct ThemedAppShell: View {
                 // takes over from there (docs/08 §6).
                 environment.sync.setForeground(phase == .active)
                 if phase == .active { Task { await environment.sendQueue.drainAll() } }
+                if phase == .active { refreshMemoriesWidget() }
                 // An intent with `openAppWhenRun` brings a running app to the
                 // front rather than launching it, so `start()` never sees
                 // what it left behind; this does.
@@ -383,6 +384,7 @@ private struct ThemedAppShell: View {
         environment.sendQueue.attach(to: environment)
         environment.notifier.registerCategories()
         AlohaTips.configure()
+        refreshMemoriesWidget()
         // Permission is asked once an account exists — there is nothing to
         // notify about before that, and a prompt on the welcome screen is the
         // pattern Apple's guidance says not to use.
@@ -450,6 +452,17 @@ private struct ThemedAppShell: View {
 
     private func sidebarPath(_ item: SidebarItem) -> Binding<[Route]> {
         Binding(get: { sidebarPaths[item, default: []] }, set: { sidebarPaths[item] = $0 })
+    }
+
+    /// Writes today's "on this day" for the Memories widget, once per day and
+    /// account; a no-op when it is already there.
+    private func refreshMemoriesWidget() {
+        #if DEBUG
+            // The tours' mock server has no memories worth a widget.
+            if MockMode.isEnabled { return }
+        #endif
+        guard let session = environment.activeSession else { return }
+        Task(priority: .utility) { await MemoriesWidgetWriter.refreshIfStale(session) }
     }
 
     /// Applies the Focus filter once per change: the account it keeps the app

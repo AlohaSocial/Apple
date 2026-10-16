@@ -37,11 +37,16 @@ enum WidgetData {
             let target = status.displayed
             return WidgetPost(
                 id: target.id,
+                accountID: accountID,
                 author: target.account.bestDisplayName,
                 handle: target.account.acct,
                 text: target.spoilerText.isEmpty
                     ? plain(target.content) : target.spoilerText,
-                createdAt: target.createdAt)
+                createdAt: target.createdAt,
+                // A tap from the widget outranks a cache that has not heard
+                // about it yet.
+                favourited: WidgetFavourites.state(statusID: target.id, accountID: accountID)
+                    ?? target.favourited)
         }
     }
 
@@ -80,25 +85,85 @@ enum WidgetData {
         )
         guard let records = try? container.mainContext.fetch(descriptor) else { return [] }
 
-        return records.prefix(limit).compactMap { record in
-            guard
-                let payload = try? AlohaJSON.decoder.decode(
-                    NotificationPayload.self, from: record.payload),
-                !payload.title.isEmpty
-            else { return nil }
+        let payloads = records.prefix(limit).compactMap { record in
+            (try? AlohaJSON.decoder.decode(NotificationPayload.self, from: record.payload))
+                .map { (record, $0) }
+        }
+        // The notification does not say whether the post is favourited; the
+        // cached post does, where the timeline has it.
+        let cached =
+            (try? await TimelineStore(modelContainer: container).statuses(
+                accountID: accountID, ids: payloads.compactMap(\.1.statusID))) ?? [:]
+
+        return payloads.compactMap { record, payload in
+            guard !payload.title.isEmpty else { return nil }
+            let favourited = payload.statusID.flatMap { id in
+                WidgetFavourites.state(statusID: id, accountID: accountID)
+                    ?? cached[id]?.displayed.favourited
+            }
             return WidgetMention(
                 id: record.serverID,
+                accountID: accountID,
                 author: payload.title,
                 handle: payload.accountHandle,
                 text: payload.body,
                 createdAt: record.createdAt,
-                statusID: payload.statusID)
+                statusID: payload.statusID,
+                favourited: favourited ?? false)
         }
+    }
+
+    /// Today's "on this day", as the app last wrote it. A snapshot from
+    /// another day is not today's, and is not shown.
+    static func memories(now: Date = Date()) -> (MemoriesSnapshot, MemoriesSnapshotStore)? {
+        guard let store = MemoriesSnapshotStore.shared, let snapshot = store.read(),
+            snapshot.day == MemoriesSnapshot.dayKey(for: now)
+        else { return nil }
+        return (snapshot, store)
+    }
+
+    /// The link a row opens: the post, under the account it was read with, so
+    /// a tap with another account active does not open somebody else's post
+    /// with the same id.
+    static func statusURL(accountID: UUID, statusID: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = "alohasocial"
+        components.host = "status"
+        components.path = "/\(accountID.uuidString)/\(statusID)"
+        return components.url
     }
 
     private static func plain(_ html: String) -> String {
         html.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "&amp;", with: "&")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// What a widget button does, run in the extension's own process.
+enum WidgetActions {
+    enum Failure: Error {
+        case noAccount, notSignedIn
+    }
+
+    /// Favourites or unfavourites one post with the token the app left in
+    /// the shared Keychain group, and writes the answer back to the store so
+    /// the app opens on what the widget did.
+    @MainActor
+    static func setFavourite(_ favourite: Bool, statusID: String, accountID: UUID) async throws {
+        let container = StoreContainer.make()
+        guard
+            let snapshot = try await AccountStore(modelContainer: container).account(id: accountID)
+        else { throw Failure.noAccount }
+        guard let token = try CredentialStore.shared.token(for: accountID) else {
+            throw Failure.notSignedIn
+        }
+        let client = APIClient(
+            accountID: accountID, apiBase: snapshot.capabilities.apiBase, accessToken: token)
+        let status = try await client.decode(
+            Status.self,
+            from: Endpoint.statuses.action(statusID, favourite ? .favourite : .unfavourite))
+        try? await TimelineStore(modelContainer: container).updateStatus(
+            accountID: accountID, status: status)
     }
 }

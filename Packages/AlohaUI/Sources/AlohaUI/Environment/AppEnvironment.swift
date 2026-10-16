@@ -405,6 +405,10 @@ public final class AppEnvironment {
         // first, while the refresh still has its time.
         sendQueue.attach(to: self)
         await sendQueue.drainAll()
-        return await sync.performBackgroundRefresh()
+        let fresh = await sync.performBackgroundRefresh()
+        // A new day can begin while the app sleeps; the Memories widget
+        // should not wait for the app to be opened to turn it over.
+        if let activeSession { await MemoriesWidgetWriter.refreshIfStale(activeSession) }
+        return fresh
     }
 }

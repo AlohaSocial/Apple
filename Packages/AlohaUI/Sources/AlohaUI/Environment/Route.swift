@@ -210,6 +210,7 @@ public enum RouteResolver {
         case "settings": return .settings
         case "explore": return .explore
         case "lists": return .lists
+        case "memories": return .memories
         // "compose" opens the composer rather than any of the Routes: the
         // composer is presented as a sheet from the shell, not pushed onto a
         // navigation stack, so there is no destination to name. Sending the
