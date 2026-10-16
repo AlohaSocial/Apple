@@ -101,7 +101,7 @@ public enum StatusActions {
         // actions silently did nothing, and an exhaustive switch makes the next
         // added case a compile error instead of a dead menu item.
         case .open, .watch, .reply, .openProfile, .openMedia, .openCard, .followLink,
-            .report, .share, .translate, .edit, .delete, .block, .mute,
+            .report, .share, .translate, .edit, .delete, .redraft, .block, .mute,
             .quote, .showDelivery, .showEditHistory, .quoteControls, .tagPeople,
             .addToCollection, .addToList:
             break

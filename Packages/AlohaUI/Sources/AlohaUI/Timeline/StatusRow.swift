@@ -624,6 +624,9 @@ public enum StatusRowAction: Sendable {
     case translate(Status)
     case edit(Status)
     case delete(Status)
+    /// Opens the post's words in a fresh composer; the original is deleted
+    /// only once the new one posts (docs/07 §8).
+    case redraft(Status)
     case muteConversation(Status)
     case block(Account)
     case mute(Account)

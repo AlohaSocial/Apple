@@ -110,6 +110,7 @@ private struct ThemedAppShell: View {
                 // A socket closes on background immediately; BGAppRefreshTask
                 // takes over from there (docs/08 §6).
                 environment.sync.setForeground(phase == .active)
+                if phase == .active { Task { await environment.sendQueue.drainAll() } }
             }
             .onOpenURL { url in handle(url) }
             .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) {
@@ -294,6 +295,7 @@ private struct ThemedAppShell: View {
         #endif
         environment.sync.attach(to: environment)
         environment.sync.start()
+        environment.sendQueue.attach(to: environment)
         environment.notifier.registerCategories()
         // Permission is asked once an account exists — there is nothing to
         // notify about before that, and a prompt on the welcome screen is the
@@ -978,6 +980,14 @@ private struct ThemedAppShell: View {
 
         case .delete(let status):
             deleting = status.displayed
+
+        case .redraft(let status):
+            Task {
+                if let source = await StatusActions.source(of: status, session: session) {
+                    composing = ComposerPresentation(
+                        redraft: .init(status: status.displayed, source: source))
+                }
+            }
 
         case .block(let account):
             confirming = ModerationRequest(account: account, kind: .block)

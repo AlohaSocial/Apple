@@ -36,8 +36,9 @@ public final class ComposerModel {
 
     // MARK: Nextcloud Social extras
 
-    /// The post being quoted, when the composer opened for a quote.
-    public let quoting: Status?
+    /// The post being quoted, when the composer opened for a quote. A
+    /// reopened draft only knows the id, and fetches the post to show it.
+    public private(set) var quoting: Status?
     /// Who may quote the new post: `public`, `followers` or `nobody`.
     public var quotePolicy: QuotePolicy = .public
     /// The place this post is tagged with, if any.
@@ -172,7 +173,7 @@ public final class ComposerModel {
         }
     }
 
-    public let replyTo: Status?
+    public private(set) var replyTo: Status?
     public let uploader: ComposerUploader
     /// Segments after the first, posted as a chain (docs/07 §5).
     public var threadSegments: [String] = []
@@ -184,6 +185,22 @@ public final class ComposerModel {
 
     /// The status being edited, where this composer is editing one.
     public private(set) var editingStatus: Status?
+
+    /// The post a delete & redraft started from. It is deleted only once the
+    /// new one has posted, so a redraft that fails loses nothing (docs/07 §8).
+    public private(set) var redrafting: Status?
+
+    /// What a reopened draft or a redraft knows only by id. The ids are what
+    /// the post needs; the statuses are fetched in `prepare()` for show.
+    private var restoredReplyToID: String?
+    private var restoredQuotedID: String?
+    private var pendingMediaIDs: [String] = []
+    /// Uploads a reopened draft could not look up, kept by id so they still
+    /// go out with the post.
+    private var unresolvedMediaIDs: [String] = []
+    /// A reopened draft or a redraft already says what it wants; the account
+    /// defaults that `prepare()` applies to a fresh post would overwrite it.
+    private var isRestored = false
 
     public init(session: AccountSession, replyTo: Status? = nil, quoting: Status? = nil) {
         self.session = session
@@ -203,15 +220,73 @@ public final class ComposerModel {
         self.spoilerText = source.spoilerText
         self.showsContentWarningField = !source.spoilerText.isEmpty
         self.visibility = status.visibility
-        uploader.restore(status.mediaAttachments)
+        uploader.restore(status.mediaAttachments, attachedToPost: true)
     }
 
+    /// Reopens a saved draft as it was left, under the same id — saving it
+    /// again replaces it rather than adding a second copy.
+    public init(session: AccountSession, draft: DraftSnapshot) {
+        self.session = session
+        self.replyTo = nil
+        self.quoting = nil
+        self.uploader = ComposerUploader(session: session)
+        self.isRestored = true
+        self.draftID = draft.id
+        self.restoredReplyToID = draft.inReplyToID
+        self.restoredQuotedID = draft.quotedID
+        self.pendingMediaIDs = draft.uploadedMediaIDs
+        self.text = draft.text
+        self.spoilerText = draft.spoilerText
+        self.showsContentWarningField = !draft.spoilerText.isEmpty
+        self.visibility = draft.visibility
+        self.language = draft.language
+        self.scheduledAt = draft.scheduledAt
+        self.pollOptions = draft.pollOptions
+        self.pollMultiple = draft.pollMultiple
+        self.threadSegments = draft.threadSegments
+        self.quotePolicy = draft.quotePolicy.flatMap(QuotePolicy.init(rawValue:)) ?? .public
+        // After the text: the same words keep the same key, so a send that
+        // may already have landed is recognised by the server, not repeated.
+        self.idempotencyKey = draft.idempotencyKey
+    }
+
+    /// Delete & redraft: a fresh composer holding what the post said, from
+    /// `/source` rather than the rendered HTML.
+    public init(session: AccountSession, redrafting status: Status, source: StatusSource) {
+        self.session = session
+        self.replyTo = nil
+        self.quoting = nil
+        self.uploader = ComposerUploader(session: session)
+        self.isRestored = true
+        self.redrafting = status
+        self.restoredReplyToID = status.inReplyToID
+        self.restoredQuotedID = status.quoteID
+        self.text = source.text
+        self.spoilerText = source.spoilerText
+        self.showsContentWarningField = !source.spoilerText.isEmpty
+        self.visibility = status.visibility
+        self.language = status.language
+        if let poll = status.poll {
+            self.pollOptions = poll.options.map(\.title)
+            self.pollMultiple = poll.multiple
+        }
+        self.quotePolicy =
+            status.quoteApprovalPolicy.flatMap(QuotePolicy.init(rawValue:)) ?? .public
+        uploader.restore(status.mediaAttachments, attachedToPost: true)
+    }
     public var title: String {
         if editingStatus != nil {
             return String(localized: "Edit post", comment: "Composer title")
         }
-        if replyTo != nil { return String(localized: "Reply", comment: "Composer title") }
-        if quoting != nil { return String(localized: "Quote", comment: "Composer title") }
+        if redrafting != nil {
+            return String(localized: "Redraft", comment: "Composer title")
+        }
+        if replyTo != nil || restoredReplyToID != nil {
+            return String(localized: "Reply", comment: "Composer title")
+        }
+        if quoting != nil || restoredQuotedID != nil {
+            return String(localized: "Quote", comment: "Composer title")
+        }
         return String(localized: "New post", comment: "Composer title")
     }
 
@@ -315,6 +390,11 @@ public final class ComposerModel {
         // An edit already carries everything from `/source`; re-deriving the
         // defaults here would overwrite what the person wrote.
         guard editingStatus == nil else { return }
+        if isRestored {
+            await restoreContext()
+            await loadTeams()
+            return
+        }
 
         visibility =
             replyTo.map {
@@ -334,6 +414,50 @@ public final class ComposerModel {
         }
     }
 
+    /// Fetches what a restored composer knows only by id: the post it
+    /// answers, the post it quotes, and its uploads' previews.
+    ///
+    /// An upload that was never attached is swept by the server after a while
+    /// (about a day on Mastodon), so a draft can outlive its media. Those are
+    /// dropped with a word rather than sent: a post naming an id the server no
+    /// longer has is refused whole.
+    private func restoreContext() async {
+        if replyTo == nil, let id = restoredReplyToID {
+            replyTo = try? await session.client.decode(
+                Status.self, from: Endpoint.statuses.status(id))
+        }
+        if quoting == nil, let id = restoredQuotedID {
+            quoting = try? await session.client.decode(
+                Status.self, from: Endpoint.statuses.status(id))
+        }
+
+        guard !pendingMediaIDs.isEmpty else { return }
+        var restored: [MediaAttachment] = []
+        for id in pendingMediaIDs {
+            do {
+                restored.append(
+                    try await session.client.decode(
+                        MediaAttachment.self, from: Endpoint.media.attachment(id)))
+            } catch APIError.notFound {
+                continue
+            } catch {
+                // Not known to be gone — offline, say. Keep the id: the post
+                // will tell, and a draft that silently lost its pictures
+                // because the network blinked would be worse.
+                unresolvedMediaIDs.append(id)
+            }
+        }
+        let expired = pendingMediaIDs.count - restored.count - unresolvedMediaIDs.count
+        pendingMediaIDs = []
+        uploader.restore(restored)
+        if expired > 0 {
+            errorMessage = String(
+                localized:
+                    "^[\(expired) attachment](inflect: true) expired on your server. Add it again to post it.",
+                comment: "Reopened draft whose uploads the server has removed")
+        }
+    }
+
     // MARK: - Character counting
 
     /// Delegates to `CharacterCount`, which keeps the URL flat rate and the
@@ -346,7 +470,7 @@ public final class ComposerModel {
         guard !isPosting else { return false }
         guard (remainingCharacters ?? 0) >= 0 else { return false }
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return hasText || !attachments.isEmpty || quoting != nil
+        return hasText || !attachments.isEmpty || quoting != nil || restoredQuotedID != nil
     }
 
     public var visibilitySymbol: String {
@@ -428,28 +552,6 @@ public final class ComposerModel {
         completions = []
     }
 
-    // MARK: - Intelligence
-
-    public func rewrite(_ style: RewriteStyle, using intelligence: any IntelligenceProviding) async
-    {
-        do {
-            // Presented for review, never applied in place.
-            let proposal = try await intelligence.rewrite(
-                text, style: style, maximumCharacters: limits.maxStatusCharacters)
-            text = proposal
-        } catch IntelligenceError.refused {
-            errorMessage = String(
-                localized: "Apple Intelligence didn't want to rewrite that.",
-                comment: "Rewrite refused")
-        } catch IntelligenceError.tooLong {
-            errorMessage = String(
-                localized: "That didn't fit.", comment: "Rewrite too long")
-        } catch {
-            errorMessage = String(
-                localized: "Couldn't rewrite that.", comment: "Rewrite failed")
-        }
-    }
-
     // MARK: - Posting
 
     /// Draws the card and uploads it, with the words as its description so a
@@ -523,15 +625,16 @@ public final class ComposerModel {
             spoilerText: spoilerText.isEmpty ? nil : spoilerText,
             sensitive: !spoilerText.isEmpty || session.settings.defaultSensitive,
             language: language ?? session.settings.defaultLanguage,
-            inReplyToID: replyTo?.id,
-            mediaIDs: cardAttachmentID.map { [$0] } ?? attachments.map(\.id),
+            inReplyToID: replyTo?.id ?? restoredReplyToID,
+            mediaIDs: cardAttachmentID.map { [$0] } ?? attachments.map(\.id) + unresolvedMediaIDs,
             pollOptions: pollOptions.filter { !$0.isEmpty },
             pollMultiple: pollMultiple,
             scheduledAt: scheduledAt,
             idempotencyKey: idempotencyKey
         )
-        if let quoting {
-            draft.quotedID = quoting.id
+        draft.quotedID = quoting?.id ?? restoredQuotedID
+        if editingStatus != nil {
+            draft.mediaAttributes = mediaAttributes
         }
         if canQuote, quotePolicy != .public {
             draft.quotePolicy = quotePolicy.rawValue
@@ -600,6 +703,11 @@ public final class ComposerModel {
             }
 
             try? await session.supportStore.deleteDraft(id: draftID)
+            // Only now: the original goes once its replacement exists.
+            if let redrafting {
+                await StatusActions.delete(redrafting, session: session)
+                self.redrafting = nil
+            }
             return true
         } catch {
             await session.handle(error)
@@ -657,13 +765,48 @@ public final class ComposerModel {
         return "\(text)\n\n\(index + 1)/\(total)"
     }
 
-    public func saveDraftIfNeeded(queued: Bool = false) async {
-        let snapshot = DraftSnapshot(
+    /// Descriptions and focal points for the attachments an edit keeps. Sent
+    /// for each of them, changed or not: the server rewrites what it is given
+    /// and an unchanged description is the same description.
+    private var mediaAttributes: [StatusPost.MediaAttribute] {
+        uploader.attachments.map { attachment in
+            StatusPost.MediaAttribute(
+                id: attachment.id, description: attachment.description,
+                // `String(format:)` is not localised, which is what the wire
+                // needs: a decimal comma would read as a third coordinate.
+                focus: focalPoints[attachment.id].map {
+                    String(format: "%.2f,%.2f", Double($0.x), Double($0.y))
+                })
+        }
+    }
+
+    /// Everything the send queue needs to post this exactly as written, or a
+    /// reopened composer needs to show it as it was left.
+    public var draftSnapshot: DraftSnapshot {
+        DraftSnapshot(
             id: draftID, accountID: session.id, text: text, spoilerText: spoilerText,
-            visibility: visibility, inReplyToID: replyTo?.id,
-            uploadedMediaIDs: attachments.map(\.id),
+            visibility: visibility,
+            sensitive: !spoilerText.isEmpty || session.settings.defaultSensitive,
+            language: language ?? session.settings.defaultLanguage,
+            inReplyToID: replyTo?.id ?? restoredReplyToID,
+            // Library pictures are attachments like any other once made, so
+            // their ids travel too.
+            uploadedMediaIDs: attachments.map(\.id) + unresolvedMediaIDs,
             pollOptions: pollOptions.filter { !$0.isEmpty }, pollMultiple: pollMultiple,
-            idempotencyKey: idempotencyKey, queuedForSend: queued)
+            scheduledAt: scheduledAt, idempotencyKey: idempotencyKey,
+            quotedID: quoting?.id ?? restoredQuotedID,
+            quotePolicy: canQuote && quotePolicy != .public ? quotePolicy.rawValue : nil,
+            threadSegments: threadSegments.filter {
+                !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            })
+    }
+
+    public func saveDraftIfNeeded(queued: Bool = false) async {
+        // An edit is not a draft: the post exists, and a "draft" of it would
+        // post a second copy when reopened.
+        guard editingStatus == nil else { return }
+        var snapshot = draftSnapshot
+        snapshot.queuedForSend = queued
 
         guard !snapshot.isEmpty else { return }
         _ = try? await session.supportStore.saveDraft(snapshot)

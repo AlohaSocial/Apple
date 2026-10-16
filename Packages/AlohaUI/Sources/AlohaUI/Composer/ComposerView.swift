@@ -28,6 +28,8 @@ public struct ComposerView: View {
     @State private var focusingAttachment: MediaAttachment?
     @State private var filteringAttachment: MediaAttachment?
     @State private var trimmingVideoAt: URL?
+    @State private var rewritingStyle: RewriteStyle?
+    @State private var isShowingCamera = false
     @FocusState private var isEditorFocused: Bool
 
     private let prefilledText: String
@@ -57,6 +59,24 @@ public struct ComposerView: View {
             initialValue: ComposerModel(session: session, editing: status, source: source))
     }
 
+    /// Reopens a saved draft, as it was left.
+    public init(session: AccountSession, draft: DraftSnapshot) {
+        self.quoting = nil
+        self.prefilledText = ""
+        self.prefilledAttachments = []
+        _model = State(initialValue: ComposerModel(session: session, draft: draft))
+    }
+
+    /// Delete & redraft: the post's words from `/source`, in a fresh composer.
+    /// The original is deleted only once this one posts.
+    public init(session: AccountSession, redrafting status: Status, source: StatusSource) {
+        self.quoting = nil
+        self.prefilledText = ""
+        self.prefilledAttachments = []
+        _model = State(
+            initialValue: ComposerModel(session: session, redrafting: status, source: source))
+    }
+
     /// The post being quoted, when the composer opened for a quote.
     private let quoting: Status?
 
@@ -74,6 +94,7 @@ public struct ComposerView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if model.redrafting != nil { redraftNote }
                 if let replyTo = model.replyTo { replyContext(replyTo) }
                 if let quoting = model.quoting { quoteCard(quoting) }
                 if model.showsContentWarningField {
@@ -95,6 +116,7 @@ public struct ComposerView: View {
                     uploadProgress
                 }
                 if let message = model.uploader.errorMessage { uploadError(message) }
+                if let message = model.errorMessage { uploadError(message) }
                 if let scheduledAt = model.scheduledAt { scheduleBanner(scheduledAt) }
                 if !model.attachments.isEmpty { mediaStrip }
                 if !model.threadSegments.isEmpty { threadEditor }
@@ -270,6 +292,36 @@ public struct ComposerView: View {
                     Task { await model.uploader.add(prepared: prepared) }
                 }
             }
+            // A rewrite is proposed beside what was written, never applied in
+            // place: the words are the person's until they choose otherwise
+            // (docs/10 §3).
+            .sheet(item: $rewritingStyle) { style in
+                RewriteSheet(
+                    original: model.text, style: style,
+                    maximumCharacters: model.limits.maxStatusCharacters,
+                    intelligence: environment.intelligence
+                ) { proposal in
+                    model.text = proposal
+                }
+            }
+            #if os(iOS)
+                .fullScreenCover(isPresented: $isShowingCamera) {
+                    CameraCapture { captured in
+                        switch captured {
+                        case .photo(let data):
+                            Task {
+                                await model.uploader.add(
+                                    data: data, filename: "camera-\(UUID().uuidString).jpg",
+                                    mimeType: "image/jpeg")
+                            }
+                        case .movie(let url):
+                            // The same trim sheet a picked video goes through.
+                            trimmingVideoAt = url
+                        }
+                    }
+                    .ignoresSafeArea()
+                }
+            #endif
             .sheet(item: $model.isShowingAltTextFor) { attachment in
                 AltTextEditor(attachment: attachment) { description in
                     Task { await model.uploader.updateDescription(description, for: attachment.id) }
@@ -301,6 +353,24 @@ public struct ComposerView: View {
     }
 
     // MARK: - Pieces
+
+    /// Said before posting, not after: the favourites, boosts and replies the
+    /// original gathered do not follow it to the new post.
+    private var redraftNote: some View {
+        Label {
+            Text(
+                "Posting this deletes the original, with its favourites, boosts and replies.",
+                comment: "Composer note when redrafting")
+        } icon: {
+            Image(systemName: "arrow.uturn.backward.circle")
+        }
+        .font(.caption)
+        .foregroundStyle(palette.secondaryLabel)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.vertical, AlohaMetrics.space2)
+        .background(palette.surfaceRaised)
+    }
 
     /// The post being quoted, as a card the way it will sit under the new
     /// one. Nothing about it is editable here.
@@ -832,6 +902,18 @@ public struct ComposerView: View {
         .disabled(!model.canAddMedia)
         .accessibilityLabel(Text("Add media", comment: "Composer action"))
 
+        #if os(iOS)
+            if CameraCapture.isAvailable {
+                Button {
+                    isShowingCamera = true
+                } label: {
+                    Image(systemName: "camera")
+                }
+                .disabled(!model.canAddMedia)
+                .accessibilityLabel(Text("Take a photo or video", comment: "Composer action"))
+            }
+        #endif
+
         Button {
             if !model.hasPoll { model.togglePoll() }
             isShowingPollEditor = true
@@ -1052,7 +1134,7 @@ public struct ComposerView: View {
                 Menu {
                     ForEach(RewriteStyle.allCases) { style in
                         Button {
-                            Task { await model.rewrite(style, using: environment.intelligence) }
+                            rewritingStyle = style
                         } label: {
                             Text(style.displayName)
                         }

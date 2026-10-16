@@ -691,6 +691,13 @@ extension Endpoint {
                 body: .multipart(Multipart(parts: parts)))
         }
 
+        /// One uploaded attachment, which is how a reopened draft gets its
+        /// previews back. A 404 means the server has already swept it — an
+        /// upload that was never attached does not live for ever.
+        public static func attachment(_ id: String) -> Endpoint {
+            Endpoint(path: "api/v1/media/\(id)")
+        }
+
         public static func updateDescription(_ id: String, description: String) -> Endpoint {
             Endpoint(
                 method: .put, path: "api/v1/media/\(id)",

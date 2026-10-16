@@ -32,6 +32,10 @@ public final class ComposerUploader {
     /// a hundred megabytes, and a composer is not worth that.
     private var originals: [String: Original] = [:]
 
+    /// Attachments that belong to a post already, which the media route will
+    /// not update any more.
+    private var attachedIDs: Set<String> = []
+
     private struct Original {
         var url: URL
         var filename: String
@@ -175,6 +179,11 @@ public final class ComposerUploader {
 
     public func updateDescription(_ description: String, for attachmentID: String) async {
         guard let index = attachments.firstIndex(where: { $0.id == attachmentID }) else { return }
+        // Already on a post: the edit's `media_attributes` carries it.
+        guard !attachedIDs.contains(attachmentID) else {
+            attachments[index].description = description
+            return
+        }
         do {
             let updated = try await session.client.decode(
                 MediaAttachment.self,
@@ -334,7 +343,11 @@ public final class ComposerUploader {
         errorMessage = nil
     }
 
-    public func restore(_ attachments: [MediaAttachment]) {
+    /// `attachedToPost` for media already on a post (an edit, a redraft): the
+    /// server refuses `PUT /api/v1/media/{id}` for those, so their
+    /// descriptions change here and travel with the post instead.
+    public func restore(_ attachments: [MediaAttachment], attachedToPost: Bool = false) {
         self.attachments = attachments
+        if attachedToPost { attachedIDs.formUnion(attachments.map(\.id)) }
     }
 }

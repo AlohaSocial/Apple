@@ -2315,6 +2315,17 @@
     "Choose another filter to see more activities." : {
       "comment" : "Notification filter empty state guidance"
     },
+    "Choose another time to send it" : {
+      "comment" : "Scheduled post row hint",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle einen anderen Zeitpunkt zum Senden"
+          }
+        }
+      }
+    },
     "Choose file…" : {
       "comment" : "Migration import action",
       "localizations" : {
@@ -2758,6 +2769,17 @@
     "Couldn't load your feeds." : {
       "comment" : "Subscriptions feeds failed"
     },
+    "Couldn't move that post." : {
+      "comment" : "Reschedule failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Beitrag konnte nicht verschoben werden."
+          }
+        }
+      }
+    },
     "Couldn't post that." : {
       "comment" : "Post failed",
       "localizations" : {
@@ -3008,6 +3030,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ löschen?"
+          }
+        }
+      }
+    },
+    "Delete & redraft" : {
+      "comment" : "Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Löschen und neu entwerfen"
           }
         }
       }
@@ -4974,6 +5007,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Meldung ging an die Moderation dieses Servers."
+          }
+        }
+      }
+    },
+    "Its attachments expired on your server before it could be sent. Open it to add them again." : {
+      "comment" : "Queued post refused because its uploads are gone",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anhänge sind auf deinem Server abgelaufen, bevor der Beitrag gesendet werden konnte. Öffne ihn, um sie erneut hinzuzufügen."
           }
         }
       }
@@ -7335,6 +7379,17 @@
         }
       }
     },
+    "Opens the draft in the composer" : {
+      "comment" : "Drafts row hint",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Entwurf im Editor"
+          }
+        }
+      }
+    },
     "Opens the media viewer" : {
       "comment" : "Accessibility hint",
       "localizations" : {
@@ -7947,6 +8002,17 @@
         }
       }
     },
+    "Posting this deletes the original, with its favourites, boosts and replies." : {
+      "comment" : "Composer note when redrafting",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Veröffentlichen wird das Original gelöscht, samt Favoriten, Boosts und Antworten."
+          }
+        }
+      }
+    },
     "Posts" : {
       "comment" : "Annual report figure\nChart axis\nProfile stat\nProfile tab\nSearch results section\nStatistics series\nStatistics stat\nTrends filter",
       "localizations" : {
@@ -8449,6 +8515,17 @@
         }
       }
     },
+    "Redraft" : {
+      "comment" : "Composer title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu entwerfen"
+          }
+        }
+      }
+    },
     "Registrations closed" : {
       "comment" : "Instance detail"
     },
@@ -8875,6 +8952,17 @@
         }
       }
     },
+    "Reschedule" : {
+      "comment" : "Reschedule sheet title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu planen"
+          }
+        }
+      }
+    },
     "Reset" : {
       "comment" : "Interests reset action",
       "localizations" : {
@@ -9000,7 +9088,7 @@
       }
     },
     "Save" : {
-      "comment" : "Account note action\nAlbum action\nMigration export action\nPortfolio action\nProfile editing action\nSheet action\nWatch page bookmark pill",
+      "comment" : "Account note action\nAlbum action\nMigration export action\nPortfolio action\nProfile editing action\nReschedule action\nSheet action\nWatch page bookmark pill",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9075,6 +9163,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geplant für %@"
+          }
+        }
+      }
+    },
+    "Scheduled posts" : {
+      "comment" : "Settings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geplante Beiträge"
           }
         }
       }
@@ -10190,6 +10289,17 @@
         }
       }
     },
+    "Summarise thread" : {
+      "comment" : "Thread action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterhaltung zusammenfassen"
+          }
+        }
+      }
+    },
     "Summary" : {
       "comment" : "Summary sheet title",
       "localizations" : {
@@ -10301,6 +10411,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kopie erstellen"
+          }
+        }
+      }
+    },
+    "Take a photo or video" : {
+      "comment" : "Composer action\nStory composer action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foto oder Video aufnehmen"
           }
         }
       }
@@ -12753,6 +12874,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "^[%lld Anhang](inflect: true)"
+          }
+        }
+      }
+    },
+    "^[%lld attachment](inflect: true) expired on your server. Add it again to post it." : {
+      "comment" : "Reopened draft whose uploads the server has removed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Anhang](inflect: true) ist auf deinem Server abgelaufen. Füge ihn erneut hinzu, um ihn zu veröffentlichen."
           }
         }
       }
