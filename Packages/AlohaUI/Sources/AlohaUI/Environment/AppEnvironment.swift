@@ -62,6 +62,9 @@ public final class AppEnvironment {
         let stored = UserDefaults.standard.string(forKey: Self.themeKey)
         self.theme = stored.flatMap(AlohaTheme.init(rawValue:)) ?? .system
         self.metrics = AlohaMetrics()
+        // An intent run in this process uses these sessions rather than
+        // opening the store a second time.
+        IntentContext.live = self
     }
 
     /// The colour the app wears: the active account's Nextcloud, as its
@@ -104,6 +107,24 @@ public final class AppEnvironment {
 
     // MARK: - Lifecycle
 
+    /// The first load, shared by everyone who needs the accounts before the
+    /// window has asked for them: a notification action answered from the
+    /// lock screen launches the app in the background, and arrives before the
+    /// shell's own load — or while it is still running.
+    private var initialLoad: Task<Void, Never>?
+
+    /// Loads the accounts once; later callers wait for the same load rather
+    /// than starting a second one that would replace the sessions under them.
+    public func loadIfNeeded() async {
+        if let initialLoad {
+            await initialLoad.value
+            return
+        }
+        let task = Task { await load() }
+        initialLoad = task
+        await task.value
+    }
+
     public func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -135,6 +156,9 @@ public final class AppEnvironment {
 
             Task { await refreshCapabilitiesIfStale(session) }
             Task { await session.refreshServerState() }
+            if !session.needsReauthentication {
+                Task(priority: .background) { await SpotlightIndexer.refreshIfStale(session) }
+            }
         }
     }
 
@@ -196,6 +220,7 @@ public final class AppEnvironment {
         await revokeToken(for: session)
         try? credentials.removeToken(for: id)
         try? await timelines.deleteEverything(forAccount: id)
+        await SpotlightIndexer.removeEverything(for: id)
 
         sessions.removeAll { $0.id == id }
         if activeAccountID == id {
@@ -371,7 +396,7 @@ public final class AppEnvironment {
 
     /// Entry point for `BGAppRefreshTask`.
     public func performBackgroundRefresh() async -> Int {
-        if sessions.isEmpty { await load() }
+        await loadIfNeeded()
         sync.attach(to: self)
         // A post waiting for the network is worth more than a badge: send it
         // first, while the refresh still has its time.

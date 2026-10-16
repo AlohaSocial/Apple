@@ -62,6 +62,8 @@ private struct ThemedAppShell: View {
     @State private var deleting: Status?
     @State private var confirming: ModerationRequest?
     @State private var sheet: ShellSheet?
+    /// The Focus filter last applied, so it is applied once per change.
+    @State private var appliedFocus = FocusFilterState.none
     @Environment(\.scenePhase) private var scenePhase
 
     init() {}
@@ -127,15 +129,30 @@ private struct ThemedAppShell: View {
                 // takes over from there (docs/08 §6).
                 environment.sync.setForeground(phase == .active)
                 if phase == .active { Task { await environment.sendQueue.drainAll() } }
+                // An intent with `openAppWhenRun` brings a running app to the
+                // front rather than launching it, so `start()` never sees
+                // what it left behind; this does.
+                if phase == .active, let pending = IntentNavigation.take() { open(pending) }
+                if phase == .active { applyFocusFilter() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.focusChanged)) {
+                _ in applyFocusFilter()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.routeRequested)) {
+                _ in
+                // A tapped notification, or an intent run in this process.
+                if let pending = IntentNavigation.take() { open(pending) }
             }
             .onOpenURL { url in handle(url) }
             .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) {
-                _ in
-                // The compose deep link — from the quick-compose widget, or a
-                // Shortcut — reached here because the composer is a sheet the
-                // shell owns, not a navigation destination.
+                note in
+                // The compose deep link — from the quick-compose widget, a
+                // Shortcut, or a draft handed off from another device —
+                // reached here because the composer is a sheet the shell owns,
+                // not a navigation destination.
                 guard environment.activeSession != nil else { return }
-                composing = ComposerPresentation()
+                composing = ComposerPresentation(
+                    draftText: note.userInfo?["draft"] as? String ?? "")
             }
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
@@ -309,7 +326,7 @@ private struct ThemedAppShell: View {
     }
 
     private func start() async {
-        await environment.load()
+        await environment.loadIfNeeded()
         #if DEBUG
             if MockMode.isEnabled {
                 await MockMode.seedIfNeeded(environment)
@@ -387,6 +404,21 @@ private struct ThemedAppShell: View {
 
     private func sidebarPath(_ item: SidebarItem) -> Binding<[Route]> {
         Binding(get: { sidebarPaths[item, default: []] }, set: { sidebarPaths[item] = $0 })
+    }
+
+    /// Applies the Focus filter once per change: the account it keeps the app
+    /// on, and the feed it opens to. Applied on every activation it would
+    /// pull the reader back to that feed each time they came back.
+    private func applyFocusFilter() {
+        let focus = FocusFilterState.current
+        guard focus != appliedFocus else { return }
+        appliedFocus = focus
+        if let accountID = focus.accountID { environment.setActiveAccount(accountID) }
+        // Only a feed this account actually shows: a Focus set up for a mode
+        // the server has no surface for would leave a tab that is not there.
+        if let mode = focus.mode, environment.activeSession?.visibleModes.contains(mode) == true {
+            open(.timeline(TimelineKey(mode: mode, source: .home)))
+        }
     }
 
     func open(_ route: Route) {
@@ -879,6 +911,7 @@ private struct ThemedAppShell: View {
 
     private func destination(_ route: Route, session: AccountSession) -> some View {
         AnyView(destinationContent(route, session: session))
+            .modifier(ContinuityAdvertiser(route: route, session: session))
             .toolbar {
                 if usesSidebar { composeToolbar }
                 #if os(iOS)
@@ -1187,10 +1220,13 @@ private struct ThemedAppShell: View {
             return
         }
 
-        guard let route = RouteResolver.route(for: url) else { return }
+        guard let destination = RouteResolver.destination(for: url) else { return }
+        // A Spotlight result or a widget row names its account; the post id
+        // in it means nothing under another one.
+        if let accountID = destination.accountID { environment.setActiveAccount(accountID) }
         // The same decisions a route from anywhere else gets: a timeline
         // selects its tab, a root destination its tab or row.
-        open(route)
+        open(destination.route)
     }
 }
 

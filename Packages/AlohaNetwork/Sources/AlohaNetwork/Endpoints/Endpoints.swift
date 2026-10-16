@@ -691,9 +691,10 @@ extension Endpoint {
                 body: .multipart(Multipart(parts: parts)))
         }
 
-        /// One uploaded attachment, which is how a reopened draft gets its
-        /// previews back. A 404 means the server has already swept it — an
-        /// upload that was never attached does not live for ever.
+        /// One attachment. A reopened draft gets its previews back this way —
+        /// a 404 means the server has already swept an upload that was never
+        /// attached — and the upload activity sees whether processing is done:
+        /// Mastodon answers 206 with a null `url` until it is.
         public static func attachment(_ id: String) -> Endpoint {
             Endpoint(path: "api/v1/media/\(id)")
         }

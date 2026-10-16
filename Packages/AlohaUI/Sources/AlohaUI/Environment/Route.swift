@@ -82,6 +82,18 @@ public enum Route: Codable, Hashable, Sendable {
     case moderationTrends
 }
 
+/// A Route, and the account it has to be opened under when the entry point
+/// named one.
+public struct RouteDestination: Sendable, Hashable {
+    public let accountID: UUID?
+    public let route: Route
+
+    public init(accountID: UUID?, route: Route) {
+        self.accountID = accountID
+        self.route = route
+    }
+}
+
 /// The one place any entry point is parsed. Every scheme, universal link,
 /// Handoff payload, intent and notification produces a `Route` and goes through
 /// here, so they cannot behave differently (docs/09 §10).
@@ -97,6 +109,28 @@ public enum RouteResolver {
     /// something that is not a destination — the sign-in callback, and the
     /// compose request.
     public static func route(for url: URL) -> Route? {
+        destination(for: url)?.route
+    }
+
+    /// The Route a URL names, and the account it belongs to when the URL says.
+    ///
+    /// `alohasocial://status/<account>/<id>` and `…/profile/<account>/<id>`
+    /// carry the local account's UUID, because a post id is one server's id:
+    /// opened under another account it is somebody else's post, or nothing.
+    /// The widgets write `0` where they do not know, which is no account.
+    public static func destination(for url: URL) -> RouteDestination? {
+        guard let route = parse(url) else { return nil }
+        let components = url.pathComponents.filter { $0 != "/" }
+        var accountID: UUID?
+        switch url.host() {
+        case "status", "profile":
+            if components.count >= 2 { accountID = UUID(uuidString: components[0]) }
+        default: break
+        }
+        return RouteDestination(accountID: accountID, route: route)
+    }
+
+    private static func parse(_ url: URL) -> Route? {
         guard url.scheme == scheme else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
 

@@ -850,7 +850,7 @@
     },
     "Access could not be revoked. Please try again." : {},
     "Account" : {
-      "comment" : "Account menu section",
+      "comment" : "Account menu section\nApp Intents type name\nFocus filter parameter",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2355,6 +2355,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "subscriptions.csv auswählen"
+          }
+        }
+      }
+    },
+    "Choose the account and feed Aloha Social shows, and whether only mentions notify." : {
+      "comment" : "Focus filter description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle das Konto und den Feed, den Aloha Social zeigt, und ob nur Erwähnungen benachrichtigen."
           }
         }
       }
@@ -5596,6 +5607,17 @@
         }
       }
     },
+    "Looking at a profile" : {
+      "comment" : "Handoff title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sieht sich ein Profil an"
+          }
+        }
+      }
+    },
     "Looking back" : {
       "comment" : "Screen title\nSettings item",
       "localizations" : {
@@ -5757,6 +5779,17 @@
     },
     "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered notifications screen instead of your inbox." : {
       "comment" : "Notification policy explanation"
+    },
+    "Mentions only" : {
+      "comment" : "Focus filter summary",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur Erwähnungen"
+          }
+        }
+      }
     },
     "Message" : {
       "comment" : "Conversation field label\nProfile action",
@@ -7319,6 +7352,17 @@
         }
       }
     },
+    "Only mentions notify" : {
+      "comment" : "Focus filter parameter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur Erwähnungen benachrichtigen"
+          }
+        }
+      }
+    },
     "Only posts in these languages reach the feed. Leave it empty for all of them." : {
       "comment" : "Interests languages explanation",
       "localizations" : {
@@ -7387,6 +7431,28 @@
         }
       }
     },
+    "Open a post in Aloha Social" : {
+      "comment" : "App Intent title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitrag in Aloha Social öffnen"
+          }
+        }
+      }
+    },
+    "Open a profile in Aloha Social" : {
+      "comment" : "App Intent title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Profil in Aloha Social öffnen"
+          }
+        }
+      }
+    },
     "Open filtered notifications" : {
       "comment" : "Policy action"
     },
@@ -7430,6 +7496,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ausgewählten Beitrag öffnen"
+          }
+        }
+      }
+    },
+    "Open to" : {
+      "comment" : "Focus filter parameter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnen mit"
           }
         }
       }
@@ -7687,6 +7764,17 @@
         }
       }
     },
+    "Person" : {
+      "comment" : "App Intents type name\nApp Intent parameter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Person"
+          }
+        }
+      }
+    },
     "Photo layout" : {
       "comment" : "Photos layout menu"
     },
@@ -7935,7 +8023,7 @@
     },
     "Portfolio settings could not be loaded. Please try again." : {},
     "Post" : {
-      "comment" : "Composer action\nThread screen title",
+      "comment" : "Composer action\nThread screen title\nApp Intents type name\nApp Intent parameter",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8544,6 +8632,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ganzen Thread lesen"
+          }
+        }
+      }
+    },
+    "Reading #%@" : {
+      "comment" : "Handoff title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liest #%@"
+          }
+        }
+      }
+    },
+    "Reading Aloha Social" : {
+      "comment" : "Handoff title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liest Aloha Social"
+          }
+        }
+      }
+    },
+    "Reading a post" : {
+      "comment" : "Handoff title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liest einen Beitrag"
           }
         }
       }
@@ -9584,6 +9705,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Blockierte Server"
+          }
+        }
+      }
+    },
+    "Set Aloha Social filter" : {
+      "comment" : "Focus filter title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aloha-Social-Filter festlegen"
           }
         }
       }
@@ -12892,6 +13024,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Beiträge sind noch da. Melde dich erneut an, um sie zu aktualisieren."
+          }
+        }
+      }
+    },
+    "Your reply wasn't sent" : {
+      "comment" : "Notification title after a failed reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Antwort wurde nicht gesendet"
           }
         }
       }

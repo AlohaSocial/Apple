@@ -158,11 +158,30 @@ public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
 enum IntentContext {
     struct Context {
         let accountID: UUID
+        let serverAccountID: String
         let client: APIClient
     }
 
+    /// The running app's environment, when the intent runs inside the app.
+    ///
+    /// Shortcuts and Siri run most intents in the app's own process, where
+    /// building a second container against the same store file is the
+    /// failure `AppEnvironment` exists to prevent. The live one is used
+    /// whenever there is one.
+    @MainActor static weak var live: AppEnvironment?
+
     @MainActor
     static func current() async -> Context? {
+        if let live {
+            await live.loadIfNeeded()
+            if let session = live.activeSession {
+                return Context(
+                    accountID: session.id, serverAccountID: session.snapshot.serverAccountID,
+                    client: session.client)
+            }
+            return nil
+        }
+
         let container = StoreContainer.make()
         let accounts = AccountStore(modelContainer: container)
         guard let snapshots = try? await accounts.allAccounts(),
@@ -174,6 +193,7 @@ enum IntentContext {
 
         return Context(
             accountID: active.id,
+            serverAccountID: active.serverAccountID,
             client: APIClient(
                 accountID: active.id, apiBase: active.capabilities.apiBase, accessToken: token))
     }
@@ -187,14 +207,28 @@ enum IntentContext {
     }
 }
 
-/// An intent that opens the app hands its destination through here.
+/// An intent that opens the app hands its destination through here, and so
+/// does a tapped notification.
+///
+/// The route is stored, then announced: a running shell takes it at once, and
+/// one that is still launching takes it when it starts. Taking it consumes it,
+/// so the two paths cannot open the same screen twice.
 public enum IntentNavigation {
     private static let key = AppGroup.pendingRouteKey
 
+    /// Posted when a route has been left for the shell to take.
+    public static let routeRequested = Notification.Name("aloha.routeRequested")
+
     @MainActor
     public static func request(_ route: Route) async {
+        enqueue(route)
+    }
+
+    @MainActor
+    public static func enqueue(_ route: Route) {
         guard let data = try? JSONEncoder().encode(route) else { return }
         AppGroup.defaults.set(data, forKey: key)
+        NotificationCenter.default.post(name: routeRequested, object: nil)
     }
 
     @MainActor

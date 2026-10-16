@@ -22,6 +22,9 @@ struct ComposerPresentation: Identifiable {
         var status: Status
         var source: StatusSource
     }
+
+    /// Text the composer opens with: a draft handed off from another device.
+    var draftText = ""
 }
 
 /// The smaller sheets a status or an account can put up: one enum, so the
@@ -87,7 +90,7 @@ struct ShellSheets: ViewModifier {
                         } else {
                             ComposerView(
                                 session: session, replyTo: request.replyTo,
-                                quoting: request.quoting)
+                                quoting: request.quoting, prefilledText: request.draftText)
                         }
                     }
                     #if os(iOS)
