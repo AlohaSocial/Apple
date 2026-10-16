@@ -26,6 +26,7 @@ struct TVRootView: View {
     @Environment(TVModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         Group {
             if model.client == nil {
                 TVSignInView()
@@ -54,6 +55,10 @@ struct TVRootView: View {
         }
         .serverTint(model.serverTheme)
         .task { await model.restore() }
+        .onOpenURL { url in Task { await model.open(url) } }
+        .fullScreenCover(item: $model.presentedVideo) { video in
+            TVPlayerView(status: video.status, startAt: video.position)
+        }
     }
 }
 
@@ -205,6 +210,8 @@ struct TVCard: View {
 struct TVPlayerView: View {
     @Environment(TVModel.self) private var model
     let status: Status
+    /// Seconds in, for a video picked up where it was left.
+    var startAt: Double?
 
     @State private var player: AVPlayer?
 
@@ -229,6 +236,9 @@ struct TVPlayerView: View {
 
         let created = AVPlayer(url: first.url)
         player = created
+        if let startAt, startAt > 0 {
+            await created.seek(to: CMTime(seconds: startAt, preferredTimescale: 600))
+        }
         created.play()
     }
 }

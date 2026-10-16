@@ -12,6 +12,8 @@ Every process that reads what the app wrote shares two things:
 | AlohaShareExtension | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
 | AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService.entitlements` | ✓ | ✓ | — |
 | AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac.entitlements` | ✓ | ✓ | ✓ + network client, user-selected files |
+| AlohaSocialTV | `social.aloha.app.tv` | `AlohaSocialTV.entitlements` | ✓ | ✓ | — |
+| AlohaTopShelf (tvOS) | `social.aloha.app.tv.topshelf` | `AlohaTopShelf.entitlements` | ✓ | ✓ | — |
 
 - App group: `group.social.aloha.app`, on every platform. Since macOS 15 an
   iOS-style `group.` identifier is valid on the Mac when the provisioning
@@ -37,6 +39,11 @@ change the group to one of your own — the string in each `*.entitlements`,
 `AlohaAppGroupEnabled` to `false` in the Info.plists and remove
 `com.apple.security.application-groups` from the entitlements. The second gives
 an app that works alone, with widgets and extensions that see no accounts.
+
+The Apple TV shares the same group name with its Top Shelf extension; it is a
+different device, so nothing actually crosses between it and the phone. Its
+first launch with the group moves the TV sign-in from the app's own defaults
+and Keychain item into the shared ones (`TVAccountStore`).
 
 The first launch of a build with the group moves what the app kept in its own
 container — the SwiftData store and the `aloha.*` defaults — into the group

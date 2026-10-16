@@ -2,6 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Shares the signed-in account and the Top Shelf snapshot with the Top
+	     Shelf extension (Supporting/README.md). -->
+	<key>AlohaAppGroupEnabled</key>
+	<true/>
+	<!-- A Top Shelf item opens the app with alohasocial://tv/play/<id>. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>social.aloha.app.tv</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>alohasocial</string>
+			</array>
+		</dict>
+	</array>
 	<!-- The tvOS app signs in to the same self-hosted servers, including
 	     plain-http private-network addresses, so it needs the same ATS
 	     exception as the iOS app (see Supporting/Info.plist). -->

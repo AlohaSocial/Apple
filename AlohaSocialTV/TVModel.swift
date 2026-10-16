@@ -3,8 +3,10 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import Foundation
 import Observation
+import TVServices
 
 @MainActor
 @Observable
@@ -17,6 +19,8 @@ final class TVModel {
     private(set) var continueWatching: [ContinueWatchingItem] = []
     private(set) var pendingAuthorisationURL: URL?
     private(set) var errorMessage: String?
+    /// A video a Top Shelf item asked for, and where to start it.
+    var presentedVideo: PresentedVideo?
     /// The colour of the signed-in server, read from Nextcloud's `theming`
     /// capability exactly as the phone reads it. `nil` leaves tvOS's own focus
     /// tint, which is also what a plain Mastodon gets.
@@ -26,21 +30,51 @@ final class TVModel {
     private var registration: ClientRegistration?
     private var endpoints: OAuthService.Endpoints?
     private var verifier: String?
-    /// Its own keychain, deliberately: the TV app is a separate application
-    /// with its own bundle id, so it shares no access group with the phone.
-    private let credentials = CredentialStore()
-    private let accountKey = "aloha.tv.account"
+    /// The account lives in the app group and the shared Keychain group, so
+    /// the Top Shelf extension can read it; a sign-in made by an older build
+    /// is moved there on the first read. The phone is a different device and
+    /// shares none of it.
+    private let accounts = TVAccountStore()
+    private var accountID: UUID?
+    /// A link that arrived before the account was restored.
+    private var pendingLink: TopShelfLink?
+
+    struct PresentedVideo: Identifiable {
+        var status: Status
+        var position: Double?
+        var id: String { status.id }
+    }
 
     func restore() async {
-        guard let raw = UserDefaults.standard.string(forKey: accountKey),
-            let id = UUID(uuidString: raw),
-            let token = (try? credentials.token(for: id)) ?? nil,
-            let base = UserDefaults.standard.url(forKey: "aloha.tv.apiBase")
-        else { return }
+        guard client == nil, let account = accounts.load(adoptingLegacy: true) else { return }
 
-        apiBase = base
-        client = APIClient(accountID: id, apiBase: base, accessToken: token)
+        apiBase = account.apiBase
+        accountID = account.id
+        client = APIClient(
+            accountID: account.id, apiBase: account.apiBase, accessToken: account.token)
+        if let pendingLink {
+            self.pendingLink = nil
+            await open(pendingLink)
+        }
         await loadServerTheme()
+    }
+
+    /// A Top Shelf item: `alohasocial://tv/play/<id>` or `…/show/<id>`.
+    func open(_ url: URL) async {
+        guard let link = TopShelfLink(url: url) else { return }
+        guard client != nil else {
+            pendingLink = link
+            return
+        }
+        await open(link)
+    }
+
+    private func open(_ link: TopShelfLink) async {
+        guard let client,
+            let status = try? await client.decode(
+                Status.self, from: Endpoint.statuses.status(link.statusID))
+        else { return }
+        presentedVideo = PresentedVideo(status: status, position: link.position)
     }
 
     /// Public and unauthenticated, so it can run before anything else does;
@@ -115,10 +149,9 @@ final class TVModel {
                 redirectURI: OAuthService.outOfBandRedirectURI, verifier: verifier)
 
             let id = UUID()
-            try credentials.setToken(token.accessToken, for: id)
-            UserDefaults.standard.set(id.uuidString, forKey: accountKey)
-            UserDefaults.standard.set(apiBase, forKey: "aloha.tv.apiBase")
+            try accounts.save(TVAccount(id: id, apiBase: apiBase, token: token.accessToken))
 
+            accountID = id
             client = APIClient(accountID: id, apiBase: apiBase, accessToken: token.accessToken)
             pendingAuthorisationURL = nil
             await loadServerTheme()
@@ -148,6 +181,19 @@ final class TVModel {
             (try? await client.decode(
                 LossyArray<ContinueWatchingItem>.self,
                 from: Endpoint.video.continueWatching()))?.elements ?? []
+
+        updateTopShelf()
+    }
+
+    /// Hands the Top Shelf what this screen just loaded, and asks the system
+    /// to redraw it only when that changed.
+    private func updateTopShelf() {
+        guard let accountID, let store = TopShelfSnapshotStore.shared else { return }
+        let snapshot = TopShelfSnapshot.make(
+            accountID: accountID, continueWatching: continueWatching, following: home)
+        if (try? store.write(snapshot)) == true {
+            TVTopShelfContentProvider.topShelfContentDidChange()
+        }
     }
 
     func loadShorts() async {
