@@ -49,6 +49,17 @@ public enum WidgetFavourites {
         save(all, in: defaults)
     }
 
+    /// Forgets every tap made for one account, which has signed out.
+    public static func removeAll(
+        accountID: UUID, in defaults: UserDefaults = AppGroup.defaults
+    ) {
+        let prefix = "\(accountID.uuidString)/"
+        let all = entries(in: defaults)
+        let kept = all.filter { !$0.key.hasPrefix(prefix) }
+        guard kept.count != all.count else { return }
+        save(kept, in: defaults)
+    }
+
     private static func entryKey(_ statusID: String, _ accountID: UUID) -> String {
         "\(accountID.uuidString)/\(statusID)"
     }

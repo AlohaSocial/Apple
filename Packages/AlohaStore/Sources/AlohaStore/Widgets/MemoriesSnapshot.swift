@@ -116,6 +116,17 @@ public struct MemoriesSnapshotStore: Sendable {
         try data.write(to: directory.appending(path: Self.fileName), options: .atomic)
     }
 
+    /// Removes the snapshot and its pictures — an account that signed out
+    /// leaves no memory of its own on the Home Screen.
+    public func remove() {
+        let manager = FileManager.default
+        try? manager.removeItem(at: directory.appending(path: Self.fileName))
+        let existing = (try? manager.contentsOfDirectory(atPath: directory.path)) ?? []
+        for name in existing where name.hasPrefix(Self.imagePrefix) {
+            try? manager.removeItem(at: directory.appending(path: name))
+        }
+    }
+
     public func imageURL(for memory: MemoriesSnapshot.Memory) -> URL? {
         memory.imageFile.map { directory.appending(path: $0) }
     }
