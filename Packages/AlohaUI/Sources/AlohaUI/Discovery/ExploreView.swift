@@ -38,6 +38,8 @@ public struct ExploreView: View {
     /// A search that did not reach the server is not a search that found
     /// nobody, and the empty state must not say otherwise.
     @State private var searchError: String?
+    /// The search the Search key started, so typing again supersedes it.
+    @State private var searchTask: Task<Void, Never>?
     @State private var followGraph: FollowGraph?
     /// Remembered per device: somebody who likes the picture keeps it, and
     /// somebody who does not never sees it again.
@@ -100,7 +102,10 @@ public struct ExploreView: View {
         .task { await load() }
         .task(id: directoryOrder) { await loadDirectory() }
         .task(id: period) { await loadTrendingTags() }
-        .task(id: query) { await search() }
+        .task(id: query) {
+            searchTask?.cancel()
+            await search()
+        }
     }
 
     // MARK: - Chrome
@@ -339,6 +344,10 @@ public struct ExploreView: View {
             .listStyle(.inset)
         #endif
         .searchable(text: $query, prompt: Text("Search people", comment: "Discover search field"))
+        .onSubmit(of: .search) {
+            searchTask?.cancel()
+            searchTask = Task { await search(resolving: true) }
+        }
         .alohaGround(palette)
         // Unavailable on visionOS, where there is no keyboard over the
         // content to dismiss.
@@ -680,7 +689,10 @@ public struct ExploreView: View {
             .hashtags ?? []
     }
 
-    private func search() async {
+    /// Typing searches what this server already holds; the Search key asks
+    /// other servers too (`resolve`). Without it an unknown `user@host` is
+    /// queued on the server for a lookup, and a later search finds it.
+    private func search(resolving: Bool = false) async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             isSearching = false
@@ -700,14 +712,15 @@ public struct ExploreView: View {
             }
         }
         // Wait for typing to settle before every keystroke becomes a request.
-        try? await Task.sleep(for: .milliseconds(300))
+        if !resolving { try? await Task.sleep(for: .milliseconds(300)) }
         guard !Task.isCancelled else { return }
         searchError = nil
 
         do {
             async let local = session.client.decode(
                 SearchResults.self,
-                from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
+                from: Endpoint.search.search(
+                    trimmed, type: "accounts", resolve: resolving, limit: 20))
             async let elsewhere: DirectorySearchResults? =
                 isNextcloud
                 ? try? await session.client.decode(
