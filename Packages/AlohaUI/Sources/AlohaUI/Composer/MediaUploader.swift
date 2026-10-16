@@ -110,17 +110,60 @@ public final class ComposerUploader {
             attachments.append(attachment)
             rememberOriginal(payload, filename: name, mimeType: type, for: attachment.id)
             progress.finish(ticket)
-            UploadActivityController.shared.update(progress)
-            if progress.isFinished { UploadActivityController.shared.finish(failed: false) }
+            // A video the server is still transcoding comes back without a
+            // URL; until it has one the post is not ready, and the activity
+            // says so rather than "finished".
+            if attachment.url == nil { awaitProcessing(attachment.id) }
+            UploadActivityController.shared.update(progress, processing: processing.count)
             errorMessage = nil
         } catch {
             progress.finish(ticket, failed: true)
-            UploadActivityController.shared.finish(failed: true)
+            // One failed file is not the end of the batch: the others are
+            // still going up, and the activity follows the whole of it.
+            UploadActivityController.shared.update(progress, processing: processing.count)
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "That upload didn't finish.", comment: "Upload failure")
         }
+    }
+
+    /// Attachments the server is still processing, by id.
+    public private(set) var processing: Set<String> = []
+
+    /// How often, and for how long, a processing attachment is asked after.
+    /// Two minutes covers a phone video on a modest server; past that the
+    /// post is still allowed to try, and the server has the last word.
+    static let processingPollInterval: Duration = .seconds(3)
+    static let processingPollLimit = 40
+
+    private func awaitProcessing(_ id: String) {
+        processing.insert(id)
+        Task { [weak self] in
+            for _ in 0..<Self.processingPollLimit {
+                try? await Task.sleep(for: Self.processingPollInterval)
+                guard let self, self.processing.contains(id) else { return }
+                if let updated = try? await self.session.client.decode(
+                    MediaAttachment.self, from: Endpoint.media.attachment(id)),
+                    updated.url != nil
+                {
+                    self.finishProcessing(updated)
+                    return
+                }
+            }
+            self?.processing.remove(id)
+        }
+    }
+
+    private func finishProcessing(_ attachment: MediaAttachment) {
+        processing.remove(attachment.id)
+        if let index = attachments.firstIndex(where: { $0.id == attachment.id }) {
+            // The description may have been written while it processed.
+            var updated = attachment
+            updated.description = attachments[index].description ?? attachment.description
+            attachments[index] = updated
+        }
+        UploadActivityController.shared.update(progress, processing: processing.count)
     }
 
     private func upload(
@@ -190,6 +233,7 @@ public final class ComposerUploader {
 
     public func remove(_ attachmentID: String) {
         attachments.removeAll { $0.id == attachmentID }
+        processing.remove(attachmentID)
         forgetOriginal(attachmentID)
         filters[attachmentID] = nil
     }

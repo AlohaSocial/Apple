@@ -2,6 +2,7 @@
 
 import AlohaHTML
 import AlohaIntelligence
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
@@ -552,6 +553,9 @@ public final class ComposerModel {
             draft.videoLicence = videoLicence.isEmpty ? nil : videoLicence
         }
 
+        // The upload's Live Activity follows the post through to the end: an
+        // upload that finished is not yet a post that went out.
+        UploadActivityController.shared.posting()
         do {
             let posted: Status
             if let editingStatus {
@@ -600,8 +604,10 @@ public final class ComposerModel {
             }
 
             try? await session.supportStore.deleteDraft(id: draftID)
+            UploadActivityController.shared.posted()
             return true
         } catch {
+            UploadActivityController.shared.postFailed()
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription

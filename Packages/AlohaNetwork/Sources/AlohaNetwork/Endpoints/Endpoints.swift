@@ -691,6 +691,12 @@ extension Endpoint {
                 body: .multipart(Multipart(parts: parts)))
         }
 
+        /// One attachment, to see whether the server has finished processing
+        /// it: Mastodon answers 206 with a null `url` until it has.
+        public static func attachment(_ id: String) -> Endpoint {
+            Endpoint(path: "api/v1/media/\(id)")
+        }
+
         public static func updateDescription(_ id: String, description: String) -> Endpoint {
             Endpoint(
                 method: .put, path: "api/v1/media/\(id)",
