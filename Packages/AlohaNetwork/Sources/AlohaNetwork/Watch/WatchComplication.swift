@@ -129,14 +129,21 @@ public enum WatchComplicationRefresher {
 
     /// The grouped count first, the flat one where a server has no v2 route.
     /// The watch has no capability probe of its own to ask which applies.
+    ///
+    /// Every type is named: Aloha Social leaves its own kinds (story
+    /// reactions, tags, Bluesky) out of the count unless `types[]` asks for
+    /// them, and Mastodon intersects the list with the kinds it knows.
     static func unreadCount(client: APIClient) async throws -> Int {
+        let types = Endpoint.notifications.everyType(onAlohaSocial: true)
         do {
             return try await client.decode(
-                UnreadCount.self, from: Endpoint.notifications.unreadCount(grouped: true)
+                UnreadCount.self,
+                from: Endpoint.notifications.unreadCount(grouped: true, types: types)
             ).count
         } catch APIError.notFound {
             return try await client.decode(
-                UnreadCount.self, from: Endpoint.notifications.unreadCount(grouped: false)
+                UnreadCount.self,
+                from: Endpoint.notifications.unreadCount(grouped: false, types: types)
             ).count
         }
     }
