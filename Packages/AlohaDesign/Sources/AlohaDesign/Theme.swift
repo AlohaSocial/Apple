@@ -32,6 +32,11 @@ public struct AlohaPalette: Sendable, Hashable {
     public var bookmark: Color
     public var mention: Color
     public var hashtag: Color
+    /// Whether the grounds are the platform's own semantic colours. Then a
+    /// `List` or `Form` keeps the system's grouped background rather than
+    /// having it painted over (`alohaGround`), which is what makes Settings
+    /// look like Settings.
+    public var usesSystemGrounds = false
 
     public init(
         background: ServerAccent.RGB, surface: Color, surfaceRaised: Color, separator: Color,
@@ -100,19 +105,10 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
     /// favourite amber, bookmark violet — kept distinct at badge size and
     /// distinguishable under the common colour-vision deficiencies.
     public func palette(for scheme: ColorScheme, increaseContrast: Bool = false) -> AlohaPalette {
-        let resolved: AlohaTheme
         switch self {
         case .system:
-            resolved =
-                scheme == .dark
-                ? (increaseContrast ? .highContrastDark : .warmDark)
-                : (increaseContrast ? .highContrastLight : .warmLight)
-        default:
-            resolved = self
-        }
-
-        switch resolved {
-        case .warmLight, .system:
+            return Self.systemPalette(for: scheme, increaseContrast: increaseContrast)
+        case .warmLight:
             return AlohaPalette(
                 background: ServerAccent.RGB(red: 0.99, green: 0.98, blue: 0.97),
                 surface: .white,
@@ -201,7 +197,81 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
             return palette
         }
     }
+
+    /// The System theme: the platform's own grounds, surfaces, separators and
+    /// label, so the app sits beside Settings and Mail rather than in a tint
+    /// of its own. The meaning-carrying tints — accent, boost, favourite,
+    /// bookmark, mention — come from the matching warm or high-contrast
+    /// palette, which already reach their contrast floor on white and black.
+    ///
+    /// The secondary and tertiary text roles are the one deliberate departure:
+    /// the system's own `secondaryLabel` is about 3.5:1 on white, and these
+    /// carry handles, timestamps and counts at caption size, which docs/12 §3
+    /// holds to 4.5:1. They are neutral greys in the system's grey family,
+    /// moved just far enough.
+    ///
+    /// tvOS and watchOS have no semantic ground colours, so there System is
+    /// what it always was: the warm palettes.
+    static func systemPalette(for scheme: ColorScheme, increaseContrast: Bool) -> AlohaPalette {
+        let isDark = scheme == .dark
+        let tints: AlohaTheme =
+            isDark
+            ? (increaseContrast ? .highContrastDark : .warmDark)
+            : (increaseContrast ? .highContrastLight : .warmLight)
+        var palette = tints.palette(for: scheme)
+
+        #if os(iOS) || os(visionOS) || os(macOS)
+            palette.background = SystemColours.background
+            palette.backgroundComponents = isDark ? SystemColours.darkGround : .white
+            palette.surface = SystemColours.surface
+            palette.surfaceRaised = SystemColours.surfaceRaised
+            palette.separator = SystemColours.separator
+            palette.label = SystemColours.label
+            switch (isDark, increaseContrast) {
+            case (false, false):
+                palette.secondaryLabel = Color(red: 0.36, green: 0.36, blue: 0.38)
+                palette.tertiaryLabel = Color(red: 0.42, green: 0.42, blue: 0.44)
+            case (false, true):
+                palette.secondaryLabel = Color(white: 0.22)
+                palette.tertiaryLabel = Color(white: 0.32)
+            case (true, false):
+                palette.secondaryLabel = Color(red: 0.70, green: 0.70, blue: 0.73)
+                palette.tertiaryLabel = Color(red: 0.60, green: 0.60, blue: 0.63)
+            case (true, true):
+                palette.secondaryLabel = Color(white: 0.86)
+                palette.tertiaryLabel = Color(white: 0.74)
+            }
+            palette.usesSystemGrounds = true
+        #endif
+        return palette
+    }
 }
+
+#if os(iOS) || os(visionOS) || os(macOS)
+    /// The semantic colours the System theme is built from. Each resolves
+    /// against the view's own appearance — a sheet in dark mode gets the
+    /// elevated ground, Increase Contrast the stronger separator — which a
+    /// fixed palette never could.
+    enum SystemColours {
+        #if os(macOS)
+            static let background = Color(nsColor: .textBackgroundColor)
+            static let surface = Color(nsColor: .secondarySystemFill)
+            static let surfaceRaised = Color(nsColor: .tertiarySystemFill)
+            static let separator = Color(nsColor: .separatorColor)
+            static let label = Color(nsColor: .labelColor)
+            /// `textBackgroundColor` in dark mode, as numbers, for the
+            /// server-accent contrast guard.
+            static let darkGround = ServerAccent.RGB(red: 0.118, green: 0.118, blue: 0.118)
+        #else
+            static let background = Color(uiColor: .systemBackground)
+            static let surface = Color(uiColor: .secondarySystemBackground)
+            static let surfaceRaised = Color(uiColor: .tertiarySystemFill)
+            static let separator = Color(uiColor: .separator)
+            static let label = Color(uiColor: .label)
+            static let darkGround = ServerAccent.RGB.black
+        #endif
+    }
+#endif
 
 // MARK: - Environment
 
@@ -402,15 +472,23 @@ extension View {
     /// already tracks the scheme, and the one theme where a palette surface
     /// would swallow them (`black`, where surface and ground are both black)
     /// is the one that would break.
+    ///
+    /// Under the System theme it does nothing: there the ground *is* the
+    /// system's, and the grouped background is the look to keep.
+    @ViewBuilder
     public func alohaGround(_ palette: AlohaPalette) -> some View {
-        #if os(tvOS)
-            // tvOS has no `scrollContentBackground`: its lists draw no grouped
-            // ground of their own to hide.
-            background(palette.background)
-        #else
-            scrollContentBackground(.hidden)
-                .background(palette.background)
-        #endif
+        if palette.usesSystemGrounds {
+            self
+        } else {
+            #if os(tvOS)
+                // tvOS has no `scrollContentBackground`: its lists draw no
+                // grouped ground of their own to hide.
+                background(palette.background)
+            #else
+                scrollContentBackground(.hidden)
+                    .background(palette.background)
+            #endif
+        }
     }
 }
 
@@ -500,26 +578,29 @@ extension View {
 /// `hoverEffect(.highlight)` on the platforms that have it, nothing
 /// everywhere else.
 ///
-/// visionOS is the only platform with a hover interaction — a look at a row
-/// lights it up — so this is a no-op by construction everywhere else and the
-/// call sites do not need their own `#if os(visionOS)`.
+/// Two platforms hover: visionOS, where a look at a row lights it up, and the
+/// iPad, where the pointer does — a trackpad, a mouse, a Magic Keyboard. This
+/// was visionOS-only, which left every row on an iPad with a pointer inert
+/// under it. An iPhone has no pointer, so there it costs nothing; the Mac has
+/// its own selection highlight and no `hoverEffect`. The call sites never
+/// need their own `#if`.
 extension View {
     @ViewBuilder
     public func alohaRowHighlight() -> some View {
-        #if os(visionOS)
+        #if os(visionOS) || os(iOS)
             hoverEffect(.highlight)
         #else
             self
         #endif
     }
 
-    /// The same look-to-highlight for a custom control — a plain-style button
-    /// or a tappable card — drawn in the shape the control actually has
-    /// rather than its glyph's bounding box, which is all a plain button
-    /// would otherwise light up.
+    /// The same highlight for a custom control — a plain-style button or a
+    /// tappable card — drawn in the shape the control actually has rather
+    /// than its glyph's bounding box, which is all a plain button would
+    /// otherwise light up.
     @ViewBuilder
     public func alohaHoverTarget(_ shape: some Shape) -> some View {
-        #if os(visionOS)
+        #if os(visionOS) || os(iOS)
             contentShape(.hoverEffect, shape).hoverEffect(.highlight)
         #else
             self
