@@ -83,6 +83,120 @@ struct SendQueueTests {
         #expect(posts[1].inReplyToID != nil)
         #expect(posts[2].inReplyToID != posts[1].inReplyToID)
     }
+
+    @Test("A queued thread that breaks part-way keeps only what is left")
+    func queuedThreadResumes() async throws {
+        let (session, transport) = try await makeSession()
+        _ = try await session.supportStore.saveDraft(
+            DraftSnapshot(
+                accountID: session.id, text: "one", idempotencyKey: "thread",
+                queuedForSend: true, threadSegments: ["two", "three"]))
+        await transport.failPost(number: 2, with: .transport(URLError(.timedOut)))
+
+        #expect(await SendQueue.drain(session: session) == 0)
+        let left = try #require(
+            try await session.supportStore.queuedDrafts(accountID: session.id).first)
+        #expect(left.text == "two")
+        #expect(left.threadSegments == ["three"])
+        #expect(left.threadPosition == 1)
+
+        await transport.stopFailing()
+        #expect(await SendQueue.drain(session: session) == 1)
+
+        let posts = await transport.posts
+        // "one" once; "two" twice — its first attempt timed out — under the
+        // same key both times, so a server that kept it says so.
+        #expect(posts.map(\.text) == ["one", "two", "two", "three"])
+        #expect(posts.map(\.idempotencyKey) == ["thread", "thread-1", "thread-1", "thread-2"])
+        #expect(posts[2].inReplyToID == left.inReplyToID)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("A refused segment comes off the queue as what is left, with the reason")
+    func refusedSegmentLeavesTheRest() async throws {
+        let (session, transport) = try await makeSession()
+        _ = try await session.supportStore.saveDraft(
+            DraftSnapshot(
+                accountID: session.id, text: "one", queuedForSend: true,
+                threadSegments: ["two", "three"]))
+        await transport.failPost(number: 2, with: .unprocessable(message: "Too long"))
+
+        _ = await SendQueue.drain(session: session)
+
+        #expect(try await session.supportStore.queuedDrafts(accountID: session.id).isEmpty)
+        let kept = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        #expect(kept.text == "two")
+        #expect(kept.lastSendError == "Too long")
+        #expect(await transport.posts.map(\.text) == ["one", "two"])
+    }
+
+    @Test("A queued post keeps everything the composer would have sent")
+    func queuedPostKeepsExtras() async throws {
+        let (session, _) = try await makeSession()
+        var draft = DraftSnapshot(accountID: session.id, text: "From the team")
+        draft.postAs = "team@cloud.example.test"
+        draft.placeName = "Lisbon"
+        draft.placeCountry = "Portugal"
+        draft.replyPolicy = ReplyPolicy.followers.rawValue
+        draft.videoTitle = "Waves"
+        _ = try await session.supportStore.saveDraft(draft)
+
+        let stored = try #require(
+            try await session.supportStore.drafts(accountID: session.id).first)
+        let post = try await stored.statusPost(session: session, total: 1)
+
+        #expect(post.postAs == "team@cloud.example.test")
+        #expect(post.placeName == "Lisbon")
+        #expect(post.placeCountry == "Portugal")
+        #expect(post.videoTitle == "Waves")
+    }
+}
+
+@Suite("A thread that fails part-way")
+@MainActor
+struct ThreadFailureTests {
+    @Test("Retrying in the composer never posts the first post again")
+    func composerRetryResumes() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "one"
+        model.threadSegments = ["two", "three"]
+        await transport.failPost(number: 2, with: .transport(URLError(.timedOut)))
+
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        await transport.stopFailing()
+        #expect(await model.post(skippingAltTextCheck: true))
+
+        let posts = await transport.posts
+        #expect(posts.map(\.text) == ["one", "two", "two", "three"])
+        #expect(posts.filter { $0.text == "one" }.count == 1)
+        // The segment keeps its key between attempts.
+        #expect(posts[1].idempotencyKey == posts[2].idempotencyKey)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("What the composer saves after a part-way failure is the rest of the thread")
+    func composerSavesTheRest() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "one"
+        model.threadSegments = ["two", "three"]
+        await transport.failPost(number: 2, with: .transport(URLError(.timedOut)))
+
+        _ = await model.post(skippingAltTextCheck: true)
+
+        let saved = try #require(
+            try await session.supportStore.queuedDrafts(accountID: session.id).first)
+        #expect(saved.text == "two")
+        #expect(saved.threadSegments == ["three"])
+        #expect(saved.threadPosition == 1)
+        #expect(saved.inReplyToID != nil)
+
+        // And the queue finishes it without the first post.
+        await transport.stopFailing()
+        #expect(await SendQueue.drain(session: session) == 1)
+        #expect(await transport.posts.map(\.text) == ["one", "two", "two", "three"])
+    }
 }
 
 @Suite("Drafts and redrafts in the composer")
@@ -201,10 +315,25 @@ private actor RecordingTransport: HTTPTransport {
     private(set) var posts: [Post] = []
     private(set) var log: [String] = []
     private var postFailure: APIError?
+    /// Only this post (1-based, counting every attempt) fails, when set.
+    private var failingPostNumber: Int?
 
     init(server: MockAPIServer) { self.server = server }
 
-    func failPosts(with error: APIError) { postFailure = error }
+    func failPosts(with error: APIError) {
+        postFailure = error
+        failingPostNumber = nil
+    }
+
+    func failPost(number: Int, with error: APIError) {
+        postFailure = error
+        failingPostNumber = number
+    }
+
+    func stopFailing() {
+        postFailure = nil
+        failingPostNumber = nil
+    }
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let method = request.httpMethod ?? "GET"
@@ -217,7 +346,9 @@ private actor RecordingTransport: HTTPTransport {
                 Post(
                     text: fields["status"], inReplyToID: fields["in_reply_to_id"],
                     idempotencyKey: request.value(forHTTPHeaderField: "Idempotency-Key")))
-            if let postFailure { throw postFailure }
+            if let postFailure, failingPostNumber == nil || failingPostNumber == posts.count {
+                throw postFailure
+            }
         }
         return try await server.send(request)
     }

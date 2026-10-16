@@ -163,6 +163,17 @@ public actor SupportStore {
         record.quotePolicy = snapshot.quotePolicy
         record.threadSegments = snapshot.threadSegments
         record.lastSendError = snapshot.lastSendError
+        record.threadPosition = snapshot.threadPosition
+        record.replyPolicy = snapshot.replyPolicy
+        record.marksAsAIGenerated = snapshot.marksAsAIGenerated
+        record.placeID = snapshot.placeID
+        record.placeName = snapshot.placeName
+        record.placeCountry = snapshot.placeCountry
+        record.postAs = snapshot.postAs
+        record.cardBackgroundID = snapshot.cardBackgroundID
+        record.videoTitle = snapshot.videoTitle
+        record.videoCategory = snapshot.videoCategory
+        record.videoLicence = snapshot.videoLicence
         record.updatedAt = Date()
 
         try modelContext.save()
@@ -274,6 +285,56 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
     /// Why the send queue gave up on this draft, shown in Drafts.
     public var lastSendError: String?
     public var updatedAt: Date
+    /// How many posts of this thread are already out; see `DraftRecord`.
+    public var threadPosition = 0
+    // The rest of what the composer sends; see `DraftRecord`.
+    public var replyPolicy: String?
+    public var marksAsAIGenerated = false
+    public var placeID: String?
+    public var placeName: String?
+    public var placeCountry: String?
+    public var postAs: String?
+    public var cardBackgroundID: String?
+    public var videoTitle: String?
+    public var videoCategory: String?
+    public var videoLicence: String?
+
+    /// The key the post at `position` in this thread goes out with: the
+    /// draft's own for the first, and one derived from it for each segment.
+    /// Derived rather than random, so a segment whose first attempt landed
+    /// unseen is recognised by the server when the queue sends it again.
+    public func idempotencyKey(forPosition position: Int) -> String {
+        position == 0 ? idempotencyKey : "\(idempotencyKey)-\(position)"
+    }
+
+    /// The same draft once `posted` posts of its thread are out, the last of
+    /// them `lastPostedID`: the next segment becomes the text, replying to
+    /// what went out. What belonged to the first post — media, poll, quote,
+    /// schedule, place, card, video — has gone out with it.
+    public func resuming(afterPosted posted: Int, lastPostedID: String) -> DraftSnapshot {
+        var rest = self
+        rest.text = threadSegments.first ?? ""
+        rest.threadSegments = Array(threadSegments.dropFirst())
+        rest.threadPosition = posted
+        rest.inReplyToID = lastPostedID
+        rest.uploadedMediaIDs = []
+        rest.localMediaPaths = []
+        rest.pollOptions = []
+        rest.pollExpiresIn = nil
+        rest.quotedID = nil
+        rest.quotePolicy = nil
+        rest.scheduledAt = nil
+        rest.replyPolicy = nil
+        rest.marksAsAIGenerated = false
+        rest.placeID = nil
+        rest.placeName = nil
+        rest.placeCountry = nil
+        rest.cardBackgroundID = nil
+        rest.videoTitle = nil
+        rest.videoCategory = nil
+        rest.videoLicence = nil
+        return rest
+    }
 
     public init(
         id: UUID = UUID(), accountID: UUID, text: String = "", spoilerText: String = "",
@@ -323,6 +384,17 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
             threadGroupID: record.threadGroupID, quotedID: record.quotedID,
             quotePolicy: record.quotePolicy, threadSegments: record.threadSegments,
             lastSendError: record.lastSendError, updatedAt: record.updatedAt)
+        threadPosition = record.threadPosition
+        replyPolicy = record.replyPolicy
+        marksAsAIGenerated = record.marksAsAIGenerated
+        placeID = record.placeID
+        placeName = record.placeName
+        placeCountry = record.placeCountry
+        postAs = record.postAs
+        cardBackgroundID = record.cardBackgroundID
+        videoTitle = record.videoTitle
+        videoCategory = record.videoCategory
+        videoLicence = record.videoLicence
     }
 
     /// A quote with nothing typed is still a post: the quoted card is the
