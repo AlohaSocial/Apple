@@ -106,14 +106,13 @@ public struct OAuthService: Sendable {
             "application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        var components = URLComponents()
-        components.queryItems = [
+        let fields: [URLQueryItem] = [
             URLQueryItem(name: "client_name", value: Self.clientName),
             URLQueryItem(name: "redirect_uris", value: redirectURI),
             URLQueryItem(name: "scopes", value: Self.scopes),
             URLQueryItem(name: "website", value: Self.website),
         ]
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(fields)
 
         let (data, response) = try await transport.send(request)
         if let error = APIError.from(
@@ -227,9 +226,7 @@ public struct OAuthService: Sendable {
         ]
         if let verifier { items.append(URLQueryItem(name: "code_verifier", value: verifier)) }
 
-        var components = URLComponents()
-        components.queryItems = items
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(items)
 
         let (data, response) = try await transport.send(request)
         if let error = APIError.from(
@@ -254,13 +251,12 @@ public struct OAuthService: Sendable {
         request.setValue(
             "application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
 
-        var components = URLComponents()
-        components.queryItems = [
+        let fields: [URLQueryItem] = [
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "client_secret", value: clientSecret),
             URLQueryItem(name: "token", value: token),
         ]
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(fields)
 
         let (data, response) = try await transport.send(request)
         if let error = APIError.from(
