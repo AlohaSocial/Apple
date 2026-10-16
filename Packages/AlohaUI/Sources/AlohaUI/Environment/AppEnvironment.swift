@@ -194,6 +194,9 @@ public final class AppEnvironment {
         capabilities: ServerCapabilities,
         token: String
     ) async throws -> AccountSession {
+        if let existing = existingSession(instanceHost: instanceHost, serverAccountID: account.id) {
+            return try await signInAgain(existing, account: account, token: token)
+        }
         let id = UUID()
         try credentials.setToken(token, for: id)
 
@@ -207,7 +210,9 @@ public final class AppEnvironment {
 
         Task { await session.refreshServerState() }
         // The first account is the moment notifications become meaningful.
-        var shouldAsk = sessions.count == 1
+        // Only the app asks: an extension has no prompt to show, and outside
+        // an app bundle the notification centre does not exist at all.
+        var shouldAsk = sessions.count == 1 && Bundle.main.bundleURL.pathExtension == "app"
         #if DEBUG
             if MockMode.isEnabled { shouldAsk = false }
         #endif
@@ -215,15 +220,86 @@ public final class AppEnvironment {
         return session
     }
 
-    /// Removing takes everything local with it — token, rows, cached media,
-    /// drafts (docs/11 §2).
-    public func removeAccount(_ id: UUID) async {
-        guard let session = sessions.first(where: { $0.id == id }) else { return }
+    /// The account already signed in on this server as this person, if any:
+    /// signing in to it again is a new token for it, not a second account.
+    func existingSession(instanceHost: String, serverAccountID: String) -> AccountSession? {
+        sessions.first {
+            $0.snapshot.instanceHost.lowercased() == instanceHost.lowercased()
+                && $0.snapshot.serverAccountID == serverAccountID
+        }
+    }
 
+    /// A fresh sign-in to an account that is already here — the usual answer
+    /// to "your sign-in expired". It keeps its id, so its drafts, its queue
+    /// and its cache stay its own, and only the token and the flag change.
+    private func signInAgain(
+        _ session: AccountSession, account: Account, token: String
+    ) async throws -> AccountSession {
+        try credentials.setToken(token, for: session.id)
+        try? await accounts.setNeedsReauthentication(false, for: session.id)
+        try? await accounts.updateProfile(account, for: session.id)
+
+        // The client holds the old token; a session built from the stored
+        // row picks up the new one.
+        let snapshot = (try? await accounts.account(id: session.id)) ?? session.snapshot
+        let renewed = makeSession(snapshot)
+        let nextcloud = (try? credentials.nextcloudCredentials(for: session.id)) ?? nil
+        await renewed.setNextcloudConnection(nextcloud)
+        await renewed.setPushActive(session.isPushActive)
+        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[index] = renewed
+        }
+        ReadingSignals.forget(session.id)
+        setActiveAccount(renewed.id)
+        Task { await renewed.refreshServerState() }
+        return renewed
+    }
+
+    /// Removing takes everything with it — token, app password, push, rows,
+    /// cached responses, drafts, snapshots (docs/11 §2) — in an order that
+    /// cannot leave half an account behind.
+    ///
+    /// The account's rows go first. If they cannot be deleted nothing else is
+    /// touched and `false` comes back: an account whose token was thrown
+    /// away but whose row remains is a dead entry that can neither post nor
+    /// be removed. Once the rows are gone, everything after is best effort
+    /// and runs to the end whatever fails.
+    @discardableResult
+    public func removeAccount(_ id: UUID) async -> Bool {
+        guard let session = sessions.first(where: { $0.id == id }) else { return false }
+
+        do {
+            try await timelines.deleteEverything(forAccount: id)
+        } catch {
+            logger.error(
+                "could not delete the account's rows: \(String(describing: error), privacy: .public)"
+            )
+            return false
+        }
+
+        // The server and the push proxy, while the secrets they need exist.
+        await unregisterNextcloudPush(session: session)
         await revokeToken(for: session)
+
+        // The secrets.
         try? credentials.removeToken(for: id)
-        try? await timelines.deleteEverything(forAccount: id)
+        try? credentials.removeNextcloudCredentials(for: id)
+        try? credentials.removePushKeys(for: id)
+        let host = session.snapshot.instanceHost
+        let others = sessions.filter { $0.id != id }
+        if !others.contains(where: { $0.snapshot.instanceHost.lowercased() == host.lowercased() }) {
+            // The app's registration with that server, which no other
+            // account here uses any more.
+            try? credentials.removeRegistration(forHost: host)
+        }
+
+        // What the extensions and the system hold for it.
+        AccountTeardown.removeSharedState(for: id, in: AppGroup.defaults)
         await SpotlightIndexer.removeEverything(for: id)
+        ReadingSignals.forget(id)
+        // Responses were cached under this account's token; they are not
+        // keyed by account, so the cache goes as a whole.
+        transport.removeCachedResponses()
 
         sessions.removeAll { $0.id == id }
         if activeAccountID == id {
@@ -234,6 +310,7 @@ public final class AppEnvironment {
                 AppGroup.defaults.removeObject(forKey: Self.activeAccountKey)
             }
         }
+        return true
     }
 
     /// A revocation failure does not block local sign-out.

@@ -46,6 +46,12 @@ final class ReadingSignals {
 
     /// The collector for one account, or `nil` where its server learns
     /// nothing from reading — anything but Aloha Social.
+    /// Drops an account's collector: it holds a client with that account's
+    /// token, which must not outlive a sign-out or a fresh sign-in.
+    static func forget(_ accountID: UUID) {
+        collectors.removeValue(forKey: accountID)
+    }
+
     static func forSession(_ session: AccountSession) -> ReadingSignals? {
         guard session.capabilities.isNextcloudSocial else { return nil }
         if let existing = collectors[session.id] { return existing }
