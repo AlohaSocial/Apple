@@ -60,6 +60,9 @@ public final class AppEnvironment {
         let stored = UserDefaults.standard.string(forKey: Self.themeKey)
         self.theme = stored.flatMap(AlohaTheme.init(rawValue:)) ?? .system
         self.metrics = AlohaMetrics()
+        // An intent run in this process uses these sessions rather than
+        // opening the store a second time.
+        IntentContext.live = self
     }
 
     /// The colour the app wears: the active account's Nextcloud, as its

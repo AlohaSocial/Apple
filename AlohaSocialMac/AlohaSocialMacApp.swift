@@ -3,6 +3,7 @@
 import AlohaNetwork
 import AlohaStore
 import AlohaUI
+import AppIntents
 import AppKit
 import Foundation
 import SwiftData
@@ -136,6 +137,12 @@ struct AlohaSocialMacApp: App {
 // The menu bar itself is the shared `AlohaCommands` in AlohaUI — one
 // definition for the Mac app and the iPad windowing menu bar, rather than
 // two that can disagree (docs/09 §10).
+
+/// The intents, entities and Focus filter live in AlohaUI; this is what puts
+/// them into the Mac app's App Intents metadata.
+struct AlohaSocialMacAppIntents: AppIntentsPackage {
+    static var includedPackages: [any AppIntentsPackage.Type] { [AlohaUIAppIntents.self] }
+}
 
 /// The Mac's notification delegate.
 ///

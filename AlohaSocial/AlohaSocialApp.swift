@@ -3,6 +3,7 @@
 import AlohaNetwork
 import AlohaStore
 import AlohaUI
+import AppIntents
 import Foundation
 import SwiftData
 import SwiftUI
@@ -61,4 +62,11 @@ struct AlohaSocialApp: App {
             .defaultSize(width: 1100, height: 780)
         #endif
     }
+}
+
+/// The intents, entities and Focus filter live in AlohaUI; this is what puts
+/// them into the app's App Intents metadata, where Shortcuts and Settings →
+/// Focus look for them.
+struct AlohaSocialAppIntents: AppIntentsPackage {
+    static var includedPackages: [any AppIntentsPackage.Type] { [AlohaUIAppIntents.self] }
 }

@@ -158,11 +158,30 @@ public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
 enum IntentContext {
     struct Context {
         let accountID: UUID
+        let serverAccountID: String
         let client: APIClient
     }
 
+    /// The running app's environment, when the intent runs inside the app.
+    ///
+    /// Shortcuts and Siri run most intents in the app's own process, where
+    /// building a second container against the same store file is the
+    /// failure `AppEnvironment` exists to prevent. The live one is used
+    /// whenever there is one.
+    @MainActor static weak var live: AppEnvironment?
+
     @MainActor
     static func current() async -> Context? {
+        if let live {
+            await live.loadIfNeeded()
+            if let session = live.activeSession {
+                return Context(
+                    accountID: session.id, serverAccountID: session.snapshot.serverAccountID,
+                    client: session.client)
+            }
+            return nil
+        }
+
         let container = StoreContainer.make()
         let accounts = AccountStore(modelContainer: container)
         guard let snapshots = try? await accounts.allAccounts(),
@@ -174,6 +193,7 @@ enum IntentContext {
 
         return Context(
             accountID: active.id,
+            serverAccountID: active.serverAccountID,
             client: APIClient(
                 accountID: active.id, apiBase: active.capabilities.apiBase, accessToken: token))
     }
