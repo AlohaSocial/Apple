@@ -33,6 +33,21 @@ public struct ListsView: View {
                 errorStrip(errorMessage)
             }
 
+            // Bluesky feeds and lists are timelines too, kept on Bluesky and
+            // read through Aloha Social — beside the lists, where a reader
+            // looks for a timeline of their own choosing.
+            if session.bluesky.isAvailable {
+                Section {
+                    NavigationLink(value: Route.blueskyFeeds) {
+                        Label {
+                            Text("Bluesky feeds", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "rectangle.stack.badge.person.crop")
+                        }
+                    }
+                }
+            }
+
             // A first page arriving is a list in progress, not a blank screen
             // with a spinner floating over it.
             if isLoading && lists.isEmpty && followedTags.isEmpty {
@@ -197,6 +212,9 @@ public struct ListsView: View {
         .navigationTitle(Text("Your lists", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
+        .task {
+            if session.bluesky == .unknown { await session.refreshBlueskyAvailability() }
+        }
         .sheet(item: $editing) { list in
             ListEditorView(list: list, session: session) { updated in
                 if let index = lists.firstIndex(where: { $0.id == updated.id }) {
