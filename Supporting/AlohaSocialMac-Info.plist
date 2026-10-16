@@ -2,6 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The Mac app shares its store, keychain group and defaults with its
+	     widgets through group.social.aloha.app (AlohaSocialMac.entitlements). -->
+	<key>AlohaAppGroupEnabled</key>
+	<true/>
+	<!-- The app's own links: a tapped widget row, a Control Center control
+	     and Spotlight all open the Mac app through alohasocial://. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>social.aloha.app.mac</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>alohasocial</string>
+			</array>
+		</dict>
+	</array>
 	<!-- The same ATS exception the other targets carry: the sign-in screen
 	     accepts plain http from a private network (http://192.168.x.x[:port]),
 	     and the Mac client is the place those servers are most likely to be

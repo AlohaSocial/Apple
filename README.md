@@ -69,9 +69,10 @@ base PR (#1):
 - **ATS exception on tvOS/watchOS**: Dedicated Info.plist files with the
   blanket exception so the new HTTP private-network sign-in works on all
   platforms.
-- **App Group safe defaults**: Disabled by default; keychain sharing gated
-  independently; personal-dev signing no longer claims a container it
-  cannot have.
+- **App Group safe defaults**: Each target opts in through its Info.plist,
+  and keychain sharing is gated independently, so a build without the
+  entitlements works alone. The group is on for every shipped target again —
+  see `Supporting/README.md`.
 - **OAuth origin comparison hardened**: Case-insensitive, default-port-aware,
   discarded endpoints logged.
 - **OAuth/http scheme persistence**: Re-probe, NodeInfo, Nextcloud connect,

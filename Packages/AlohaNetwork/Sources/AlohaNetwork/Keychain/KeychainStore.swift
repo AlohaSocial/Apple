@@ -63,12 +63,17 @@ public struct KeychainStore: Sendable {
     }
 
     private static let teamPrefix: String? = {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: "social.aloha.app.prefix-probe",
             kSecAttrService as String: "social.aloha.app.prefix-probe",
             kSecReturnAttributes as String: true,
         ]
+        #if os(macOS)
+            // The file-based keychain records no access group, so the probe
+            // has to land where the shared items do.
+            query[kSecUseDataProtectionKeychain as String] = true
+        #endif
         var item: CFTypeRef?
         var status = SecItemCopyMatching(query as CFDictionary, &item)
         if status == errSecItemNotFound {
@@ -104,6 +109,15 @@ public struct KeychainStore: Sendable {
         ]
         if useGroup, let accessGroup {
             query[kSecAttrAccessGroup as String] = Self.qualified(accessGroup)
+            #if os(macOS)
+                // A Mac keeps two keychains, and only the data protection one
+                // honours an access group: in the file-based keychain the
+                // group is ignored and the widget extension could never read
+                // what the app wrote. The fallback below (`useGroup: false`)
+                // is the file-based keychain, which is what an unsigned build
+                // still gets.
+                query[kSecUseDataProtectionKeychain as String] = true
+            #endif
         }
         return query
     }
@@ -129,25 +143,7 @@ public struct KeychainStore: Sendable {
             return
         }
         try withGroupFallback { useGroup in
-            let data = Data(value.utf8)
-            var query = baseQuery(account: account, useGroup: useGroup)
-
-            let attributes: [String: Any] = [
-                kSecValueData as String: data,
-                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-            ]
-
-            let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-            if updateStatus == errSecSuccess { return }
-            guard updateStatus == errSecItemNotFound else {
-                throw KeychainError.unexpectedStatus(updateStatus)
-            }
-
-            query.merge(attributes) { _, new in new }
-            let addStatus = SecItemAdd(query as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                throw KeychainError.unexpectedStatus(addStatus)
-            }
+            try write(value, account: account, useGroup: useGroup)
         }
     }
 
@@ -156,18 +152,19 @@ public struct KeychainStore: Sendable {
         // The closure's result type was inferred from a single-expression body
         // before the in-memory branch was added; it needs saying now.
         return try withGroupFallback { useGroup -> String? in
-            var query = baseQuery(account: account, useGroup: useGroup)
-            query[kSecReturnData as String] = true
-            query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-            var item: CFTypeRef?
-            let status = SecItemCopyMatching(query as CFDictionary, &item)
-            if status == errSecItemNotFound { return nil }
-            guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
-            guard let data = item as? Data, let value = String(data: data, encoding: .utf8) else {
-                throw KeychainError.malformedData
-            }
-            return value
+            if let value = try read(account: account, useGroup: useGroup) { return value }
+            #if os(macOS)
+                // Written before the Mac shared its keychain group, an item
+                // sits in the file-based keychain. It is carried over on the
+                // first read, so a sign-in made with an older build survives
+                // this one instead of asking again.
+                if useGroup, let legacy = try? read(account: account, useGroup: false) {
+                    try? write(legacy, account: account, useGroup: true)
+                    SecItemDelete(baseQuery(account: account, useGroup: false) as CFDictionary)
+                    return legacy
+                }
+            #endif
+            return nil
         }
     }
 
@@ -182,7 +179,49 @@ public struct KeychainStore: Sendable {
             guard status == errSecSuccess || status == errSecItemNotFound else {
                 throw KeychainError.unexpectedStatus(status)
             }
+            #if os(macOS)
+                // A copy left in the file-based keychain would be carried
+                // back by the next read: signing out has to remove both.
+                if useGroup {
+                    SecItemDelete(baseQuery(account: account, useGroup: false) as CFDictionary)
+                }
+            #endif
         }
+    }
+
+    private func write(_ value: String, account: String, useGroup: Bool) throws {
+        var query = baseQuery(account: account, useGroup: useGroup)
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(value.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecSuccess { return }
+        guard updateStatus == errSecItemNotFound else {
+            throw KeychainError.unexpectedStatus(updateStatus)
+        }
+
+        query.merge(attributes) { _, new in new }
+        let addStatus = SecItemAdd(query as CFDictionary, nil)
+        guard addStatus == errSecSuccess else {
+            throw KeychainError.unexpectedStatus(addStatus)
+        }
+    }
+
+    private func read(account: String, useGroup: Bool) throws -> String? {
+        var query = baseQuery(account: account, useGroup: useGroup)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
+        guard let data = item as? Data, let value = String(data: data, encoding: .utf8) else {
+            throw KeychainError.malformedData
+        }
+        return value
     }
 }
 

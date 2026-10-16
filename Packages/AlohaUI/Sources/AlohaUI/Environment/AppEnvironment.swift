@@ -128,6 +128,9 @@ public final class AppEnvironment {
     public func load() async {
         isLoading = true
         defer { isLoading = false }
+        // Before the first read of the active account: a build that kept it
+        // in the app's own defaults would otherwise open on the wrong one.
+        AppGroup.adoptStandardDefaultsIfNeeded()
 
         do {
             let snapshots = try await accounts.allAccounts()

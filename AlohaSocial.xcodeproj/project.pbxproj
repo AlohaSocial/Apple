@@ -896,6 +896,8 @@
 		BBSD000000000000000BB /* Debug configuration for PBXNativeTarget "AlohaShareExtension" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaShareExtension.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -921,6 +923,8 @@
 		BBSE000000000000000BB /* Release configuration for PBXNativeTarget "AlohaShareExtension" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaShareExtension.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -946,6 +950,8 @@
 		BBWD000000000000000BB /* Debug configuration for PBXNativeTarget "AlohaWidgets" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWidgets.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -971,6 +977,8 @@
 		BBWE000000000000000BB /* Release configuration for PBXNativeTarget "AlohaWidgets" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWidgets.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1092,6 +1100,8 @@
 		DDND00000000000000DD /* Debug configuration for PBXNativeTarget "AlohaNotificationService" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaNotificationService.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1115,6 +1125,8 @@
 		DDNE00000000000000DD /* Release configuration for PBXNativeTarget "AlohaNotificationService" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaNotificationService.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1180,6 +1192,7 @@
 		MACD00000000000000MA /* Debug configuration for PBXNativeTarget "AlohaSocialMac" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1204,6 +1217,7 @@
 		MACX00000000000000MA /* Release configuration for PBXNativeTarget "AlohaSocialMac" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;

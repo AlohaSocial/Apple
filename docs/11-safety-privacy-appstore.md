@@ -143,12 +143,15 @@ any future addition of analytics requires changing this document first.
 - Remote avatars and header images **are** loaded from their origin hosts,
   because Mastodon servers cache them and Nextcloud serves cached copies
   via `/document/get`. Prefer the local cache URL when the entity offers one.
-- The shared app group (`group.social.aloha.app`) is currently
-  **disabled** in `Supporting/*.plist` and the entitlement is withheld, because
-  a personal development signing identity cannot claim a production app group.
-  Each process then uses its own container; the flag and the entitlement must
-  be restored together before an upstream release (the `Info.plist` keys
-  `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` gate it).
+- The shared app group (`group.social.aloha.app`) and Keychain access group
+  (`$(AppIdentifierPrefix)social.aloha.app`) are **on** for the app, the Mac
+  app, the widgets, the share extension and the notification service. They
+  hold the SwiftData store, the shared defaults, the Memories snapshot and the
+  tokens — all on this device; nothing in them leaves it. Which targets carry
+  which entitlement, and what a build signed with another team changes, is in
+  [Supporting/README.md](../Supporting/README.md). The `Info.plist` keys
+  `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` still gate both, so a
+  build without the entitlements works alone instead of failing.
 
 ## 4. Age rating
 
