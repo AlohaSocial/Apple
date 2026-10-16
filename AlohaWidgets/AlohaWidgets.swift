@@ -269,6 +269,8 @@ struct AlohaWidgetBundle: WidgetBundle {
         UnreadWidget()
         MentionsWidget()
         QuickComposeWidget()
+        NewPostControl()
+        NewStoryControl()
         #if os(iOS)
             UploadLiveActivity()
         #endif
@@ -434,5 +436,62 @@ struct QuickComposeView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+}
+
+// MARK: - Control Center
+
+/// The app's own links, as the system intent that opens them.
+///
+/// `OpenURLIntent` hands the link to the app through the same `onOpenURL` a
+/// tapped widget uses, so a control runs nothing in this extension and needs
+/// no account, store or network — none of which an extension can reach while
+/// the app group is off.
+enum ControlLink {
+    static func intent(_ host: String) -> OpenURLIntent {
+        var components = URLComponents()
+        components.scheme = "alohasocial"
+        components.host = host
+        // A scheme and a bare host always make a URL; the fallback is never
+        // reached and opens nothing rather than crashing.
+        return OpenURLIntent(components.url ?? URL(filePath: "/"))
+    }
+}
+
+/// "New post" in Control Center, on the Lock Screen and on the Action button.
+struct NewPostControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "social.aloha.app.control.newPost") {
+            ControlWidgetButton(action: ControlLink.intent("compose")) {
+                Label {
+                    Text("New post", comment: "Control Center control")
+                } icon: {
+                    Image(systemName: "square.and.pencil")
+                }
+            }
+        }
+        .displayName(LocalizedStringResource("New post", comment: "Control Center control"))
+        .description(
+            LocalizedStringResource(
+                "Open the composer.", comment: "Control Center control description"))
+    }
+}
+
+/// "New story": the story composer, on servers that have stories.
+struct NewStoryControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "social.aloha.app.control.newStory") {
+            ControlWidgetButton(action: ControlLink.intent("story")) {
+                Label {
+                    Text("New story", comment: "Control Center control")
+                } icon: {
+                    Image(systemName: "camera.circle")
+                }
+            }
+        }
+        .displayName(LocalizedStringResource("New story", comment: "Control Center control"))
+        .description(
+            LocalizedStringResource(
+                "Open the story composer.", comment: "Control Center control description"))
     }
 }

@@ -47,6 +47,7 @@ private struct ThemedAppShell: View {
     /// Nil once the choice has been made.
     @State private var chosenModes: Set<FeedMode>?
     @State private var composing: ComposerPresentation?
+    @State private var isComposingStory = false
     @Namespace private var mediaTransition
     @State private var isCelebrating = false
     @State private var mediaPresentation: MediaPresentation?
@@ -119,6 +120,19 @@ private struct ThemedAppShell: View {
                 // shell owns, not a navigation destination.
                 guard environment.activeSession != nil else { return }
                 composing = ComposerPresentation()
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(for: RouteResolver.storyComposerRequested)
+            ) { _ in
+                // Stories are a Nextcloud Social extension; on any other
+                // server the control opens the app and nothing more.
+                guard environment.activeSession?.capabilities.stories == true else { return }
+                isComposingStory = true
+            }
+            .sheet(isPresented: $isComposingStory) {
+                if let session = environment.activeSession {
+                    StoryComposerSheet(session: session, onPosted: {})
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
@@ -1038,13 +1052,11 @@ private struct ThemedAppShell: View {
         // a navigation destination.
         if WebAuthenticator.shared.deliver(url) { return }
 
-        // The composer is presented, not pushed (docs/09 §8): a link asking for
-        // it is a request to open the sheet, which is what the quick-compose
-        // widget's button now does.
-        if url.scheme == RouteResolver.scheme,
-            url.host() == "compose"
-        {
-            NotificationCenter.default.post(name: RouteResolver.composeRequested, object: nil)
+        // The composers are presented, not pushed (docs/09 §8): a link asking
+        // for one is a request to open the sheet, which is what the
+        // quick-compose widget and the Control Center controls do.
+        if let presentation = RouteResolver.presentation(for: url) {
+            NotificationCenter.default.post(name: presentation.notification, object: nil)
             return
         }
 

@@ -91,9 +91,38 @@ public enum RouteResolver {
     /// it has to arrive as something the shell is watching for.
     public static let composeRequested = Notification.Name("alohasocial.compose.requested")
 
+    /// Posted when `alohasocial://story` is opened — the Control Center
+    /// "New story" control. The story composer is a sheet too.
+    public static let storyComposerRequested = Notification.Name("alohasocial.story.requested")
+
+    /// Something a link asks the shell to present rather than navigate to.
+    public enum Presentation: Equatable, Sendable {
+        case composer
+        case storyComposer
+
+        /// The notification the shell watches for this presentation.
+        public var notification: Notification.Name {
+            switch self {
+            case .composer: RouteResolver.composeRequested
+            case .storyComposer: RouteResolver.storyComposerRequested
+            }
+        }
+    }
+
+    /// The sheet the URL asks for, or nil when it names a destination (or
+    /// nothing at all).
+    public static func presentation(for url: URL) -> Presentation? {
+        guard url.scheme == scheme else { return nil }
+        switch url.host() {
+        case "compose": return .composer
+        case "story": return .storyComposer
+        default: return nil
+        }
+    }
+
     /// Returns the Route the URL names, or nil where the URL asks for
     /// something that is not a destination — the sign-in callback, and the
-    /// compose request.
+    /// compose and story requests.
     public static func route(for url: URL) -> Route? {
         guard url.scheme == scheme else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
@@ -141,7 +170,7 @@ public enum RouteResolver {
         // person to Drafts — which is what this used to do — meant a widget
         // button labelled "New post" landed them in a list of things they had
         // not written yet (docs/09 §8).
-        case "compose": return nil
+        case "compose", "story": return nil
         default: return nil
         }
     }
