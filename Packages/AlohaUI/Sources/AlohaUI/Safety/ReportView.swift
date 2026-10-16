@@ -27,6 +27,10 @@ public struct ReportView: View {
     @State private var sendError: String?
     @State private var alsoBlock = false
     @State private var alsoMute = false
+    /// A block or mute asked for alongside the report that did not take. The
+    /// report itself went, so this is said on the confirmation rather than
+    /// holding the form open.
+    @State private var moderationFailures: [String] = []
 
     public init(session: AccountSession, account: Account, status: Status? = nil) {
         self.session = session
@@ -75,6 +79,9 @@ public struct ReportView: View {
             }
             .task { await loadRules() }
         }
+        // A typed explanation is the part of a report that takes effort; a
+        // stray swipe must not throw it away. Cancel still closes it.
+        .interactiveDismissDisabled(!didSend && !comment.isEmpty)
     }
 
     @ViewBuilder
@@ -186,6 +193,16 @@ public struct ReportView: View {
                 .font(.footnote)
                 .foregroundStyle(palette.secondaryLabel)
 
+                ForEach(moderationFailures, id: \.self) { failure in
+                    Label {
+                        Text(failure)
+                    } icon: {
+                        Image(systemName: AlohaSymbol.warning)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(palette.destructive)
+                }
+
                 Button {
                     dismiss()
                 } label: {
@@ -242,15 +259,19 @@ public struct ReportView: View {
 
         // Only once the report itself has landed: blocking or muting first
         // would act on the account while the record of why never arrives.
-        if alsoBlock {
-            _ = try? await session.client.send(
-                Endpoint.accounts.simpleAction(account.id, "block"))
+        var failures: [String] = []
+        if alsoBlock,
+            let failure = await StatusActions.moderate(.block, account: account.id, session: session)
+        {
+            failures.append(failure)
         }
-        if alsoMute {
-            _ = try? await session.client.send(
-                Endpoint.accounts.mute(account.id, notifications: true, duration: nil))
+        if alsoMute,
+            let failure = await StatusActions.moderate(.mute, account: account.id, session: session)
+        {
+            failures.append(failure)
         }
 
+        moderationFailures = failures
         sendError = nil
         didSend = true
     }

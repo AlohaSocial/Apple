@@ -185,6 +185,11 @@ struct ShellAlerts: ViewModifier {
     @Binding var deleting: Status?
     @Binding var confirming: ModerationRequest?
 
+    /// What went wrong with a confirmed action, said once it is known. Each
+    /// of these federates and cannot be taken back, so one that did not happen
+    /// must never look as if it had.
+    @State private var failure: String?
+
     func body(content: Content) -> some View {
         content
             .alert(
@@ -194,7 +199,9 @@ struct ShellAlerts: ViewModifier {
             ) {
                 Button(role: .destructive) {
                     if let status = deleting, let session = environment.activeSession {
-                        Task { await StatusActions.delete(status, session: session) }
+                        Task {
+                            failure = await StatusActions.delete(status, session: session)
+                        }
                     }
                     deleting = nil
                 } label: {
@@ -215,7 +222,9 @@ struct ShellAlerts: ViewModifier {
             ) {
                 Button(role: .destructive) {
                     if let request = confirming, let session = environment.activeSession {
-                        Task { await StatusActions.moderate(request, session: session) }
+                        Task {
+                            failure = await StatusActions.moderate(request, session: session)
+                        }
                     }
                     confirming = nil
                 } label: {
@@ -228,6 +237,19 @@ struct ShellAlerts: ViewModifier {
                 }
             } message: {
                 if let request = confirming { Text(request.detail) }
+            }
+            .alert(
+                Text("That didn't work", comment: "Action failure title"),
+                isPresented: Binding(
+                    get: { failure != nil }, set: { if !$0 { failure = nil } })
+            ) {
+                Button(role: .cancel) {
+                    failure = nil
+                } label: {
+                    Text("OK", comment: "Action failure dismiss")
+                }
+            } message: {
+                if let failure { Text(failure) }
             }
     }
 }
