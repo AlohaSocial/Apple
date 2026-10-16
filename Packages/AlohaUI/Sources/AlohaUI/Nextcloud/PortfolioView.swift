@@ -57,7 +57,7 @@ public struct PortfolioView: View {
             if isLoading { ProgressView() }
         }
         .task { await load() }
-        .sensoryFeedback(.success, trigger: didSave)
+        .alohaSensoryFeedback(.success, trigger: didSave)
     }
 
     // MARK: - Settings

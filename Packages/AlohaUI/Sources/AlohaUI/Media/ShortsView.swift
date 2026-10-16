@@ -393,7 +393,7 @@ public struct ShortsView: View {
                 withAnimation(.easeOut(duration: 0.15)) { isPaused = pressing }
             }, perform: {}
         )
-        .sensoryFeedback(.success, trigger: hearted)
+        .alohaSensoryFeedback(.success, trigger: hearted)
     }
 
     private func heart(_ status: Status) {

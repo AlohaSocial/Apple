@@ -295,7 +295,7 @@ private struct ReactionChip: View {
             .scaleEffect(isPopping ? 1.22 : 1)
         }
         .buttonStyle(.plain)
-        .sensoryFeedback(.impact(weight: .light), trigger: reaction.me)
+        .alohaSensoryFeedback(.impact(weight: .light), trigger: reaction.me)
         .accessibilityLabel(
             Text(
                 "\(reaction.name), \(reaction.count)",

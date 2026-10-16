@@ -810,7 +810,12 @@ public struct ProfileView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .animation(reduceMotion ? nil : .snappy, value: followSymbol)
-            .sensoryFeedback(.success, trigger: relationship?.following == true) { _, new in new }
+            // From "not following" to "following" only: loading the profile
+            // of somebody you already follow goes from nil to true, and is not
+            // a follow.
+            .alohaSensoryFeedback(.success, trigger: relationship?.following) { old, new in
+                old == false && new == true
+            }
 
             Menu {
                 OpenInNewWindowButton(.profile(accountID: account.id))

@@ -92,11 +92,21 @@ public final class Senses {
         #endif
     }
 
+    /// Whether a haptic may play: the app's switch, and the system's Reduce
+    /// Motion, which turns them off whatever the switch says. The one rule
+    /// both haptic paths — `feel` and `alohaSensoryFeedback` — answer to.
+    nonisolated static func allowsHaptics(enabled: Bool, reduceMotion: Bool) -> Bool {
+        enabled && !reduceMotion
+    }
+
     private func buzz(_ cue: Cue) {
         #if os(iOS)
             // Reduce Motion is the system's word for "no more movement than
             // necessary", and a haptic is movement.
-            guard !UIAccessibility.isReduceMotionEnabled else { return }
+            guard
+                Self.allowsHaptics(
+                    enabled: hapticsEnabled, reduceMotion: UIAccessibility.isReduceMotionEnabled)
+            else { return }
             switch cue {
             case .failure:
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
@@ -113,5 +123,38 @@ public final class Senses {
             default: WKInterfaceDevice.current().play(.click)
             }
         #endif
+    }
+}
+
+/// `sensoryFeedback` that answers to the app's Haptics switch and to Reduce
+/// Motion, as `Senses.feel` does. The plain modifier answered to neither, so
+/// switching haptics off in Settings left nine places still tapping.
+private struct GatedSensoryFeedback<Trigger: Equatable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let feedback: SensoryFeedback
+    let trigger: Trigger
+    let condition: (Trigger, Trigger) -> Bool
+
+    func body(content: Content) -> some View {
+        let allowed = Senses.allowsHaptics(
+            enabled: Senses.shared.hapticsEnabled, reduceMotion: reduceMotion)
+        let condition = condition
+        content.sensoryFeedback(feedback, trigger: trigger) { old, new in
+            allowed && condition(old, new)
+        }
+    }
+}
+
+extension View {
+    /// A haptic when `trigger` changes and `condition` agrees — and the
+    /// person has not turned haptics off.
+    ///
+    /// Trigger on what the person did, not on state a refresh can also set:
+    /// a favourite the server confirms on the next page load is not a tap.
+    func alohaSensoryFeedback<Trigger: Equatable>(
+        _ feedback: SensoryFeedback, trigger: Trigger,
+        condition: @escaping (Trigger, Trigger) -> Bool = { _, _ in true }
+    ) -> some View {
+        modifier(GatedSensoryFeedback(feedback: feedback, trigger: trigger, condition: condition))
     }
 }
