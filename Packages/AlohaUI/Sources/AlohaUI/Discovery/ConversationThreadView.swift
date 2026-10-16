@@ -91,7 +91,7 @@ public struct ConversationThreadView: View {
                 scrollToBottom(proxy, animated: false)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .safeAreaBar(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 if let sendError {
                     failureStrip(sendError, retry: .send)
@@ -400,6 +400,7 @@ public struct ConversationThreadView: View {
                 .alohaGlassEffect(.regular.interactive(), in: Circle())
                 .disabled(messages.isEmpty)
                 .accessibilityLabel(Text("Attach", comment: "Conversation composer action"))
+                .help(Text("Attach", comment: "Conversation composer action"))
 
                 TextField(
                     String(localized: "Write a message…", comment: "Conversation field prompt"),
@@ -433,6 +434,7 @@ public struct ConversationThreadView: View {
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityLabel(Text("Send", comment: "Conversation composer action"))
+                .help(Text("Send", comment: "Conversation composer action"))
             }
         }
         .padding(.horizontal, AlohaMetrics.space3)

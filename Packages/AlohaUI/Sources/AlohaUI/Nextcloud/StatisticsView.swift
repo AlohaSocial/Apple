@@ -71,7 +71,7 @@ public struct StatisticsView: View {
             }
             .padding(AlohaMetrics.space4)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .safeAreaBar(edge: .top, spacing: 0) {
             AlohaGlassContainer(spacing: AlohaMetrics.space2) {
                 windowPicker
                     .padding(.horizontal, AlohaMetrics.space4)
@@ -109,6 +109,7 @@ public struct StatisticsView: View {
                     Image(systemName: AlohaSymbol.more)
                 }
                 .accessibilityLabel(Text("More actions", comment: "Statistics action"))
+                .help(Text("More actions", comment: "Statistics action"))
             }
         }
         .overlay {

@@ -73,6 +73,8 @@ public struct ShellCommands {
     public var open: (Route) -> Void
     public var back: () -> Void
     public var canGoBack: Bool
+    /// The sidebar's places in its order, for ⌘1–⌘9 (`ShellPlace`).
+    public var places: [ShellPlace] = []
 }
 
 /// What the timeline in the front window offers the menu bar — the same

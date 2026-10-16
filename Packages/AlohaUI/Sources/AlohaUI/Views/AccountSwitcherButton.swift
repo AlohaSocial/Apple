@@ -62,7 +62,19 @@ struct AccountMenuButton: View {
                         item("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
                     }
                 }
-                item("Settings", symbol: AlohaSymbol.settings, route: .settings)
+                #if os(macOS)
+                    // The Mac has a Settings window (⌘,), and settings that
+                    // open inside the main window are a phone's habit.
+                    SettingsLink {
+                        Label {
+                            Text("Settings…", comment: "Account menu item")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.settings)
+                        }
+                    }
+                #else
+                    item("Settings", symbol: AlohaSymbol.settings, route: .settings)
+                #endif
             } header: {
                 Text("Account", comment: "Account menu section")
             }
@@ -120,6 +132,7 @@ struct AccountMenuButton: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(showsName ? .visible : .hidden)
         .accessibilityLabel(accessibilityLabel)
+        .help(Text("Account", comment: "Account menu section"))
     }
 
     private var accessibilityLabel: Text {

@@ -43,7 +43,7 @@ import SwiftUI
                 .scrollIndicators(.hidden)
             }
             .padding(.vertical, AlohaMetrics.space1)
-            .sensoryFeedback(.selection, trigger: current)
+            .alohaSensoryFeedback(.selection, trigger: current)
         }
 
         /// `nil` is the primary icon; every other name matches an icon set in

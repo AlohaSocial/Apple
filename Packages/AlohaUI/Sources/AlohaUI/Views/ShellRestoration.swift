@@ -22,6 +22,28 @@ enum ShellTab: Hashable, Codable, Sendable {
     static func showsNotificationsTab(feedCount: Int) -> Bool {
         feedCount + 2 <= phoneTabLimit
     }
+
+    /// The iPad tab customisation's name for a sidebar place. Stored by the
+    /// system across launches, so these strings are a format: renaming one
+    /// forgets where somebody had pinned it.
+    static func customizationID(for route: Route) -> String {
+        switch route {
+        case .lists: "aloha.tab.lists"
+        case .interests: "aloha.tab.interests"
+        case .collections: "aloha.tab.albums"
+        case .bookmarks: "aloha.tab.bookmarks"
+        case .favourites: "aloha.tab.favourites"
+        case .followRequests: "aloha.tab.followRequests"
+        case .safety: "aloha.tab.blocking"
+        case .archived: "aloha.tab.archived"
+        case .statistics: "aloha.tab.statistics"
+        case .settings: "aloha.tab.settings"
+        case .notifications: "aloha.tab.notifications"
+        case .conversations: "aloha.tab.conversations"
+        case .explore: "aloha.tab.explore"
+        default: "aloha.tab.other"
+        }
+    }
 }
 
 /// Where somebody was: the tab or sidebar row, and what they had pushed on

@@ -36,10 +36,9 @@ struct DiscoverMediaGrid: View {
                 errorStrip(errorMessage)
             }
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: Self.gutter), count: 3),
-                spacing: Self.gutter
-            ) {
+            // As many columns as the width holds — always three made 340pt
+            // tiles on a 13-inch iPad (see `PhotosModeView.columns`).
+            LazyVGrid(columns: PhotosModeView.columns, spacing: Self.gutter) {
                 ForEach(statuses) { status in
                     cell(status)
                         .aspectRatio(1, contentMode: .fit)
