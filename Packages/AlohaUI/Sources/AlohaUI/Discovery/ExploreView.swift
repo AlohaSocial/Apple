@@ -502,7 +502,21 @@ public struct ExploreView: View {
             if !trendingLinks.isEmpty {
                 SwiftUI.Section {
                     ForEach(Array(trendingLinks.enumerated()), id: \.offset) { _, card in
-                        LinkCardView(card: card) { onAction(.openCard(card)) }
+                        LinkCardView(card: card) { openTrendingLink(card) }
+                            .contextMenu {
+                                if let url = card.url {
+                                    Button {
+                                        onAction(.openCard(card))
+                                    } label: {
+                                        Label {
+                                            Text("Open link", comment: "Trending link action")
+                                        } icon: {
+                                            Image(systemName: "safari")
+                                        }
+                                    }
+                                    ShareLink(item: url)
+                                }
+                            }
                             .listRowInsets(
                                 EdgeInsets(
                                     top: AlohaMetrics.space2, leading: AlohaMetrics.space4,
@@ -535,6 +549,19 @@ public struct ExploreView: View {
             .listStyle(.inset)
         #endif
         .alohaGround(palette)
+    }
+
+    /// On Aloha Social a trending link opens the posts sharing it — the
+    /// conversation is why it is trending — and the link itself is the first
+    /// row there. Elsewhere it opens as a link.
+    private func openTrendingLink(_ card: Card) {
+        guard session.capabilities.isNextcloudSocial, let url = card.url else {
+            onAction(.openCard(card))
+            return
+        }
+        NotificationCenter.default.post(
+            name: .alohaOpenRoute, object: nil,
+            userInfo: ["route": Route.linkTimeline(url: url, title: card.title)])
     }
 
     private func tagRow(_ tag: Tag) -> some View {

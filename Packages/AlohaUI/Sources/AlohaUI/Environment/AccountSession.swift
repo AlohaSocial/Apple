@@ -78,6 +78,31 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
         isPushActive = value
     }
 
+    /// Set when the server said this Nextcloud user has not set up their
+    /// Aloha Social account yet (`account-not-set-up`): where to finish, in a
+    /// browser. A state, like re-authentication, rather than an error to show
+    /// once and forget — every screen fails the same way until it is done.
+    public private(set) var accountSetupURL: URL?
+    /// Whether the server said so at all, with or without an address.
+    public private(set) var needsAccountSetup = false
+
+    /// Whether this account's server reads Bluesky for it. Learned by asking
+    /// (`BlueskyAvailability.probe`); `.unknown` until then.
+    public private(set) var bluesky: BlueskyAvailability = .unknown
+
+    public func refreshBlueskyAvailability() async {
+        guard capabilities.isNextcloudSocial else {
+            bluesky = .off
+            return
+        }
+        bluesky = await BlueskyAvailability.probe(client)
+    }
+
+    /// The server's notification delivery as last read, so a write sends the
+    /// parts this app does not edit (the passthrough switches) back as they
+    /// were rather than as defaults.
+    var serverNotificationDelivery: NotificationDeliverySettings?
+
     public var visibleModes: [FeedMode] {
         settings.visibleModes(capabilities: capabilities)
     }
@@ -112,6 +137,11 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
     }
 
     public func handle(_ error: any Error) async {
+        if let apiError = error as? APIError, apiError.isAccountNotSetUp {
+            needsAccountSetup = true
+            accountSetupURL = apiError.accountSetupURL ?? accountSetupURL
+            return
+        }
         if let apiError = error as? APIError, apiError.requiresReauthentication {
             // A 401 on one route is not a revoked token.
             //
@@ -141,6 +171,12 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
                 Preferences.self, from: Endpoint.instance.preferences)
             {
                 await updateSettings { $0.adopt(preferences) }
+                // An answer at all means the account exists now.
+                needsAccountSetup = false
+                accountSetupURL = nil
+            }
+            if capabilities.isNextcloudSocial {
+                await adoptServerReaderSettings()
             }
             if capabilities.filtersV2 {
                 let filters = try await client.decode(

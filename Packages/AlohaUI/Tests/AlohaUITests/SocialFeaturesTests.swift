@@ -1,10 +1,61 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaModels
+import AlohaStore
 import Foundation
 import Testing
 
 @testable import AlohaUI
+
+@Suite("Notification delivery, here and on the server")
+struct NotificationDeliveryMappingTests {
+    @Test("The server's digest adopts as whole hours and quiet hours")
+    func adopt() {
+        var settings = AccountSettings()
+        settings.adopt(
+            NotificationDeliverySettings(
+                mode: .digest, times: ["07:30", "19:00", "bad"], quietFrom: "23:00",
+                quietTo: "06:00"))
+        #expect(settings.notificationDeliveryMode == .digest)
+        #expect(settings.digestTimes == [7, 19])
+        #expect(settings.quietHoursStart == 23)
+        #expect(settings.quietHoursEnd == 6)
+    }
+
+    @Test("No quiet hours on the server is none here, and no times keeps the default")
+    func adoptEmpty() {
+        var settings = AccountSettings(quietHoursStart: 22, quietHoursEnd: 7)
+        settings.adopt(NotificationDeliverySettings(mode: .instant))
+        #expect(settings.notificationDeliveryMode == .immediate)
+        #expect(settings.digestTimes == [8])
+        #expect(settings.quietHoursStart == nil)
+        #expect(settings.quietHoursEnd == nil)
+    }
+
+    @Test("What goes back keeps the server's passthrough switches")
+    func outgoing() {
+        let settings = AccountSettings(
+            quietHoursStart: 22, quietHoursEnd: 7, notificationDeliveryMode: .digest,
+            digestTimes: [8, 18])
+        let server = NotificationDeliverySettings(
+            passthroughDirect: false, passthroughMentionsFromFollowed: false)
+        let outgoing = settings.serverDelivery(keeping: server)
+        #expect(outgoing.mode == .digest)
+        #expect(outgoing.times == ["08:00", "18:00"])
+        #expect(outgoing.quietFrom == "22:00")
+        #expect(outgoing.quietTo == "07:00")
+        #expect(!outgoing.passthroughDirect)
+        #expect(!outgoing.passthroughMentionsFromFollowed)
+    }
+
+    @Test("Half a pair of quiet hours goes out as none")
+    func halfQuiet() {
+        let settings = AccountSettings(quietHoursStart: 22, quietHoursEnd: nil)
+        let outgoing = settings.serverDelivery(keeping: NotificationDeliverySettings())
+        #expect(outgoing.quietFrom.isEmpty)
+        #expect(outgoing.quietTo.isEmpty)
+    }
+}
 
 @Suite("Made with AI")
 struct AIGeneratedLabelTests {
