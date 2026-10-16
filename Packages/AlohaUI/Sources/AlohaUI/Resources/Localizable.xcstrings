@@ -3188,6 +3188,17 @@
         }
       }
     },
+    "Create an image" : {
+      "comment" : "Composer action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bild erstellen"
+          }
+        }
+      }
+    },
     "Current version" : {
       "comment" : "Edit history label",
       "localizations" : {
@@ -3931,7 +3942,17 @@
         }
       }
     },
-    "Edit poll" : {},
+    "Edit poll" : {
+      "comment" : "Composer action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umfrage bearbeiten"
+          }
+        }
+      }
+    },
     "Edit post" : {
       "comment" : "Composer title",
       "localizations" : {
@@ -9537,7 +9558,17 @@
         }
       }
     },
-    "Remove poll" : {},
+    "Remove poll" : {
+      "comment" : "Poll editor action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umfrage entfernen"
+          }
+        }
+      }
+    },
     "Remove segment" : {
       "comment" : "Thread action",
       "localizations" : {
@@ -11636,6 +11667,17 @@
         }
       }
     },
+    "That didn't work" : {
+      "comment" : "Action failure title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das hat nicht geklappt"
+          }
+        }
+      }
+    },
     "That doesn't look like a server address. Try cloud.example.com, https://cloud.example.com or http://192.168.1.10." : {
       "comment" : "Sign-in validation failure"
     },
@@ -11740,6 +11782,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Bild konnte nicht gelesen werden."
+          }
+        }
+      }
+    },
+    "That post could not be cancelled. It will still go out." : {
+      "comment" : "Scheduled post cancel failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Beitrag konnte nicht abgesagt werden. Er wird trotzdem veröffentlicht."
           }
         }
       }
@@ -11886,6 +11939,17 @@
         }
       }
     },
+    "The block did not go through. They can still see and reach you." : {
+      "comment" : "Block failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Blockierung hat nicht geklappt. Die Person kann dich weiterhin sehen und erreichen."
+          }
+        }
+      }
+    },
     "The card couldn't be drawn, so nothing was posted." : {
       "comment" : "Composer card failure",
       "localizations" : {
@@ -11938,6 +12002,28 @@
     "The import could not be completed. Please try again." : {},
     "The list could not be created. Your text has been kept; please try again." : {},
     "The list could not be deleted. Please try again." : {},
+    "The mute did not go through. Their posts will still appear." : {
+      "comment" : "Mute failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Stummschalten hat nicht geklappt. Ihre Beiträge erscheinen weiterhin."
+          }
+        }
+      }
+    },
+    "The post could not be deleted. It is still up." : {
+      "comment" : "Delete failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Beitrag konnte nicht gelöscht werden. Er ist weiterhin sichtbar."
+          }
+        }
+      }
+    },
     "The post could not be restored. Please try again." : {},
     "The post could not be withdrawn. Please try again." : {},
     "The posts" : {

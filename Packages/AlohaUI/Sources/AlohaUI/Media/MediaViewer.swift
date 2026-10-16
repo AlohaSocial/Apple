@@ -68,7 +68,11 @@ public struct MediaViewer: View {
                         indexDisplayMode: attachments.count > 1 && !chromeHidden
                             ? .automatic : .never))
             #endif
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { pageSize = $0 }
+            .onGeometryChange(for: CGSize.self) {
+                $0.size
+            } action: {
+                pageSize = $0
+            }
 
             controls
                 .opacity(chromeHidden ? 0 : 1)

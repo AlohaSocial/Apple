@@ -261,7 +261,8 @@ public struct ReportView: View {
         // would act on the account while the record of why never arrives.
         var failures: [String] = []
         if alsoBlock,
-            let failure = await StatusActions.moderate(.block, account: account.id, session: session)
+            let failure = await StatusActions.moderate(
+                .block, account: account.id, session: session)
         {
             failures.append(failure)
         }
