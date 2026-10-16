@@ -182,8 +182,7 @@ enum IntentContext {
             return nil
         }
 
-        let container = StoreContainer.make()
-        let accounts = AccountStore(modelContainer: container)
+        let accounts = AccountStore(modelContainer: StoreContainer.reader())
         guard let snapshots = try? await accounts.allAccounts(),
             let active = activeSnapshot(from: snapshots)
         else { return nil }

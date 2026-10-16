@@ -140,7 +140,7 @@ public struct SignedInAccountQuery: EntityQuery {
                 SignedInAccountEntity(id: $0.id, handle: $0.snapshot.qualifiedHandle)
             }
         }
-        let accounts = AccountStore(modelContainer: StoreContainer.make())
+        let accounts = AccountStore(modelContainer: StoreContainer.reader())
         return try await accounts.allAccounts().map {
             SignedInAccountEntity(id: $0.id, handle: $0.qualifiedHandle)
         }
