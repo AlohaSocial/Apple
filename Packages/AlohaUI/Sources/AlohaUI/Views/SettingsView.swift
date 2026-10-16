@@ -614,13 +614,17 @@ public struct SettingsView: View {
             }
 
             swipePicker(
-                Text("Swipe right", comment: "Settings item: the action a swipe from the leading edge performs"),
+                Text(
+                    "Swipe right",
+                    comment: "Settings item: the action a swipe from the leading edge performs"),
                 selection: session.settings.leadingSwipeAction
             ) { value in
                 Task { await session.updateSettings { $0.leadingSwipeAction = value } }
             }
             swipePicker(
-                Text("Swipe left", comment: "Settings item: the action a swipe from the trailing edge performs"),
+                Text(
+                    "Swipe left",
+                    comment: "Settings item: the action a swipe from the trailing edge performs"),
                 selection: session.settings.trailingSwipeAction
             ) { value in
                 Task { await session.updateSettings { $0.trailingSwipeAction = value } }

@@ -40,7 +40,8 @@ struct ShellRestorationTests {
 
         #expect(restored == original)
         #expect(restored.tab == .messages)
-        #expect(restored.tabPaths[.mode(.home)] == [.thread(statusID: "109"), .profile(accountID: "7")])
+        #expect(
+            restored.tabPaths[.mode(.home)] == [.thread(statusID: "109"), .profile(accountID: "7")])
         #expect(restored.restoredSidebarPaths[.route(.explore)] == [.hashtag("photography")])
         #expect(restored.sidebarItem.item == .route(.explore))
     }

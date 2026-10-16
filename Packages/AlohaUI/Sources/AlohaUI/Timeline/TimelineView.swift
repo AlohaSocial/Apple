@@ -226,7 +226,8 @@ public struct TimelineView: View {
         }
         .accessibilityRotor(Text("Links", comment: "VoiceOver rotor name")) {
             ForEach(linkEntries) { entry in
-                AccessibilityRotorEntry(Text(verbatim: entry.label), id: entry.statusID, in: rotorNamespace)
+                AccessibilityRotorEntry(
+                    Text(verbatim: entry.label), id: entry.statusID, in: rotorNamespace)
             }
         }
     }

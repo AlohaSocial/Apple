@@ -147,7 +147,9 @@ public struct PhotosModeView: View {
                 }
 
                 loadingIndicator
-                if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
+                if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil {
+                    emptyState
+                }
             }
             .frame(maxWidth: 620)
             .frame(maxWidth: .infinity)
@@ -412,16 +414,21 @@ public struct PhotoPostCard: View {
             .overlay {
                 if attachments.count > 1 {
                     HStack {
-                        Button { page = max(0, page - 1) } label: {
+                        Button {
+                            page = max(0, page - 1)
+                        } label: {
                             Image(systemName: "chevron.left")
-                                .frame(width: 44, height: 44)
+                            .frame(width: 44, height: 44)
                         }
                         .disabled(page == 0)
-                        .accessibilityLabel(Text("Previous photo", comment: "Photo carousel action"))
+                        .accessibilityLabel(
+                            Text("Previous photo", comment: "Photo carousel action"))
                         Spacer()
-                        Button { page = min(attachments.count - 1, page + 1) } label: {
+                        Button {
+                            page = min(attachments.count - 1, page + 1)
+                        } label: {
                             Image(systemName: "chevron.right")
-                                .frame(width: 44, height: 44)
+                            .frame(width: 44, height: 44)
                         }
                         .disabled(page >= attachments.count - 1)
                         .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
@@ -561,11 +568,13 @@ public struct PhotoPostCard: View {
         .accessibilityHint(
             isCovered
                 ? Text("Tap to show", comment: "Covered media hint")
-                : Text("Opens the media viewer", comment: "Accessibility hint"))
+                : Text("Opens the media viewer", comment: "Accessibility hint")
+        )
         .accessibilityAction(named: Text("Favourite", comment: "Accessibility action")) { heart() }
         .mediaTransitionSource(
             id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
-            in: mediaTransition)
+            in: mediaTransition
+        )
         .onChange(of: attachments.map(\.id)) { _, _ in page = 0 }
     }
 
@@ -575,9 +584,10 @@ public struct PhotoPostCard: View {
                 url: attachment.displayImageURL,
                 blurhash: attachment.blurhash,
                 contentMode: .fill,
-                accessibilityText: attachment.description)
-                .blur(radius: isCovered ? 24 : 0)
-                .accessibilityHidden(isCovered)
+                accessibilityText: attachment.description
+            )
+            .blur(radius: isCovered ? 24 : 0)
+            .accessibilityHidden(isCovered)
 
             if attachment.type.isPlayable {
                 Image(systemName: AlohaSymbol.play)

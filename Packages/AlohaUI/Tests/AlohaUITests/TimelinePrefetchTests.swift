@@ -79,10 +79,14 @@ struct TimelinePrefetchTests {
     }
 
     private func timelineRequests(_ server: TimelineRecordingTransport) async -> Int {
-        await server.loggedPaths.filter { $0.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == "api/v1/timelines/home" }.count
+        await server.loggedPaths.filter {
+            $0.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == "api/v1/timelines/home"
+        }.count
     }
 
-    private func makeModel(statusCount: Int) async throws -> (TimelineModel, TimelineRecordingTransport) {
+    private func makeModel(
+        statusCount: Int
+    ) async throws -> (TimelineModel, TimelineRecordingTransport) {
         let server = MockAPIServer(configuration: .mastodon43, statusCount: statusCount)
         let transport = TimelineRecordingTransport(server: server)
         let container = StoreContainer.make(inMemory: true)

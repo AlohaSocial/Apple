@@ -241,7 +241,9 @@ public struct SignInView: View {
         if instance.registrationsEnabled {
             parts.append(
                 instance.approvalRequired
-                    ? String(localized: "Registrations open, approval required", comment: "Instance detail")
+                    ? String(
+                        localized: "Registrations open, approval required",
+                        comment: "Instance detail")
                     : String(localized: "Registrations open", comment: "Instance detail"))
         } else {
             parts.append(String(localized: "Registrations closed", comment: "Instance detail"))

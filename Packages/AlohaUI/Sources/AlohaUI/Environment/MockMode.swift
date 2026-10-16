@@ -55,7 +55,8 @@ import Foundation
             if CommandLine.arguments.contains("-AlohaMockModeSelection") {
                 UserDefaults.standard.removeObject(forKey: "aloha.chosenModes")
             } else {
-                UserDefaults.standard.set(FeedMode.allCases.map(\.rawValue), forKey: "aloha.chosenModes")
+                UserDefaults.standard.set(
+                    FeedMode.allCases.map(\.rawValue), forKey: "aloha.chosenModes")
             }
             guard !startsSignedOut else { return }
             TermsGate.recordAcceptance()

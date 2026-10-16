@@ -383,7 +383,8 @@ public final class TimelineModel {
 
     public func loadOlder() async {
         guard hasMoreOlderPosts, !isPagingOlder,
-            let oldest = rows.compactMap(\.status).last?.id else { return }
+            let oldest = rows.compactMap(\.status).last?.id
+        else { return }
         isPagingOlder = true
         defer { isPagingOlder = false }
 

@@ -140,7 +140,8 @@ public struct MediaGrid: View {
         .modifier(
             ImageDragSource(
                 url: attachment.type == .image && !(shouldCover && !isRevealed)
-                    ? attachment.url : nil))
+                    ? attachment.url : nil)
+        )
         .accessibilityLabel(
             attachment.description.map { Text($0) }
                 ?? Text("Media without a description", comment: "Accessibility label")
