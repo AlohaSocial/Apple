@@ -12,6 +12,9 @@
         }
       }
     },
+    "Aloha Social" : {
+      "comment" : "App name"
+    },
     "Black" : {
       "comment" : "Theme name",
       "localizations" : {
@@ -88,6 +91,9 @@
           }
         }
       }
+    },
+    "Retry" : {
+      "comment" : "Error strip action"
     },
     "Rose" : {
       "comment" : "App icon name",

@@ -16,6 +16,7 @@ public struct ChannelsView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var editing: ChannelDraft?
+    @State private var loadID = UUID()
 
     public init(session: AccountSession) {
         self.session = session
@@ -24,9 +25,7 @@ public struct ChannelsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(channels) { channel in
@@ -38,10 +37,12 @@ public struct ChannelsView: View {
                             .font(.title3)
                             .foregroundStyle(palette.accent)
                             .frame(width: 32)
+                            .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(channel.name.isEmpty ? channel.handle : channel.name)
                                 .font(AlohaType.name)
                                 .foregroundStyle(palette.label)
+                                .lineLimit(2)
                             Text(verbatim: "@\(channel.handle)")
                                 .font(AlohaType.meta)
                                 .foregroundStyle(palette.tertiaryLabel)
@@ -68,7 +69,7 @@ public struct ChannelsView: View {
                 .accessibilityHint(Text("Edits the channel", comment: "Accessibility hint"))
             }
 
-            if channels.isEmpty && !isLoading {
+            if channels.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No channels yet", comment: "Empty channels")
                 } description: {
@@ -78,6 +79,7 @@ public struct ChannelsView: View {
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Video channels", comment: "Screen title"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -98,28 +100,57 @@ public struct ChannelsView: View {
             }
         }
         .overlay {
-            if isLoading && channels.isEmpty { ProgressView() }
+            if isLoading && channels.isEmpty {
+                SkeletonListRow(person: 4)
+            }
         }
         .task { await load() }
         .refreshable { await load() }
     }
 
+    private func errorRow(_ message: String) -> some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Image(systemName: AlohaSymbol.warning)
+                .accessibilityHidden(true)
+            Text(message).font(.footnote)
+            Spacer()
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Channels retry action")
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(palette.destructive)
+    }
+
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
         isLoading = true
-        defer { isLoading = false }
+        defer { if loadID == requestID { isLoading = false } }
         do {
-            channels = try await session.client.decode(
+            let response = try await session.client.decode(
                 VideoChannelList.self, from: Endpoint.channels.all
             ).channels
+            guard !Task.isCancelled, loadID == requestID else { return }
+            channels = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard loadID == requestID else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Video channels could not be loaded. Please try again.")
         }
     }
 
     /// Every write answers the full list, so the list is what we keep.
     private func save(_ draft: ChannelDraft) async -> String? {
+        let draft = draft.normalized
+        loadID = UUID()
+        isLoading = false
         do {
             let endpoint =
                 draft.existingID.map {
@@ -128,7 +159,13 @@ public struct ChannelsView: View {
                 ?? Endpoint.channels.create(
                     handle: draft.handle, name: draft.name, description: draft.description)
             let list = try await session.client.decode(VideoChannelList.self, from: endpoint)
-            if !list.channels.isEmpty { channels = list.channels } else { await load() }
+            if !list.channels.isEmpty {
+                channels = list.channels
+                errorMessage = nil
+            } else {
+                await load()
+                if let errorMessage { return errorMessage }
+            }
             return nil
         } catch {
             await session.handle(error)
@@ -146,6 +183,13 @@ struct ChannelDraft: Identifiable {
     var id: String { existingID ?? "new" }
 
     init() {}
+
+    var normalized: Self {
+        var result = self
+        result.handle = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+        result.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return result
+    }
 
     init(channel: VideoChannel) {
         existingID = channel.id
@@ -169,7 +213,7 @@ struct ChannelEditor: View {
     private var isNew: Bool { draft.existingID == nil }
 
     private var canSave: Bool {
-        let name = draft.name.trimmingCharacters(in: .whitespaces)
+        let name = draft.normalized.name
         guard !name.isEmpty else { return false }
         return !isNew || isValidHandle(draft.handle)
     }
@@ -187,6 +231,7 @@ struct ChannelEditor: View {
                             .textInputAutocapitalization(.never)
                         #endif
                         .autocorrectionDisabled()
+                        .accessibilityLabel(Text("Handle", comment: "Channel field"))
                     } else {
                         LabeledContent {
                             Text("@\(draft.handle)")
@@ -196,13 +241,16 @@ struct ChannelEditor: View {
                     }
                     TextField(
                         String(localized: "Name", comment: "Channel name placeholder"),
-                        text: $draft.name)
+                        text: $draft.name
+                    )
+                    .accessibilityLabel(Text("Name", comment: "Channel field"))
                     TextField(
                         String(
                             localized: "Description", comment: "Channel description placeholder"),
                         text: $draft.description, axis: .vertical
                     )
                     .lineLimit(2...6)
+                    .accessibilityLabel(Text("Description", comment: "Channel field"))
                 } footer: {
                     if isNew {
                         Text(
@@ -220,6 +268,8 @@ struct ChannelEditor: View {
                 }
             }
             .formStyle(.grouped)
+            .alohaGround(palette)
+            .disabled(isSaving)
             .navigationTitle(
                 isNew
                     ? Text("New channel", comment: "Screen title")
@@ -235,10 +285,12 @@ struct ChannelEditor: View {
                     } label: {
                         Text("Cancel", comment: "Sheet action")
                     }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task {
+                            guard canSave, !isSaving else { return }
                             isSaving = true
                             defer { isSaving = false }
                             if let failure = await onSave(draft) {
@@ -258,10 +310,11 @@ struct ChannelEditor: View {
                 }
             }
         }
+        .interactiveDismissDisabled(isSaving)
     }
 
     private func isValidHandle(_ handle: String) -> Bool {
-        let trimmed = handle.trimmingCharacters(in: .whitespaces)
+        let trimmed = handle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 64 else { return false }
         return trimmed.unicodeScalars.allSatisfy {
             CharacterSet.alphanumerics.contains($0) || $0 == "_"

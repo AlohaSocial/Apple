@@ -59,8 +59,10 @@ struct AlohaSocialApp: App {
                 }
         }
         .modelContainer(environment.container)
+        // On every platform with a menu bar: the Mac's own, and the iPad's
+        // windowing menu bar, which shows these very commands.
+        .commands { AlohaCommands() }
         #if os(macOS)
-            .commands { AlohaCommands() }
             .defaultSize(width: 1100, height: 780)
         #endif
     }
@@ -77,19 +79,4 @@ extension AlohaSocialApp {
     }
 }
 
-#if os(macOS)
-    struct AlohaCommands: Commands {
-        var body: some Commands {
-            CommandGroup(replacing: .newItem) {
-                Button {
-                    NSWorkspace.shared.open(URL(string: "alohasocial://compose")!)
-                } label: {
-                    Text("New Post", comment: "Menu item")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
-    }
 
-    import AppKit
-#endif

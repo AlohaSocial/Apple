@@ -19,7 +19,9 @@ public struct SubscriptionsView: View {
     @State private var entries: [SubscriptionEntry] = []
     @State private var newURL = ""
     @State private var isFollowing = false
+    @State private var isLoadingFeeds = true
     @State private var isLoadingEntries = false
+    @State private var entriesRequestID = UUID()
     @State private var mayHaveMore = true
     @State private var isImporting = false
     @State private var importedCount: Int?
@@ -50,6 +52,7 @@ public struct SubscriptionsView: View {
             feedsSection
             entriesSection
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Subscriptions", comment: "Screen title"))
         .refreshable {
             await loadFeeds()
@@ -96,8 +99,8 @@ public struct SubscriptionsView: View {
                         Text("Follow", comment: "Subscriptions add action")
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .buttonStyle(.glassProminent)
+                .controlSize(.regular)
                 .disabled(!canFollow || isFollowing)
             }
 
@@ -155,10 +158,21 @@ public struct SubscriptionsView: View {
                 feedRow(feed)
             }
             .onDelete { offsets in
-                Task { await unfollow(at: offsets) }
+                // The rows are read off the array here, where the indexes
+                // still mean what they say: the request runs later, and a
+                // reload can move everything underneath it by then.
+                let targets = offsets.compactMap { feeds.indices.contains($0) ? feeds[$0] : nil }
+                let previous = feeds
+                let ids = Set(targets.map(\.id))
+                feeds.removeAll { ids.contains($0.id) }
+                Task { await unfollow(targets, restoring: previous) }
             }
 
-            if feeds.isEmpty {
+            if isLoadingFeeds && feeds.isEmpty {
+                SkeletonListRow(person: 5)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            } else if feeds.isEmpty && errorMessage == nil {
                 Text("You follow no feeds yet.", comment: "Empty subscriptions")
                     .font(.footnote)
                     .foregroundStyle(palette.secondaryLabel)
@@ -209,20 +223,8 @@ public struct SubscriptionsView: View {
             }
 
             Spacer(minLength: 0)
-
-            Button {
-                Task { await unfollow(feed) }
-            } label: {
-                Image(systemName: "minus.circle")
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(palette.secondaryLabel)
-            .accessibilityLabel(
-                Text("Unfollow \(feed.displayTitle)", comment: "Subscription action"))
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var entriesSection: some View {
@@ -319,13 +321,14 @@ public struct SubscriptionsView: View {
     }
 
     private func follow() async {
+        let submittedURL = newURL
         let address = newURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard canFollow, !isFollowing else { return }
         isFollowing = true
         defer { isFollowing = false }
         do {
             _ = try await session.client.send(Endpoint.subscriptions.follow(url: address))
-            newURL = ""
+            if newURL == submittedURL { newURL = "" }
             errorMessage = nil
             await loadFeeds()
             await loadEntries(reset: true)
@@ -339,17 +342,28 @@ public struct SubscriptionsView: View {
         }
     }
 
-    private func unfollow(at offsets: IndexSet) async {
-        let targets = offsets.map { feeds[$0] }
-        feeds.remove(atOffsets: offsets)
+    /// The rows are already gone from the screen; a refusal puts them back
+    /// rather than leaving a follow that silently survived.
+    private func unfollow(
+        _ targets: [SubscriptionFeed], restoring previous: [SubscriptionFeed]
+    )
+        async
+    {
+        var refused = false
         for feed in targets {
-            _ = try? await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+            do {
+                _ = try await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+            } catch {
+                refused = true
+                feeds = Self.restoring(feed, in: feeds, previous: previous)
+                await session.handle(error)
+            }
         }
-    }
-
-    private func unfollow(_ feed: SubscriptionFeed) async {
-        feeds.removeAll { $0.id == feed.id }
-        _ = try? await session.client.send(Endpoint.subscriptions.unfollow(feed.id))
+        if refused {
+            errorMessage = String(
+                localized: "That feed could not be unfollowed.",
+                comment: "Subscriptions unfollow failed")
+        }
     }
 
     private func importTakeout(from url: URL) async {
@@ -374,22 +388,51 @@ public struct SubscriptionsView: View {
         }
     }
 
+    /// Roll back only a refused removal, never the complete pre-request
+    /// snapshot: other removals may have succeeded and new feeds may exist.
+    nonisolated static func restoring(
+        _ feed: SubscriptionFeed, in current: [SubscriptionFeed], previous: [SubscriptionFeed]
+    ) -> [SubscriptionFeed] {
+        guard !current.contains(where: { $0.id == feed.id }) else { return current }
+        var restored = current
+        let index = previous.firstIndex(where: { $0.id == feed.id }) ?? restored.count
+        restored.insert(feed, at: min(index, restored.count))
+        return restored
+    }
+
     private func loadFeeds() async {
-        if let page = try? await session.client.decode(
-            FeedsPage.self, from: Endpoint.subscriptions.feeds)
-        {
-            feeds = page.feeds
+        isLoadingFeeds = true
+        defer { isLoadingFeeds = false }
+        do {
+            let response = try await session.client.decode(
+                FeedsPage.self, from: Endpoint.subscriptions.feeds
+            ).feeds
+            guard !Task.isCancelled else { return }
+            feeds = response
+            errorMessage = nil
+        } catch {
+            // A server that will not answer is an error, not an empty list.
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Couldn't load your feeds.", comment: "Subscriptions feeds failed")
         }
     }
 
     private func loadEntries(reset: Bool) async {
+        guard reset || !isLoadingEntries else { return }
+        let requestID = UUID()
+        entriesRequestID = requestID
         isLoadingEntries = true
-        defer { isLoadingEntries = false }
+        defer { if entriesRequestID == requestID { isLoadingEntries = false } }
         do {
             let maxID = reset ? nil : entries.last?.id
             let page = try await session.client.decode(
                 EntriesPage.self,
                 from: Endpoint.subscriptions.timeline(limit: Self.pageSize, maxID: maxID))
+            guard !Task.isCancelled, entriesRequestID == requestID else { return }
             if reset {
                 entries = page.items
             } else {
@@ -399,7 +442,9 @@ public struct SubscriptionsView: View {
             mayHaveMore = page.items.count >= Self.pageSize
             entriesError = nil
         } catch {
+            guard !Task.isCancelled, entriesRequestID == requestID else { return }
             await session.handle(error)
+            guard entriesRequestID == requestID else { return }
             entriesError =
                 (error as? APIError)?.errorDescription
                 ?? String(

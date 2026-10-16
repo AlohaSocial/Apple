@@ -18,6 +18,7 @@ public struct TagPeopleSheet: View {
     @State private var handles = ""
     @State private var isLoading = true
     @State private var isSaving = false
+    @State private var hasLoaded = false
     @State private var errorMessage: String?
     @FocusState private var isFocused: Bool
 
@@ -38,6 +39,7 @@ public struct TagPeopleSheet: View {
                     )
                     .lineLimit(1...4)
                     .focused($isFocused)
+                    .disabled(isLoading || isSaving || !hasLoaded)
                     #if os(iOS)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
@@ -61,13 +63,18 @@ public struct TagPeopleSheet: View {
                         }
                         .font(.footnote)
                         .foregroundStyle(palette.destructive)
+                        if !hasLoaded {
+                            Button("Try again") { Task { await loadExisting() } }
+                                .buttonStyle(.glass)
+                                .disabled(isLoading)
+                        }
                     }
                 }
 
                 if let first = status.mediaAttachments.first {
                     Section {
                         RemoteImage(
-                            url: first.previewURL ?? first.url, blurhash: first.blurhash,
+                            url: first.displayImageURL, blurhash: first.blurhash,
                             accessibilityText: first.description
                         )
                         .aspectRatio(first.displayAspectRatio, contentMode: .fit)
@@ -80,6 +87,10 @@ public struct TagPeopleSheet: View {
                     }
                 }
             }
+            .alohaGround(palette)
+            .overlay {
+                if isLoading { ProgressView() }
+            }
             .navigationTitle(Text("Tag people", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -91,6 +102,7 @@ public struct TagPeopleSheet: View {
                     } label: {
                         Text("Cancel", comment: "Sheet action")
                     }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -102,24 +114,37 @@ public struct TagPeopleSheet: View {
                             Text("Save", comment: "Sheet action")
                         }
                     }
-                    .disabled(isSaving || isLoading)
+                    .disabled(isSaving || isLoading || !hasLoaded)
                 }
             }
             .task { await loadExisting() }
+            .interactiveDismissDisabled(isSaving)
         }
     }
 
     /// The people already tagged fill the field, so editing is editing rather
     /// than starting over.
     private func loadExisting() async {
+        isLoading = true
+        errorMessage = nil
         defer {
             isLoading = false
-            isFocused = true
+            if hasLoaded && !Task.isCancelled { isFocused = true }
         }
-        let existing = try? await session.client.decode(
-            StatusTaggedPeople.self, from: Endpoint.statuses.status(status.id))
-        let acct = existing?.taggedPeople.map(\.acct).filter { !$0.isEmpty } ?? []
-        if handles.isEmpty { handles = acct.joined(separator: ", ") }
+        do {
+            let existing = try await session.client.decode(
+                StatusTaggedPeople.self, from: Endpoint.statuses.status(status.id))
+            guard !Task.isCancelled else { return }
+            let acct = existing.taggedPeople.map(\.acct).filter { !$0.isEmpty }
+            handles = acct.joined(separator: ", ")
+            hasLoaded = true
+        } catch {
+            guard !Task.isCancelled else { return }
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Tagged people could not be loaded. Please try again.")
+        }
     }
 
     private var parsed: [String] {
@@ -130,7 +155,9 @@ public struct TagPeopleSheet: View {
     }
 
     private func save() async {
+        guard hasLoaded, !isLoading, !isSaving else { return }
         isSaving = true
+        errorMessage = nil
         defer { isSaving = false }
         do {
             _ = try await session.client.decode(

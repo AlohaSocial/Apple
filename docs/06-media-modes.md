@@ -78,8 +78,10 @@ platforms where it suffices), with:
      HLS playlist that proxies every segment back through the Nextcloud.
      **Never point the player at the origin host**: Nextcloud's CSP forbids it,
      and it would announce every viewer to a server they did not choose.
-  3. `attachment.url` — the plain file. `GET /media/{uuid}` honours `Range` and
-     always sends `Accept-Ranges: bytes`, so seeking works.
+  3. `attachment.url` — the plain file (`GET /media/{uuid}` honours `Range`
+     and always sends `Accept-Ranges: bytes`, so seeking works). **For a
+     federated video this is only used when the URL is on the instance
+     itself** (the signed-in instance); otherwise the proxy playlist is used.
 - **Fallback is mandatory**: a 404 on the master playlist means no ladder
   exists, and the correct response is to play `url`. A ladder that fails to load
   mid-stream falls back to `url` at the current position.
@@ -219,10 +221,10 @@ For Pixelfed-style image posts.
 
 ### Layout
 
-- **Grid** (default): a 3-column square grid on iPhone, adaptive on larger
-  screens, blurhash placeholders, multi-attachment posts carrying a stack badge.
-- **Feed**: a single-column large-image feed with full captions and the action
-  row — the layout people expect from a photo app.
+- **Feed** (default): an Instagram-style sequence of large images with author,
+  caption and actions. The reading column is bounded on larger screens.
+- **Grid**: a 3-column square grid on iPhone, adaptive on larger screens,
+  blurhash placeholders, multi-attachment posts carrying a stack badge.
 - The toggle lives in the mode's toolbar and is remembered.
 
 ### Detail

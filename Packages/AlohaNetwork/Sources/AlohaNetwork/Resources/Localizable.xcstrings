@@ -79,23 +79,12 @@
       }
     },
     "Your server wouldn't allow that." : {
-      "comment" : "HTTP 403",
+      "comment" : "HTTP 401\nHTTP 403",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Server hat das nicht erlaubt."
-          }
-        }
-      }
-    },
-    "Your sign-in has expired." : {
-      "comment" : "Error when a token is revoked",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Anmeldung ist abgelaufen."
           }
         }
       }

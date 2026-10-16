@@ -67,11 +67,13 @@ import SwiftUI
 
     /// The mark, drawn small: sand ground, hibiscus in the variant's colour.
     private struct IconPreview: View {
+        @Environment(\.alohaPalette) private var palette
+
         let accent: AlohaIconVariant
         let isSelected: Bool
 
         var body: some View {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
                 .fill(Color(red: 0.984, green: 0.957, blue: 0.918))
                 .frame(width: 60, height: 60)
                 .overlay {
@@ -82,12 +84,15 @@ import SwiftUI
                         .frame(width: 36, height: 36)
                         .foregroundStyle(accent.swatch)
                 }
+                // Drawn inside the frame: a ring that hung outside the tile
+                // overlapped its neighbour at the spacing this row uses.
                 .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(
-                            isSelected ? Color.primary : Color.clear, lineWidth: 2.5
+                    if isSelected {
+                        RoundedRectangle(
+                            cornerRadius: AlohaMetrics.cornerMedium, style: .continuous
                         )
-                        .padding(-3)
+                        .strokeBorder(palette.label, lineWidth: 2.5)
+                    }
                 }
         }
     }

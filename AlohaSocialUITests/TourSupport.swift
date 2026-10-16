@@ -88,10 +88,27 @@ extension XCUIApplication {
 
     /// A sidebar row on iPad (collection view) or Mac (outline).
     func sidebarRow(_ title: String) -> XCUIElement {
+        let label = NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@", title, title + ",")
         #if os(macOS)
-            return outlines.cells.containing(.staticText, identifier: title).firstMatch
+            return outlines.cells.containing(label).firstMatch
         #else
-            return collectionViews.cells.containing(.staticText, identifier: title).firstMatch
+            // Settings also has cells named Photos/My Feed. Only query the
+            // narrow system sidebar, never a matching switch in the detail.
+            func sidebarContainer() -> XCUIElement? {
+                collectionViews.allElementsBoundByIndex.first {
+                    $0.frame.width < 400 && $0.isHittable
+                }
+            }
+            if UIDevice.current.userInterfaceIdiom == .pad && sidebarContainer() == nil {
+                let toggle = buttons.matching(
+                    NSPredicate(format: "label CONTAINS[c] %@", "sidebar")
+                )
+                .firstMatch
+                if toggle.exists && toggle.isHittable { toggle.tap() }
+            }
+            return (sidebarContainer() ?? collectionViews.firstMatch).cells.containing(label)
+                .firstMatch
         #endif
     }
 

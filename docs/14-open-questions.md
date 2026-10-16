@@ -272,6 +272,103 @@ avatar as the account switcher. The Mac already had one in its sidebar.
 - **Translations.** English is complete and every string carries a translator
   comment, enforced in CI by `tools/check-localisation.py`. Adding a language is
   a pull request against the String Catalogs.
+- **A notification action that opens the composer with the typed text in it.**
+  The reply action now runs and reaches the right status, but the text the
+  person typed at the lock screen opens the thread rather than the composer —
+  a composer cannot be presented from a notification response without a view
+  of ours on screen to present it from. Favourite, boost and Mute conversation
+  carry out immediately.
+- **The visionOS-specific behaviour of docs/09 §3, two of three.** The app
+  *runs* on visionOS — the iOS target declares `xros`, and the shell picks the
+  split view. `.hoverEffect(.highlight)` on the interactive rows is built: one
+  modifier, `alohaRowHighlight()`, that is `hoverEffect` on visionOS and the
+  view itself everywhere else. Still open are the media viewer and video player
+  opening as **separate windows** so a video can be parked in space while
+  reading continues, and **Shorts as a full ornamented window** rather than a
+  plain one.
+
+### Built since the last review pass, and left listed because a list that
+lies about what is built is worse than no list
+
+- **Digest batching.** Every notification held for the next digest hour arrived
+  as its own alert at that hour, so four things held through the day was four
+  interruptions at 08:00. It is one summary now: the count with the kinds
+  listed beneath it, passive, no sound — the day's mail, not a message. The
+  request's id is the digest time, so a later poll replaces what is pending
+  instead of stacking a second summary, and the running totals live in its
+  userInfo so the number grows through the day. Mentions still break through
+  immediately. The rule that picks the hour is a pure static function with
+  nineteen tests (`nextDigestHour`), and the tests found three wrong
+  expectations on their first run.
+- **An unread badge on Direct messages** in the iPad and Mac sidebar. The
+  count is the one the messages list already holds, not a second fetch.
+- **The macOS client.** docs/09 §2 had described one in detail — the sidebar
+  shell, the menu bar, the shortcuts — and there was no Mac target at all: four
+  app targets, and macOS missing from every one of them. The target is thin
+  because the app was built as one app: `AppShell` already picks a
+  `NavigationSplitView` on a regular-width window. What the entry adds is
+  genuinely Mac — a menu bar whose New Post goes through the same
+  `alohasocial://compose` link the quick-compose widget uses, and a window that
+  opens at the width of a timeline plus a thread.
+- **CI.** `docs/12` §6 describes seven jobs and there were none: no `.github`
+  directory existed at all. Six now run on every push and pull request — package
+  tests on macOS and again on an iOS simulator, a build matrix across all four
+  app platforms, the UI tour suite, swift-format in strict mode, and a licence
+  gate. The licence gate found 22 real violations on its first run, 8 of them
+  `Package.swift` manifests with no SPDX header.
+- **The grouped list carries the catch-up divider.** It was built for the flat
+  list only, which left the default view on every server that groups
+  notifications without it. The divider now sits below the group whose
+  `most_recent_notification_id` is the marker's, and scrolling past it advances
+  the marker to the group below.
+- **Notification actions run.** Four actions were registered on the mention
+  and reply categories and nothing answered them. The app is now a
+  `UNUserNotificationCenterDelegate`: favourite, boost, and mute/unmute run
+  immediately against the payload the notification carried — which account,
+  which status — through the same `StatusActions` path the post menu uses, so
+  there is no second implementation of what muting means.
+- **Batch alt-text generation.** A four-picture post meant four trips through
+  the same editor; the composer now offers "Describe all", sequentially, with
+  progress, a stoppable run, and one bad image reported without undoing the
+  ones that succeeded.
+- **One error strip, one skeleton, for every list.** Twenty-one hand-rolled
+  error strips and six private loading skeletons were replaced by
+  `AlohaErrorStrip` and `SkeletonListRow`. Screens that used to open as a blank
+  screen with a spinner floating over it now arrive as the shape of the list
+  they are about to be.
+- **The notification policy screen says what Drop does.** docs/05 §6 requires
+  it: on Nextcloud Social `drop` behaves as `filter`, and the screen now says so
+  rather than letting somebody choose Drop and later find the message held.
+- **A compile break was fixed in the policy screen and in both quiet-hours
+  pickers** — each left a `Binding`'s `set` closure unterminated. Three
+  different files, the same typo, all shipped in this branch before it.
+
+- **The grouped list carries the catch-up divider.** It was built for the flat
+  list only, which left the default view on every server that groups
+  notifications without it. The divider now sits below the group whose
+  `most_recent_notification_id` is the marker's, and scrolling past it advances
+  the marker to the group below.
+- **Notification actions run.** Four actions were registered on the mention
+  and reply categories and nothing answered them. The app is now a
+  `UNUserNotificationCenterDelegate`: favourite, boost, and mute/unmute run
+  immediately against the payload the notification carried — which account,
+  which status — through the same `StatusActions` path the post menu uses, so
+  there is no second implementation of what muting means.
+- **Batch alt-text generation.** A four-picture post meant four trips through
+  the same editor; the composer now offers "Describe all", sequentially, with
+  progress, a stoppable run, and one bad image reported without undoing the
+  ones that succeeded.
+- **One error strip, one skeleton, for every list.** Twenty-one hand-rolled
+  error strips and six private loading skeletons were replaced by
+  `AlohaErrorStrip` and `SkeletonListRow`. Screens that used to open as a blank
+  view with a spinner floating over the middle of it now arrive as the shape of
+  the list they are about to be.
+- **The notification policy screen says what Drop does.** docs/05 §6 requires
+  it: on Nextcloud Social `drop` behaves as `filter`, and the screen now says so
+  rather than letting somebody choose Drop and later find the message held.
+- **A compile break was fixed in the policy screen and in both quiet-hours
+  pickers** — each left a `Binding`'s `set` closure unterminated. Three
+  different files, the same typo, all shipped in this branch before it.
 Built since this list was written, and left here because a list that lies about
 what is built is worse than no list:
 

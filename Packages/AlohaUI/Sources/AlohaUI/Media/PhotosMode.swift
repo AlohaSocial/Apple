@@ -12,6 +12,7 @@ import SwiftUI
 /// tap away for browsing; the toggle is remembered.
 public struct PhotosModeView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.mediaTransition) private var mediaTransition
 
     private let session: AccountSession
@@ -19,12 +20,13 @@ public struct PhotosModeView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var model: TimelineModel
+    // Start with the photo feed; preserve a layout the person explicitly chose.
     @AppStorage("aloha.photosLayout") private var layout: Layout = .feed
     @State private var stories: [Story] = []
     @State private var playingStoriesFrom: Int?
 
-    enum Layout: String {
-        case grid, feed
+    enum Layout: String, CaseIterable {
+        case feed, grid
     }
 
     public init(
@@ -47,18 +49,17 @@ public struct PhotosModeView: View {
             }
         }
         .background(palette.background)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Picker(selection: $layout) {
-                    Image(systemName: "rectangle.grid.1x2").tag(Layout.feed)
-                    Image(systemName: "square.grid.3x3").tag(Layout.grid)
-                } label: {
-                    Text("Layout", comment: "Photos layout picker")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let message = model.errorMessage {
+                AlohaErrorStrip(message: message) { Task { await model.refresh() } }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { layoutMenu }
+        }
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+        #endif
         .task {
             await model.appear()
             await loadStories()
@@ -73,6 +74,39 @@ public struct PhotosModeView: View {
                 set: { playingStoriesFrom = $0?.index })
         ) { start in
             StoryPlayer(stories: stories, startIndex: start.index, session: session)
+        }
+    }
+
+    /// Layout is a secondary choice; pictures get the space below the toolbar.
+    private var layoutMenu: some View {
+        Menu {
+            Picker(selection: $layout) {
+                ForEach(Layout.allCases, id: \.rawValue) { option in
+                    Label(title(for: option), systemImage: symbolName(for: option))
+                        .tag(option)
+                }
+            } label: {
+                Text("Layout", comment: "Photos layout picker")
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Image(systemName: symbolName(for: layout))
+        }
+        .accessibilityLabel(Text("Photo layout", comment: "Photos layout menu"))
+        .accessibilityValue(Text(title(for: layout)))
+    }
+
+    private func title(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: String(localized: "Feed", comment: "Photos layout")
+        case .grid: String(localized: "Grid", comment: "Photos layout")
+        }
+    }
+
+    private func symbolName(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: "rectangle.grid.1x2"
+        case .grid: "square.grid.3x3"
         }
     }
 
@@ -97,23 +131,35 @@ public struct PhotosModeView: View {
                         status: status,
                         policy: session.settings.sensitiveMediaPolicy,
                         localHost: session.snapshot.instanceHost,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
                     .onAppear {
-                        if status.id == statuses.last?.id {
-                            Task { await model.loadOlder() }
-                        }
+                        Task { await model.prefetchOlder(near: status.id) }
+                        model.prefetchMedia(around: status.id)
                     }
                 }
 
-                if statuses.isEmpty && !model.isRefreshing { emptyState }
+                loadingIndicator
+                if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
             }
+            .frame(maxWidth: 620)
+            .frame(maxWidth: .infinity)
         }
+        .accessibilityIdentifier("photos.feed")
     }
 
     // MARK: - Grid
 
     static let gutter: Double = 1.5
+
+    /// How many columns the grid takes. A photo grid is the one surface that
+    /// wants more width, not less: three square columns across a Mac window
+    /// leaves two thirds of it empty, so a regular-width shell gets six and a
+    /// phone its three.
+    private var columnCount: Int {
+        horizontalSizeClass == .regular ? 6 : 3
+    }
 
     private var grid: some View {
         ScrollView {
@@ -121,21 +167,22 @@ public struct PhotosModeView: View {
 
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.flexible(), spacing: Self.gutter), count: 3),
+                    repeating: GridItem(.flexible(), spacing: Self.gutter),
+                    count: columnCount),
                 spacing: Self.gutter
             ) {
                 ForEach(statuses) { status in
                     cell(status)
                         .aspectRatio(1, contentMode: .fit)
                         .onAppear {
-                            if status.id == statuses.last?.id {
-                                Task { await model.loadOlder() }
-                            }
+                            Task { await model.prefetchOlder(near: status.id) }
+                            model.prefetchMedia(around: status.id)
                         }
                 }
             }
 
-            if statuses.isEmpty && !model.isRefreshing { emptyState }
+            loadingIndicator
+            if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
         }
     }
 
@@ -151,7 +198,7 @@ public struct PhotosModeView: View {
         } label: {
             ZStack(alignment: .topTrailing) {
                 RemoteImage(
-                    url: first?.previewURL ?? first?.url,
+                    url: first?.displayImageURL,
                     blurhash: first?.blurhash,
                     accessibilityText: first?.description
                 )
@@ -274,6 +321,17 @@ public struct PhotosModeView: View {
         stories = live.filter { $0.account.id == mine } + live.filter { $0.account.id != mine }
     }
 
+    @ViewBuilder
+    private var loadingIndicator: some View {
+        if (model.isRefreshing && statuses.isEmpty) || model.isPagingOlder {
+            ProgressView {
+                Text("Loading photos", comment: "Photos loading state")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(AlohaMetrics.space4)
+        }
+    }
+
     private var emptyState: some View {
         ContentUnavailableView {
             Text("No photos yet", comment: "Empty Photos mode")
@@ -305,6 +363,7 @@ public struct PhotoPostCard: View {
     private let status: Status
     private let policy: SensitiveMediaPolicy
     private let localHost: String?
+    private let showsCounts: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var page = 0
@@ -314,11 +373,13 @@ public struct PhotoPostCard: View {
 
     public init(
         status: Status, policy: SensitiveMediaPolicy, localHost: String?,
+        showsCounts: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
         self.policy = policy
         self.localHost = localHost
+        self.showsCounts = showsCounts
         self.onAction = onAction
     }
 
@@ -341,6 +402,30 @@ public struct PhotoPostCard: View {
             details
         }
         .padding(.bottom, AlohaMetrics.space4)
+        #if !os(iOS)
+            .overlay {
+                if attachments.count > 1 {
+                    HStack {
+                        Button { page = max(0, page - 1) } label: {
+                            Image(systemName: "chevron.left")
+                                .frame(width: 44, height: 44)
+                        }
+                        .disabled(page == 0)
+                        .accessibilityLabel(Text("Previous photo", comment: "Photo carousel action"))
+                        Spacer()
+                        Button { page = min(attachments.count - 1, page + 1) } label: {
+                            Image(systemName: "chevron.right")
+                                .frame(width: 44, height: 44)
+                        }
+                        .disabled(page >= attachments.count - 1)
+                        .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
+                    }
+                    .buttonStyle(.glass)
+                    .padding(AlohaMetrics.space2)
+                }
+            }
+        #endif
+        .overlay(alignment: .bottom) { Divider().foregroundStyle(palette.separator) }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.\(displayed.id)")
     }
@@ -407,14 +492,16 @@ public struct PhotoPostCard: View {
     private var media: some View {
         ZStack {
             if attachments.count > 1 {
-                TabView(selection: $page) {
-                    ForEach(Array(attachments.enumerated()), id: \.element.id) {
-                        offset, attachment in
-                        picture(attachment).tag(offset)
-                    }
-                }
                 #if os(iOS)
+                    TabView(selection: $page) {
+                        ForEach(Array(attachments.enumerated()), id: \.element.id) {
+                            offset, attachment in
+                            picture(attachment).tag(offset)
+                        }
+                    }
                     .tabViewStyle(.page(indexDisplayMode: .never))
+                #else
+                    picture(attachments[min(page, attachments.count - 1)])
                 #endif
             } else if let first = attachments.first {
                 picture(first)
@@ -465,18 +552,26 @@ public struct PhotoPostCard: View {
         .sensoryFeedback(.success, trigger: isHearting) { _, new in new }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(Text("Opens the media viewer", comment: "Accessibility hint"))
+        .accessibilityHint(
+            isCovered
+                ? Text("Tap to show", comment: "Covered media hint")
+                : Text("Opens the media viewer", comment: "Accessibility hint"))
         .accessibilityAction(named: Text("Favourite", comment: "Accessibility action")) { heart() }
-        .mediaTransitionSource(id: attachments.first?.id ?? displayed.id, in: mediaTransition)
+        .mediaTransitionSource(
+            id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
+            in: mediaTransition)
+        .onChange(of: attachments.map(\.id)) { _, _ in page = 0 }
     }
 
     private func picture(_ attachment: MediaAttachment) -> some View {
         ZStack(alignment: .topTrailing) {
             RemoteImage(
-                url: attachment.previewURL ?? attachment.url,
+                url: attachment.displayImageURL,
                 blurhash: attachment.blurhash,
                 contentMode: .fill,
                 accessibilityText: attachment.description)
+                .blur(radius: isCovered ? 24 : 0)
+                .accessibilityHidden(isCovered)
 
             if attachment.type.isPlayable {
                 Image(systemName: AlohaSymbol.play)
@@ -519,12 +614,14 @@ public struct PhotoPostCard: View {
     }
 
     private func heart() {
-        guard !displayed.favourited else { return }
+        guard !isCovered, !displayed.favourited else { return }
         onAction(.favourite(status))
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { isHearting = true }
+        withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5)) {
+            isHearting = true
+        }
         Task {
             try? await Task.sleep(for: .milliseconds(650))
-            withAnimation(.easeOut(duration: 0.25)) { isHearting = false }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { isHearting = false }
         }
     }
 
@@ -564,7 +661,9 @@ public struct PhotoPostCard: View {
         }
         .padding(.horizontal, AlohaMetrics.space1)
         .padding(.top, AlohaMetrics.space1)
-        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.55),
+            value: displayed.favourited)
     }
 
     private func actionButton(
@@ -585,7 +684,7 @@ public struct PhotoPostCard: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-            if displayed.favouritesCount > 0 {
+            if showsCounts, displayed.favouritesCount > 0 {
                 Text(
                     "^[\(displayed.favouritesCount) favourite](inflect: true)",
                     comment: "Photo post like count"
@@ -621,7 +720,9 @@ public struct PhotoPostCard: View {
                     onAction(.open(status))
                 } label: {
                     Text(
-                        "View all ^[\(displayed.repliesCount) reply](inflect: true)",
+                        showsCounts
+                            ? "View all ^[\(displayed.repliesCount) reply](inflect: true)"
+                            : "View all replies",
                         comment: "Photo post reply count link"
                     )
                     .font(.subheadline)
@@ -786,8 +887,10 @@ public struct StoryPlayer: View {
     @ViewBuilder
     private func media(_ story: Story) -> some View {
         if story.type.isPlayable, let url = story.url {
-            StoryVideoSurface(url: url, isPaused: isPaused)
-                .ignoresSafeArea()
+            StoryVideoSurface(
+                url: url, preview: story.previewURL, isPaused: isPaused, session: session
+            )
+            .ignoresSafeArea()
         } else {
             RemoteImage(url: story.url, contentMode: .fit)
                 .ignoresSafeArea()
@@ -950,7 +1053,7 @@ public struct StoryPlayer: View {
                 listSheet = .viewers(story)
             } label: {
                 Label {
-                    if let views = story.viewCount {
+                    if let views = story.viewCount, session.settings.showPopularityCounts {
                         Text("Seen by \(views)", comment: "Story viewers button")
                     } else {
                         Text("Seen by", comment: "Story viewers button")
@@ -1061,29 +1164,57 @@ public struct StoryPlayer: View {
 /// A video story: plays on appear, pauses while held, no controls.
 struct StoryVideoSurface: View {
     let url: URL
+    let preview: URL?
     let isPaused: Bool
+    let session: AccountSession
 
     @State private var player: AVPlayer?
+    @State private var isReady = false
+    @State private var watcher: Task<Void, Never>?
 
     var body: some View {
-        Group {
-            if let player {
+        ZStack {
+            if let player, isReady {
                 PlayerSurface(player: player, showsControls: false)
             } else {
-                Color.black
+                // The story's own still, held until there is a frame behind
+                // it. A black rectangle in this window is the thing people
+                // read as "the video is broken".
+                // Never hand the video bytes to the image loader when the
+                // server omitted a poster frame.
+                RemoteImage(url: preview, contentMode: .fit)
             }
         }
         .task(id: url) {
-            let newPlayer = AVPlayer(url: url)
-            player = newPlayer
-            newPlayer.play()
+            player = nil
+            isReady = false
+            watcher?.cancel()
+            watcher = nil
+            let headers = await session.client.mediaRequestHeaders(for: url)
+            switch await PlaybackReadiness.open(url: url, headers: headers) {
+            case .playable(let newPlayer, let item, let ready):
+                player = newPlayer
+                isReady = ready
+                if !isPaused { newPlayer.play() }
+                watcher = Task { @MainActor in
+                    for await status in PlaybackReadiness.statuses(item) {
+                        guard !Task.isCancelled else { return }
+                        if status == .readyToPlay { isReady = true }
+                    }
+                }
+            case .rejected(let reason):
+                PlaybackLog.logger.error("story rung rejected: \(reason, privacy: .public)")
+            }
         }
         .onChange(of: isPaused) { _, paused in
             if paused { player?.pause() } else { player?.play() }
         }
         .onDisappear {
+            watcher?.cancel()
+            watcher = nil
             player?.pause()
             player = nil
+            isReady = false
         }
     }
 }

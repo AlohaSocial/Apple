@@ -87,9 +87,30 @@ import XCTest
             app.buttons["Cancel"].firstMatch.tap()
         }
 
+        func testPhotosStartsWithPostFeedAndCanShowGrid() {
+            launch(["-AlohaMockResetPhotoLayout"])
+            app.tabBars.buttons["Photos"].tap()
+            let feed = app.scrollViews["photos.feed"].firstMatch
+            XCTAssertTrue(
+                feed.waitForExistence(timeout: 10), "Photos did not default to the post feed")
+            XCTAssertTrue(app.buttons["Favourite"].firstMatch.exists, "Photo post actions missing")
+            XCTAssertTrue(
+                app.buttons["More actions"].firstMatch.exists, "Photo post header missing")
+            shoot("56-photos-feed")
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Grid"].firstMatch.tap()
+            XCTAssertFalse(feed.exists, "Grid switch did not change the layout")
+            shoot("57-photos-grid")
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Feed"].firstMatch.tap()
+            XCTAssertTrue(feed.waitForExistence(timeout: 5))
+        }
+
         func testMediaViewerOpensFromPhotos() {
             launch()
             app.tabBars.buttons["Photos"].tap()
+            app.buttons["Photo layout"].firstMatch.tap()
+            app.buttons["Grid"].firstMatch.tap()
             let tile = app.buttons.matching(
                 NSPredicate(format: "label CONTAINS 'photograph'")
             ).firstMatch
@@ -159,8 +180,11 @@ import XCTest
             ).firstMatch
             XCTAssertTrue(switcher.waitForExistence(timeout: 5), "No account switcher")
             switcher.tap()
+            app.buttons["Switch account"].firstMatch.tap()
+            shoot("99-phone-account-options")
+            print("PHONE ACCOUNT OPTIONS:\n\(app.debugDescription)")
             let other = app.buttons.matching(
-                NSPredicate(format: "label CONTAINS 'bob'")
+                NSPredicate(format: "label == %@ OR label CONTAINS %@", "Bob", "@bob@")
             ).firstMatch
             XCTAssertTrue(other.waitForExistence(timeout: 5), "Second account not offered")
             other.tap()
@@ -168,6 +192,10 @@ import XCTest
             XCTAssertTrue(
                 app.labelled("Test post number 1").waitForExistence(timeout: 10),
                 "Timeline did not come back after switching account")
+            XCTAssertTrue(
+                app.buttons.matching(
+                    NSPredicate(format: "label CONTAINS %@", "Bob, account menu")
+                ).firstMatch.waitForExistence(timeout: 5))
             shoot("51-switched-account")
         }
 
@@ -301,31 +329,80 @@ import XCTest
             shoot("55-video-watch")
         }
 
+        func testInitialFeedChoiceChangesTabs() {
+            app = XCUIApplication()
+            app.launchArguments = ["-AlohaMockServer", "-AlohaMockModeSelection"]
+            app.launch()
+            let title = app.labelled("Which feeds do you want?")
+            XCTAssertTrue(title.waitForExistence(timeout: 15))
+            for name in ["Photos", "Video", "Shorts"] {
+                let choice = app.buttons.matching(
+                    NSPredicate(format: "label BEGINSWITH %@", name + ",")
+                ).firstMatch
+                XCTAssertTrue(choice.waitForExistence(timeout: 5), "Feed choice missing: \(name)")
+                choice.tap()
+                XCTAssertTrue(title.exists, "Changing a feed dismissed its sheet")
+            }
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(app.tabBars.buttons["My Feed"].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.tabBars.buttons["Photos"].exists)
+            XCTAssertFalse(app.tabBars.buttons["Shorts"].exists)
+
+        }
+
+        func testWelcomeAtAccessibilityTextSize() {
+            app = XCUIApplication()
+            app.launchArguments = [
+                "-AlohaMockServer", "-AlohaMockNoAccount",
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            ]
+            app.launch()
+            let skip = app.buttons["Skip"].firstMatch
+            XCTAssertTrue(skip.waitForExistence(timeout: 10))
+            skip.tap()
+            let field = app.textFields.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            if !field.isHittable { app.scrollViews["welcome-sign-in-content"].swipeUp() }
+            XCTAssertTrue(field.isHittable, "Server field unreachable with large text")
+            field.tap()
+            field.typeText("cloud.example.test")
+            let next = app.buttons["Continue"].firstMatch
+            for _ in 0..<3 where !next.isHittable {
+                app.scrollViews["welcome-sign-in-content"].swipeUp()
+            }
+            XCTAssertTrue(next.isHittable, "Continue unreachable above keyboard")
+            shoot("46-welcome-large-text")
+            next.tap()
+            XCTAssertTrue(app.labelled("Before you start").waitForExistence(timeout: 5))
+        }
+
         func testWelcomeAndSignIn() {
             app = XCUIApplication()
             app.launchArguments = ["-AlohaMockServer", "-AlohaMockNoAccount"]
             app.launch()
             XCTAssertTrue(
-                app.labelled("Before you start").waitForExistence(timeout: 10), "Terms gate missing"
-            )
+                app.labelled("A calmer client").waitForExistence(timeout: 10),
+                "Introduction missing")
+            shoot("44-welcome")
+            app.buttons["Skip"].firstMatch.tap()
+            let field = app.textFields.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5), "Server address missing")
+            XCTAssertFalse(app.buttons["Continue"].firstMatch.isEnabled)
+            app.buttons["Back"].firstMatch.tap()
+            XCTAssertTrue(app.labelled("Quiet by default").waitForExistence(timeout: 5))
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.tap()
+            field.typeText("cloud.example.test")
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(
+                app.labelled("Before you start").waitForExistence(timeout: 5),
+                "Terms gate missing after introduction")
             shoot("43-terms")
             app.buttons["Agree and continue"].firstMatch.tap()
-            sleep(1)
-            shoot("44-welcome")
-            let add = app.buttons.matching(
-                NSPredicate(
-                    format:
-                        "label CONTAINS[c] 'server' OR label CONTAINS[c] 'sign in' OR label CONTAINS[c] 'add'"
-                )
-            ).firstMatch
-            if add.waitForExistence(timeout: 3) { add.tap() }
-            let field = app.textFields.firstMatch
-            if field.waitForExistence(timeout: 5) {
-                field.tap()
-                field.typeText("cloud.example.test")
-                app.buttons["Continue"].firstMatch.tap()
-                sleep(3)
-            }
+            XCTAssertTrue(
+                app.textFields.firstMatch.waitForExistence(timeout: 5),
+                "Sign-in did not open")
             shoot("45-sign-in")
         }
     }

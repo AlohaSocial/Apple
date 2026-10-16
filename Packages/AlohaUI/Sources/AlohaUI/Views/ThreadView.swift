@@ -45,21 +45,17 @@ public struct ThreadView: View {
                 }
 
                 if isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .listRowSeparator(.hidden)
+                    SkeletonListRow(person: 3)
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
                 }
 
                 if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
             }
             .listStyle(.plain)
+            .alohaGround(palette)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
             .task {
                 await load()
@@ -80,11 +76,31 @@ public struct ThreadView: View {
             // every row was noise.
             showsContextLine: isFocused,
             canReact: session.capabilities.emojiReactions,
+            showsCounts: session.settings.showPopularityCounts,
             onAction: onAction
         )
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-        .listRowBackground(isFocused ? palette.surface : palette.background)
+        // Raised card plus the accent rail the timeline uses for keyboard
+        // focus: `surface` and `background` are the same black in the Black
+        // theme, so the old pair marked nothing there.
+        .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
         .font(isFocused ? .body : nil)
+        .overlay(alignment: .leading) {
+            if isFocused {
+                Capsule()
+                    .fill(palette.accent)
+                    .frame(width: 3)
+                    .padding(.vertical, 4)
+                    .padding(.leading, -8)
+            }
+        }
+    }
+
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowBackground(palette.background)
     }
 
     /// Indentation is capped at five levels; anything deeper reads as a flat
@@ -106,11 +122,9 @@ public struct ThreadView: View {
     /// a card for when it was written.
     ///
     /// Fetched **beside** the status rather than after it, and applied before
-    /// the screen is first drawn. Doing it afterwards worked and was still
-    /// wrong: the post grew a card under the reader a moment after they
-    /// started reading it, which is the thing this app is careful not to do
-    /// anywhere else — and it left the screen changing long enough that
-    /// `performAccessibilityAudit` could not finish walking it.
+    /// fresh network content is committed to the view. Existing cached content
+    /// can be displayed first; the refreshed post and preview arrive together
+    /// rather than applying the preview as a separate network update.
     ///
     /// Only here, and only for the one post being read: asking makes the
     /// server build and cache the preview, so a timeline that asked per row
@@ -139,6 +153,13 @@ public struct ThreadView: View {
         isLoading = true
         defer { isLoading = false }
 
+        // A timeline already stored this post. Keep it readable while the
+        // server refreshes its counts and context, including when offline.
+        if focused == nil {
+            focused = try? await session.timelineStore.statuses(
+                accountID: session.id, ids: [statusID])[statusID]
+        }
+
         do {
             async let statusTask = session.client.decode(
                 Status.self, from: Endpoint.statuses.status(statusID))
@@ -160,7 +181,7 @@ public struct ThreadView: View {
                 accountID: session.id, status: status)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

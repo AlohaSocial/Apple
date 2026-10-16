@@ -27,7 +27,7 @@ public struct FollowRequestsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                errorStrip(errorMessage)
             }
 
             ForEach(accounts) { account in
@@ -59,25 +59,30 @@ public struct FollowRequestsView: View {
 
                     Spacer(minLength: 0)
 
+                    // One family and one size for the pair: Accept was 44pt
+                    // against a 32pt Decline, which read as one answer being
+                    // the important one.
                     Button {
                         Task { await decide(account, accept: true) }
                     } label: {
                         Text("Accept", comment: "Follow request action")
                     }
-                    .buttonStyle(.alohaProminent)
+                    .buttonStyle(.glass)
+                    .controlSize(.regular)
 
                     Button(role: .destructive) {
                         Task { await decide(account, accept: false) }
                     } label: {
                         Text("Decline", comment: "Follow request action")
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(.glass)
+                    .controlSize(.regular)
                 }
                 .padding(.vertical, AlohaMetrics.space1)
+                .listRowBackground(palette.background)
             }
 
-            if accounts.isEmpty && !isLoading {
+            if accounts.isEmpty && !isLoading && errorMessage == nil {
                 EmptyStateView(
                     symbol: "person.badge.clock",
                     title: Text("No follow requests", comment: "Empty follow requests"),
@@ -85,23 +90,47 @@ public struct FollowRequestsView: View {
                         "When your account is locked, people asking to follow you wait here.",
                         comment: "Empty follow requests detail")
                 )
+                .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && accounts.isEmpty { ProgressView() }
+        }
         .navigationTitle(Text("Follow requests", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
     }
 
-    /// Answered rows leave at once; the server is told afterwards.
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    /// Answered rows leave at once; a refusal puts the row back where it was
+    /// and says why, rather than losing the request silently.
     private func decide(_ account: Account, accept: Bool) async {
-        accounts.removeAll { $0.id == account.id }
+        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
+        accounts.remove(at: index)
         let endpoint =
             accept
             ? Endpoint.accounts.authoriseFollowRequest(account.id)
             : Endpoint.accounts.rejectFollowRequest(account.id)
-        _ = try? await session.client.send(endpoint)
+        do {
+            _ = try await session.client.send(endpoint)
+            errorMessage = nil
+        } catch {
+            if !accounts.contains(where: { $0.id == account.id }) {
+                accounts.insert(account, at: min(index, accounts.count))
+            }
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     private func load() async {
@@ -114,7 +143,7 @@ public struct FollowRequestsView: View {
             errorMessage = nil
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }

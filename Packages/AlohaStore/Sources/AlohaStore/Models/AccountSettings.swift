@@ -24,6 +24,12 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     public var showReplies: Bool
     public var restoreTimelinePosition: Bool
     public var showNewPostsPill: Bool
+    /// Show the popularity numbers on posts, profiles and media: reply,
+    /// boost and favourite counts, follower and post counts, view and
+    /// seen counts, and the "and N others" tail of a grouped notification.
+    /// On by default, because a number is sometimes information — but
+    /// comparing oneself is the most consistent harm social media does.
+    public var showPopularityCounts: Bool
 
     // Modes
     public var enabledModes: [FeedMode]
@@ -33,6 +39,18 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     public var pollFrequency: PollFrequency
     public var quietHoursStart: Int?
     public var quietHoursEnd: Int?
+    /// How local notifications are delivered.
+    public enum NotificationDeliveryMode: String, Codable, Sendable, Hashable, CaseIterable {
+        /// Each notification is posted as it arrives (default, today's behaviour).
+        case immediate
+        /// Notifications are batched and delivered at the configured digest times.
+        case digest
+    }
+    public var notificationDeliveryMode: NotificationDeliveryMode
+    /// The times at which a digest is delivered (up to 4). Hours are in the
+    /// user's local time zone; minutes are always zero. Empty array means
+    /// the default single digest at 08:00.
+    public var digestTimes: [Int]
 
     public enum PollFrequency: String, Codable, Sendable, Hashable, CaseIterable {
         case frequent, normal, batterySaver, manual
@@ -63,6 +81,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         showReplies: Bool = true,
         restoreTimelinePosition: Bool = true,
         showNewPostsPill: Bool = true,
+        showPopularityCounts: Bool = true,
         enabledModes: [FeedMode] = FeedMode.defaultEnabled,
         localNotificationKinds: Set<String> = Set(
             [
@@ -71,7 +90,9 @@ public struct AccountSettings: Codable, Sendable, Hashable {
             ].map(\.rawValue)),
         pollFrequency: PollFrequency = .normal,
         quietHoursStart: Int? = nil,
-        quietHoursEnd: Int? = nil
+        quietHoursEnd: Int? = nil,
+        notificationDeliveryMode: NotificationDeliveryMode = .immediate,
+        digestTimes: [Int] = [8]
     ) {
         self.defaultVisibility = defaultVisibility
         self.defaultLanguage = defaultLanguage
@@ -87,11 +108,14 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         self.showReplies = showReplies
         self.restoreTimelinePosition = restoreTimelinePosition
         self.showNewPostsPill = showNewPostsPill
+        self.showPopularityCounts = showPopularityCounts
         self.enabledModes = enabledModes
         self.localNotificationKinds = localNotificationKinds
         self.pollFrequency = pollFrequency
         self.quietHoursStart = quietHoursStart
         self.quietHoursEnd = quietHoursEnd
+        self.notificationDeliveryMode = notificationDeliveryMode
+        self.digestTimes = digestTimes
     }
 
     /// Adopts what the server says this account's own defaults are. A client

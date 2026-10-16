@@ -20,6 +20,7 @@ public struct ListMembershipSheet: View {
     @State private var isLoading = true
     @State private var newListTitle = ""
     @State private var isCreating = false
+    @State private var isSaving = false
     @State private var errorMessage: String?
 
     public init(account: Account, session: AccountSession) {
@@ -44,7 +45,7 @@ public struct ListMembershipSheet: View {
                 }
 
                 if let errorMessage {
-                    Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                    errorStrip(errorMessage)
                 }
 
                 Section {
@@ -91,7 +92,12 @@ public struct ListMembershipSheet: View {
                             } label: {
                                 Text("Add", comment: "New list action")
                             }
-                            .disabled(newListTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .buttonStyle(.glass)
+                            .disabled(
+                                isSaving
+                                    || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        .isEmpty
+                            )
                         }
                     } else {
                         Button {
@@ -111,7 +117,7 @@ public struct ListMembershipSheet: View {
                             ProgressView()
                             Spacer()
                         }
-                    } else if lists.isEmpty {
+                    } else if lists.isEmpty && errorMessage == nil {
                         Text(
                             "You have no lists yet. Make one to put \(account.bestDisplayName) on it.",
                             comment: "Empty lists in membership sheet"
@@ -127,6 +133,7 @@ public struct ListMembershipSheet: View {
                         comment: "List membership explanation")
                 }
             }
+            .alohaGround(palette)
             .navigationTitle(Text("Add to list", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -144,19 +151,35 @@ public struct ListMembershipSheet: View {
         }
     }
 
+    private func errorStrip(_ message: String) -> some View {
+        AlohaErrorStrip(message: message) {
+            Task { await load() }
+        }
+    }
+
     private func load() async {
         isLoading = true
         defer { isLoading = false }
-        async let allTask = session.client.decode(
-            LossyArray<AccountList>.self, from: Endpoint.lists.all)
-        async let containingTask = session.client.decode(
-            LossyArray<AccountList>.self, from: Endpoint.profile.listsContaining(account.id))
-        lists = (try? await allTask)?.elements ?? []
-        memberOf = Set(((try? await containingTask)?.elements ?? []).map(\.id))
+        do {
+            async let allTask = session.client.decode(
+                LossyArray<AccountList>.self, from: Endpoint.lists.all)
+            async let containingTask = session.client.decode(
+                LossyArray<AccountList>.self,
+                from: Endpoint.profile.listsContaining(account.id))
+            let all = try await allTask
+            let containing = try await containingTask
+            lists = all.elements
+            memberOf = Set(containing.elements.map(\.id))
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     /// The checkmark moves at once and comes back if the server refuses.
     private func toggle(_ list: AccountList) async {
+        guard !busy.contains(list.id) else { return }
         let wasMember = memberOf.contains(list.id)
         busy.insert(list.id)
         defer { busy.remove(list.id) }
@@ -170,23 +193,34 @@ public struct ListMembershipSheet: View {
         } catch {
             if wasMember { memberOf.insert(list.id) } else { memberOf.remove(list.id) }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "List membership could not be updated. Please try again.")
         }
     }
 
     private func create() async {
-        let title = newListTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-        newListTitle = ""
-        isCreating = false
+        let submittedTitle = newListTitle
+        let title = submittedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         do {
             let created = try await session.client.decode(
                 AccountList.self, from: Endpoint.lists.create(title: title))
             lists.append(created)
+            if newListTitle == submittedTitle {
+                newListTitle = ""
+                isCreating = false
+            }
             await toggle(created)
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized:
+                        "The list could not be created. Your text has been kept; please try again.")
         }
     }
 }

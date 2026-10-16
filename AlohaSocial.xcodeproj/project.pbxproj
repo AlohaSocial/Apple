@@ -10,6 +10,14 @@
 		CCKL060000000000000CC /* AlohaDesign in Frameworks */ = {isa = PBXBuildFile; productRef = AA200600000000000000AA /* AlohaDesign */; };
 		CCVL060000000000000CC /* AlohaDesign in Frameworks */ = {isa = PBXBuildFile; productRef = AA200600000000000000AA /* AlohaDesign */; };
 		CCKZ00000000000000CC /* AlohaSocialWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = CCKP00000000000000CC /* AlohaSocialWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2234FA50307D30E800E1E442 /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
+		2234FA51307D30E800E1E442 /* AlohaHTML in Frameworks */ = {isa = PBXBuildFile; productRef = AA200100000000000000AA /* AlohaHTML */; };
+		2234FA52307D30E800E1E442 /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
+		2234FA53307D30E800E1E442 /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
+		2234FA54307D30E800E1E442 /* AlohaMedia in Frameworks */ = {isa = PBXBuildFile; productRef = AA200400000000000000AA /* AlohaMedia */; };
+		2234FA55307D30E800E1E442 /* AlohaIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = AA200500000000000000AA /* AlohaIntelligence */; };
+		2234FA56307D30E800E1E442 /* AlohaDesign in Frameworks */ = {isa = PBXBuildFile; productRef = AA200600000000000000AA /* AlohaDesign */; };
+		2234FA57307D30E800E1E442 /* AlohaUI in Frameworks */ = {isa = PBXBuildFile; productRef = AA200700000000000000AA /* AlohaUI */; };
 		AA300000000000000000AA /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
 		AA300100000000000000AA /* AlohaHTML in Frameworks */ = {isa = PBXBuildFile; productRef = AA200100000000000000AA /* AlohaHTML */; };
 		AA300200000000000000AA /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
@@ -110,6 +118,7 @@
 		CCVP00000000000000CC /* AlohaSocialTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDNP00000000000000DD /* AlohaNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEUP00000000000000EE /* AlohaSocialUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlohaSocialUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		MACP00000000000000MA /* AlohaSocialMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -146,6 +155,11 @@
 		EEUG00000000000000EE /* AlohaSocialUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AlohaSocialUITests;
+			sourceTree = "<group>";
+		};
+		MACG00000000000000MA /* AlohaSocialMac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AlohaSocialMac;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -212,6 +226,19 @@
 			files = (
 			);
 		};
+		MACF00000000000000MA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				2234FA53307D30E800E1E442 /* AlohaStore in Frameworks */,
+				2234FA55307D30E800E1E442 /* AlohaIntelligence in Frameworks */,
+				2234FA57307D30E800E1E442 /* AlohaUI in Frameworks */,
+				2234FA50307D30E800E1E442 /* AlohaModels in Frameworks */,
+				2234FA54307D30E800E1E442 /* AlohaMedia in Frameworks */,
+				2234FA52307D30E800E1E442 /* AlohaNetwork in Frameworks */,
+				2234FA51307D30E800E1E442 /* AlohaHTML in Frameworks */,
+				2234FA56307D30E800E1E442 /* AlohaDesign in Frameworks */,
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -219,6 +246,7 @@
 			isa = PBXGroup;
 			children = (
 				DDNP00000000000000DD /* AlohaNotificationService.appex */,
+				MACG00000000000000MA /* AlohaSocialMac */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
@@ -243,6 +271,7 @@
 			children = (
 				56A4A912306020030052D930 /* AlohaSocial.app */,
 				CCKP00000000000000CC /* AlohaSocialWatch.app */,
+				MACP00000000000000MA /* AlohaSocialMac.app */,
 				CCVP00000000000000CC /* AlohaSocialTV.app */,
 				BBWP000000000000000BB /* AlohaWidgets.appex */,
 				BBSP000000000000000BB /* AlohaShareExtension.appex */,
@@ -428,6 +457,34 @@
 			productReference = EEUP00000000000000EE /* AlohaSocialUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		MACT00000000000000MA /* AlohaSocialMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = MACC00000000000000MA /* Build configuration list for PBXNativeTarget "AlohaSocialMac" */;
+			buildPhases = (
+				MACS00000000000000MA /* Sources */,
+				MACF00000000000000MA /* Frameworks */,
+				MACR00000000000000MA /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				MACG00000000000000MA /* AlohaSocialMac */,
+			);
+			name = AlohaSocialMac;
+			packageProductDependencies = (
+				AA200000000000000000AA /* AlohaModels */,
+				AA200100000000000000AA /* AlohaHTML */,
+				AA200200000000000000AA /* AlohaNetwork */,
+				AA200300000000000000AA /* AlohaStore */,
+				AA200400000000000000AA /* AlohaMedia */,
+				AA200500000000000000AA /* AlohaIntelligence */,
+				AA200600000000000000AA /* AlohaDesign */,
+				AA200700000000000000AA /* AlohaUI */,
+			);
+			productName = AlohaSocialMac;
+			productReference = MACP00000000000000MA /* AlohaSocialMac.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -473,6 +530,7 @@
 			targets = (
 				56A4A911306020030052D930 /* AlohaSocial */,
 				CCKT00000000000000CC /* AlohaSocialWatch */,
+				MACT00000000000000MA /* AlohaSocialMac */,
 				CCVT00000000000000CC /* AlohaSocialTV */,
 				BBWT000000000000000BB /* AlohaWidgets */,
 				BBST000000000000000BB /* AlohaShareExtension */,
@@ -513,6 +571,11 @@
 			files = (
 			);
 		};
+		MACR00000000000000MA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -547,6 +610,11 @@
 			);
 		};
 		EEUS00000000000000EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		MACS00000000000000MA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -721,10 +789,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Supporting/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Aloha Social uses the camera when you take a photo or record a video to post.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Aloha Social uses the microphone when you record a video to post.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Aloha Social saves images and videos to your photo library when you ask it to.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Aloha Social reads photos and videos you choose to attach to a post.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				"INFOPLIST_KEY_NSPrincipalClass[sdk=macosx*]" = NSApplication;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -779,10 +849,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Supporting/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Aloha Social uses the camera when you take a photo or record a video to post.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Aloha Social uses the microphone when you record a video to post.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Aloha Social saves images and videos to your photo library when you ask it to.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Aloha Social reads photos and videos you choose to attach to a post.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				"INFOPLIST_KEY_NSPrincipalClass[sdk=macosx*]" = NSApplication;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -925,6 +997,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = social.aloha.app;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
@@ -949,6 +1022,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = social.aloha.app;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
@@ -973,6 +1047,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.tv;
@@ -995,6 +1070,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.tv;
@@ -1098,6 +1174,55 @@
 			};
 			name = Release;
 		};
+		MACD00000000000000MA /* Debug configuration for PBXNativeTarget "AlohaSocialMac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialMac-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		MACX00000000000000MA /* Release configuration for PBXNativeTarget "AlohaSocialMac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialMac-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1162,6 +1287,14 @@
 			buildConfigurations = (
 				EEUD00000000000000EE /* Debug configuration for PBXNativeTarget "AlohaSocialUITests" */,
 				EEUE00000000000000EE /* Release configuration for PBXNativeTarget "AlohaSocialUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		MACC00000000000000MA /* Build configuration list for PBXNativeTarget "AlohaSocialMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				MACD00000000000000MA /* Debug configuration for PBXNativeTarget "AlohaSocialMac" */,
+				MACX00000000000000MA /* Release configuration for PBXNativeTarget "AlohaSocialMac" */,
 			);
 			defaultConfigurationName = Release;
 		};

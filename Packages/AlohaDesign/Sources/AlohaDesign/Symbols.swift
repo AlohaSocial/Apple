@@ -4,15 +4,15 @@ import Foundation
 
 /// SF Symbol names as typed constants, so a rename is one edit.
 public enum AlohaSymbol {
-    public static let reply = "arrowshape.turn.up.left"
+    public static let reply = "bubble.left"
     public static let boost = "arrow.2.squarepath"
-    public static let favourite = "star"
-    public static let favouriteFilled = "star.fill"
+    public static let favourite = "heart"
+    public static let favouriteFilled = "heart.fill"
     public static let bookmark = "bookmark"
     public static let bookmarkFilled = "bookmark.fill"
     public static let more = "ellipsis"
-    public static let share = "square.and.arrow.up"
-    public static let compose = "square.and.pencil"
+    public static let share = "paperplane"
+    public static let compose = "plus"
     public static let refresh = "arrow.clockwise"
     public static let search = "magnifyingglass"
     public static let settings = "gearshape"

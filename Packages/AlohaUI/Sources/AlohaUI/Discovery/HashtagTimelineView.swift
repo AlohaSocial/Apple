@@ -20,6 +20,10 @@ public struct HashtagTimelineView: View {
     @State private var tag: Tag?
     @State private var related: [Tag] = []
     @State private var isBusy = false
+    @State private var isLoading = true
+    /// Following without knowing what you already follow writes the opposite
+    /// of what you meant, so the button waits for the answer.
+    @State private var didFail = false
 
     public init(
         name: String, session: AccountSession, onAction: @escaping (StatusRowAction) -> Void
@@ -42,29 +46,41 @@ public struct HashtagTimelineView: View {
         .navigationTitle(Text(verbatim: "#\(name)"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task { await toggleFollow() }
-                } label: {
-                    if isFollowing {
-                        Label {
-                            Text("Following", comment: "Hashtag follow state")
-                        } icon: {
-                            Image(systemName: "checkmark")
-                        }
-                    } else {
-                        Label {
-                            Text("Follow", comment: "Hashtag follow action")
-                        } icon: {
-                            Image(systemName: "plus")
+                if isLoading {
+                    ProgressView()
+                        .accessibilityLabel(
+                            Text("Loading the tag", comment: "Hashtag tag loading"))
+                } else if didFail {
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Text("Try again", comment: "Hashtag tag reload action")
+                    }
+                } else {
+                    Button {
+                        Task { await toggleFollow() }
+                    } label: {
+                        if isFollowing {
+                            Label {
+                                Text("Following", comment: "Hashtag follow state")
+                            } icon: {
+                                Image(systemName: "checkmark")
+                            }
+                        } else {
+                            Label {
+                                Text("Follow", comment: "Hashtag follow action")
+                            } icon: {
+                                Image(systemName: "plus")
+                            }
                         }
                     }
+                    .labelStyle(.titleOnly)
+                    .disabled(isBusy)
+                    .accessibilityLabel(
+                        isFollowing
+                            ? Text("Unfollow #\(name)", comment: "Hashtag follow button")
+                            : Text("Follow #\(name)", comment: "Hashtag follow button"))
                 }
-                .labelStyle(.titleOnly)
-                .disabled(isBusy)
-                .accessibilityLabel(
-                    isFollowing
-                        ? Text("Unfollow #\(name)", comment: "Hashtag follow button")
-                        : Text("Follow #\(name)", comment: "Hashtag follow button"))
             }
         }
         .task { await load() }
@@ -83,7 +99,7 @@ public struct HashtagTimelineView: View {
                             .foregroundStyle(palette.hashtag)
                             .padding(.horizontal, AlohaMetrics.space3)
                             .frame(minHeight: 32)
-                            .background(palette.surfaceRaised, in: Capsule())
+                            .glassEffect(.regular, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .frame(minHeight: 44)
@@ -92,12 +108,21 @@ public struct HashtagTimelineView: View {
             .padding(.horizontal, AlohaMetrics.space3)
         }
         .scrollIndicators(.hidden)
-        .background(palette.background)
         .accessibilityLabel(Text("Related hashtags", comment: "Related hashtags row"))
     }
 
     private func load() async {
-        tag = try? await session.client.decode(Tag.self, from: Endpoint.tags.tag(name))
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            tag = try await session.client.decode(Tag.self, from: Endpoint.tags.tag(name))
+            didFail = false
+        } catch {
+            await session.handle(error)
+            tag = nil
+            didFail = true
+            return
+        }
         guard session.capabilities.isNextcloudSocial else { return }
         related =
             ((try? await session.client.decode(

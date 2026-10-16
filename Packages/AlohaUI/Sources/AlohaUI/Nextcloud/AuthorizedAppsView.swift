@@ -15,6 +15,8 @@ public struct AuthorizedAppsView: View {
     @State private var isLoading = true
     @State private var revoking: AuthorizedApp?
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var pendingRevocation: String?
 
     public init(session: AccountSession) {
         self.session = session
@@ -23,28 +25,29 @@ public struct AuthorizedAppsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(apps) { app in
                 row(app)
             }
 
-            if apps.isEmpty && !isLoading {
+            if apps.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No apps", comment: "Empty authorized apps")
                 } description: {
                     Text(
-                        "Nothing but this app has been let into your account.",
+                        "No authorized applications were returned by your server.",
                         comment: "Empty authorized apps detail")
                 }
             }
         }
+        .alohaGround(palette)
         .navigationTitle(Text("Authorized apps", comment: "Screen title"))
         .overlay {
-            if isLoading && apps.isEmpty { ProgressView() }
+            if isLoading && apps.isEmpty {
+                SkeletonListRow(text: 3)
+            }
         }
         .task { await load() }
         .refreshable { await load() }
@@ -67,8 +70,24 @@ public struct AuthorizedAppsView: View {
             }
         } message: {
             Text(
-                "The app loses its key at once and has to be signed in again to get another.",
+                "This app will lose access to your account. You can authorize it again by signing in.",
                 comment: "Revoke app confirmation detail")
+        }
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Authorized apps retry action")
+            }
+            .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading || pendingRevocation != nil)
         }
     }
 
@@ -122,39 +141,59 @@ public struct AuthorizedAppsView: View {
             Button(role: .destructive) {
                 revoking = app
             } label: {
-                Text("Revoke", comment: "Authorized app action")
-                    .font(.footnote.weight(.semibold))
+                if pendingRevocation == app.id {
+                    ProgressView()
+                } else {
+                    Text("Revoke", comment: "Authorized app action")
+                        .font(.footnote.weight(.semibold))
+                }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.glass)
+            .disabled(isLoading || pendingRevocation != nil)
             .accessibilityLabel(Text("Revoke \(app.name)", comment: "Authorized app action"))
         }
         .padding(.vertical, AlohaMetrics.space1)
     }
 
     private func load() async {
+        guard pendingRevocation == nil else { return }
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            apps = try await session.client.decode(
+            let response = try await session.client.decode(
                 LossyArray<AuthorizedApp>.self, from: Endpoint.authorizedApps.all
             ).elements
+            guard !Task.isCancelled, loadID == request else { return }
+            apps = response
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Authorized apps could not be loaded. Please try again.")
         }
     }
 
     private func revoke(_ app: AuthorizedApp) async {
-        let previous = apps
-        apps.removeAll { $0.id == app.id }
+        guard pendingRevocation == nil, apps.contains(where: { $0.id == app.id }) else { return }
+        loadID = UUID()
+        isLoading = false
+        pendingRevocation = app.id
+        errorMessage = nil
+        defer { pendingRevocation = nil }
         do {
             _ = try await session.client.send(Endpoint.authorizedApps.revoke(app.id))
+            apps.removeAll { $0.id == app.id }
         } catch {
-            apps = previous
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Access could not be revoked. Please try again.")
         }
     }
 }
