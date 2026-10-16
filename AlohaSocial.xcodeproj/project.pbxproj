@@ -37,6 +37,7 @@
 		BBWZ000000000000000BB /* AlohaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBWP000000000000000BB /* AlohaWidgets.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CCKL000000000000000CC /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
 		CCKL020000000000000CC /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
+		CCKL010000000000000CC /* AlohaHTML in Frameworks */ = {isa = PBXBuildFile; productRef = AA200100000000000000AA /* AlohaHTML */; };
 		CCVL000000000000000CC /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
 		CCVL020000000000000CC /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
 		CCVL030000000000000CC /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
@@ -201,6 +202,7 @@
 				CCKL000000000000000CC /* AlohaModels in Frameworks */,
 				CCKL020000000000000CC /* AlohaNetwork in Frameworks */,
 				CCKL060000000000000CC /* AlohaDesign in Frameworks */,
+				CCKL010000000000000CC /* AlohaHTML in Frameworks */,
 			);
 		};
 		CCVF00000000000000CC /* Frameworks */ = {
@@ -384,6 +386,7 @@
 				AA200000000000000000AA /* AlohaModels */,
 				AA200200000000000000AA /* AlohaNetwork */,
 				AA200600000000000000AA /* AlohaDesign */,
+				AA200100000000000000AA /* AlohaHTML */,
 			);
 			productName = AlohaSocialWatch;
 			productReference = CCKP00000000000000CC /* AlohaSocialWatch.app */;

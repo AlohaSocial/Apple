@@ -385,4 +385,24 @@ extension Status {
             return seen.insert(handle).inserted
         }
     }
+
+    /// A reply written somewhere with no composer — dictated on the watch, or
+    /// typed into a notification — addressed the way the composer would have
+    /// addressed it: every handle the composer would have prefilled, unless
+    /// the person already wrote it themselves.
+    public func replyText(_ typed: String, excluding viewerAcct: String?) -> String {
+        let body = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Sentence punctuation only: "@ana," still names @ana, while an
+        // underscore or a dot can be part of a handle.
+        let sentencePunctuation = CharacterSet(charactersIn: ",.;:!?()\"'“”‘’")
+        let written = Set(
+            body.split(whereSeparator: \.isWhitespace).map {
+                $0.trimmingCharacters(in: sentencePunctuation).lowercased()
+            })
+        let missing = replyMentions(excluding: viewerAcct).filter {
+            !written.contains("@\($0)".lowercased())
+        }
+        guard !missing.isEmpty else { return body }
+        return (missing.map { "@\($0)" } + [body]).joined(separator: " ")
+    }
 }
