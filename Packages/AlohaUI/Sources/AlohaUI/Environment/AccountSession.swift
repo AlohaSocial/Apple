@@ -7,6 +7,7 @@ import AlohaStore
 import Foundation
 import OSLog
 import Observation
+import Synchronization
 
 /// One signed-in account's live services. Created and torn down with the
 /// account — a signed-out account leaves no live object and no cached bytes.
@@ -155,17 +156,49 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
             // So verify against the one endpoint that is authoritative before
             // believing it: if the token still works, the 401 belonged to that
             // route and nothing else changes.
-            let stillSignedIn =
-                (try? await client.decode(
-                    Account.self, from: Endpoint.session.verifyCredentials)) != nil
-            guard !stillSignedIn else { return }
+            guard await isTokenRefused() else { return }
             await markNeedsReauthentication()
         }
+    }
+
+    /// The check in flight, shared: ten screens failing at once ask once.
+    /// Behind a lock because the failures arrive from wherever they happened.
+    private let tokenCheck = Mutex<Task<Bool, Never>?>(nil)
+
+    /// Whether `verify_credentials` itself says the token is no good.
+    ///
+    /// Only its own 401 counts. Offline, a timeout or a 5xx says nothing
+    /// about the token, and treating any failure as "signed out" is how a
+    /// person on a train is asked to sign in again.
+    private func isTokenRefused() async -> Bool {
+        let client = client
+        let check = tokenCheck.withLock { slot in
+            if let running = slot { return running }
+            let started = Task<Bool, Never> {
+                do {
+                    _ = try await client.decode(
+                        Account.self, from: Endpoint.session.verifyCredentials)
+                    return false
+                } catch let error as APIError {
+                    return error.requiresReauthentication
+                } catch {
+                    return false
+                }
+            }
+            slot = started
+            return started
+        }
+        let refused = await check.value
+        tokenCheck.withLock { slot in
+            if slot == check { slot = nil }
+        }
+        return refused
     }
 
     /// Adopts the server's own statement of this account's defaults, and
     /// latches the three capabilities that have nothing to announce them.
     public func refreshServerState() async {
+        await refreshProfile()
         do {
             if let preferences = try? await client.decode(
                 Preferences.self, from: Endpoint.instance.preferences)
@@ -186,6 +219,32 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
         } catch {
             await handle(error)
         }
+    }
+
+    /// The account as the server has it now: a handle, a name or an avatar
+    /// changed on the web would otherwise stay as they were at sign-in.
+    func refreshProfile() async {
+        guard
+            let account = try? await client.decode(
+                Account.self, from: Endpoint.session.verifyCredentials)
+        else { return }
+        adoptProfile(account)
+        try? await accounts.updateProfile(account, for: id)
+    }
+
+    /// The profile fields of the snapshot, as `account` has them.
+    func adoptProfile(_ account: Account) {
+        snapshot.handle = account.acct
+        snapshot.displayName = account.bestDisplayName
+        snapshot.avatarURL = account.preferredAvatarURL
+        snapshot.headerURL = account.preferredHeaderURL
+    }
+
+    /// Back to signed in, after a fresh sign-in to this same account.
+    func clearNeedsReauthentication() async {
+        guard snapshot.needsReauthentication else { return }
+        snapshot.needsReauthentication = false
+        try? await accounts.setNeedsReauthentication(false, for: id)
     }
 
     public func latchCapabilities(observing statuses: [Status]) async {

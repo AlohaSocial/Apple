@@ -82,8 +82,10 @@ struct StoreOpeningTests {
                 [.posixPermissions: 0o644], ofItemAtPath: store.path)
             try? FileManager.default.removeItem(at: root)
         }
-        try seedStore(at: store)
-        let before = try Data(contentsOf: store)
+        // Plain bytes rather than a live database, whose own log could still
+        // be landing in the file while the test reads it.
+        let before = Data("a store that is there and cannot be read".utf8)
+        try before.write(to: store)
         // What data protection does before the first unlock, as far as a
         // test can say it: the bytes are there and cannot be read.
         try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: store.path)

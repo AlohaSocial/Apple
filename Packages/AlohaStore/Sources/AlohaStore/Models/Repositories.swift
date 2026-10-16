@@ -207,12 +207,38 @@ public actor SupportStore {
 
     // MARK: - Notifications
 
+    /// Stores a fetched page and returns what is new to announce.
+    ///
+    /// The first page an account ever stores — a new sign-in, or a store that
+    /// had to start again — is history, not news: forty old mentions raised at
+    /// once is a storm, not a notification. Those are stored as already
+    /// announced, and only what arrived after the account was added is
+    /// returned.
     public func storeNotifications(
         _ notifications: [StoredNotification], accountID: UUID
     ) throws -> [StoredNotification] {
         var newlyArrived: [StoredNotification] = []
+        let isFirstFetch =
+            try modelContext.fetchCount(
+                FetchDescriptor<NotificationRecord>(
+                    predicate: #Predicate { $0.accountID == accountID })) == 0
+        let addedAt =
+            isFirstFetch
+            ? try modelContext.fetch(
+                FetchDescriptor<AccountRecord>(predicate: #Predicate { $0.id == accountID })
+            ).first?.addedAt : nil
 
         for notification in notifications {
+            if isFirstFetch, notification.createdAt <= (addedAt ?? .distantPast) {
+                let record = NotificationRecord(
+                    accountID: accountID, serverID: notification.serverID,
+                    isGroup: notification.isGroup, kind: notification.kind,
+                    createdAt: notification.createdAt, groupCount: notification.groupCount,
+                    payload: notification.payload, statusServerID: notification.statusServerID)
+                record.announced = true
+                modelContext.insert(record)
+                continue
+            }
             let serverID = notification.serverID
             let descriptor = FetchDescriptor<NotificationRecord>(
                 predicate: #Predicate { $0.accountID == accountID && $0.serverID == serverID })

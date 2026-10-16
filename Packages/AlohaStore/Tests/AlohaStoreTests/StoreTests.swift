@@ -334,6 +334,33 @@ struct NotificationStoreTests {
         #expect(grown[0].groupCount == 40)
     }
 
+    @Test("An account's first fetch is history, not forty notifications at once")
+    func firstFetchIsSeeded() async throws {
+        let (_, support, accounts, _) = makeStore()
+        let base = try #require(URL(string: "https://example.test/"))
+        let account = try await accounts.addAccount(
+            instanceHost: "example.test", apiBase: base,
+            account: Account(id: "1", username: "alice", acct: "alice"),
+            capabilities: .minimal(apiBase: base))
+        let old = (0..<40).map { index in
+            StoredNotification(
+                serverID: "old-\(index)", isGroup: false, kind: .mention,
+                createdAt: Date().addingTimeInterval(-3_600), groupCount: 1, payload: Data(),
+                statusServerID: nil)
+        }
+        // Something that arrived after signing in is still news.
+        let fresh = StoredNotification(
+            serverID: "fresh", isGroup: false, kind: .mention,
+            createdAt: Date().addingTimeInterval(60), groupCount: 1, payload: Data(),
+            statusServerID: nil)
+
+        let announced = try await support.storeNotifications(
+            old + [fresh], accountID: account.id)
+
+        #expect(announced.map(\.serverID) == ["fresh"])
+        #expect(try await support.unannouncedNotifications(accountID: account.id).count == 1)
+    }
+
     @Test("Marking announced stops it being raised twice")
     func markAnnounced() async throws {
         let (_, support, _, accountID) = makeStore()
