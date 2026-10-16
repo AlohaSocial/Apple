@@ -48,7 +48,8 @@ extension Endpoint {
                 authentication: .nextcloudSession)
         }
 
-        /// The reader's own identity, made now if their account has none.
+        /// The reader's own identity. A 404 "No Bluesky identity" when they
+        /// have none: reading it never makes one.
         public static var identity: Endpoint {
             Endpoint(path: "api/v1/social/bluesky/identity", authentication: .nextcloudSession)
         }
@@ -82,6 +83,11 @@ public enum BlueskyAvailability: Sendable, Hashable {
     case off
     /// The routes need the Nextcloud app password, and there is none.
     case needsNextcloudConnection
+    /// The server reads Bluesky, but this Nextcloud user has not set up their
+    /// Aloha Social account yet: every Bluesky route answers 403
+    /// `account-not-set-up`. Different from off — finishing the setup at
+    /// `setupURL` is all it takes.
+    case accountNotSetUp(setupURL: URL?)
     /// Nothing could be learned — a network failure. Treated as absent.
     case unknown
 
@@ -97,6 +103,7 @@ public enum BlueskyAvailability: Sendable, Hashable {
             return .available
         } catch let error as APIError {
             switch error {
+            case .accountNotSetUp(_, let setupURL): return .accountNotSetUp(setupURL: setupURL)
             case .notFound: return .off
             case .unauthorised: return .needsNextcloudConnection
             case .transport, .rateLimited: return .unknown
