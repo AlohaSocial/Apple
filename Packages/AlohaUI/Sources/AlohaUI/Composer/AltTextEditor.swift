@@ -18,6 +18,7 @@ public struct AltTextEditor: View {
     @State private var isGenerating = false
     @State private var wasGenerated = false
     @State private var errorMessage: String?
+    @State private var detent: PresentationDetent = .large
 
     public init(attachment: MediaAttachment, onSave: @escaping (String) -> Void) {
         self.attachment = attachment
@@ -130,6 +131,12 @@ public struct AltTextEditor: View {
                 }
             }
         }
+        // Open tall, where the picture and the keyboard both fit; half height
+        // is a drag away for checking the post underneath.
+        .presentationDetents([.medium, .large], selection: $detent)
+        // A description takes thought to write; a changed one leaves through
+        // Save or Cancel, not a stray swipe.
+        .interactiveDismissDisabled(text != (attachment.description ?? ""))
     }
 
     private func generate() async {

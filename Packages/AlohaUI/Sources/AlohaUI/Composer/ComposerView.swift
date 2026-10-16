@@ -32,6 +32,13 @@ public struct ComposerView: View {
     @State private var rewritingStyle: RewriteStyle?
     @State private var isShowingCamera = false
     @FocusState private var isEditorFocused: Bool
+    /// Set once the composer has ended on purpose — posted, or cancelled with
+    /// the draft saved — so the disappearance that follows is not mistaken
+    /// for one that would lose the words.
+    @State private var didFinish = false
+    /// An edit's text as it arrived, so closing an unchanged edit needs no
+    /// guard while closing a changed one does.
+    private let editBaseline: String?
 
     private let prefilledText: String
     private let prefilledAttachments: [PrefilledAttachment]
@@ -56,6 +63,7 @@ public struct ComposerView: View {
         self.quoting = nil
         self.prefilledText = ""
         self.prefilledAttachments = []
+        self.editBaseline = source.text
         _model = State(
             initialValue: ComposerModel(session: session, editing: status, source: source))
     }
@@ -65,6 +73,7 @@ public struct ComposerView: View {
         self.quoting = nil
         self.prefilledText = ""
         self.prefilledAttachments = []
+        self.editBaseline = nil
         _model = State(initialValue: ComposerModel(session: session, draft: draft))
     }
 
@@ -74,6 +83,7 @@ public struct ComposerView: View {
         self.quoting = nil
         self.prefilledText = ""
         self.prefilledAttachments = []
+        self.editBaseline = nil
         _model = State(
             initialValue: ComposerModel(session: session, redrafting: status, source: source))
     }
@@ -88,6 +98,7 @@ public struct ComposerView: View {
         self.quoting = quoting
         self.prefilledText = prefilledText
         self.prefilledAttachments = prefilledAttachments
+        self.editBaseline = nil
         _model = State(
             initialValue: ComposerModel(session: session, replyTo: replyTo, quoting: quoting))
     }
@@ -346,6 +357,22 @@ public struct ComposerView: View {
                     activity, draft: model.text, account: AccountIdentity(session: model.session))
             }
         }
+        .interactiveDismissDisabled(dismissal.isGuarded && !didFinish)
+        // Every way out that is not Post or Cancel — the shell replacing the
+        // sheet, the account changing underneath it, a window closing — still
+        // keeps what was written.
+        .onDisappear {
+            guard !didFinish else { return }
+            UploadActivityController.shared.cancel()
+            Task { await model.saveDraftIfNeeded() }
+        }
+    }
+
+    private var dismissal: ComposerDismissal {
+        ComposerDismissal(
+            text: model.text, spoilerText: model.spoilerText,
+            hasAttachments: !model.attachments.isEmpty, hasPoll: model.hasPoll,
+            threadSegments: model.threadSegments, editBaseline: editBaseline)
     }
 
     // MARK: - Posting
@@ -363,6 +390,7 @@ public struct ComposerView: View {
     /// Done, one way or the other: the host's own ending where there is one
     /// (a share extension), otherwise the sheet's.
     private func finish(_ outcome: ComposerOutcome) {
+        didFinish = true
         if let host {
             host.finish(outcome)
         } else {

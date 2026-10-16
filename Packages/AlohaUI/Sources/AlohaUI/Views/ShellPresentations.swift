@@ -94,12 +94,7 @@ struct ShellSheets: ViewModifier {
                         }
                     }
                     #if os(iOS)
-                        // A composer is a writing surface, not a card: on a
-                        // regular-width iPad it opens large, so the alt-text
-                        // strip and the visibility picker are not a scroll
-                        // inside a half-height sheet.
-                        .presentationDetents(
-                            horizontalSizeClass == .regular ? [.large] : [.medium, .large])
+                        .composerPresentation()
                     #elseif os(macOS)
                         // The same writing surface on the Mac: a sheet that
                         // hugs its content leaves the editor two lines tall.
@@ -110,25 +105,35 @@ struct ShellSheets: ViewModifier {
             }
             .sheet(item: whenSignedIn($sheet)) { sheet in
                 if let session = environment.activeSession {
-                    switch sheet {
-                    case .delivery(let status):
-                        DeliverySheet(status: status, session: session)
-                    case .editHistory(let status):
-                        EditHistorySheet(status: status, session: session)
-                    case .quoteControls(let status):
-                        QuoteControlsSheet(status: status, session: session)
-                    case .tagPeople(let status):
-                        TagPeopleSheet(status: status, session: session)
-                    case .addToCollection(let status):
-                        CollectionPickerSheet(status: status, session: session)
-                    case .addToList(let account):
-                        ListMembershipSheet(account: account, session: session)
+                    Group {
+                        switch sheet {
+                        case .delivery(let status):
+                            DeliverySheet(status: status, session: session)
+                        case .editHistory(let status):
+                            EditHistorySheet(status: status, session: session)
+                        case .quoteControls(let status):
+                            QuoteControlsSheet(status: status, session: session)
+                        case .tagPeople(let status):
+                            TagPeopleSheet(status: status, session: session)
+                        case .addToCollection(let status):
+                            CollectionPickerSheet(status: status, session: session)
+                        case .addToList(let account):
+                            ListMembershipSheet(account: account, session: session)
+                        }
                     }
+                    // Each is a short list to glance at or pick from: half
+                    // height first, with the rest a drag away rather than a
+                    // whole screen for four rows.
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                 }
             }
             .sheet(item: whenSignedIn($reportTarget)) { target in
                 if let session = environment.activeSession {
                     ReportView(session: session, account: target.account, status: target.status)
+                        // A report is a form with a typed explanation; it opens
+                        // tall enough to write in.
+                        .presentationDetents([.large])
                 }
             }
             .sheet(item: whenSignedIn($editing)) { request in
@@ -136,6 +141,9 @@ struct ShellSheets: ViewModifier {
                     ComposerView(
                         session: session, editing: request.status, source: request.source
                     )
+                    #if os(iOS)
+                        .composerPresentation()
+                    #endif
                     #if os(macOS)
                         .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 640)
                     #endif
@@ -176,6 +184,19 @@ struct ShellSheets: ViewModifier {
             set: { newValue in binding.wrappedValue = hasSession ? newValue : nil })
     }
 }
+
+#if os(iOS)
+    extension View {
+        /// The composer as a writing surface, never a card: full height on a
+        /// phone, where a half-height sheet put the editor under the keyboard
+        /// and one swipe away from closing, and a centred form on an iPad,
+        /// the size Mail and Notes give a new message.
+        func composerPresentation() -> some View {
+            presentationDetents([.large])
+                .presentationSizing(.form)
+        }
+    }
+#endif
 
 /// Deleting, blocking and muting all federate and none can be taken back, so
 /// each is confirmed rather than fired straight from a menu tap.
