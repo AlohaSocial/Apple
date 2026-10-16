@@ -54,6 +54,39 @@
         }
       }
     },
+    "Posted" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gepostet"
+          }
+        }
+      }
+    },
+    "Posting…" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird gepostet …"
+          }
+        }
+      }
+    },
+    "Ready to post" : {
+      "comment" : "Live Activity title, uploads done and waiting for Post",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereit zum Posten"
+          }
+        }
+      }
+    },
     "Recent posts from your home timeline." : {
       "comment" : "Widget description",
       "localizations" : {
@@ -87,17 +120,6 @@
         }
       }
     },
-    "Upload finished" : {
-      "comment" : "Live Activity title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hochladen abgeschlossen"
-          }
-        }
-      }
-    },
     "Uploading media" : {
       "comment" : "Live Activity title",
       "localizations" : {
@@ -115,6 +137,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Welches Konto angezeigt wird."
+          }
+        }
+      }
+    },
+    "Your server is processing the video" : {
+      "comment" : "Live Activity title, while the server transcodes an upload",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server verarbeitet das Video"
           }
         }
       }
