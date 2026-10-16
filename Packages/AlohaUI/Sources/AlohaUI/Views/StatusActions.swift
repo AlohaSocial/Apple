@@ -114,7 +114,7 @@ public enum StatusActions {
         // A cue for the three things a finger does to a post, and only while
         // they are being turned *on* — a tick for undoing a like reads as a
         // second like (docs/05 §3).
-        await cue(for: action)
+        cue(for: action)
 
         switch action {
         case .favourite(let status):

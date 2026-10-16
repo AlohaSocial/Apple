@@ -36,21 +36,16 @@ struct CallbackIsolationTests {
         }
     }
 
-    @Test("StreamingConnection is nonisolated, so its socket callbacks cannot trap")
-    func streamingConnectionIsNonisolated() async {
-        // Constructing and closing it from a background context is the proof:
-        // a MainActor-isolated type could not be touched from here at all.
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            DispatchQueue.global().async {
-                let connection = StreamingConnection(
-                    url: URL(string: "wss://example.test/api/v1/streaming")!,
-                    token: "token",
-                    onEvent: { _ in })
-                #expect(connection.isOpen == false)
-                connection.close()
-                continuation.resume()
-            }
-        }
+    @Test("A closed streaming connection never opens again")
+    func closedStreamingConnectionStaysClosed() async throws {
+        // A reconnect that was already sleeping used to reopen a socket that
+        // had been closed on purpose. Closed is final now.
+        let url = try #require(URL(string: "wss://example.test/api/v1/streaming"))
+        let connection = StreamingConnection(url: url, token: "token", onEvent: { _ in })
+        #expect(await connection.isOpen == false)
+        await connection.close()
+        await connection.open()
+        #expect(await connection.isOpen == false)
     }
 
     @Test("Backoff grows and stays inside its cap")

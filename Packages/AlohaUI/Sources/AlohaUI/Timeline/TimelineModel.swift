@@ -5,7 +5,6 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
-import Combine
 import Foundation
 import OSLog
 import Observation
@@ -43,7 +42,7 @@ public final class TimelineModel {
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
-    @ObservationIgnored private var statusUpdates: AnyCancellable?
+    @ObservationIgnored private var statusUpdates: NotificationSubscription?
     /// When the server last confirmed an interaction with a status, per id.
     /// A page fetched *before* that moment carries the older copy and must
     /// not overwrite the confirmation again (see `performRefresh`).
@@ -190,14 +189,16 @@ public final class TimelineModel {
         rows.insert(.caughtUpDivider(after: markerID), at: idx + 1)
     }
 
+    /// Store updates arrive on whichever thread posted them; the model only
+    /// hears them on the main actor. The subscription ends when the returned
+    /// object goes.
     nonisolated static func observeStatusUpdates(
         _ receive: @escaping @MainActor @Sendable (TimelineStatusUpdate) -> Void
-    ) -> AnyCancellable {
-        NotificationCenter.default.publisher(for: TimelineStatusUpdate.notification)
-            .sink { @Sendable notification in
-                guard let update = notification.object as? TimelineStatusUpdate else { return }
-                Task { @MainActor in receive(update) }
-            }
+    ) -> NotificationSubscription {
+        NotificationSubscription(name: TimelineStatusUpdate.notification) { notification in
+            guard let update = notification.object as? TimelineStatusUpdate else { return }
+            Task { @MainActor in receive(update) }
+        }
     }
 
     nonisolated static func replacing(_ updated: Status, in rows: [TimelineRow]) -> [TimelineRow] {

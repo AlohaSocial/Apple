@@ -159,8 +159,7 @@ public struct LocalNotifier: Sendable {
         guard
             let trigger = nextDigestTrigger(
                 times: times, quietStart: quietStart, quietEnd: quietEnd),
-            let calendarTrigger = trigger as? UNCalendarNotificationTrigger,
-            let nextDate = calendarTrigger.nextTriggerDate()
+            let nextDate = trigger.nextTriggerDate()
         else { return }
 
         // One identity per digest time, so successive polls replace.
