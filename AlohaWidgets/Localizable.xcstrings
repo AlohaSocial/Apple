@@ -43,6 +43,28 @@
         }
       }
     },
+    "New post" : {
+      "comment" : "Control Center control\nQuick compose widget",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Beitrag"
+          }
+        }
+      }
+    },
+    "New story" : {
+      "comment" : "Control Center control",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Story"
+          }
+        }
+      }
+    },
     "Nothing yet" : {
       "comment" : "Empty widget",
       "localizations" : {
@@ -50,6 +72,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch nichts"
+          }
+        }
+      }
+    },
+    "Open the composer." : {
+      "comment" : "Control Center control description\nWidget description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Editor für einen neuen Beitrag."
+          }
+        }
+      }
+    },
+    "Open the story composer." : {
+      "comment" : "Control Center control description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Editor für eine neue Story."
           }
         }
       }

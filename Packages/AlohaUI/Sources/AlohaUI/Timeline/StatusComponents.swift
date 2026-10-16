@@ -392,6 +392,8 @@ public struct StatusMenu: View {
             }
         }
 
+        OpenInNewWindowButton(.thread(statusID: displayed.id))
+
         StatusShareLink(status: status) {
             Label {
                 Text("Share", comment: "Status menu item")

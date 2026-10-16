@@ -44,7 +44,7 @@ struct AlohaSocialApp: App {
     #endif
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: AlohaWindow.main) {
             AppShell()
                 .environment(environment)
                 .task {
@@ -61,6 +61,14 @@ struct AlohaSocialApp: App {
         #if os(macOS)
             .defaultSize(width: 1100, height: 780)
         #endif
+
+        // A thread or a profile in a window of its own, from "Open in New
+        // Window" (iPad and visionOS; the iPhone has one window).
+        WindowGroup(for: Route.self) { $route in
+            RouteWindow(route: route)
+                .environment(environment)
+        }
+        .modelContainer(environment.container)
     }
 }
 

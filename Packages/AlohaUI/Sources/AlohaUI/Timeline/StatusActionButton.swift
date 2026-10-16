@@ -77,6 +77,7 @@ struct StatusActionButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .alohaHoverTarget(Capsule())
         .accessibilityLabel(label)
         .sensoryFeedback(.impact(weight: .light), trigger: isOn) { _, new in new }
         .onChange(of: isOn) { _, new in

@@ -57,6 +57,20 @@ public enum KeyboardShortcuts {
             .init(
                 keys: ["⌘↩"],
                 label: String(localized: "Send what you are writing", comment: "Keyboard shortcut")),
+            .init(
+                keys: ["⌘R"],
+                label: String(localized: "Refresh the timeline", comment: "Keyboard shortcut")),
+            .init(keys: ["⌘["], label: String(localized: "Go back", comment: "Keyboard shortcut")),
+            .init(
+                keys: ["⇧⌘H"],
+                label: String(localized: "Go to your home timeline", comment: "Keyboard shortcut")),
+            .init(
+                keys: ["⌘1", "⌘2", "⌘3"],
+                label: String(
+                    localized: "Notifications, Discover, Messages", comment: "Keyboard shortcut")),
+            .init(
+                keys: ["⌥⌘N"],
+                label: String(localized: "Open a new window", comment: "Keyboard shortcut")),
         ]
     }
 }
@@ -133,6 +147,7 @@ struct TimelineKeyboardModifier: ViewModifier {
     let ids: [String]
     let status: (String) -> Status?
     let onAction: (StatusRowAction) -> Void
+    let onRefresh: () async -> Void
 
     func body(content: Content) -> some View {
         // macOS only. `.focusable()` is what makes `onKeyPress` fire, and on
@@ -140,8 +155,8 @@ struct TimelineKeyboardModifier: ViewModifier {
         // it changed hit-testing enough to break two touch tours, and it puts
         // a container in the accessibility tree that VoiceOver then has to be
         // driven through. A Mac always has the keyboard these shortcuts are
-        // for; a phone does not, and an iPad with one still has the touch
-        // target it had before.
+        // for; a phone does not. An iPad with one gets the same keys from the
+        // menu bar instead (`AlohaCommands`), which needs no focusable list.
         #if os(macOS)
             content
                 .focusable()
@@ -155,9 +170,27 @@ struct TimelineKeyboardModifier: ViewModifier {
                     onAction(.open(status))
                     return .handled
                 }
+                .focusedSceneValue(\.timelineCommands, commands)
         #else
             content
+                .focusedSceneValue(\.timelineCommands, commands)
         #endif
+    }
+
+    /// The same moves, for the menu bar.
+    private var commands: TimelineCommands {
+        TimelineCommands(
+            move: { move(by: $0) },
+            act: { action in
+                switch action {
+                case .favourite: act { .favourite($0) }
+                case .boost: act { .boost($0) }
+                case .reply: act { .reply($0) }
+                case .open: act { .open($0) }
+                }
+            },
+            refresh: { Task { await onRefresh() } },
+            hasFocusedPost: focusedID.flatMap(status) != nil)
     }
 
     private func handle(_ key: String) -> Bool {
@@ -198,11 +231,12 @@ extension View {
         isShowingShortcuts: Binding<Bool>,
         ids: [String],
         status: @escaping (String) -> Status?,
-        onAction: @escaping (StatusRowAction) -> Void
+        onAction: @escaping (StatusRowAction) -> Void,
+        onRefresh: @escaping () async -> Void = {}
     ) -> some View {
         modifier(
             TimelineKeyboardModifier(
                 focusedID: focusedID, isShowingShortcuts: isShowingShortcuts,
-                ids: ids, status: status, onAction: onAction))
+                ids: ids, status: status, onAction: onAction, onRefresh: onRefresh))
     }
 }

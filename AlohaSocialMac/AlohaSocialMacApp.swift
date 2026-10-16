@@ -46,7 +46,7 @@ struct AlohaSocialMacApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: AlohaWindow.main) {
             AppShell()
                 .environment(environment)
                 .task {
@@ -62,6 +62,15 @@ struct AlohaSocialMacApp: App {
         // plus a thread, not at the default square.
         .defaultSize(width: 1180, height: 820)
         .defaultPosition(.center)
+
+        // A thread or a profile in a window of its own, from "Open in New
+        // Window": narrower than the main window, because it holds one column.
+        WindowGroup(for: Route.self) { $route in
+            RouteWindow(route: route)
+                .environment(environment)
+        }
+        .modelContainer(environment.container)
+        .defaultSize(width: 760, height: 820)
 
         // The Mac's own preferences window (⌘,): the same settings form the
         // app shows in its sidebar destination, rather than a second

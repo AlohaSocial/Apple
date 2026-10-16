@@ -56,7 +56,8 @@ public struct TimelineView: View {
                     return nil
                 }.first
             },
-            onAction: onAction
+            onAction: onAction,
+            onRefresh: { await model.refresh() }
         )
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .task { await model.appear() }
@@ -157,7 +158,6 @@ public struct TimelineView: View {
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                     .id(status.id)
-                    .alohaRowHighlight()
                     .statusRowInteractions(status, session: session, onAction: onAction)
                     .accessibilityRotorEntry(id: status.id, in: rotorNamespace)
                     .overlay(alignment: .leading) {

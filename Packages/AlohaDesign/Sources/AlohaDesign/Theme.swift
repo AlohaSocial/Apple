@@ -506,4 +506,17 @@ extension View {
             self
         #endif
     }
+
+    /// The same look-to-highlight for a custom control — a plain-style button
+    /// or a tappable card — drawn in the shape the control actually has
+    /// rather than its glyph's bounding box, which is all a plain button
+    /// would otherwise light up.
+    @ViewBuilder
+    public func alohaHoverTarget(_ shape: some Shape) -> some View {
+        #if os(visionOS)
+            contentShape(.hoverEffect, shape).hoverEffect(.highlight)
+        #else
+            self
+        #endif
+    }
 }
