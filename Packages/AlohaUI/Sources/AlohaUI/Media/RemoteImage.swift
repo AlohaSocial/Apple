@@ -7,8 +7,14 @@ import SwiftUI
 
 /// An image with a blurhash placeholder painted immediately, so nothing shifts
 /// when the bytes arrive (docs/05 §3).
+///
+/// It fills the space it is offered, like the `GeometryReader` it used to be
+/// built on, but measures that space with `onGeometryChange` instead: a reader
+/// per image is a layout container per image, and a timeline has a great many.
+/// It decodes at the screen's own scale, so a 3× phone gets 3× pixels.
 public struct RemoteImage<Placeholder: View>: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.displayScale) private var displayScale
 
     private let url: URL?
     private let blurhash: String?
@@ -19,11 +25,13 @@ public struct RemoteImage<Placeholder: View>: View {
     @State private var image: CGImage?
     @State private var blurred: CGImage?
     @State private var loadedURL: URL?
+    @State private var size: CGSize = .zero
 
     private struct LoadKey: Hashable {
         let url: URL?
         let width: Int
         let height: Int
+        let scale: Double
     }
 
     /// `placeholder` is what shows when there is neither an image nor a
@@ -41,44 +49,64 @@ public struct RemoteImage<Placeholder: View>: View {
     }
 
     public var body: some View {
-        GeometryReader { proxy in
-            let key = LoadKey(
-                url: url,
-                width: Int(proxy.size.width.rounded(.up)),
-                height: Int(proxy.size.height.rounded(.up)))
-            ZStack {
-                if blurred == nil && image == nil {
-                    if Placeholder.self == EmptyView.self {
-                        palette.surfaceRaised
-                    } else {
-                        placeholder
+        // `Color.clear` takes the whole proposal, exactly as the reader did;
+        // the layers draw over it, centred, and are clipped to it.
+        Color.clear
+            .overlay {
+                ZStack {
+                    let placeholderImage = blurred ?? cachedBlur
+                    if placeholderImage == nil && image == nil {
+                        if Placeholder.self == EmptyView.self {
+                            palette.surfaceRaised
+                        } else {
+                            placeholder
+                        }
+                    }
+                    if let placeholderImage, image == nil {
+                        Image(decorative: placeholderImage, scale: 1)
+                            .resizable()
+                            .aspectRatio(contentMode: contentMode)
+                    }
+                    if let image {
+                        Image(decorative: image, scale: displayScale)
+                            .resizable()
+                            .aspectRatio(contentMode: contentMode)
+                            .transition(.opacity)
                     }
                 }
-                if let blurred, image == nil {
-                    Image(decorative: blurred, scale: 1)
-                        .resizable()
-                        .aspectRatio(contentMode: contentMode)
-                }
-                if let image {
-                    Image(decorative: image, scale: 1)
-                        .resizable()
-                        .aspectRatio(contentMode: contentMode)
-                        .transition(.opacity)
-                }
             }
-            // A GeometryReader lays its child out top-leading; the image
-            // belongs in the middle of the space it was given.
-            .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
-            // GeometryReader can initially report 0×0. Including the measured
-            // size in the identity retries automatically after layout instead
-            // of leaving the placeholder on screen forever.
-            .task(id: key) {
-                await load(size: proxy.size)
+            .onGeometryChange(for: CGSize.self) {
+                $0.size
+            } action: {
+                size = $0
             }
-        }
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityHidden(accessibilityText == nil && url == nil)
+            // The first layout can report 0×0. Including the measured size in
+            // the identity retries after layout instead of leaving the
+            // placeholder on screen for good.
+            .task(id: loadKey) {
+                await load()
+            }
+            // One element, whatever is drawn: the layers are decorative, the
+            // description is what VoiceOver reads (docs/12 §3).
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isImage)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHidden(accessibilityText == nil && url == nil)
+    }
+
+    private var loadKey: LoadKey {
+        LoadKey(
+            url: url,
+            width: Int(size.width.rounded(.up)),
+            height: Int(size.height.rounded(.up)),
+            scale: displayScale)
+    }
+
+    /// A placeholder decoded for an earlier appearance, so a row scrolling
+    /// back paints it in its first frame rather than a flat surface.
+    private var cachedBlur: CGImage? {
+        blurhash.flatMap { BlurHashCache.shared.cached($0) }
     }
 
     private var accessibilityLabel: Text {
@@ -87,21 +115,36 @@ public struct RemoteImage<Placeholder: View>: View {
             "Image without a description", comment: "Accessibility label for undescribed media")
     }
 
-    private func load(size: CGSize) async {
+    private func load() async {
+        let size = size
+        let scale = displayScale
         if loadedURL != url {
             image = nil
             blurred = nil
             loadedURL = url
         }
-        if let blurhash, blurred == nil {
-            blurred = BlurHash.decode(blurhash, size: CGSize(width: 24, height: 24))
+        guard let url, size.width > 0, size.height > 0 else {
+            await loadPlaceholder()
+            return
         }
-        guard let url, size.width > 0, size.height > 0 else { return }
-        let loaded = await ImageLoader.shared.image(for: url, targetSize: size)
+        // Already decoded for this size: no fade, no placeholder frame.
+        if let ready = ImageLoader.shared.memoryImage(for: url, targetSize: size, scale: scale) {
+            image = ready
+            return
+        }
+        await loadPlaceholder()
+        let loaded = await ImageLoader.shared.image(for: url, targetSize: size, scale: scale)
         // A reused row may already represent a different URL by the time
         // the shared request finishes. Never replace its image with that result.
-        guard !Task.isCancelled, loadedURL == url else { return }
+        guard !Task.isCancelled, loadedURL == url, let loaded else { return }
         withAnimation(.easeOut(duration: 0.18)) { image = loaded }
+    }
+
+    private func loadPlaceholder() async {
+        guard let blurhash, blurred == nil, image == nil else { return }
+        let decoded = await BlurHashCache.shared.placeholder(for: blurhash)
+        guard !Task.isCancelled, image == nil else { return }
+        blurred = decoded
     }
 }
 
@@ -121,6 +164,11 @@ public struct AvatarView: View {
     @Environment(\.alohaMetrics) private var metrics
     @Environment(\.alohaPalette) private var palette
 
+    /// Avatars grow with Dynamic Type, so a face does not shrink to a dot
+    /// next to accessibility-size names — but only so far: past half again
+    /// its size an avatar takes the room the words need.
+    @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
+
     private let account: Account
     private let size: Double?
 
@@ -129,8 +177,14 @@ public struct AvatarView: View {
         self.size = size
     }
 
+    /// The drawn size: the caller's (or the density's), scaled with text.
+    static func dimension(base: Double, typeScale: Double) -> Double {
+        (base * min(max(typeScale, 1), 1.5)).rounded()
+    }
+
     public var body: some View {
-        let dimension = size ?? metrics.avatarSize
+        let dimension = Self.dimension(
+            base: size ?? metrics.avatarSize, typeScale: typeScale)
         RemoteImage(
             // The static variant is smaller and avoids downloading an entire
             // animated avatar just to display its first frame.

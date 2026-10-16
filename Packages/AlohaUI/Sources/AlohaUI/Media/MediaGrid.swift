@@ -59,7 +59,9 @@ public struct MediaGrid: View {
 
     /// Nothing in a row is drawn taller than 4:5, and never taller than this.
     static let minimumRowAspect: Double = 0.8
-    static let maximumRowHeight: Double = 300
+    /// `nonisolated`: the timeline's prefetch, off the main actor, sizes its
+    /// requests by it.
+    nonisolated static let maximumRowHeight: Double = 300
 
     private var shouldCover: Bool {
         isSensitive && !policy.allowsAutomaticReveal
