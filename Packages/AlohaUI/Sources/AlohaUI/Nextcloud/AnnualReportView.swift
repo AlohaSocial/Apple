@@ -251,7 +251,7 @@ public struct AnnualReportView: View {
                 wrapped?.status(top.byReplies)
             ),
             (
-                Text("Liked most", comment: "Annual report best post"),
+                Text("Favourited most", comment: "Annual report best post"),
                 wrapped?.status(top.byFavourites)
             ),
         ].compactMap { label, status in status.map { (label, $0) } }

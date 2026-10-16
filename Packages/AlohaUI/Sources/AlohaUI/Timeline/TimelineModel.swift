@@ -15,7 +15,13 @@ import Observation
 @MainActor
 @Observable
 public final class TimelineModel {
-    public private(set) var rows: [TimelineRow] = []
+    public private(set) var rows: [TimelineRow] = [] {
+        didSet { index = TimelineIndex(rows: rows, webLinks: webLinks) }
+    }
+    /// What the view needs from `rows` besides the rows themselves — ids in
+    /// order, a lookup by id, the rotor entries — derived once per change of
+    /// `rows`, not on every evaluation of the view's body.
+    private(set) var index = TimelineIndex(rows: [], webLinks: [:])
     public private(set) var isRefreshing = false
     public private(set) var isPagingOlder = false
     public private(set) var errorMessage: String?
@@ -27,7 +33,13 @@ public final class TimelineModel {
 
     public let key: TimelineKey
     private let session: AccountSession
-    private var filters: [Filter] = []
+    private var filters: [Filter] = [] {
+        didSet {
+            guard filters != oldValue else { return }
+            filterDecisions = [:]
+            nextFilterExpiry = FilterEvaluator.nextExpiry(of: filters, after: Date())
+        }
+    }
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
@@ -47,7 +59,23 @@ public final class TimelineModel {
     /// The web links in each post, by row id, for the VoiceOver links rotor
     /// (docs/12 §3). Filled as pages arrive, from the parse the rich-text
     /// cache does anyway, because the view cannot parse inside its body.
-    public private(set) var webLinks: [String: [URL]] = [:]
+    public private(set) var webLinks: [String: [URL]] = [:] {
+        didSet { index = TimelineIndex(rows: rows, webLinks: webLinks) }
+    }
+
+    /// How the rows are laid out, reported by the view, so a prefetch asks
+    /// for the sizes the rows will ask for and lands in the same cache entry.
+    @ObservationIgnored public var prefetchGeometry = PrefetchGeometry()
+
+    /// Each status's filter verdict, decided once per content rather than on
+    /// every evaluation of the row. Cleared when the filters change, and when
+    /// the next filter expiry passes.
+    @ObservationIgnored private var filterDecisions: [FilterCacheKey: FilterEvaluator.Decision] =
+        [:]
+    /// Plain text for keyword matching, parsed off the main actor before a
+    /// page is filtered. Only collected while a keyword filter exists.
+    @ObservationIgnored private var filterTexts: [FilterCacheKey: String] = [:]
+    @ObservationIgnored private var nextFilterExpiry: Date?
 
     private let logger = Logger(subsystem: "social.aloha.app", category: "timeline")
 
@@ -207,6 +235,7 @@ public final class TimelineModel {
             let cached = try await session.timelineStore.cachedTimeline(
                 accountID: session.id, timelineKey: storageKey)
             filters = (try? await session.supportStore.activeFilters(accountID: session.id)) ?? []
+            await warmFilterTexts(cached.compactMap(\.status))
             rows = applyFilters(to: cached)
             ensureCaughtUpDivider()
             let statuses = cached.compactMap(\.status)
@@ -287,6 +316,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
+            await warmFilterTexts(harvest.statuses)
             let filtered = applyFilters(to: merged)
 
             // A new-post pill must not hold updated counts on existing rows
@@ -414,6 +444,7 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
+            await warmFilterTexts(harvest.statuses)
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
@@ -443,6 +474,7 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
+            await warmFilterTexts(harvest.statuses)
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
         } catch {
@@ -545,32 +577,80 @@ public final class TimelineModel {
         let isScrollingDown = index >= lastPrefetchIndex
         lastPrefetchIndex = index
 
-        let size = CGSize(width: 400, height: 400)
-        let wanted = ahead.flatMap(Self.previewURLs)
+        let geometry = prefetchGeometry
+        let wanted = Self.groupedBySize(ahead.flatMap { Self.prefetchRequests($0, geometry) })
+        let unwanted =
+            isScrollingDown && !behind.isEmpty
+            ? Self.groupedBySize(behind.flatMap { Self.prefetchRequests($0, geometry) }) : []
 
         Task {
-            await ImageLoader.shared.prefetch(wanted, targetSize: size)
+            for (size, urls) in wanted {
+                await ImageLoader.shared.prefetch(urls, targetSize: size, scale: geometry.scale)
+            }
             // Only cancel on a direction change; cancelling on every row would
             // undo the work the previous row just started.
-            if isScrollingDown, !behind.isEmpty {
+            for (size, urls) in unwanted {
                 await ImageLoader.shared.cancelPrefetch(
-                    behind.flatMap(Self.previewURLs), targetSize: size)
+                    urls, targetSize: size, scale: geometry.scale)
             }
         }
     }
 
-    private static func previewURLs(_ row: TimelineRow) -> [URL] {
+    /// The images a row will ask for, at the sizes it will ask for them.
+    ///
+    /// A prefetch at one fixed 400×400 landed in a different cache entry from
+    /// every request a row actually made, so it downloaded the bytes and then
+    /// decoded twice. These follow `MediaGrid`'s layout: one item spans the
+    /// content width (up to its 300 pt cap), two share a 16:9 strip, more make
+    /// a grid of squares; avatars are the row's own avatar size.
+    nonisolated static func prefetchRequests(
+        _ row: TimelineRow, _ geometry: PrefetchGeometry
+    ) -> [(url: URL, size: CGSize)] {
         guard let status = row.status else { return [] }
         let target = status.displayed
-        var urls = target.mediaAttachments.compactMap(\.displayImageURL)
-        if let avatar = target.account.preferredAvatarURL { urls.append(avatar) }
-        if let card = target.card?.image { urls.append(card) }
-        return urls
+        let width = max(geometry.contentWidth, 1)
+        var requests: [(url: URL, size: CGSize)] = []
+
+        let media = target.mediaAttachments.compactMap(\.displayImageURL)
+        let mediaSize: CGSize =
+            switch media.count {
+            case 0: .zero
+            case 1: CGSize(width: width, height: min(width, MediaGrid.maximumRowHeight))
+            case 2: CGSize(width: width / 2, height: width * 9 / 16)
+            default: CGSize(width: width / 2, height: width / 2)
+            }
+        requests += media.prefix(4).map { ($0, mediaSize) }
+
+        if let avatar = target.account.preferredAvatarURL {
+            // A boost's row draws its avatar smaller (`StatusRow.Emphasis`).
+            let side = geometry.avatarSize * (status.booster != nil ? 0.82 : 1)
+            requests.append((avatar, CGSize(width: side, height: side)))
+        }
+        if media.isEmpty, let card = target.card?.image {
+            requests.append((card, CGSize(width: width, height: width / 1.91)))
+        }
+        return requests
+    }
+
+    /// One prefetch call per size, in first-seen order.
+    nonisolated static func groupedBySize(
+        _ requests: [(url: URL, size: CGSize)]
+    ) -> [(size: CGSize, urls: [URL])] {
+        var groups: [(size: CGSize, urls: [URL])] = []
+        for request in requests {
+            if let index = groups.firstIndex(where: { $0.size == request.size }) {
+                groups[index].urls.append(request.url)
+            } else {
+                groups.append((request.size, [request.url]))
+            }
+        }
+        return groups
     }
 
     // MARK: - Filters
 
-    /// Applied at render time rather than at insert, so a filter that expires
+    /// Applied when rows are set, and the verdicts cached; the cache is
+    /// dropped when the next filter expiry passes, so a filter that expires
     /// stops hiding without a refetch (docs/04 §6).
     private func applyFilters(to rows: [TimelineRow]) -> [TimelineRow] {
         let settings = session.settings
@@ -578,9 +658,40 @@ public final class TimelineModel {
             guard let status = row.status else { return true }
             if !settings.showBoosts && status.isBoost { return false }
             if !settings.showReplies && status.displayed.inReplyToID != nil { return false }
-            return FilterEvaluator.decision(for: status, filters: filters, context: filterContext)
-                != .hide
+            return decision(for: status) != .hide
         }
+    }
+
+    private var hasKeywordFilters: Bool {
+        filters.contains { !$0.keywords.isEmpty }
+    }
+
+    /// Parses the text keyword filters search, off the main actor, so the
+    /// verdicts that follow never parse HTML on it. Nothing to do — and
+    /// nothing parsed — while no filter has a keyword.
+    private func warmFilterTexts(_ statuses: [Status]) async {
+        guard hasKeywordFilters else { return }
+        for status in statuses {
+            let key = FilterCacheKey(status)
+            guard filterTexts[key] == nil else { continue }
+            let body = await RichTextCache.shared.plainText(for: status)
+            filterTexts[key] = body + " " + status.displayed.spoilerText
+        }
+    }
+
+    private func decision(for status: Status) -> FilterEvaluator.Decision {
+        let now = Date()
+        if let expiry = nextFilterExpiry, now >= expiry {
+            filterDecisions = [:]
+            nextFilterExpiry = FilterEvaluator.nextExpiry(of: filters, after: now)
+        }
+        let key = FilterCacheKey(status)
+        if let cached = filterDecisions[key] { return cached }
+        let decided = FilterEvaluator.decision(
+            for: status, filters: filters, context: filterContext, now: now,
+            text: filterTexts[key])
+        filterDecisions[key] = decided
+        return decided
     }
 
     private var filterContext: FilterContext {
@@ -593,10 +704,7 @@ public final class TimelineModel {
     }
 
     public func filterWarning(for status: Status) -> String? {
-        guard
-            case .warn(let title) = FilterEvaluator.decision(
-                for: status, filters: filters, context: filterContext)
-        else { return nil }
+        guard case .warn(let title) = decision(for: status) else { return nil }
         return title
     }
 
@@ -628,30 +736,145 @@ public enum FilterEvaluator {
         case hide
     }
 
+    /// The verdict for one status: the server's own (`status.filtered`)
+    /// together with the filters applied locally, hiding winning over
+    /// warning wherever either says so.
+    ///
+    /// `text` is the post's plain text and content warning, when the caller
+    /// has parsed it already; otherwise the content is parsed here. Keywords
+    /// are matched against what the reader sees, never against the HTML —
+    /// matching markup made "span" or "href" filter every post with a link,
+    /// and `&amp;` stopped "Tom & Jerry" from matching at all.
     public static func decision(
-        for status: Status, filters: [Filter], context: FilterContext, now: Date = Date()
+        for status: Status, filters: [Filter], context: FilterContext, now: Date = Date(),
+        text: String? = nil
     ) -> Decision {
         let target = status.displayed
-        let haystack = (target.content + " " + target.spoilerText).lowercased()
+        var warning: String?
 
-        for filter in filters where !filter.isExpired(at: now) {
-            guard filter.context.contains(context) else { continue }
+        switch serverDecision(for: status, context: context, now: now) {
+        case .hide: return .hide
+        case .warn(let title): warning = title
+        case .show: break
+        }
 
+        let active = filters.filter { !$0.isExpired(at: now) && $0.context.contains(context) }
+        guard !active.isEmpty else { return warning.map { .warn(title: $0) } ?? .show }
+
+        let needsText = active.contains { !$0.keywords.isEmpty }
+        let haystack = needsText ? (text ?? searchableText(target)).lowercased() : ""
+        let words =
+            needsText
+            ? Set(
+                haystack.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init))
+            : []
+
+        for filter in active {
             let statusMatch = filter.statuses.contains { $0.statusID == target.id }
             let keywordMatch = filter.keywords.contains { keyword in
                 let needle = keyword.keyword.lowercased()
                 guard !needle.isEmpty else { return false }
                 guard keyword.wholeWord else { return haystack.contains(needle) }
-                return haystack.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
-                    .contains { $0.lowercased() == needle }
+                // A whole-word phrase ("tom & jerry") is still a phrase; only
+                // a single word can be looked up among the words.
+                if needle.contains(where: { !$0.isLetter && !$0.isNumber }) {
+                    return haystack.contains(needle)
+                }
+                return words.contains(needle)
             }
 
             guard statusMatch || keywordMatch else { continue }
             switch filter.filterAction {
             case .hide: return .hide
-            case .warn, .blur, .unknownCase: return .warn(title: filter.title)
+            case .warn, .blur, .unknownCase: warning = warning ?? filter.title
             }
         }
-        return .show
+        return warning.map { .warn(title: $0) } ?? .show
     }
+
+    /// What the server already decided: Mastodon 4 and Nextcloud Social send
+    /// the matching filters with each status, on the status and on what it
+    /// boosts. A filter the app has not synced yet still applies.
+    static func serverDecision(
+        for status: Status, context: FilterContext, now: Date
+    ) -> Decision {
+        let results = (status.filtered ?? []) + (status.reblog?.value.filtered ?? [])
+        var warning: String?
+        for result in results {
+            let filter = result.filter
+            guard !filter.isExpired(at: now) else { continue }
+            guard filter.context.isEmpty || filter.context.contains(context) else { continue }
+            switch filter.filterAction {
+            case .hide: return .hide
+            case .warn, .blur, .unknownCase: warning = warning ?? filter.title
+            }
+        }
+        return warning.map { .warn(title: $0) } ?? .show
+    }
+
+    /// The words a keyword filter searches: the post as read, and its
+    /// content warning.
+    static func searchableText(_ status: Status) -> String {
+        StatusHTMLParser().plainText(status.content) + " " + status.spoilerText
+    }
+
+    /// When the next filter stops applying, so cached verdicts can be
+    /// dropped exactly then.
+    static func nextExpiry(of filters: [Filter], after now: Date) -> Date? {
+        filters.compactMap(\.expiresAt).filter { $0 > now }.min()
+    }
+}
+
+/// One status's content, as far as filtering is concerned: a post that is
+/// edited gets a new verdict.
+struct FilterCacheKey: Hashable {
+    let statusID: String
+    let content: Int
+    let spoiler: Int
+
+    init(_ status: Status) {
+        let target = status.displayed
+        statusID = status.id
+        content = target.content.hashValue
+        spoiler = target.spoilerText.hashValue
+    }
+}
+
+/// The layout the timeline's rows are drawn in, as the view measured it.
+public struct PrefetchGeometry: Sendable, Equatable {
+    /// The width a row's content column gets: the row less its insets, the
+    /// avatar and the gap after it.
+    public var contentWidth: Double
+    public var avatarSize: Double
+    public var scale: Double
+
+    public init(contentWidth: Double = 300, avatarSize: Double = 46, scale: Double = 2) {
+        self.contentWidth = contentWidth
+        self.avatarSize = avatarSize
+        self.scale = scale
+    }
+}
+
+/// `rows` as the view reads it, derived once per change.
+struct TimelineIndex {
+    let statusIDs: [String]
+    let statuses: [Status]
+    private let byID: [String: Status]
+    let linkEntries: [LinkRotorEntry]
+
+    init(rows: [TimelineRow], webLinks: [String: [URL]]) {
+        let statuses = rows.compactMap(\.status)
+        self.statuses = statuses
+        statusIDs = statuses.map(\.id)
+        byID = Dictionary(statuses.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        linkEntries = statuses.flatMap { status in
+            (webLinks[status.id] ?? []).enumerated().map { index, url in
+                LinkRotorEntry(
+                    id: "\(status.id)-\(index)", statusID: status.id,
+                    label: LinkRotorEntry.label(for: url))
+            }
+        }
+    }
+
+    func status(id: String) -> Status? { byID[id] }
 }

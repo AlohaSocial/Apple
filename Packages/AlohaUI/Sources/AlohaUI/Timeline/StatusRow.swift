@@ -10,6 +10,10 @@ public struct StatusRow: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The scale `AvatarView` draws at, so the context line stays aligned
+    /// with the name column as the avatar grows.
+    @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
 
     private let status: Status
     private let policy: SensitiveMediaPolicy
@@ -27,6 +31,10 @@ public struct StatusRow: View {
     @State private var isFilterRevealed = false
     /// A quoted post fetched by id, when the server sent only `quote_id`.
     @State private var fetchedQuote: Status?
+    /// The post's words for VoiceOver, from the rich-text cache. The label
+    /// used to parse the HTML itself, on the main actor, in every evaluation
+    /// of every row's body.
+    @State private var spokenBody: String?
 
     public init(
         status: Status,
@@ -143,13 +151,38 @@ public struct StatusRow: View {
         // Here rather than in each list, so every list of posts — thread,
         // search, profile, notifications — lights up on visionOS alike.
         .alohaRowHighlight()
+        // Not a `Button`: the row holds buttons and links of its own, and a
+        // button around them swallows every tap on a mention or hashtag. A
+        // tap opens the post; so does the row's default action, which is
+        // what VoiceOver, Switch Control and Full Keyboard Access activate.
         .onTapGesture { onAction(.open(status)) }
         // The whole row reads as one element; the actions are custom actions
         // rather than six separate stops (docs/12 §3).
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onAction(.open(status)) }
         .accessibilityIdentifier("status.\(displayed.id)")
         .accessibilityLabel(accessibilityLabel)
+        // Voice Control: "Tap Alice" rather than reading out the whole post.
+        .accessibilityInputLabels(inputLabels)
         .accessibilityActions { accessibilityActions }
+        .task(id: FilterCacheKey(status)) {
+            spokenBody = await RichTextCache.shared.plainText(for: status)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    /// What Voice Control lets a person say to open this post: the name as
+    /// shown, then the handle.
+    private var inputLabels: [Text] {
+        [
+            Text(verbatim: displayed.account.bestDisplayName),
+            Text(verbatim: displayed.account.acct),
+        ]
+    }
+
+    private var avatarColumnWidth: Double {
+        AvatarView.dimension(base: metrics.avatarSize, typeScale: typeScale)
     }
 
     // MARK: - Pieces
@@ -206,7 +239,7 @@ public struct StatusRow: View {
                 .lineLimit(1)
         }
         .foregroundStyle(context.tint)
-        .padding(.leading, metrics.avatarSize + AlohaMetrics.space3)
+        .padding(.leading, avatarColumnWidth + AlohaMetrics.space3)
     }
 
     private var header: some View {
@@ -368,97 +401,137 @@ public struct StatusRow: View {
         }
     }
 
+    /// One line of actions, or two at the accessibility text sizes: the four
+    /// actions and the menu first, the counts the row only reports below. At
+    /// those sizes one line pushed the menu off the trailing edge.
+    @ViewBuilder
     private var actionRow: some View {
-        HStack(spacing: 0) {
-            StatusActionButton(
-                symbol: AlohaSymbol.reply, count: showsCounts ? displayed.repliesCount : nil,
-                tint: palette.secondaryLabel, isOn: false, style: .plain,
-                label: Text("Reply", comment: "Status action")
-            ) { onAction(.reply(status)) }
-
-            StatusActionButton(
-                symbol: AlohaSymbol.boost, count: showsCounts ? displayed.reblogsCount : nil,
-                tint: palette.boost, isOn: displayed.reblogged, style: .spin,
-                label: Text("Boost", comment: "Status action")
-            ) { onAction(.boost(status)) }
-
-            StatusActionButton(
-                symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
-                count: showsCounts ? displayed.favouritesCount : nil, tint: palette.favourite,
-                isOn: displayed.favourited, style: .pop,
-                label: Text("Favourite", comment: "Status action")
-            ) { onAction(.favourite(status)) }
-
-            StatusActionButton(
-                symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
-                count: nil, tint: palette.bookmark, isOn: displayed.bookmarked, style: .pop,
-                label: Text("Bookmark", comment: "Status action")
-            ) { onAction(.bookmark(status)) }
-
-            // PeerTube's thumbs-down, only where a video carries one — and
-            // **read-only**, because nothing can cast one from here.
-            //
-            // The server serialises `dislikes_count` and `disliked` on a video
-            // status (`Stream::exportAsLocal`) and federates what PeerTube
-            // sends, but no controller writes one: `DislikeService` is not
-            // wired to a route. This was a button, and tapping it 404'd on
-            // every federated PeerTube video. A count that says what the wider
-            // network thinks is worth showing; a button that cannot work is
-            // not (docs/06 §3).
-            if showsCounts,
-                displayed.mediaAttachments.contains(where: { $0.type.isPlayable }),
-                displayed.dislikesCount > 0
-            {
-                StatusMetric(
-                    symbol: "hand.thumbsdown",
-                    count: displayed.dislikesCount,
-                    label: Text(
-                        "^[\(displayed.dislikesCount) dislike](inflect: true) elsewhere",
-                        comment: "Read-only dislike count on a federated video"))
-            }
-
-            // Mastodon 4.5's quote count. A link rather than a number: the
-            // posts quoting this one are a list worth opening.
-            if showsCounts, let quotes = displayed.quotesCount, quotes > 0 {
-                NavigationLink(value: Route.quotes(statusID: displayed.id)) {
-                    StatusMetric(
-                        symbol: "quote.bubble",
-                        count: quotes,
-                        label: Text(
-                            "^[\(quotes) quote](inflect: true)",
-                            comment: "Quote count on a post, opens the quotes"))
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                HStack(spacing: 0) {
+                    primaryActions
+                    Spacer(minLength: 0)
+                    moreMenu
                 }
-                .buttonStyle(.plain)
+                HStack(spacing: 0) { countMetrics }
             }
-
-            // Who read it: only the author's own posts carry a value, and only
-            // the author is shown it.
-            if showsCounts, isOwn, let views = displayed.viewCount, views > 0 {
-                StatusMetric(
-                    symbol: "eye",
-                    count: views,
-                    label: Text(
-                        "^[\(views) view](inflect: true)",
-                        comment: "View count on your own post"))
+            .padding(.top, AlohaMetrics.space1)
+            .animation(
+                .spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited
+            )
+            .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
+        } else {
+            HStack(spacing: 0) {
+                primaryActions
+                countMetrics
+                Spacer(minLength: 0)
+                moreMenu
             }
-
-            Spacer(minLength: 0)
-
-            Menu {
-                StatusMenu(status: status, onAction: onAction)
-            } label: {
-                Image(systemName: AlohaSymbol.more)
-                    .font(.footnote)
-                    .foregroundStyle(palette.secondaryLabel)
-                    .frame(width: 44, height: 32)
-                    .contentShape(Rectangle())
-            }
-            .menuStyle(.borderlessButton)
-            .accessibilityLabel(Text("More actions", comment: "Status action"))
+            .padding(.top, AlohaMetrics.space1)
+            .animation(
+                .spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited
+            )
+            .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
         }
-        .padding(.top, AlohaMetrics.space1)
-        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
-        .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
+    }
+
+    @ViewBuilder
+    private var primaryActions: some View {
+        StatusActionButton(
+            symbol: AlohaSymbol.reply, count: showsCounts ? displayed.repliesCount : nil,
+            tint: palette.secondaryLabel, isOn: false, style: .plain,
+            label: Text("Reply", comment: "Status action")
+        ) { onAction(.reply(status)) }
+
+        StatusActionButton(
+            symbol: AlohaSymbol.boost, count: showsCounts ? displayed.reblogsCount : nil,
+            tint: palette.boost, isOn: displayed.reblogged, style: .spin,
+            label: Text("Boost", comment: "Status action")
+        ) { onAction(.boost(status)) }
+
+        StatusActionButton(
+            symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
+            count: showsCounts ? displayed.favouritesCount : nil, tint: palette.favourite,
+            isOn: displayed.favourited, style: .pop,
+            label: Text("Favourite", comment: "Status action")
+        ) { onAction(.favourite(status)) }
+
+        StatusActionButton(
+            symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
+            count: nil, tint: palette.bookmark, isOn: displayed.bookmarked, style: .pop,
+            label: Text("Bookmark", comment: "Status action")
+        ) { onAction(.bookmark(status)) }
+    }
+
+    /// The numbers a row reports but nobody can change from here.
+    @ViewBuilder
+    private var countMetrics: some View {
+        // PeerTube's thumbs-down, only where a video carries one — and
+        // **read-only**, because nothing can cast one from here.
+        //
+        // The server serialises `dislikes_count` and `disliked` on a video
+        // status (`Stream::exportAsLocal`) and federates what PeerTube
+        // sends, but no controller writes one: `DislikeService` is not
+        // wired to a route. This was a button, and tapping it 404'd on
+        // every federated PeerTube video. A count that says what the wider
+        // network thinks is worth showing; a button that cannot work is
+        // not (docs/06 §3).
+        if showsCounts,
+            displayed.mediaAttachments.contains(where: { $0.type.isPlayable }),
+            displayed.dislikesCount > 0
+        {
+            StatusMetric(
+                symbol: "hand.thumbsdown",
+                count: displayed.dislikesCount,
+                label: Text(
+                    "^[\(displayed.dislikesCount) dislike](inflect: true) elsewhere",
+                    comment: "Read-only dislike count on a federated video"))
+        }
+
+        // Mastodon 4.5's quote count. A link rather than a number: the
+        // posts quoting this one are a list worth opening.
+        if showsCounts, let quotes = displayed.quotesCount, quotes > 0 {
+            NavigationLink(value: Route.quotes(statusID: displayed.id)) {
+                StatusMetric(
+                    symbol: "quote.bubble",
+                    count: quotes,
+                    label: Text(
+                        "^[\(quotes) quote](inflect: true)",
+                        comment: "Quote count on a post, opens the quotes"))
+            }
+            .buttonStyle(.plain)
+        }
+
+        // Who read it: only the author's own posts carry a value, and only
+        // the author is shown it.
+        if showsCounts, isOwn, let views = displayed.viewCount, views > 0 {
+            StatusMetric(
+                symbol: "eye",
+                count: views,
+                label: Text(
+                    "^[\(views) view](inflect: true)",
+                    comment: "View count on your own post"))
+        }
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            StatusMenu(status: status, onAction: onAction)
+        } label: {
+            Image(systemName: AlohaSymbol.more)
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+                .frame(width: 44, height: 32)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .accessibilityLabel(Text("More actions", comment: "Status action"))
+        .accessibilityInputLabels([
+            Text("More actions", comment: "Status action"),
+            Text("More", comment: "Voice Control name for the post's More actions menu"),
+        ])
+        .alohaLargeContentViewer(
+            symbol: AlohaSymbol.more, label: Text("More actions", comment: "Status action"))
     }
 
     private func placeChip(_ place: Status.StatusPlace) -> some View {
@@ -539,9 +612,7 @@ public struct StatusRow: View {
         }
         parts.append(
             String(localized: "\(name), \(when)", comment: "Accessibility label for a status"))
-        let body = StatusHTMLParser().plainText(displayed.content)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if !body.isEmpty { parts.append(body) }
+        if let body = spokenBody, !body.isEmpty { parts.append(body) }
         let media = displayed.mediaAttachments.count
         if media > 0 {
             parts.append(

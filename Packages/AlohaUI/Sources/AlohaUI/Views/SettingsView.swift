@@ -446,7 +446,7 @@ public struct SettingsView: View {
             Text("Sound & touch", comment: "Settings section")
         } footer: {
             Text(
-                "A soft tick when you like something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting.",
+                "A soft tick when you favourite something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting.",
                 comment: "Senses explanation")
         }
     }

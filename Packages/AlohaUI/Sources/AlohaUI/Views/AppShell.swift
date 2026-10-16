@@ -749,7 +749,7 @@ private struct ThemedAppShell: View {
                         "Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks,
                         session: session)
                     sidebarTab(
-                        "Liked posts", symbol: AlohaSymbol.favourite, route: .favourites,
+                        "Favourites", symbol: AlohaSymbol.favourite, route: .favourites,
                         session: session)
                     sidebarTab(
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests,
@@ -1082,7 +1082,7 @@ private struct ThemedAppShell: View {
             TimelineView(
                 key: TimelineKey(mode: .home, source: .favourites), session: session
             ) { handle($0, session: session) }
-            .navigationTitle(Text("Liked posts", comment: "Screen title"))
+            .navigationTitle(Text("Favourites", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
                 .readerColumn

@@ -537,6 +537,8 @@ public struct ShortsView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Share", comment: "Shorts action"))
+            .alohaLargeContentViewer(
+                symbol: AlohaSymbol.share, label: Text("Share", comment: "Shorts action"))
 
             Menu {
                 StatusMenu(status: status, onAction: onAction)
@@ -550,6 +552,12 @@ public struct ShortsView: View {
             }
             .menuStyle(.borderlessButton)
             .accessibilityLabel(Text("More actions", comment: "Shorts action"))
+            .accessibilityInputLabels([
+                Text("More actions", comment: "Shorts action"),
+                Text("More", comment: "Voice Control name for the post's More actions menu"),
+            ])
+            .alohaLargeContentViewer(
+                symbol: AlohaSymbol.more, label: Text("More actions", comment: "Shorts action"))
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
     }
@@ -562,6 +570,10 @@ public struct ShortsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        // The rail's glyphs are drawn at a fixed size over the video, where
+        // growing with text would cover the picture; at the accessibility
+        // sizes a long press shows each one large instead.
+        .alohaLargeContentViewer(symbol: symbol, label: label)
     }
 
     private func railLabel(symbol: String, tint: Color, count: Int?) -> some View {
