@@ -154,6 +154,11 @@ public struct TimelineView: View {
                     .listRowSeparator(.hidden)
                     .id(status.id)
                     .alohaRowHighlight()
+                    .readingSignal(
+                        status,
+                        context: InterestSignal.Context(key: model.key),
+                        session: session
+                    )
                     .overlay(alignment: .leading) {
                         if focusedStatusID == status.id {
                             Capsule()

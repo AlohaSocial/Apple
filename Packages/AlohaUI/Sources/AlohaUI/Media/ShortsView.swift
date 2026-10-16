@@ -121,8 +121,18 @@ public struct ShortsView: View {
             progress = 0
             Task { await start() }
         }
-        .onChange(of: currentID) { _, newValue in
+        .onChange(of: currentID) { oldValue, newValue in
             progress = 0
+            // A short counts as watched for as long as it was the current
+            // page — the time For you learns from for Shorts.
+            if let signals = ReadingSignals.forSession(session) {
+                if let old = shorts.first(where: { $0.id == oldValue }) {
+                    signals.disappeared(old, context: .shorts)
+                }
+                if let new = shorts.first(where: { $0.id == newValue }) {
+                    signals.appeared(new, context: .shorts)
+                }
+            }
             // Page ahead well before the end so the feed never stalls.
             guard let newValue, let position = shorts.firstIndex(where: { $0.id == newValue })
             else { return }

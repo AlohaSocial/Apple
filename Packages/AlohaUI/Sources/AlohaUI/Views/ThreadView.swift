@@ -222,6 +222,9 @@ public struct ThreadView: View {
 
             let status = Self.withCard(try await statusTask, await cardTask)
             let context = try await contextTask
+            if focused?.id != status.id {
+                ReadingSignals.forSession(session)?.opened(status)
+            }
             focused = status
             ancestors = context.ancestors
             descendants = context.descendants

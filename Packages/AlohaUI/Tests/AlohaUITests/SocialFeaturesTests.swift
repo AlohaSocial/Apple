@@ -57,6 +57,43 @@ struct NotificationDeliveryMappingTests {
     }
 }
 
+@Suite("Reading signals")
+struct ReadingSignalsTests {
+    @Test("A timeline's rows are read in the server's own context")
+    func contexts() {
+        #expect(InterestSignal.Context(key: .home()) == .home)
+        #expect(InterestSignal.Context(key: .home(.local)) == .local)
+        #expect(InterestSignal.Context(key: .home(.federated)) == .federated)
+        #expect(InterestSignal.Context(key: .home(.hashtag(name: "x"))) == .tag)
+        #expect(InterestSignal.Context(key: TimelineKey(mode: .photos, source: .home)) == .photos)
+        #expect(InterestSignal.Context(key: TimelineKey(mode: .video, source: .home)) == .videos)
+        #expect(InterestSignal.Context(key: TimelineKey(mode: .shorts, source: .home)) == .shorts)
+    }
+
+    @Test("Time on screen is counted in whole milliseconds")
+    func milliseconds() {
+        #expect(ReadingSignals.milliseconds(.milliseconds(1500)) == 1500)
+        #expect(ReadingSignals.milliseconds(.seconds(2)) == 2000)
+    }
+}
+
+@Suite("Search")
+struct DomainHandleTests {
+    @Test(
+        "A bare Bluesky handle is resolved",
+        arguments: ["alice.bsky.social", "bsky.app", "a-b.c.de"])
+    func handles(_ text: String) {
+        #expect(SearchView.looksLikeDomainHandle(text))
+    }
+
+    @Test(
+        "Words, tags and sentences are not handles",
+        arguments: ["alice", "#cats", "hello world.", "v1.2", "example.com/path", "a..b"])
+    func notHandles(_ text: String) {
+        #expect(!SearchView.looksLikeDomainHandle(text))
+    }
+}
+
 @Suite("Made with AI")
 struct AIGeneratedLabelTests {
     @Test("The switch adds the server's hashtag once, after the text")
