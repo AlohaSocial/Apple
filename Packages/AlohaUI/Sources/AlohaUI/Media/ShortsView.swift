@@ -712,7 +712,7 @@ struct ShortPlayer: View {
                             sourceIndex = 0
                             retryCount += 1
                         }
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                     }
                     .foregroundStyle(.primary)
                     .padding()

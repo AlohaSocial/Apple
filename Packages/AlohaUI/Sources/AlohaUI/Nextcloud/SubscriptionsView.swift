@@ -99,7 +99,7 @@ public struct SubscriptionsView: View {
                         Text("Follow", comment: "Subscriptions add action")
                     }
                 }
-                .buttonStyle(.glassProminent)
+                .alohaGlassProminentButtonStyle()
                 .controlSize(.regular)
                 .disabled(!canFollow || isFollowing)
             }

@@ -72,11 +72,11 @@ public struct StatisticsView: View {
             .padding(AlohaMetrics.space4)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            AlohaGlassContainer(spacing: AlohaMetrics.space2) {
                 windowPicker
                     .padding(.horizontal, AlohaMetrics.space4)
                     .padding(.vertical, AlohaMetrics.space2)
-                    .glassEffect(
+                    .alohaGlassEffect(
                         .regular, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
             }
         }
@@ -639,13 +639,13 @@ private struct ExportShareSheet: View {
                     Image(systemName: AlohaSymbol.share)
                 }
             }
-            .buttonStyle(.glassProminent)
+            .alohaGlassProminentButtonStyle()
             Button {
                 dismiss()
             } label: {
                 Text("Done", comment: "Sheet action")
             }
-            .buttonStyle(.glass)
+            .alohaGlassButtonStyle()
         }
         .padding(AlohaMetrics.space6)
         .presentationDetents([.medium])

@@ -91,7 +91,7 @@ public struct MemoriesView: View {
                 Text("Retry", comment: "Memories retry action")
             }
             .font(.footnote.weight(.semibold))
-            .buttonStyle(.glass)
+            .alohaGlassButtonStyle()
             .disabled(isLoading || isSaving)
         }
         .padding(.vertical, AlohaMetrics.space2)

@@ -65,7 +65,7 @@ struct TaggedGrid: View {
                         Text("Retry", comment: "Tagged photos retry action")
                     }
                     .font(.footnote.weight(.semibold))
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .disabled(isLoading || !removing.isEmpty)
                 }
                 .padding(AlohaMetrics.space3)

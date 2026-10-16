@@ -151,7 +151,7 @@ public struct ListsView: View {
                         } label: {
                             Text("Add", comment: "New list action")
                         }
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                         .disabled(
                             isSaving
                                 || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -467,7 +467,7 @@ struct ListEditorView: View {
                         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                             Text(memberLoadError).font(.footnote)
                             Button("Try again") { Task { await loadMembers() } }
-                                .buttonStyle(.glass)
+                                .alohaGlassButtonStyle()
                         }
                     } else if members.isEmpty {
                         Text("Nobody on this list yet.", comment: "Empty list members")

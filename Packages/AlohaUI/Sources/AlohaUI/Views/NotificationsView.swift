@@ -87,7 +87,7 @@ public struct NotificationsView: View {
                     Text("Choose another filter to see more activities.", comment: "Notification filter empty state guidance")
                 } actions: {
                     Button("Show all") { selectedKinds = [] }
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                 }
                 .listRowSeparator(.hidden)
                 .listRowBackground(palette.background)
@@ -165,7 +165,7 @@ public struct NotificationsView: View {
 
     private var filterChips: some View {
         ScrollView(.horizontal) {
-            GlassEffectContainer(spacing: AlohaMetrics.space2) {
+            AlohaGlassContainer(spacing: AlohaMetrics.space2) {
                 HStack(spacing: AlohaMetrics.space2) {
                     chip(nil, label: String(localized: "All", comment: "Notification filter"))
                     chip(
@@ -215,11 +215,11 @@ public struct NotificationsView: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glassEffect(
+        .alohaGlassEffect(
             .regular.tint(isSelected ? palette.accent : nil).interactive(),
             in: Capsule()
         )
-        .glassEffectID(label, in: chipIndicator)
+        .alohaGlassEffectID(label, in: chipIndicator)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 

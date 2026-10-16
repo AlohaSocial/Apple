@@ -426,7 +426,7 @@ public struct PhotoPostCard: View {
                         .disabled(page >= attachments.count - 1)
                         .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .padding(AlohaMetrics.space2)
                 }
             }

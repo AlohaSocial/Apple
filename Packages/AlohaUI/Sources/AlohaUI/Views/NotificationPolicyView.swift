@@ -142,7 +142,7 @@ public struct NotificationPolicyView: View {
                 } label: {
                     Text("Got it", comment: "Dismiss the notification policy notice")
                 }
-                .buttonStyle(.glass)
+                .alohaGlassButtonStyle()
             }
             .padding(.vertical, AlohaMetrics.space1)
         }

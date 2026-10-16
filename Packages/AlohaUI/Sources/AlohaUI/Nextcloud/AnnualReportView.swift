@@ -59,7 +59,7 @@ public struct AnnualReportView: View {
                             Text("Retry", comment: "Annual report retry action")
                         }
                         .font(.footnote.weight(.semibold))
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                         .disabled(isLoading)
                     }
                 }

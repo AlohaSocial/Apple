@@ -117,7 +117,7 @@ public struct NextcloudConnectView: View {
                             comment: "Nextcloud connect action")
                     }
                 }
-                .buttonStyle(.glassProminent)
+                .alohaGlassProminentButtonStyle()
                 .disabled(isStarting)
             }
         }
@@ -136,7 +136,7 @@ public struct NextcloudConnectView: View {
             } label: {
                 Text("Open the approval page again", comment: "Nextcloud connect action")
             }
-            .buttonStyle(.glass)
+            .alohaGlassButtonStyle()
 
             Button(role: .cancel) {
                 cancelConnection()
@@ -179,7 +179,7 @@ public struct NextcloudConnectView: View {
                         Text("Disconnect", comment: "Nextcloud connect action")
                     }
                 }
-                .buttonStyle(.glass)
+                .alohaGlassButtonStyle()
                 .disabled(isDisconnecting)
             } footer: {
                 Text(

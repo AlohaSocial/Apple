@@ -25,7 +25,7 @@ public struct SelectedGlass: ViewModifier {
         if isSelected {
             content
                 #if os(iOS) || os(macOS) || os(visionOS)
-                    .glassEffect(
+                    .alohaGlassEffect(
                         .regular.tint(tint.opacity(0.22)).interactive(),
                         in: Capsule())
                 #else
