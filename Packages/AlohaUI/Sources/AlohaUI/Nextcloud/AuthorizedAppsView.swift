@@ -86,7 +86,7 @@ public struct AuthorizedAppsView: View {
                 Text("Retry", comment: "Authorized apps retry action")
             }
             .font(.footnote.weight(.semibold))
-            .buttonStyle(.glass)
+            .alohaGlassButtonStyle()
             .disabled(isLoading || pendingRevocation != nil)
         }
     }
@@ -148,7 +148,7 @@ public struct AuthorizedAppsView: View {
                         .font(.footnote.weight(.semibold))
                 }
             }
-            .buttonStyle(.glass)
+            .alohaGlassButtonStyle()
             .disabled(isLoading || pendingRevocation != nil)
             .accessibilityLabel(Text("Revoke \(app.name)", comment: "Authorized app action"))
         }

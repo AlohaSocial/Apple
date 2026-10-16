@@ -200,7 +200,7 @@ public struct ConversationsView: View {
     // MARK: - Pieces
 
     private var filterBar: some View {
-        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+        AlohaGlassContainer(spacing: AlohaMetrics.space2) {
             Picker(selection: $filter) {
                 Text("All", comment: "Conversations filter").tag(Filter.all)
                 Text("Unread (\(unreadCount))", comment: "Conversations filter with count")
@@ -215,8 +215,8 @@ public struct ConversationsView: View {
             .textCase(nil)
             .labelsHidden()
             .accessibilityLabel(Text("Filter", comment: "Conversations filter picker"))
-            .glassEffect(.regular.interactive(), in: Capsule())
-            .glassEffectID(filter, in: filterGlass)
+            .alohaGlassEffect(.regular.interactive(), in: Capsule())
+            .alohaGlassEffectID(filter, in: filterGlass)
         }
         .padding(.horizontal, AlohaMetrics.space3)
         .padding(.vertical, AlohaMetrics.space2)

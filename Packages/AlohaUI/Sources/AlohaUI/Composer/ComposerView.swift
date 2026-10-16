@@ -126,7 +126,7 @@ public struct ComposerView: View {
                     } label: {
                         Label("Edit poll", systemImage: AlohaSymbol.poll)
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .padding(AlohaMetrics.space2)
                 }
 
@@ -172,7 +172,7 @@ public struct ComposerView: View {
                                 .font(.subheadline.weight(.semibold))
                         }
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                     .tint(palette.accent)
                     .disabled(!model.canPost)
                     .keyboardShortcut(.return, modifiers: .command)
@@ -224,7 +224,7 @@ public struct ComposerView: View {
                 }
                 .presentationDetents([.medium, .large])
                 .presentationBackground {
-                    Color.clear.glassEffect(.regular, in: Rectangle())
+                    Color.clear.alohaGlassEffect(.regular, in: Rectangle())
                 }
                 .presentationDragIndicator(.visible)
             }
@@ -855,7 +855,7 @@ public struct ComposerView: View {
                     .textFieldStyle(.plain)
                     .padding(.horizontal, AlohaMetrics.space3)
                     .frame(minHeight: 44)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                    .alohaGlassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                     Button(role: .destructive) {
                         guard model.pollOptions.count > 2,
                             model.pollOptions.indices.contains(index)
@@ -865,7 +865,7 @@ public struct ComposerView: View {
                         Image(systemName: "minus.circle")
                             .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .disabled(model.pollOptions.count <= 2)
                     .accessibilityLabel(Text("Remove choice", comment: "Poll editor action"))
                 }
@@ -878,7 +878,7 @@ public struct ComposerView: View {
                     Text("Add choice", comment: "Poll action")
                 }
                 .disabled(model.pollOptions.count >= model.limits.maxPollOptions)
-                .buttonStyle(.glass)
+                .alohaGlassButtonStyle()
 
                 Spacer()
             }
@@ -1349,7 +1349,7 @@ private struct ComposerToolStyle: ButtonStyle {
             .font(.system(size: 18, weight: .medium))
             .frame(width: 44, height: 44)
             .contentShape(Circle())
-            .glassEffect(.regular.interactive(), in: Circle())
+            .alohaGlassEffect(.regular.interactive(), in: Circle())
             .opacity(!isEnabled ? 0.4 : (configuration.isPressed ? 0.65 : 1))
     }
 }

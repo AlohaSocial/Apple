@@ -171,7 +171,7 @@ public struct ProfileView: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .glassEffect(
+                    .alohaGlassEffect(
                         .regular.tint(tab == option ? palette.accent : nil).interactive(),
                         in: Capsule()
                     )

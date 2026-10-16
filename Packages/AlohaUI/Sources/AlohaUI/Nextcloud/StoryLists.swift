@@ -27,7 +27,7 @@ struct StoryViewersSheet: View {
                             .font(.footnote)
                             .foregroundStyle(palette.destructive)
                         Button("Try again") { Task { await load() } }
-                            .buttonStyle(.glass)
+                            .alohaGlassButtonStyle()
                     }
                     .listRowBackground(palette.background)
                 }
@@ -130,7 +130,7 @@ struct StoryReactionsSheet: View {
                             .font(.footnote)
                             .foregroundStyle(palette.destructive)
                         Button("Try again") { Task { await load() } }
-                            .buttonStyle(.glass)
+                            .alohaGlassButtonStyle()
                     }
                     .listRowBackground(palette.background)
                 }

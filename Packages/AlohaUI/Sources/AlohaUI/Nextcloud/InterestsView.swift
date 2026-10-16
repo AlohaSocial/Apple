@@ -344,7 +344,7 @@ public struct InterestsView: View {
         }
         .padding(.horizontal, AlohaMetrics.space4)
         .padding(.vertical, AlohaMetrics.space3)
-        .glassEffect(.regular, in: Capsule())
+        .alohaGlassEffect(.regular, in: Capsule())
         .padding(.horizontal, AlohaMetrics.space4)
         .padding(.bottom, AlohaMetrics.space2)
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -432,7 +432,7 @@ struct InterestsSettingsView: View {
                         Text("Retry", comment: "Interests retry action")
                     }
                     .font(.footnote.weight(.semibold))
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .disabled(isWorking || isLoadingState)
                 }
                 .foregroundStyle(palette.destructive)
@@ -555,14 +555,14 @@ struct InterestsSettingsView: View {
                             .font(.title2)
                             .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                     .disabled(!canAdd || isAdding)
                     .accessibilityLabel(Text("Add interest", comment: "Interests add action"))
                 }
 
                 if !suggestions.isEmpty {
                     ScrollView(.horizontal) {
-                        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                        AlohaGlassContainer(spacing: AlohaMetrics.space2) {
                             HStack(spacing: AlohaMetrics.space2) {
                                 ForEach(suggestions) { tag in
                                     Button {
@@ -573,7 +573,7 @@ struct InterestsSettingsView: View {
                                             .padding(.horizontal, AlohaMetrics.space3)
                                             .frame(minHeight: 32)
                                     }
-                                    .buttonStyle(.glass)
+                                    .alohaGlassButtonStyle()
                                 }
                             }
                         }
@@ -656,7 +656,7 @@ struct InterestsSettingsView: View {
                         .font(.title2)
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.glassProminent)
+                .alohaGlassProminentButtonStyle()
                 .disabled(!isLanguageDraftValid)
                 .accessibilityLabel(Text("Add language", comment: "Interests language add action"))
             }
@@ -926,7 +926,7 @@ struct InterestChips: View {
     let onTap: (InterestTag) -> Void
 
     var body: some View {
-        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+        AlohaGlassContainer(spacing: AlohaMetrics.space2) {
             FlowLayout(spacing: AlohaMetrics.space2) {
                 ForEach(tags) { tag in
                     Button {
@@ -939,7 +939,7 @@ struct InterestChips: View {
                         .padding(.horizontal, AlohaMetrics.space3)
                         .frame(minHeight: 36)
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .accessibilityLabel(
                         Text("Add \(tag.tag)", comment: "Interest candidate action"))
                 }

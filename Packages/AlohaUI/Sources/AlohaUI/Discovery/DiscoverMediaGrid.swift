@@ -103,7 +103,7 @@ struct DiscoverMediaGrid: View {
                         .font(.caption)
                         .foregroundStyle(palette.label)
                         .padding(AlohaMetrics.space2)
-                        .glassEffect(.regular, in: Capsule())
+                        .alohaGlassEffect(.regular, in: Capsule())
                         .padding(AlohaMetrics.space1)
                         .accessibilityHidden(true)
                 } else if first?.type.isPlayable == true {
@@ -111,7 +111,7 @@ struct DiscoverMediaGrid: View {
                         .font(.caption)
                         .foregroundStyle(palette.label)
                         .padding(AlohaMetrics.space2)
-                        .glassEffect(.regular, in: Capsule())
+                        .alohaGlassEffect(.regular, in: Capsule())
                         .padding(AlohaMetrics.space1)
                         .accessibilityHidden(true)
                 }

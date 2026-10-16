@@ -280,7 +280,7 @@ public struct SignInView: View {
                 Link(destination: setupURL) {
                     Text("Open in browser", comment: "Account setup action")
                 }
-                .buttonStyle(.glassProminent)
+                .alohaGlassProminentButtonStyle()
             }
 
             if !failure.attempted.isEmpty {

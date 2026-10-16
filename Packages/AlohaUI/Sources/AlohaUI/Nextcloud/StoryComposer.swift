@@ -270,7 +270,7 @@ public struct StoryComposerSheet: View {
                             Image(systemName: "camera")
                         }
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .disabled(isLoading)
                 }
             #endif

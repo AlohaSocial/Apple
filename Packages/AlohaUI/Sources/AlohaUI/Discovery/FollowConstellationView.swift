@@ -105,7 +105,7 @@ public struct FollowConstellationView: View {
                     Image(systemName: "scope")
                         .padding(AlohaMetrics.space2)
                 }
-                .buttonStyle(.glass)
+                .alohaGlassButtonStyle()
                 .padding(AlohaMetrics.space3)
                 .accessibilityLabel(Text("Centre again", comment: "Constellation action"))
             }

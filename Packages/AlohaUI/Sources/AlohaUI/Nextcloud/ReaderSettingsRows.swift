@@ -41,7 +41,7 @@ struct AccountSetupBanner: View {
                     } label: {
                         Text("Open in browser", comment: "Account setup action")
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                 }
             }
             .padding(.vertical, AlohaMetrics.space1)

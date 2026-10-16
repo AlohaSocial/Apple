@@ -43,7 +43,7 @@ public struct FeaturedTagsView: View {
                     .font(.footnote)
                     .foregroundStyle(palette.destructive)
                     Button("Try again") { Task { await load() } }
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                 }
             }
 
@@ -70,7 +70,7 @@ public struct FeaturedTagsView: View {
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                         .buttonBorderShape(.circle)
                         .disabled(removingIDs.contains(tag.id))
                         .accessibilityLabel(
@@ -114,7 +114,7 @@ public struct FeaturedTagsView: View {
                                 Image(systemName: "checkmark.circle.fill")
                             }
                         }
-                        .buttonStyle(.glassProminent)
+                        .alohaGlassProminentButtonStyle()
                         .disabled(!isValid(draft) || isSaving)
                         .accessibilityLabel(
                             Text("Feature this hashtag", comment: "Featured tag action"))

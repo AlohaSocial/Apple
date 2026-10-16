@@ -55,7 +55,7 @@ public struct PlaceView: View {
                             Text("Retry", comment: "Place retry action")
                                 .font(.footnote.weight(.semibold))
                         }
-                        .buttonStyle(.glass)
+                        .alohaGlassButtonStyle()
                         .disabled(isLoading)
                     }
                     .frame(maxWidth: .infinity)

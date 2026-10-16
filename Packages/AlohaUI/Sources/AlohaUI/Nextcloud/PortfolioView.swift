@@ -73,7 +73,7 @@ public struct PortfolioView: View {
                         .foregroundStyle(palette.destructive)
                     if loaded == nil {
                         Button("Try again") { Task { await load() } }
-                            .buttonStyle(.glass)
+                            .alohaGlassButtonStyle()
                             .disabled(isLoading)
                     }
                 }
@@ -217,7 +217,7 @@ public struct PortfolioView: View {
                             Spacer()
                         }
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                     .disabled(isSaving || !hasChanges || !PortfolioPreview.canSave(settings))
                 }
             }

@@ -79,7 +79,7 @@ struct TimelineSourceToggle: View {
     ]
 
     var body: some View {
-        GlassEffectContainer(spacing: 4) {
+        AlohaGlassContainer(spacing: 4) {
             HStack(spacing: 4) {
                 ForEach(Self.options, id: \.source) { option in
                     button(for: option.source, title: Text(option.title))
@@ -114,11 +114,11 @@ struct TimelineSourceToggle: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glassEffect(
+        .alohaGlassEffect(
             .regular.tint(isSelected ? palette.accent : nil).interactive(),
             in: Capsule()
         )
-        .glassEffectID(option, in: indicator)
+        .alohaGlassEffectID(option, in: indicator)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
