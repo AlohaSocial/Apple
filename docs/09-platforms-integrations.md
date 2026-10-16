@@ -61,12 +61,20 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
 - Actions: favourite, boost, bookmark, follow-back.
 - Reply composer: dictation, Scribble, emoji, and up to 8 user-defined canned
   responses edited on the phone.
-- Complications (`WidgetKit` on watchOS): unread notification count
-  (`.accessoryCircular`, `.accessoryCorner`) and latest mention
-  (`.accessoryRectangular`, `.accessoryInline`).
-- Data arrives via `WCSession` transfer from the phone's background refresh,
-  plus an independent `URLSession` fetch when the watch is on Wi-Fi and the
-  phone is unreachable.
+- Complications (`AlohaWatchWidgets`, a WidgetKit extension embedded in the
+  watch app): unread notification count (`.accessoryCircular`,
+  `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`) and the
+  latest mention (`.accessoryRectangular`, showing the content warning rather
+  than the post where there is one). A tap opens the mention, or the
+  mentions list.
+- The complications draw from one snapshot in the watch's app group
+  (`WatchComplicationSnapshot`), kept current three ways: the watch app
+  refreshes it whenever it comes to the front; the phone pushes the paired
+  account's unread count with `transferCurrentComplicationUserInfo` when it
+  changes, only while a complication is on the face and within the daily
+  budget; and the complication's own timeline asks the server directly when
+  the snapshot is older than fifteen minutes, with the token the watch app
+  keeps in the shared Keychain group.
 - No modes, no media viewer, no settings beyond notification toggles.
 
 ## 5. tvOS

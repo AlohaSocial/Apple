@@ -12,6 +12,8 @@ Every process that reads what the app wrote shares two things:
 | AlohaShareExtension | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
 | AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService.entitlements` | ✓ | ✓ | — |
 | AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac.entitlements` | ✓ | ✓ | ✓ + network client, user-selected files |
+| AlohaSocialWatch | `social.aloha.app.watch` | `AlohaSocialWatch.entitlements` | ✓ (on the watch) | ✓ (on the watch) | — |
+| AlohaWatchWidgets (complications) | `social.aloha.app.watch.widgets` | `AlohaWatchWidgets.entitlements` | ✓ (on the watch) | ✓ (on the watch) | — |
 
 - App group: `group.social.aloha.app`, on every platform. Since macOS 15 an
   iOS-style `group.` identifier is valid on the Mac when the provisioning
@@ -20,6 +22,11 @@ Every process that reads what the app wrote shares two things:
   shared items live in the data protection keychain, the only one that honours
   an access group; items an older build left in the file-based keychain are
   moved over on first read.
+- The watch's group and Keychain are the watch's own: the identifiers are the
+  same strings, but nothing crosses to the phone except over
+  `WatchConnectivity`. The watch app keeps the pairing in the shared Keychain
+  group so its complications can read the token; a pairing an older build
+  stored privately is moved over on first launch (`WatchPairingStore`).
 - Each target that has the app group says so with `AlohaAppGroupEnabled` in
   its Info.plist. Without the key, `AppGroup` stays on the process's own
   container rather than claiming one it was never granted.
