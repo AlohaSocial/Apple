@@ -13,6 +13,7 @@ import SwiftUI
 /// Media, Videos, Albums and Tagged — all on one scrolling page (docs/05 §5).
 public struct ProfileView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let accountID: String
     private let session: AccountSession
@@ -712,16 +713,25 @@ public struct ProfileView: View {
             Button {
                 Task { await toggleFollow() }
             } label: {
-                if relationship?.following == true {
-                    Text("Following", comment: "Profile action")
-                } else if relationship?.requested == true {
-                    Text("Requested", comment: "Profile action")
-                } else {
-                    Text("Follow", comment: "Profile action")
+                Label {
+                    if relationship?.following == true {
+                        Text("Following", comment: "Profile action")
+                    } else if relationship?.requested == true {
+                        Text("Requested", comment: "Profile action")
+                    } else {
+                        Text("Follow", comment: "Profile action")
+                    }
+                } icon: {
+                    // The glyph says the state as well as the word, and moves
+                    // from one to the next as the symbol's own transition.
+                    Image(systemName: followSymbol)
+                        .contentTransition(.symbolEffect(.replace))
                 }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
+            .animation(reduceMotion ? nil : .snappy, value: followSymbol)
+            .sensoryFeedback(.success, trigger: relationship?.following == true) { _, new in new }
 
             Menu {
                 if relationship?.following == true {
@@ -888,6 +898,12 @@ public struct ProfileView: View {
                     LossyArray<Collection>.self, from: Endpoint.collections.forAccount(accountID)))?
                 .elements ?? []
         }
+    }
+
+    private var followSymbol: String {
+        if relationship?.following == true { return "checkmark" }
+        if relationship?.requested == true { return "clock" }
+        return "person.badge.plus"
     }
 
     private func toggleFollow() async {
