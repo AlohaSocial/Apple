@@ -35,6 +35,16 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
     public var source: Source?
     public var moved: Box<Account>?
 
+    // Aloha Social's own, beside the profile fields they are derived from.
+    /// `""` on the wire when there are none; `nil` here.
+    public var pronouns: String?
+    /// An `https://` address to support the account at; `nil` when none.
+    @LenientURL public var supportLink: URL?
+    /// This instance's verification of the account.
+    public var verification: AccountVerification?
+    /// The account's Bluesky identity, where the server knows it.
+    public var bluesky: BlueskyAccountReference?
+
     public struct Field: Codable, Sendable, Hashable {
         public var name: String
         public var value: String
@@ -80,6 +90,8 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
         case followingCount = "following_count"
         case statusesCount = "statuses_count"
         case lastStatusAt = "last_status_at"
+        case pronouns, verification, bluesky
+        case supportLink = "support_link"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -119,6 +131,18 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
         emojis = (try? c.decode(LossyArray<CustomEmoji>.self, forKey: .emojis))?.elements ?? []
         source = try? c.decodeIfPresent(Source.self, forKey: .source)
         moved = try? c.decodeIfPresent(Box<Account>.self, forKey: .moved)
+        // The server sends "" rather than null for "none" (Person::getPronouns).
+        pronouns = (try? c.decodeIfPresent(String.self, forKey: .pronouns))
+            .flatMap { $0 }
+            .flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+        let support = try c.decode(LenientURL.self, forKey: .supportLink)
+        // Drawn as a button, so only ever an https address, as the server
+        // promises (Person::getSupportLink) — checked again rather than trusted.
+        _supportLink = .init(
+            wrappedValue: support.wrappedValue?.scheme?.lowercased() == "https"
+                ? support.wrappedValue : nil)
+        verification = try? c.decodeIfPresent(AccountVerification.self, forKey: .verification)
+        bluesky = try? c.decodeIfPresent(BlueskyAccountReference.self, forKey: .bluesky)
     }
 
     public init(
@@ -128,7 +152,9 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
         discoverable: Bool = true, suspended: Bool = false, limited: Bool = false,
         createdAt: Date? = nil, followersCount: Int = 0, followingCount: Int = 0,
         statusesCount: Int = 0, lastStatusAt: Date? = nil, fields: [Field] = [],
-        emojis: [CustomEmoji] = [], source: Source? = nil, moved: Box<Account>? = nil
+        emojis: [CustomEmoji] = [], source: Source? = nil, moved: Box<Account>? = nil,
+        pronouns: String? = nil, supportLink: URL? = nil,
+        verification: AccountVerification? = nil, bluesky: BlueskyAccountReference? = nil
     ) {
         _id = .init(wrappedValue: id)
         self.username = username
@@ -155,6 +181,10 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
         self.emojis = emojis
         self.source = source
         self.moved = moved
+        self.pronouns = pronouns
+        _supportLink = .init(wrappedValue: supportLink)
+        self.verification = verification
+        self.bluesky = bluesky
     }
 }
 

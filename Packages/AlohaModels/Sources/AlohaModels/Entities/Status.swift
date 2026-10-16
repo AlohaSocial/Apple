@@ -65,6 +65,29 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
     /// Where the post was made, when the author tagged a place.
     public var place: StatusPlace?
 
+    // Aloha Social's own. All `null` or absent elsewhere.
+    /// Who may reply, as the server stores it (a comma-joined set); `nil` on
+    /// posts from other servers. Read it through `replyAudience`.
+    public var replyPolicy: String?
+    /// Whether this reply's thread author hid it. `nil` outside a thread.
+    public var hiddenByAuthor: Bool?
+    /// Whether the reader may hide this reply — they wrote the post it answers.
+    public var canHide: Bool?
+    /// Where a reply stands with a server that approves replies.
+    public var replyApproval: ReplyApproval?
+    /// The post says it was made with AI, by a hashtag or by a picture's
+    /// metadata. A label the post carries, never a judgement about it.
+    @LenientBool public var aiGenerated: Bool
+    /// A post read from Bluesky.
+    public var bluesky: BlueskyPostReference?
+    /// Why the post is on For you; only that feed sends it.
+    public var interest: StatusInterest?
+    /// How many posts quote this one (Mastodon 4.5). `nil` where the server
+    /// says nothing, which is different from none.
+    public var quotesCount: Int?
+    /// How many people read it. Only the author's own posts carry a value.
+    public var viewCount: Int?
+
     /// A quoted post as the server embeds it.
     public struct QuotedStatus: Codable, Sendable, Hashable {
         /// `accepted`, `pending`, `revoked`, … — or `nil` where the server
@@ -230,6 +253,14 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         case quoteApprovalPolicy = "quote_approval_policy"
         case dislikesCount = "dislikes_count"
         case disliked, archived, place
+        case replyPolicy = "reply_policy"
+        case hiddenByAuthor = "hidden_by_author"
+        case canHide = "can_hide"
+        case replyApproval = "reply_approval"
+        case aiGenerated = "ai_generated"
+        case bluesky, interest
+        case quotesCount = "quotes_count"
+        case viewCount = "view_count"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -277,6 +308,16 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         _disliked = try c.decode(LenientBool.self, forKey: .disliked)
         archived = (try? c.decodeIfPresent(LenientBool.self, forKey: .archived))?.wrappedValue
         place = try? c.decodeIfPresent(StatusPlace.self, forKey: .place)
+        replyPolicy = try? c.decodeIfPresent(String.self, forKey: .replyPolicy)
+        hiddenByAuthor =
+            (try? c.decodeIfPresent(LenientBool.self, forKey: .hiddenByAuthor))?.wrappedValue
+        canHide = (try? c.decodeIfPresent(LenientBool.self, forKey: .canHide))?.wrappedValue
+        replyApproval = try? c.decodeIfPresent(ReplyApproval.self, forKey: .replyApproval)
+        _aiGenerated = try c.decode(LenientBool.self, forKey: .aiGenerated)
+        bluesky = try? c.decodeIfPresent(BlueskyPostReference.self, forKey: .bluesky)
+        interest = try? c.decodeIfPresent(StatusInterest.self, forKey: .interest)
+        quotesCount = (try? c.decodeIfPresent(LenientInt.self, forKey: .quotesCount))?.wrappedValue
+        viewCount = (try? c.decodeIfPresent(LenientInt.self, forKey: .viewCount))?.wrappedValue
     }
 
     public init(
@@ -293,7 +334,10 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         filtered: [FilterResult]? = nil, reactions: [Reaction]? = nil, quoteID: String? = nil,
         quote: QuotedStatus? = nil, quoteApprovalPolicy: String? = nil,
         dislikesCount: Int = 0, disliked: Bool = false, archived: Bool? = nil,
-        place: StatusPlace? = nil
+        place: StatusPlace? = nil, replyPolicy: String? = nil, hiddenByAuthor: Bool? = nil,
+        canHide: Bool? = nil, replyApproval: ReplyApproval? = nil, aiGenerated: Bool = false,
+        bluesky: BlueskyPostReference? = nil, interest: StatusInterest? = nil,
+        quotesCount: Int? = nil, viewCount: Int? = nil
     ) {
         _id = .init(wrappedValue: id)
         self.uri = uri
@@ -334,6 +378,15 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         _disliked = .init(wrappedValue: disliked)
         self.archived = archived
         self.place = place
+        self.replyPolicy = replyPolicy
+        self.hiddenByAuthor = hiddenByAuthor
+        self.canHide = canHide
+        self.replyApproval = replyApproval
+        _aiGenerated = .init(wrappedValue: aiGenerated)
+        self.bluesky = bluesky
+        self.interest = interest
+        self.quotesCount = quotesCount
+        self.viewCount = viewCount
     }
 }
 
@@ -352,6 +405,12 @@ extension Status {
     }
 
     public var isEdited: Bool { editedAt != nil }
+
+    /// Who may reply, where the server says and this app can draw it.
+    public var replyAudience: ReplyPolicy? { ReplyPolicy(wire: replyPolicy) }
+
+    /// A reply the thread's author put away. Shown collapsed, never removed.
+    public var isHiddenByAuthor: Bool { hiddenByAuthor == true }
 
     /// The quoted post, when the server embedded it.
     public var quotedStatus: Status? { quote?.quotedStatus?.value }
