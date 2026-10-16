@@ -30,6 +30,10 @@ public struct NotificationPolicyView: View {
             }
 
             if let policy {
+                if policy.notice {
+                    noticeSection
+                }
+
                 Section {
                     policyRow(
                         key: "for_not_following",
@@ -75,7 +79,9 @@ public struct NotificationPolicyView: View {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
-                                Text("Filtered notifications", comment: "Filtered notifications section")
+                                Text(
+                                    "Filtered notifications",
+                                    comment: "Filtered notifications section")
                                 Spacer()
                                 Text(verbatim: "\(summary.pendingRequestsCount)")
                                     .font(.subheadline.weight(.semibold))
@@ -97,6 +103,17 @@ public struct NotificationPolicyView: View {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                         }
                     }
+                    if session.capabilities.isNextcloudSocial {
+                        NavigationLink {
+                            AllowedSendersView(session: session)
+                        } label: {
+                            Label {
+                                Text("Always let through", comment: "Policy action")
+                            } icon: {
+                                Image(systemName: "person.badge.shield.checkmark")
+                            }
+                        }
+                    }
                 }
             } else {
                 Section { ProgressView().frame(maxWidth: .infinity) }
@@ -105,6 +122,41 @@ public struct NotificationPolicyView: View {
         .alohaGround(palette)
         .navigationTitle(Text("Notification policy", comment: "Screen title"))
         .task { await load() }
+    }
+
+    /// Aloha Social's one-time pointer to this screen, for an account from
+    /// before new accounts started calm (`notice` on the policy).
+    private var noticeSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                Text("You decide who reaches you", comment: "Notification policy notice title")
+                    .font(.headline)
+                Text(
+                    "Notifications from people you don't know can wait in Filtered notifications instead of your inbox. New accounts start this way; yours can too.",
+                    comment: "Notification policy notice detail"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+                Button {
+                    Task { await dismissNotice() }
+                } label: {
+                    Text("Got it", comment: "Dismiss the notification policy notice")
+                }
+                .buttonStyle(.glass)
+            }
+            .padding(.vertical, AlohaMetrics.space1)
+        }
+    }
+
+    private func dismissNotice() async {
+        policy?.notice = false
+        do {
+            let answer = try await session.client.decode(
+                NotificationPolicy.self, from: .notificationInbox.dismissPolicyNotice)
+            policy = answer
+        } catch {
+            await session.handle(error)
+        }
     }
 
     /// One decision row.
@@ -165,6 +217,8 @@ public struct NotificationPolicyView: View {
         let endpoint = Endpoint.notifications.updatePolicy(v2: useV2, policy: policy)
         do {
             _ = try await session.client.send(endpoint)
+            // Saving the policy puts the notice away on the server too.
+            policy.notice = false
             self.policy = policy
             errorMessage = nil
         } catch {

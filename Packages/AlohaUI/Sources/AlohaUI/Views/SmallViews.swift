@@ -182,6 +182,43 @@ public struct NotificationRequestsView: View {
             }
         }
         .navigationTitle(Text("Filtered notifications", comment: "Screen title"))
+        .toolbar {
+            // A screenful decided at once: the server takes `id[]` and skips
+            // an id that has gone stale, so one old row never loses the rest
+            // (Mastodon 4.3's routes, and Aloha Social's).
+            if requests.count > 1 {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button {
+                            Task { await decideAll(accept: true) }
+                        } label: {
+                            Label {
+                                Text("Show all", comment: "Notification requests bulk action")
+                            } icon: {
+                                Image(systemName: "checkmark.circle")
+                            }
+                        }
+                        Button(role: .destructive) {
+                            Task { await decideAll(accept: false) }
+                        } label: {
+                            Label {
+                                Text(
+                                    "Stop asking for all",
+                                    comment: "Notification requests bulk action")
+                            } icon: {
+                                Image(systemName: "xmark.circle")
+                            }
+                        }
+                    } label: {
+                        Label {
+                            Text("All requests", comment: "Notification requests bulk menu")
+                        } icon: {
+                            Image(systemName: "checklist")
+                        }
+                    }
+                }
+            }
+        }
         .task { await load() }
         .refreshable { await load() }
     }
@@ -189,6 +226,25 @@ public struct NotificationRequestsView: View {
     private func errorStrip(_ message: String) -> some View {
         AlohaErrorStrip(message: message) {
             Task { await load() }
+        }
+    }
+
+    /// Every row leaves at once, and every one comes back if refused.
+    private func decideAll(accept: Bool) async {
+        let all = requests
+        guard !all.isEmpty else { return }
+        requests = []
+        let ids = all.map(\.id)
+        do {
+            _ = try await session.client.send(
+                accept
+                    ? Endpoint.notificationInbox.acceptAll(ids)
+                    : Endpoint.notificationInbox.dismissAll(ids))
+            errorMessage = nil
+        } catch {
+            requests = all
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 
