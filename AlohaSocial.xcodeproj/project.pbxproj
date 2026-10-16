@@ -87,6 +87,13 @@
 			remoteGlobalIDString = 56A4A911306020030052D930;
 			remoteInfo = AlohaSocial;
 		};
+		HHRY00000000000000HH /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = MACT00000000000000MA;
+			remoteInfo = AlohaSocialMac;
+		};
 		EEWY00000000000000EE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 56A4A90A306020030052D930 /* Project object */;
@@ -557,6 +564,7 @@
 			);
 			dependencies = (
 				EEUX00000000000000EE /* PBXTargetDependency */,
+				HHRX00000000000000HH /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				EEUG00000000000000EE /* AlohaSocialUITests */,
@@ -824,8 +832,15 @@
 		};
 		EEUX00000000000000EE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 56A4A911306020030052D930 /* AlohaSocial */;
 			targetProxy = EEUY00000000000000EE /* PBXContainerItemProxy */;
+		};
+		HHRX00000000000000HH /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = macos;
+			target = MACT00000000000000MA /* AlohaSocialMac */;
+			targetProxy = HHRY00000000000000HH /* PBXContainerItemProxy */;
 		};
 		CCKX00000000000000CC /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1021,8 +1036,9 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1081,8 +1097,9 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1380,6 +1397,7 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = AlohaSocial;
+				"TEST_TARGET_NAME[sdk=macosx*]" = AlohaSocialMac;
 			};
 			name = Debug;
 		};
@@ -1401,6 +1419,7 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = AlohaSocial;
+				"TEST_TARGET_NAME[sdk=macosx*]" = AlohaSocialMac;
 			};
 			name = Release;
 		};
