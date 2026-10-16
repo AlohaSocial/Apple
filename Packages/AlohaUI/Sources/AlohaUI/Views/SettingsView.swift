@@ -11,6 +11,7 @@ import SwiftUI
 public struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.alohaPalette) private var palette
+    @AppStorage(LinkOpening.externalKey) private var opensLinksExternally = false
 
     /// Eight sections in one scroll is a lot to read through for one switch.
     @State private var settingsQuery = ""
@@ -612,6 +613,14 @@ public struct SettingsView: View {
             ) {
                 Text("Return to where I was", comment: "Settings item")
             }
+
+            #if !os(macOS)
+                Toggle(isOn: $opensLinksExternally) {
+                    Text(
+                        "Open links in the browser",
+                        comment: "Settings item: links leave the app instead of opening over it")
+                }
+            #endif
 
             swipePicker(
                 Text(

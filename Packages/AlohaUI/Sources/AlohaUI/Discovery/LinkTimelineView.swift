@@ -75,6 +75,7 @@ public struct LinkTimelineView: View {
                     showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
+                .statusRowInteractions(status, session: session, onAction: onAction)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 .listRowBackground(palette.background)
                 .onAppear {

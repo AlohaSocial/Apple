@@ -78,6 +78,13 @@ public struct StatusHTMLParser: Sendable {
 
         private var currentLink: RichText.Link? { linkStack.last.flatMap { $0 } }
 
+        /// What a paragraph is where it stands: Mastodon writes a quote as
+        /// `<blockquote><p>…</p></blockquote>`, and a paragraph inside one is
+        /// still the quote.
+        private var paragraphKind: RichText.Block.Kind {
+            currentStyle.contains(.quote) ? .blockquote : .paragraph
+        }
+
         mutating func append(text: String) {
             guard !text.isEmpty else { return }
             // Emoji resolution happens on the text run, so a shortcode split
@@ -105,7 +112,7 @@ public struct StatusHTMLParser: Sendable {
                 runs.append(.init(text: "\n", style: currentStyle))
                 plain += "\n"
             case "p", "div":
-                closeBlock(.paragraph)
+                closeBlock(paragraphKind)
             case "blockquote":
                 closeBlock(.paragraph)
                 styleStack.append(.quote)
@@ -151,7 +158,7 @@ public struct StatusHTMLParser: Sendable {
         mutating func close(tag: String) {
             switch tag {
             case "p", "div":
-                closeBlock(.paragraph)
+                closeBlock(paragraphKind)
             case "blockquote", "pre":
                 popStyle()
                 closeBlock(currentBlockKind)

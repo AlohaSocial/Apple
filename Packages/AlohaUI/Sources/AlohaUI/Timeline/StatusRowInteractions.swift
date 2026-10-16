@@ -21,20 +21,14 @@ struct StatusRowInteractions: ViewModifier {
     let settings: AccountSettings
     let policy: SensitiveMediaPolicy
     let localHost: String?
+    /// Off where the list already puts its own action under a swipe.
+    var swipes = true
     let onAction: (StatusRowAction) -> Void
 
     private var displayed: Status { status.displayed }
 
     func body(content: Content) -> some View {
-        content
-            #if !os(tvOS) && !os(watchOS)
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    swipeButton(settings.leadingSwipeAction)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    swipeButton(settings.trailingSwipeAction)
-                }
-            #endif
+        swiping(content)
             .contextMenu {
                 StatusMenu(status: status, onAction: onAction)
             } preview: {
@@ -44,6 +38,25 @@ struct StatusRowInteractions: ViewModifier {
     }
 
     // MARK: - Swipes
+
+    @ViewBuilder
+    private func swiping(_ content: Content) -> some View {
+        #if !os(tvOS) && !os(watchOS)
+            if swipes {
+                content
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        swipeButton(settings.leadingSwipeAction)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        swipeButton(settings.trailingSwipeAction)
+                    }
+            } else {
+                content
+            }
+        #else
+            content
+        #endif
+    }
 
     @ViewBuilder
     private func swipeButton(_ action: AccountSettings.SwipeAction) -> some View {
@@ -157,12 +170,13 @@ private struct StatusLinkDrag: ViewModifier {
 
 extension View {
     func statusRowInteractions(
-        _ status: Status, session: AccountSession, onAction: @escaping (StatusRowAction) -> Void
+        _ status: Status, session: AccountSession, swipes: Bool = true,
+        onAction: @escaping (StatusRowAction) -> Void
     ) -> some View {
         modifier(
             StatusRowInteractions(
                 status: status, settings: session.settings,
                 policy: session.settings.sensitiveMediaPolicy,
-                localHost: session.snapshot.instanceHost, onAction: onAction))
+                localHost: session.snapshot.instanceHost, swipes: swipes, onAction: onAction))
     }
 }
