@@ -20,6 +20,7 @@ public struct StatusRow: View {
     private let canReact: Bool
     private let isOwn: Bool
     private let showsCounts: Bool
+    private let selectableText: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var isSpoilerRevealed = false
@@ -40,6 +41,9 @@ public struct StatusRow: View {
         /// A reader who turned "Show numbers" off sees the actions, without
         /// the crowd's size next to them.
         showsCounts: Bool = true,
+        /// The focused post of a thread, whose words can be selected and
+        /// copied; a timeline row's tap opens the post instead.
+        selectableText: Bool = false,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -51,6 +55,7 @@ public struct StatusRow: View {
         self.canReact = canReact
         self.isOwn = isOwn
         self.showsCounts = showsCounts
+        self.selectableText = selectableText
         self.onAction = onAction
     }
 
@@ -210,10 +215,12 @@ public struct StatusRow: View {
                 onAction(.openProfile(displayed.account))
             } label: {
                 HStack(spacing: AlohaMetrics.space2) {
-                    Text(displayed.account.bestDisplayName)
-                        .font(AlohaType.name)
-                        .foregroundStyle(palette.label)
-                        .lineLimit(1)
+                    EmojiLabel(
+                        displayed.account.bestDisplayName, emojis: displayed.account.emojis,
+                        relativeTo: .subheadline
+                    )
+                    .font(AlohaType.name)
+                    .foregroundStyle(palette.label)
 
                     if displayed.account.bot {
                         Image(systemName: "gearshape.2")
@@ -235,7 +242,7 @@ public struct StatusRow: View {
 
             Spacer(minLength: AlohaMetrics.space2)
 
-            Text(PostAge.short(displayed.createdAt))
+            PostAgeText(displayed.createdAt)
                 .font(AlohaType.meta)
                 .foregroundStyle(palette.tertiaryLabel)
                 .lineLimit(1)
@@ -289,8 +296,11 @@ public struct StatusRow: View {
         } label: {
             HStack(spacing: AlohaMetrics.space2) {
                 Image(systemName: AlohaSymbol.warning)
-                Text(displayed.spoilerText)
-                    .multilineTextAlignment(.leading)
+                EmojiLabel(
+                    displayed.spoilerText, emojis: displayed.emojis, relativeTo: .footnote,
+                    lineLimit: nil
+                )
+                .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 Image(systemName: isSpoilerRevealed ? "chevron.up" : "chevron.down")
             }
@@ -307,7 +317,7 @@ public struct StatusRow: View {
 
     private var statusBody: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
-            RichTextView(status: status) { link in
+            RichTextView(status: status, isSelectable: selectableText) { link in
                 onAction(.followLink(link))
             }
 

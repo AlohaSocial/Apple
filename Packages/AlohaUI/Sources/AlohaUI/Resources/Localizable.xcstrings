@@ -339,6 +339,88 @@
         }
       }
     },
+    "%lld boosts" : {
+      "comment" : "Opens who boosted the focused post",
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld-mal geteilt"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld-mal geteilt"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld boost"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld boosts"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld favourites" : {
+      "comment" : "Opens who favourited the focused post",
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Favorit"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Favoriten"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favourite"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favourites"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld notifications" : {
       "comment" : "Digest summary title"
     },
@@ -2243,6 +2325,17 @@
         }
       }
     },
+    "Boosted by" : {
+      "comment" : "Title of the list of who boosted",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geteilt von"
+          }
+        }
+      }
+    },
     "Boosted by %@" : {
       "comment" : "Accessibility boost context\nTimeline context line",
       "localizations" : {
@@ -2266,7 +2359,7 @@
       }
     },
     "Boosts" : {
-      "comment" : "Notification filter\nStatistics series\nStatistics tile",
+      "comment" : "Notification filter\nStatistics series\nStatistics tile\nWho boosted a post",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3733,7 +3826,7 @@
       }
     },
     "Done" : {
-      "comment" : "Sheet action",
+      "comment" : "Sheet action\nClose the list of who favourited or boosted",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3961,6 +4054,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bearbeitet"
+          }
+        }
+      }
+    },
+    "Edited %@" : {
+      "comment" : "When the focused post was last edited",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearbeitet am %@"
           }
         }
       }
@@ -4262,8 +4366,19 @@
         }
       }
     },
+    "Favourited by" : {
+      "comment" : "Title of the list of who favourited",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favorisiert von"
+          }
+        }
+      }
+    },
     "Favourites" : {
-      "comment" : "Notification filter\nStatistics tile",
+      "comment" : "Notification filter\nStatistics tile\nWho favourited a post",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6731,6 +6846,17 @@
     "No authorized applications were returned by your server." : {
       "comment" : "Empty authorized apps detail"
     },
+    "No boosts yet" : {
+      "comment" : "Empty list of who boosted",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht geteilt"
+          }
+        }
+      }
+    },
     "No channels yet" : {
       "comment" : "Empty channels",
       "localizations" : {
@@ -6793,6 +6919,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Entwürfe"
+          }
+        }
+      }
+    },
+    "No favourites yet" : {
+      "comment" : "Empty list of who favourited",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Favoriten"
           }
         }
       }
@@ -8008,6 +8145,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Link öffnen"
+          }
+        }
+      }
+    },
+    "Open links in the browser" : {
+      "comment" : "Settings item: links leave the app instead of opening over it",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Links im Browser öffnen"
           }
         }
       }
@@ -10635,6 +10783,17 @@
     "Show numbers" : {
       "comment" : "Settings item"
     },
+    "Show original" : {
+      "comment" : "Undo a translation shown in place",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original anzeigen"
+          }
+        }
+      }
+    },
     "Show read" : {
       "comment" : "Announcements card action",
       "localizations" : {
@@ -12339,6 +12498,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf diesem Gerät übersetzt"
+          }
+        }
+      }
+    },
+    "Translating…" : {
+      "comment" : "Shown under a post while it is being translated",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird übersetzt …"
           }
         }
       }
@@ -14625,6 +14795,17 @@
     "follow" : {
       "comment" : "Digest summary kind"
     },
+    "from %@" : {
+      "comment" : "Translation source language, e.g. 'from French'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original: %@"
+          }
+        }
+      }
+    },
     "handle" : {
       "comment" : "Channel handle placeholder",
       "localizations" : {
@@ -14739,6 +14920,17 @@
     },
     "update" : {
       "comment" : "Digest summary kind"
+    },
+    "via %@" : {
+      "comment" : "The app a post was written with",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "über %@"
+          }
+        }
+      }
     },
     "warning" : {
       "comment" : "Digest summary kind"

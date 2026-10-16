@@ -71,6 +71,7 @@ private struct ThemedAppShell: View {
     /// The Focus filter last applied, so it is applied once per change.
     @State private var appliedFocus = FocusFilterState.none
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURLAction
 
     /// Set on a window opened for one destination. Such a window shows it and
     /// otherwise stays out of the way: the app-wide requests — compose, open a
@@ -1297,11 +1298,7 @@ private struct ThemedAppShell: View {
     /// the UIKit-only `open` compiled away and the action fell through
     /// silently, so no web content was reachable from a timeline there.
     private func openURL(_ url: URL) {
-        #if canImport(UIKit)
-            UIApplication.shared.open(url)
-        #elseif canImport(AppKit)
-            NSWorkspace.shared.open(url)
-        #endif
+        LinkOpening.open(url, with: openURLAction)
     }
 
     private func handle(_ url: URL) {

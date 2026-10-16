@@ -259,7 +259,11 @@ public struct ProfileView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: AlohaMetrics.space1) {
-                            Text(account.bestDisplayName).font(AlohaType.display)
+                            EmojiLabel(
+                                account.bestDisplayName, emojis: account.emojis,
+                                relativeTo: .title2, lineLimit: 2
+                            )
+                            .font(AlohaType.display)
                             if account.locked {
                                 Image(systemName: AlohaSymbol.lock)
                                     .font(.caption)
@@ -1095,6 +1099,9 @@ struct ProfileStatusList: View {
                     onAction: onAction
                 )
                 .padding(.horizontal, AlohaMetrics.space4)
+                // A stack, not a list, so there is nothing to swipe; the long
+                // press and the drag still work as they do on a timeline.
+                .statusRowInteractions(status, session: session, onAction: onAction)
                 .onAppear {
                     if status.id == statuses.last?.id {
                         Task { await model.loadOlder() }

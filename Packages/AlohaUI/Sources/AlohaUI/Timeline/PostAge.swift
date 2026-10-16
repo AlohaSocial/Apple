@@ -32,6 +32,22 @@ public enum PostAge {
         return date.formatted(.relative(presentation: .named))
     }
 
+    /// The exact moment, for a tooltip and the focused post: "16 October
+    /// 2026 at 14:05".
+    public static func absolute(_ date: Date) -> String {
+        date.formatted(date: .long, time: .shortened)
+    }
+
+    /// How long until `short` would read differently, so a live label redraws
+    /// when its words change and not every second in between: each minute
+    /// for the first hour, then each hour for the first day, then daily.
+    public static func refreshInterval(for date: Date, now: Date = Date()) -> TimeInterval {
+        let age = now.timeIntervalSince(date)
+        if age < 3600 { return 60 }
+        if age < 86_400 { return 3600 }
+        return 86_400
+    }
+
     static func isRecent(_ date: Date, now: Date) -> Bool {
         now.timeIntervalSince(date) < recentThreshold
     }

@@ -89,6 +89,7 @@ public struct SearchView: View {
                                 showsCounts: session.settings.showPopularityCounts,
                                 onAction: onAction
                             )
+                            .statusRowInteractions(status, session: session, onAction: onAction)
                             .listRowBackground(palette.background)
                         }
                     } header: {
@@ -365,9 +366,10 @@ public struct AccountRow: View {
             AvatarView(account: account, size: metrics.avatarSize)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: AlohaMetrics.space1) {
-                    Text(account.bestDisplayName)
-                        .font(.subheadline.weight(.medium))
-                        .lineLimit(1)
+                    EmojiLabel(
+                        account.bestDisplayName, emojis: account.emojis, relativeTo: .subheadline
+                    )
+                    .font(.subheadline.weight(.medium))
                     if account.bot {
                         Image(systemName: "gearshape.2")
                             .font(.caption2)
