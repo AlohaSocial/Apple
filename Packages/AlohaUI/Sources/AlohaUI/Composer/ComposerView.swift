@@ -13,6 +13,7 @@ public struct ComposerView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.composerHost) private var host
     @State private var didSend = false
     @State private var showsCardOptions = false
     @State private var isShowingPollEditor = false
@@ -131,6 +132,7 @@ public struct ComposerView: View {
                 }
 
                 toolbar
+                if host?.showsInlineActions == true { inlineActions }
             }
             .background(palette.background)
             .sensoryFeedback(.success, trigger: didSend)
@@ -153,29 +155,9 @@ public struct ComposerView: View {
                 .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        close()
-                    } label: {
-                        Text("Cancel", comment: "Composer action")
-                            .foregroundStyle(palette.label)
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task { await send() }
-                    } label: {
-                        if model.isPosting {
-                            ProgressView()
-                        } else {
-                            Text("Post", comment: "Composer action")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                    }
-                    .alohaGlassProminentButtonStyle()
-                    .tint(palette.accent)
-                    .disabled(!model.canPost)
-                    .keyboardShortcut(.return, modifiers: .command)
+                if host?.showsInlineActions != true {
+                    ToolbarItem(placement: .cancellationAction) { cancelButton }
+                    ToolbarItem(placement: .confirmationAction) { postButton }
                 }
             }
             .alert(
@@ -266,7 +248,7 @@ public struct ComposerView: View {
                 isPresented: $isShowingHeldNotice
             ) {
                 Button {
-                    dismiss()
+                    finish(.posted)
                 } label: {
                     Text("OK", comment: "Held for review action")
                 }
@@ -374,8 +356,59 @@ public struct ComposerView: View {
             isShowingHeldNotice = true
         } else {
             didSend.toggle()
+            finish(.posted)
+        }
+    }
+
+    /// Done, one way or the other: the host's own ending where there is one
+    /// (a share extension), otherwise the sheet's.
+    private func finish(_ outcome: ComposerOutcome) {
+        if let host {
+            host.finish(outcome)
+        } else {
             dismiss()
         }
+    }
+
+    // MARK: - Actions
+
+    private var cancelButton: some View {
+        Button {
+            close()
+        } label: {
+            Text("Cancel", comment: "Composer action")
+                .foregroundStyle(palette.label)
+        }
+        .keyboardShortcut(.cancelAction)
+    }
+
+    private var postButton: some View {
+        Button {
+            Task { await send() }
+        } label: {
+            if model.isPosting {
+                ProgressView()
+            } else {
+                Text("Post", comment: "Composer action")
+                    .font(.subheadline.weight(.semibold))
+            }
+        }
+        .alohaGlassProminentButtonStyle()
+        .tint(palette.accent)
+        .disabled(!model.canPost)
+        .keyboardShortcut(.return, modifiers: .command)
+    }
+
+    /// Cancel and Post under the composer, for a host whose toolbar is not
+    /// the composer's to fill (`ComposerHost.showsInlineActions`).
+    private var inlineActions: some View {
+        HStack {
+            cancelButton
+            Spacer()
+            postButton
+        }
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.vertical, AlohaMetrics.space3)
     }
 
     // MARK: - Pieces
@@ -1337,7 +1370,7 @@ public struct ComposerView: View {
         UploadActivityController.shared.cancel()
         Task {
             await model.saveDraftIfNeeded()
-            dismiss()
+            finish(.cancelled)
         }
     }
 }
