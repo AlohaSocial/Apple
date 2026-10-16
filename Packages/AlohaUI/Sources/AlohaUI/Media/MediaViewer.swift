@@ -465,9 +465,14 @@ public struct VideoAttachmentPlayer: View {
 
     private func releasePlayer() {
         stopTicking()
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
-        player = nil
+        guard let player else { return }
+        self.player = nil
+        // A video floating in Picture in Picture outlives the viewer that
+        // started it; it is released when the floating window closes.
+        PictureInPicture.release(player) {
+            player.pause()
+            player.replaceCurrentItem(with: nil)
+        }
     }
 
     // MARK: - Watch positions
@@ -517,6 +522,9 @@ private struct VideoControlsOverlay: View {
 
     var body: some View {
         HStack(spacing: 16) {
+            AirPlayButton()
+                .background(.black.opacity(0.3), in: Circle())
+                .unifiedGlass(.subtle, in: Circle())
             Button {
                 guard let player else { return }
                 if player.rate > 0 { player.pause() } else { player.play() }

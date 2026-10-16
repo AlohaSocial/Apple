@@ -11,7 +11,13 @@ import SwiftUI
 /// On macOS 27, SwiftUI's `VideoPlayer` aborts inside `_AVKit_SwiftUI` while
 /// instantiating its representable's class metadata — the process died the
 /// moment Shorts appeared. `AVPlayerView` itself is fine, so the Mac gets that
-/// directly; everything else keeps `VideoPlayer`.
+/// directly. iOS gets `AVPlayerViewController` directly too, because
+/// `VideoPlayer` offers no way to allow Picture in Picture; the other
+/// platforms keep `VideoPlayer`.
+///
+/// A surface with controls offers Picture in Picture; one without (a Shorts
+/// page, a photo-grid preview) does not, because those videos are the page
+/// itself rather than something to keep watching elsewhere.
 struct PlayerSurface: View {
     let player: AVPlayer
     var showsControls = true
@@ -20,6 +26,8 @@ struct PlayerSurface: View {
         Group {
             #if os(macOS)
                 MacPlayerView(player: player, showsControls: showsControls)
+            #elseif os(iOS)
+                PhonePlayerView(player: player, showsControls: showsControls)
             #else
                 VideoPlayer(player: player)
                     .disabled(!showsControls)
@@ -106,6 +114,12 @@ enum PlaybackReadiness {
             options: headers.isEmpty ? nil : ["AVURLAssetHTTPHeaderFieldsKey": headers])
         let item = AVPlayerItem(asset: asset)
         let player = AVPlayer(playerItem: item)
+        player.allowsExternalPlayback = true
+        #if os(iOS)
+            // With the screen mirrored to a TV, send the video itself rather
+            // than a picture of the phone showing it.
+            player.usesExternalPlaybackWhileExternalScreenIsActive = true
+        #endif
 
         // Active playback must not wait for a readiness deadline before it
         // gets a surface and a play request. The caller observes the item
@@ -201,10 +215,154 @@ enum PlaybackReadiness {
     }
 }
 
+/// The players currently floating in Picture in Picture.
+///
+/// The view that started one is usually gone by the time anybody looks at it
+/// again — leaving the screen is the point of Picture in Picture — and that
+/// view's `onDisappear` is what releases its player. The registry holds the
+/// controller and defers the release until the floating window closes, so
+/// dismissing the viewer does not end the video it just handed off.
+@MainActor
+enum PictureInPicture {
+    private static var floating: [ObjectIdentifier: AnyObject] = [:]
+    private static var pendingRelease: [ObjectIdentifier: () -> Void] = [:]
+
+    static func isFloating(_ player: AVPlayer) -> Bool {
+        floating[ObjectIdentifier(player)] != nil
+    }
+
+    static func began(_ player: AVPlayer?, controller: AnyObject) {
+        guard let player else { return }
+        floating[ObjectIdentifier(player)] = controller
+    }
+
+    static func ended(_ player: AVPlayer?) {
+        guard let player else { return }
+        let key = ObjectIdentifier(player)
+        floating[key] = nil
+        pendingRelease.removeValue(forKey: key)?()
+    }
+
+    /// Runs `release` now, or when the floating window closes if the player
+    /// is in one.
+    static func release(_ player: AVPlayer, _ release: @escaping () -> Void) {
+        if isFloating(player) {
+            pendingRelease[ObjectIdentifier(player)] = release
+        } else {
+            release()
+        }
+    }
+}
+
+/// The system's AirPlay route button, for surfaces whose own controls cover
+/// the player's: the viewer's overlay draws over the controls that would
+/// otherwise carry it.
+struct AirPlayButton: View {
+    var body: some View {
+        RoutePicker()
+            .frame(width: 44, height: 44)
+            .accessibilityLabel(Text("AirPlay", comment: "Video action: choose a playback device"))
+    }
+}
+
+#if os(iOS)
+    private struct PhonePlayerView: UIViewControllerRepresentable {
+        let player: AVPlayer
+        let showsControls: Bool
+
+        func makeCoordinator() -> PictureInPictureDelegate { PictureInPictureDelegate() }
+
+        func makeUIViewController(context: Context) -> AVPlayerViewController {
+            let controller = AVPlayerViewController()
+            controller.player = player
+            controller.delegate = context.coordinator
+            controller.view.backgroundColor = .clear
+            apply(to: controller)
+            return controller
+        }
+
+        func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+            if controller.player !== player { controller.player = player }
+            apply(to: controller)
+        }
+
+        private func apply(to controller: AVPlayerViewController) {
+            controller.showsPlaybackControls = showsControls
+            controller.allowsPictureInPicturePlayback = showsControls
+            // Swiping home from a playing video carries on in a floating
+            // window, the way the system's own players behave.
+            controller.canStartPictureInPictureAutomaticallyFromInline = showsControls
+            controller.view.isUserInteractionEnabled = showsControls
+        }
+    }
+
+    // AVKit calls its delegates on the main thread; the protocol just does not
+    // say so.
+    @MainActor
+    final class PictureInPictureDelegate: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
+        func playerViewControllerWillStartPictureInPicture(
+            _ controller: AVPlayerViewController
+        ) {
+            PictureInPicture.began(controller.player, controller: controller)
+        }
+
+        func playerViewControllerDidStopPictureInPicture(_ controller: AVPlayerViewController) {
+            PictureInPicture.ended(controller.player)
+        }
+
+        // The inline player stays where it is while the video floats, so
+        // there is nothing to dismiss.
+        func playerViewControllerShouldAutomaticallyDismissAtPictureInPictureStart(
+            _ controller: AVPlayerViewController
+        ) -> Bool {
+            false
+        }
+
+        /// Back into the screen it came from when that screen is still up;
+        /// when it has been closed there is no inline player to return to,
+        /// and the floating window simply ends.
+        func playerViewController(
+            _ controller: AVPlayerViewController,
+            restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completion:
+                @escaping (Bool) -> Void
+        ) {
+            completion(controller.viewIfLoaded?.window != nil)
+        }
+    }
+
+    private struct RoutePicker: UIViewRepresentable {
+        func makeUIView(context: Context) -> AVRoutePickerView {
+            let picker = AVRoutePickerView()
+            picker.tintColor = .white
+            picker.activeTintColor = .white
+            picker.prioritizesVideoDevices = true
+            return picker
+        }
+
+        func updateUIView(_ picker: AVRoutePickerView, context: Context) {}
+    }
+#elseif os(macOS)
+    private struct RoutePicker: NSViewRepresentable {
+        func makeNSView(context: Context) -> AVRoutePickerView {
+            let picker = AVRoutePickerView()
+            picker.isRoutePickerButtonBordered = false
+            return picker
+        }
+
+        func updateNSView(_ picker: AVRoutePickerView, context: Context) {}
+    }
+#else
+    private struct RoutePicker: View {
+        var body: some View { EmptyView() }
+    }
+#endif
+
 #if os(macOS)
     private struct MacPlayerView: NSViewRepresentable {
         let player: AVPlayer
         let showsControls: Bool
+
+        func makeCoordinator() -> MacPictureInPictureDelegate { MacPictureInPictureDelegate() }
 
         func makeNSView(context: Context) -> AVPlayerView {
             let view = AVPlayerView()
@@ -212,12 +370,36 @@ enum PlaybackReadiness {
             view.controlsStyle = showsControls ? .inline : .none
             view.videoGravity = showsControls ? .resizeAspect : .resizeAspectFill
             view.showsFullScreenToggleButton = showsControls
+            view.allowsPictureInPicturePlayback = showsControls
+            view.pictureInPictureDelegate = context.coordinator
             return view
         }
 
         func updateNSView(_ view: AVPlayerView, context: Context) {
             if view.player !== player { view.player = player }
             view.controlsStyle = showsControls ? .inline : .none
+            view.allowsPictureInPicturePlayback = showsControls
+        }
+    }
+
+    @MainActor
+    final class MacPictureInPictureDelegate: NSObject,
+        @preconcurrency AVPlayerViewPictureInPictureDelegate
+    {
+        func playerViewWillStartPicture(inPicture playerView: AVPlayerView) {
+            PictureInPicture.began(playerView.player, controller: playerView)
+        }
+
+        func playerViewDidStopPicture(inPicture playerView: AVPlayerView) {
+            PictureInPicture.ended(playerView.player)
+        }
+
+        func playerView(
+            _ playerView: AVPlayerView,
+            restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler:
+                @escaping (Bool) -> Void
+        ) {
+            completionHandler(playerView.window != nil)
         }
     }
 #endif
