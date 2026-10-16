@@ -127,6 +127,15 @@ extension Endpoint {
             case .trending:
                 return Endpoint(
                     path: "api/v1/trends/statuses", query: items, requiresAuthentication: false)
+            case .bluesky(let uri):
+                // `#[NoAdminRequired]` without `#[PublicPage]`: a Nextcloud
+                // session, not the Social token (AtprotoFeedsController). The
+                // route pages by `max_id` only and takes no narrowing.
+                return Endpoint(
+                    path: "api/v1/timelines/bluesky",
+                    query: [URLQueryItem(name: "feed", value: uri)]
+                        + pageItems(limit: limit, anchor: anchor),
+                    authentication: .nextcloudSession)
             default:
                 let segment = source.pathSegment ?? "home"
                 return Endpoint(
@@ -136,7 +145,10 @@ extension Endpoint {
         }
 
         private static func filterItems(_ filters: TimelineFilters) -> [URLQueryItem] {
-            if filters.onlyVideo { return [URLQueryItem(name: "only_video", value: "true")] }
+            if filters.onlyVideo {
+                return [URLQueryItem(name: "only_video", value: "true")]
+                    + .flag("only_short", filters.onlyShort)
+            }
             var items: [URLQueryItem] = []
             items += .flag("only_media", filters.onlyMedia)
             items += .flag("only_news", filters.onlyNews)
@@ -828,6 +840,8 @@ public struct StatusPost: Sendable, Hashable {
     public var quotedID: String?
     /// Who may quote the new post: `public`, `followers` or `nobody`.
     public var quotePolicy: String?
+    /// Who may reply to the new post (Aloha Social's `reply_policy`).
+    public var replyPolicy: ReplyPolicy?
     /// A place the server already knows.
     public var placeID: String?
     /// A place it does not: name and country make one.
@@ -849,7 +863,7 @@ public struct StatusPost: Sendable, Hashable {
         mediaIDs: [String] = [], pollOptions: [String] = [], pollExpiresIn: Int? = nil,
         pollMultiple: Bool = false, pollHideTotals: Bool = false, scheduledAt: Date? = nil,
         idempotencyKey: String = UUID().uuidString,
-        quotedID: String? = nil, quotePolicy: String? = nil,
+        quotedID: String? = nil, quotePolicy: String? = nil, replyPolicy: ReplyPolicy? = nil,
         placeID: String? = nil, placeName: String? = nil, placeCountry: String? = nil,
         placeLatitude: Double? = nil, placeLongitude: Double? = nil,
         postAs: String? = nil, videoTitle: String? = nil, videoCategory: String? = nil,
@@ -857,6 +871,7 @@ public struct StatusPost: Sendable, Hashable {
     ) {
         self.quotedID = quotedID
         self.quotePolicy = quotePolicy
+        self.replyPolicy = replyPolicy
         self.placeID = placeID
         self.placeName = placeName
         self.placeCountry = placeCountry
@@ -912,7 +927,11 @@ public struct StatusPost: Sendable, Hashable {
         // knows neither ignores both.
         items += .optional("quoted_id", quotedID)
         items += .optional("quote_id", quotedID)
-        items += .optional("quote_policy", quotePolicy)
+        // The server reads `quote_approval_policy`, Mastodon 4.5's own name
+        // (`Status::import`); `quote_policy`, which this sent before, was
+        // read by nothing and every new post fell back to the default.
+        items += .optional("quote_approval_policy", quotePolicy)
+        items += .optional("reply_policy", replyPolicy?.rawValue)
         if let placeID {
             items.append(URLQueryItem(name: "place_id", value: placeID))
         } else if let placeName, !placeName.isEmpty {

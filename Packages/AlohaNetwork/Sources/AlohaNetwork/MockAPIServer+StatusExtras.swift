@@ -148,9 +148,21 @@ extension MockAPIServer {
                 // …/quotes/{quoting}/revoke
                 return respond(url: url, status: 200, body: "{}")
             case "interaction_policy":
+                // Only what was sent changes, as on the server.
                 var updated = status
-                updated["quote_approval_policy"] =
-                    formFields(body)["quote_approval_policy"] ?? "public"
+                let fields = formFields(body)
+                if let quote = fields["quote_approval_policy"] {
+                    updated["quote_approval_policy"] = quote
+                }
+                if let reply = fields["reply_policy"] { updated["reply_policy"] = reply }
+                if let index = statusFixtures.firstIndex(where: { ($0["id"] as? String) == id }) {
+                    statusFixtures[index] = updated
+                }
+                return respond(url: url, status: 200, json: updated)
+            case "hide_reply", "unhide_reply":
+                var updated = status
+                updated["hidden_by_author"] = parts[1] == "hide_reply"
+                updated["can_hide"] = true
                 return respond(url: url, status: 200, json: updated)
             case "pin", "unpin":
                 var updated = status
