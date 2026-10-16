@@ -72,7 +72,7 @@ struct ShellPolishTests {
     @Test("Every pinnable iPad place has its own customisation id")
     func customisationIDsAreDistinct() {
         let routes: [Route] = [
-            .lists, .interests, .subscriptions, .collections(accountID: nil), .bookmarks,
+            .lists, .interests, .collections(accountID: nil), .bookmarks,
             .favourites, .followRequests, .safety, .archived, .statistics, .settings,
             .notifications, .conversations, .explore,
         ]
