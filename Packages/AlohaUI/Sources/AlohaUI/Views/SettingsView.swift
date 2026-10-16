@@ -218,6 +218,13 @@ public struct SettingsView: View {
                             Image(systemName: AlohaSymbol.compose)
                         }
                     }
+                    NavigationLink(value: Route.scheduledPosts) {
+                        Label {
+                            Text("Scheduled posts", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "clock")
+                        }
+                    }
                     if environment.activeSession?.capabilities.isNextcloudSocial == true {
                         // A post a moderator holds must never vanish without a
                         // word; this is where it waits.

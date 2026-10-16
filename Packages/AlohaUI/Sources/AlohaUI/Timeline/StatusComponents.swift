@@ -601,6 +601,16 @@ public struct StatusMenu: View {
             }
         }
 
+        Button {
+            onAction(.redraft(status))
+        } label: {
+            Label {
+                Text("Delete & redraft", comment: "Status menu item")
+            } icon: {
+                Image(systemName: "arrow.uturn.backward.circle")
+            }
+        }
+
         Button(role: .destructive) {
             onAction(.delete(status))
         } label: {

@@ -19,7 +19,7 @@ public enum StatusActionRouting {
     public static func destination(of action: StatusRowAction) -> Destination {
         switch action {
         case .open, .watch, .openProfile, .openMedia, .openCard, .followLink,
-            .reply, .report, .share, .translate, .edit, .delete, .block, .mute,
+            .reply, .report, .share, .translate, .edit, .delete, .redraft, .block, .mute,
             .quote, .showDelivery, .showEditHistory, .quoteControls, .tagPeople,
             .addToCollection, .addToList:
             .shell

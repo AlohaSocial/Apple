@@ -18,6 +18,8 @@ public enum Route: Codable, Hashable, Sendable {
     case favourites
     case settings
     case drafts
+    /// Posts waiting for their time, which can be moved or cancelled.
+    case scheduledPosts
     case explore
     case lists
     case filters

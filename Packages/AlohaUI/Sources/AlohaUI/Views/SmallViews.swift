@@ -11,6 +11,7 @@ public struct DraftsView: View {
 
     private let session: AccountSession
     @State private var drafts: [DraftSnapshot] = []
+    @State private var reopening: DraftSnapshot?
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -25,37 +26,14 @@ public struct DraftsView: View {
             }
 
             ForEach(drafts) { draft in
-                VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-                    Text(
-                        draft.text.isEmpty
-                            ? String(localized: "Empty draft", comment: "Draft with no text")
-                            : draft.text
-                    )
-                    .font(.subheadline)
-                    .lineLimit(3)
-
-                    HStack(spacing: AlohaMetrics.space2) {
-                        Text(draft.updatedAt, format: .relative(presentation: .named))
-                        if draft.queuedForSend {
-                            Label {
-                                Text("Will post when you're online", comment: "Queued draft state")
-                            } icon: {
-                                Image(systemName: AlohaSymbol.offline)
-                            }
-                        }
-                        if !draft.uploadedMediaIDs.isEmpty {
-                            Label {
-                                Text(
-                                    "^[\(draft.uploadedMediaIDs.count) attachment](inflect: true)",
-                                    comment: "Draft attachment count")
-                            } icon: {
-                                Image(systemName: AlohaSymbol.media)
-                            }
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryLabel)
+                Button {
+                    Task { await reopen(draft) }
+                } label: {
+                    row(draft)
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint(
+                    Text("Opens the draft in the composer", comment: "Drafts row hint"))
             }
             .onDelete { offsets in
                 let targets = offsets.compactMap { drafts.indices.contains($0) ? drafts[$0] : nil }
@@ -80,6 +58,73 @@ public struct DraftsView: View {
         }
         .navigationTitle(Text("Drafts", comment: "Screen title"))
         .task { await load() }
+        // Whatever the composer did — posted it, saved it again, kept it —
+        // this list has to show what is now true.
+        .sheet(item: $reopening, onDismiss: reload) { draft in
+            ComposerView(session: session, draft: draft)
+        }
+    }
+
+    private func reload() {
+        Task { await load() }
+    }
+
+    private func row(_ draft: DraftSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+            Text(
+                draft.text.isEmpty
+                    ? String(localized: "Empty draft", comment: "Draft with no text")
+                    : draft.text
+            )
+            .font(.subheadline)
+            .lineLimit(3)
+
+            if let reason = draft.lastSendError {
+                Label {
+                    Text(reason)
+                } icon: {
+                    Image(systemName: AlohaSymbol.warning)
+                }
+                .font(.caption)
+                .foregroundStyle(palette.destructive)
+            }
+
+            HStack(spacing: AlohaMetrics.space2) {
+                Text(draft.updatedAt, format: .relative(presentation: .named))
+                if draft.queuedForSend {
+                    Label {
+                        Text("Will post when you're online", comment: "Queued draft state")
+                    } icon: {
+                        Image(systemName: AlohaSymbol.offline)
+                    }
+                }
+                if !draft.uploadedMediaIDs.isEmpty {
+                    Label {
+                        Text(
+                            "^[\(draft.uploadedMediaIDs.count) attachment](inflect: true)",
+                            comment: "Draft attachment count")
+                    } icon: {
+                        Image(systemName: AlohaSymbol.media)
+                    }
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(palette.secondaryLabel)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    /// A queued draft comes off the queue while it is open, or the send queue
+    /// could post it half-edited behind the composer's back. Closing the
+    /// composer saves it again; posting it removes it.
+    private func reopen(_ draft: DraftSnapshot) async {
+        var opened = draft
+        if opened.queuedForSend {
+            opened.queuedForSend = false
+            _ = try? await session.supportStore.saveDraft(opened)
+        }
+        reopening = opened
     }
 
     private func errorStrip(_ message: String) -> some View {

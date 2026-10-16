@@ -255,6 +255,49 @@ struct DraftStoreTests {
         let queued = try await support.queuedDrafts(accountID: accountID)
         #expect(queued.map(\.threadIndex) == [0, 1, 2])
     }
+
+    @Test("Everything a queued post needs to resend survives a save/load cycle")
+    func fullRoundTrip() async throws {
+        let (_, support, _, accountID) = makeStore()
+        let scheduled = Date(timeIntervalSince1970: 1_800_000_000)
+        let draft = DraftSnapshot(
+            accountID: accountID, text: "Look", spoilerText: "food", visibility: .unlisted,
+            sensitive: true, language: "de", inReplyToID: "5", uploadedMediaIDs: ["m1"],
+            pollOptions: [], pollExpiresIn: 3600, scheduledAt: scheduled,
+            idempotencyKey: "key", queuedForSend: true, quotedID: "9", quotePolicy: "nobody",
+            threadSegments: ["second", "third"])
+
+        _ = try await support.saveDraft(draft)
+        let loaded = try #require(try await support.drafts(accountID: accountID).first)
+
+        #expect(loaded.sensitive)
+        #expect(loaded.language == "de")
+        #expect(loaded.scheduledAt == scheduled)
+        #expect(loaded.quotedID == "9")
+        #expect(loaded.quotePolicy == "nobody")
+        #expect(loaded.threadSegments == ["second", "third"])
+        #expect(loaded.uploadedMediaIDs == ["m1"])
+    }
+
+    @Test("A draft the server refused leaves the queue and says why")
+    func sendFailure() async throws {
+        let (_, support, _, accountID) = makeStore()
+        let id = try await support.saveDraft(
+            DraftSnapshot(accountID: accountID, text: "Hi", queuedForSend: true))
+
+        try await support.markSendFailed(id: id, message: "Too long")
+
+        #expect(try await support.queuedDrafts(accountID: accountID).isEmpty)
+        let kept = try #require(try await support.drafts(accountID: accountID).first)
+        #expect(kept.lastSendError == "Too long")
+        #expect(kept.text == "Hi")
+    }
+
+    @Test("A quote with nothing typed is not an empty draft")
+    func quoteIsContent() {
+        let draft = DraftSnapshot(accountID: UUID(), quotedID: "9")
+        #expect(!draft.isEmpty)
+    }
 }
 
 @Suite("Notification dedup")

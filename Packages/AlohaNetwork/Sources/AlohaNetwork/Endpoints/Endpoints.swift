@@ -691,6 +691,13 @@ extension Endpoint {
                 body: .multipart(Multipart(parts: parts)))
         }
 
+        /// One uploaded attachment, which is how a reopened draft gets its
+        /// previews back. A 404 means the server has already swept it — an
+        /// upload that was never attached does not live for ever.
+        public static func attachment(_ id: String) -> Endpoint {
+            Endpoint(path: "api/v1/media/\(id)")
+        }
+
         public static func updateDescription(_ id: String, description: String) -> Endpoint {
             Endpoint(
                 method: .put, path: "api/v1/media/\(id)",
@@ -723,6 +730,13 @@ extension Endpoint {
         public static var scheduled: Endpoint { Endpoint(path: "api/v1/scheduled_statuses") }
         public static func deleteScheduled(_ id: String) -> Endpoint {
             Endpoint(method: .delete, path: "api/v1/scheduled_statuses/\(id)")
+        }
+        /// Moves a waiting post to another time. The five-minute floor applies
+        /// again, so a 422 here is the server saying the new time is too soon.
+        public static func reschedule(_ id: String, to date: Date) -> Endpoint {
+            Endpoint(
+                method: .put, path: "api/v1/scheduled_statuses/\(id)",
+                body: .form([URLQueryItem(name: "scheduled_at", value: DateParsing.format(date))]))
         }
     }
 
@@ -822,6 +836,24 @@ public struct StatusPost: Sendable, Hashable {
     /// Generated when the composer opened and regenerated only when content
     /// changes. This is what makes retry-on-timeout safe (docs/07 §5).
     public var idempotencyKey: String
+    /// Descriptions and focal points for attachments already on the post,
+    /// sent with an edit. Once media is attached, `PUT /api/v1/media/{id}` is
+    /// refused ("edit the post with media_attributes to change it"), so this
+    /// is the only way an alt text can be corrected after posting (docs/07 §8).
+    public var mediaAttributes: [MediaAttribute] = []
+
+    public struct MediaAttribute: Sendable, Hashable {
+        public var id: String
+        public var description: String?
+        /// "x,y" in −1…1, the form Mastodon's `focus` takes.
+        public var focus: String?
+
+        public init(id: String, description: String?, focus: String? = nil) {
+            self.id = id
+            self.description = description
+            self.focus = focus
+        }
+    }
 
     // Nextcloud Social extras. All optional; a stock server ignores them.
     /// The post being quoted.
@@ -892,6 +924,13 @@ public struct StatusPost: Sendable, Hashable {
         items += .optional("language", language)
         items += .optional("in_reply_to_id", inReplyToID)
         items += .repeated("media_ids", mediaIDs)
+        // Each attachment opens with its id: PHP and Rails both group the
+        // `[]` entries that follow an id into that attachment.
+        for attribute in mediaAttributes {
+            items.append(URLQueryItem(name: "media_attributes[][id]", value: attribute.id))
+            items += .optional("media_attributes[][description]", attribute.description)
+            items += .optional("media_attributes[][focus]", attribute.focus)
+        }
 
         // A poll and media are mutually exclusive, as Mastodon requires.
         if !pollOptions.isEmpty && mediaIDs.isEmpty {
@@ -912,7 +951,10 @@ public struct StatusPost: Sendable, Hashable {
         // knows neither ignores both.
         items += .optional("quoted_id", quotedID)
         items += .optional("quote_id", quotedID)
-        items += .optional("quote_policy", quotePolicy)
+        // Mastodon 4.5's name, and the one Nextcloud Social reads
+        // (`Status::import`). `quote_policy` was sent before and both servers
+        // ignored it, so every post went out quotable by anybody.
+        items += .optional("quote_approval_policy", quotePolicy)
         if let placeID {
             items.append(URLQueryItem(name: "place_id", value: placeID))
         } else if let placeName, !placeName.isEmpty {

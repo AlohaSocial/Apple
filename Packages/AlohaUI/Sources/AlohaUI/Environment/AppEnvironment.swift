@@ -31,6 +31,8 @@ public final class AppEnvironment {
     public let transport: any HTTPTransport
     public let sync: SyncEngine
     public let notifier: LocalNotifier
+    /// Posts written while the server was out of reach (docs/07 §7).
+    public let sendQueue = SendQueue()
 
     let accounts: AccountStore
     let timelines: TimelineStore
@@ -371,6 +373,10 @@ public final class AppEnvironment {
     public func performBackgroundRefresh() async -> Int {
         if sessions.isEmpty { await load() }
         sync.attach(to: self)
+        // A post waiting for the network is worth more than a badge: send it
+        // first, while the refresh still has its time.
+        sendQueue.attach(to: self)
+        await sendQueue.drainAll()
         return await sync.performBackgroundRefresh()
     }
 }
