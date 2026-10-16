@@ -75,16 +75,58 @@ public enum StoreContainer {
             let groupURL = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: appGroupIdentifier)
         {
-            return ModelConfiguration(
-                schema: schema,
-                url: groupURL.appending(path: "AlohaSocial.store"),
-                cloudKitDatabase: .none
-            )
+            let shared = groupURL.appending(path: "AlohaSocial.store")
+            adoptLocalStoreIfNeeded(into: shared)
+            return ModelConfiguration(schema: schema, url: shared, cloudKitDatabase: .none)
         }
         // No app group entitlement (an unsigned local build, say): fall back to
         // the app's own container rather than refusing to launch.
         logger.notice("app group container unavailable; using the local container")
-        return ModelConfiguration(schema: schema, cloudKitDatabase: .none)
+        return localConfiguration
+    }
+
+    /// The app's own container, said explicitly: SwiftData's default
+    /// `groupContainer: .automatic` moves into the first app group the binary
+    /// is entitled to, which is not "local" at all.
+    private static var localConfiguration: ModelConfiguration {
+        ModelConfiguration(schema: schema, groupContainer: .none, cloudKitDatabase: .none)
+    }
+
+    /// Moves the store a build without the app group kept in the app's own
+    /// container into the group, the first time the group is there.
+    ///
+    /// The cache is disposable, but accounts and drafts live in it too: a
+    /// fresh group store would greet everyone who updates with the sign-in
+    /// screen. Only the app does this — an extension's own container never
+    /// held anything worth moving.
+    static func adoptLocalStoreIfNeeded(
+        into shared: URL,
+        from local: URL = localConfiguration.url,
+        isApp: Bool = Bundle.main.bundleURL.pathExtension == "app"
+    ) {
+        let manager = FileManager.default
+        guard isApp, local != shared,
+            !manager.fileExists(atPath: shared.path),
+            manager.fileExists(atPath: local.path)
+        else { return }
+        do {
+            try manager.createDirectory(
+                at: shared.deletingLastPathComponent(), withIntermediateDirectories: true)
+            // The write-ahead log and its index go with the store, or the
+            // last writes before the update are lost on the way.
+            for suffix in ["", "-wal", "-shm"] {
+                let source = URL(fileURLWithPath: local.path + suffix)
+                guard manager.fileExists(atPath: source.path) else { continue }
+                try manager.moveItem(at: source, to: URL(fileURLWithPath: shared.path + suffix))
+            }
+            logger.notice("moved the local store into the app group")
+        } catch {
+            // Half a store is worse than none: whatever arrived is removed and
+            // the group starts empty, which the rebuild path already handles.
+            logger.error(
+                "could not move the local store: \(String(describing: error), privacy: .public)")
+            destroyStore(at: shared)
+        }
     }
 
     private static func destroyStore(at url: URL) {
