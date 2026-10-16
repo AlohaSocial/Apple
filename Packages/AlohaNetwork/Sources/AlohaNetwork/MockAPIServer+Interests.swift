@@ -3,7 +3,7 @@
 import Foundation
 
 extension MockAPIServer {
-    /// Mock answers for the interests, subscriptions, memories, review-queue
+    /// Mock answers for the interests, memories, review-queue
     /// and announcement-reaction surfaces. `nil` means "not mine".
     func interestsMock(
         route: String, url: URL, method: String, query: [URLQueryItem], body: Data?
@@ -72,51 +72,6 @@ extension MockAPIServer {
                 break
             }
             return respond(url: url, status: 200, json: interestsState.json)
-
-        // MARK: Subscriptions
-        case "api/v1/subscriptions":
-            if method == "POST" {
-                let address = formFields(body)["url"] ?? ""
-                guard address.contains(".") else {
-                    return respond(
-                        url: url, status: 422, body: #"{"error":"That is not a feed address"}"#)
-                }
-                let id = String(100 + subscriptionFeeds.count)
-                subscriptionFeeds.append([
-                    "id": id, "url": address, "title": "Feed \(id)", "site_url": address,
-                    "entry_count": 0, "error": NSNull(), "last_read_at": NSNull(),
-                ])
-                return respond(url: url, status: 200, json: subscriptionFeeds.last ?? [:])
-            }
-            return respond(url: url, status: 200, json: ["feeds": subscriptionFeeds])
-
-        case "api/v1/subscriptions/timeline":
-            let limit = Int(query.first { $0.name == "limit" }?.value ?? "") ?? 40
-            let maxID = Int(query.first { $0.name == "max_id" }?.value ?? "") ?? 0
-            let items = (1...50).map { index -> [String: Any] in
-                [
-                    "id": String(500 - index),
-                    "title": "Entry \(500 - index) from the feed",
-                    "url": "https://feeds.example.test/entries/\(500 - index)",
-                    "summary": "A short summary of what the entry is about.",
-                    "published":
-                        "2026-09-\(String(format: "%02d", max(1, 27 - index % 27)))T09:00:00Z",
-                    "feed_title": "Example Feed",
-                ]
-            }
-            .filter { maxID == 0 || (Int($0["id"] as? String ?? "") ?? 0) < maxID }
-            return respond(url: url, status: 200, json: ["items": Array(items.prefix(limit))])
-
-        case "api/v1/subscriptions/takeout":
-            return respond(url: url, status: 200, json: ["subscribed": 3])
-
-        case let route where route.hasPrefix("api/v1/subscriptions/") && method == "DELETE":
-            let id = String(route.dropFirst("api/v1/subscriptions/".count))
-            guard subscriptionFeeds.contains(where: { ($0["id"] as? String) == id }) else {
-                return respond(url: url, status: 404, body: #"{"error":"no such subscription"}"#)
-            }
-            subscriptionFeeds.removeAll { ($0["id"] as? String) == id }
-            return respond(url: url, status: 200, json: [:])
 
         // MARK: Memories
         case "api/v1/memories/on_this_day":
@@ -206,18 +161,6 @@ struct InterestsFixture {
 }
 
 private nonisolated(unsafe) var interestsStateStorage = InterestsFixture()
-private nonisolated(unsafe) var subscriptionFeedsStorage: [[String: Any]] = [
-    [
-        "id": "1", "url": "https://blog.example.test/feed.xml", "title": "Example Blog",
-        "site_url": "https://blog.example.test", "entry_count": 12, "error": NSNull(),
-        "last_read_at": "2026-09-26T08:00:00Z",
-    ],
-    [
-        "id": "2", "url": "https://www.youtube.com/@examplechannel", "title": "Example Channel",
-        "site_url": "https://www.youtube.com/@examplechannel", "entry_count": 0,
-        "error": NSNull(), "last_read_at": NSNull(),
-    ],
-]
 private nonisolated(unsafe) var recapEnabledStorage = true
 private nonisolated(unsafe) var heldPostsStorage: [[String: Any]] = [
     [
@@ -233,10 +176,6 @@ extension MockAPIServer {
     fileprivate var interestsState: InterestsFixture {
         get { interestsStateStorage }
         set { interestsStateStorage = newValue }
-    }
-    fileprivate var subscriptionFeeds: [[String: Any]] {
-        get { subscriptionFeedsStorage }
-        set { subscriptionFeedsStorage = newValue }
     }
     fileprivate var recapEnabled: Bool {
         get { recapEnabledStorage }

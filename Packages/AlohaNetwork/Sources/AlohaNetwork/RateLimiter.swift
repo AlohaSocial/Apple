@@ -32,22 +32,36 @@ public actor RateLimiter {
     }
 
     /// Waits until this host will accept another request.
-    public func acquire(host: String) async {
+    ///
+    /// Throws `.cancelled` when the waiting task is cancelled — a `.task` that
+    /// went away, a background task that expired — rather than going on
+    /// waiting for a slot nobody wants. A host that answered 429 with a long
+    /// `Retry-After` fails at once with `.rateLimited` instead of holding the
+    /// request, and whoever asked can say so and offer to try later.
+    public func acquire(host: String, maximumBlockedWait: TimeInterval = 10) async throws {
         while true {
-            let wait = reserve(host: host)
+            if Task.isCancelled { throw APIError.cancelled }
+            let (wait, blocked) = reserve(host: host)
             guard wait > 0 else { return }
-            try? await Task.sleep(for: .seconds(min(wait, 60)))
+            if blocked, wait > maximumBlockedWait { throw APIError.rateLimited(retryAfter: wait) }
+            do {
+                try await Task.sleep(for: .seconds(min(wait, 60)))
+            } catch {
+                throw APIError.cancelled
+            }
         }
     }
 
-    private func reserve(host: String) -> TimeInterval {
+    /// How long to wait before a request may go, and whether that wait is a
+    /// 429 block rather than the bucket refilling.
+    private func reserve(host: String) -> (wait: TimeInterval, blocked: Bool) {
         let now = clock()
         var bucket = buckets[host] ?? Bucket(tokens: capacity, lastRefill: now, blockedUntil: nil)
 
         if let blockedUntil = bucket.blockedUntil {
             if blockedUntil > now {
                 buckets[host] = bucket
-                return blockedUntil.timeIntervalSince(now)
+                return (blockedUntil.timeIntervalSince(now), true)
             }
             bucket.blockedUntil = nil
         }
@@ -59,11 +73,11 @@ public actor RateLimiter {
         if bucket.tokens >= 1 {
             bucket.tokens -= 1
             buckets[host] = bucket
-            return 0
+            return (0, false)
         }
 
         buckets[host] = bucket
-        return (1 - bucket.tokens) / refillPerSecond
+        return ((1 - bucket.tokens) / refillPerSecond, false)
     }
 
     /// Honour `Retry-After` where the server sent one; back off with jitter

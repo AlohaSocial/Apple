@@ -79,8 +79,15 @@ public struct Endpoint: Sendable, Hashable {
             var components = URLComponents(
                 url: base.appending(path: path), resolvingAgainstBaseURL: false)
         else { return nil }
-        if !query.isEmpty {
-            components.queryItems = (components.queryItems ?? []) + query.filter { $0.value != nil }
+        // The form encoder's escaping, not `queryItems`: that leaves `+` bare,
+        // and a server reads a bare `+` in a query as a space.
+        let encoded = FormEncoding.encode(query)
+        if !encoded.isEmpty {
+            if let existing = components.percentEncodedQuery, !existing.isEmpty {
+                components.percentEncodedQuery = existing + "&" + encoded
+            } else {
+                components.percentEncodedQuery = encoded
+            }
         }
         return components.url
     }

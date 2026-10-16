@@ -67,6 +67,20 @@ public enum NotificationKind: String, UnknownPreserving {
     case adminSignUp = "admin.sign_up"
     case adminReport = "admin.report"
     case annualReport = "annual_report"
+
+    // Aloha Social's own (`Stream::FIRST_PARTY_NOTIFICATION_TYPES`). The
+    // server sends them to a client only when it names them in `types[]`.
+    /// Somebody reacted to one of your stories.
+    case storyReaction = "story:react"
+    /// Somebody answered one of your stories.
+    case storyComment = "story:comment"
+    /// Somebody named you in a photograph.
+    case tagged
+    case blueskyRepostLiked = "bluesky:repost_liked"
+    case blueskyRepostReposted = "bluesky:repost_reposted"
+    case blueskyVerified = "bluesky:verified"
+    case blueskyUnverified = "bluesky:unverified"
+    case blueskyStarterPackJoined = "bluesky:starterpack_joined"
     case unknownCase = "__unknown"
 
     public static func unknown(_ raw: String) -> NotificationKind { .unknownCase }
@@ -76,10 +90,24 @@ public enum NotificationKind: String, UnknownPreserving {
     /// Nothing about a poll, an edit or a moderation decision groups either.
     public var groups: Bool {
         switch self {
-        case .favourite, .reblog, .follow: true
+        case .favourite, .reblog, .follow, .storyReaction, .blueskyRepostLiked,
+            .blueskyRepostReposted:
+            true
         default: false
         }
     }
+
+    /// The types Mastodon's API defines that this app draws.
+    public static let mastodonKinds: [NotificationKind] = [
+        .mention, .status, .reblog, .follow, .followRequest, .favourite, .poll, .update,
+        .adminSignUp, .adminReport, .severedRelationships, .moderationWarning, .annualReport,
+    ]
+
+    /// Aloha Social's own types, which a client has to ask for by name.
+    public static let alohaKinds: [NotificationKind] = [
+        .storyReaction, .storyComment, .tagged, .blueskyRepostLiked, .blueskyRepostReposted,
+        .blueskyVerified, .blueskyUnverified, .blueskyStarterPackJoined,
+    ]
 }
 
 public enum FilterAction: String, UnknownPreserving {

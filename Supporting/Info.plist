@@ -22,9 +22,13 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Cleartext only on the local network (docs/11 §5): a self-hosted
+	     server at http://192.168.x.x[:port] or a .local name. Everything
+	     on the internet goes over https; the app upgrades a public http
+	     address and the media it loads (`URL.securedForLoading`). -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSSupportsLiveActivities</key>

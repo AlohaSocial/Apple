@@ -169,6 +169,8 @@ public struct MigrationView: View {
         case .blocks: Text("Blocked accounts", comment: "Migration list")
         case .mutes: Text("Muted accounts", comment: "Migration list")
         case .lists: Text("Your lists", comment: "Migration list")
+        case .bookmarks: Text("Bookmarks", comment: "Migration list")
+        case .domainBlocks: Text("Blocked servers", comment: "Migration list")
         }
     }
 
@@ -203,7 +205,7 @@ public struct MigrationView: View {
                 .archive,
                 title: Text("An archive from here or elsewhere", comment: "Migration import"),
                 symbol: "shippingbox.and.arrow.backward")
-            ForEach(Endpoint.migration.ListKind.allCases, id: \.self) { kind in
+            ForEach(Endpoint.migration.ListKind.importable, id: \.self) { kind in
                 importRow(.list(kind), title: listTitle(kind), symbol: "tablecells")
             }
             importRow(
@@ -314,7 +316,11 @@ public struct MigrationView: View {
         let endpoint: Endpoint
         switch kind {
         case .archive: endpoint = .migration.importArchive(data, filename: filename)
-        case .list(let list): endpoint = .migration.importList(list, csv: data, filename: filename)
+        case .list(let list):
+            guard
+                let listImport = Endpoint.migration.importList(list, csv: data, filename: filename)
+            else { return }
+            endpoint = listImport
         case .posts:
             endpoint = .migration.importPosts(
                 data, filename: filename, fetchMedia: shouldFetchMedia)

@@ -126,14 +126,24 @@ any future addition of analytics requires changing this document first.
 
 ### Network security
 
-- **ATS exception, deliberate.** Sign-in accepts plain `http` addresses,
-  because a Nextcloud on a private network is routinely reached that way
-  (`http://192.168.x.x[:port]`), and ATS has no wildcard that covers
-  arbitrary typed addresses. `NSAllowsArbitraryLoads` is therefore set in
-  the iOS, tvOS and watchOS plists, and only takes effect for the server the
-  person typed: an `https` account never uses it. The token travels in
-  cleartext only over the connection that account itself was configured
-  with.
+- **Cleartext on the local network only.** A Nextcloud on a private network
+  is routinely reached over plain `http` (`http://192.168.x.x[:port]`, a
+  `.local` name), so every target's plist sets `NSAllowsLocalNetworking` —
+  and nothing broader. `NSAllowsArbitraryLoads` used to be set instead, and
+  its effect was not limited to the server the person typed: any `http`
+  avatar, card image or media address in a post loaded in cleartext, and
+  sign-in accepted `http` for any public host, so OAuth codes, tokens and app
+  passwords could cross the internet readable. Now:
+  - sign-in takes `http` only for a local-network host
+    (`LocalNetwork.isLocal`: RFC 1918, link-local, CGNAT, loopback, `.local`,
+    unqualified names, IPv6 link- and unique-local) and asks a public host
+    over `https` instead (`ServerProbe.ServerAddress`);
+  - media, avatars, headers, custom emoji and card images are upgraded to
+    `https` for a public host as they are decoded (`URL.securedForLoading`);
+    a link that opens in the browser is left as written;
+  - a credential is only ever attached to a request for the account's own
+    origin, so a `Link` cursor pointing elsewhere is refused rather than
+    followed with the token (`APIClient.perform`).
 - No third-party analytics, ad, or attribution network can be added without
   amending this document.
 - Media is loaded from the instance's own host (and, for federated video, from

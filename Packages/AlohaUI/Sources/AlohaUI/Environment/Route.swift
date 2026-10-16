@@ -37,8 +37,6 @@ public enum Route: Codable, Hashable, Sendable {
     // Nextcloud Social surfaces the web app has and this app did not.
     /// "My interests": the hashtag feed the server learns, and its settings.
     case interests
-    /// Feeds outside the fediverse (RSS, YouTube) the server reads for you.
-    case subscriptions
     /// "On this day" memories and the weekly recap, with their settings.
     case memories
     /// Your own posts a moderator has not yet looked at.

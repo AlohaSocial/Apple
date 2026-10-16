@@ -62,7 +62,7 @@ public struct ServerProbe: Sendable {
                 host.contains(".") || host == "localhost"
             else { return nil }
 
-            guard let scheme = components.scheme?.lowercased(),
+            guard var scheme = components.scheme?.lowercased(),
                 scheme == "http" || scheme == "https"
             else {
                 return nil
@@ -70,9 +70,18 @@ public struct ServerProbe: Sendable {
 
             if let port = components.port, !(1...65535).contains(port) { return nil }
 
+            // Plain http only on the local network (docs/11 §5): a public
+            // server is asked over https, which every one of them speaks,
+            // rather than sent a password and a token anybody can read.
+            var port = components.port
+            if scheme == "http", !LocalNetwork.isLocal(host: host) {
+                scheme = "https"
+                if port == 80 { port = nil }
+            }
+
             self.scheme = scheme
             self.host = host
-            self.port = components.port
+            self.port = port
             let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             self.pathHint = path.isEmpty ? nil : path
         }

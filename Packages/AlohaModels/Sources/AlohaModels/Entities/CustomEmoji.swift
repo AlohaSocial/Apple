@@ -35,8 +35,9 @@ public struct CustomEmoji: Codable, Sendable, Hashable, Identifiable {
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         shortcode = try c.decode(String.self, forKey: .shortcode)
-        _url = try c.decode(LenientURL.self, forKey: .url)
-        _staticURL = try c.decode(LenientURL.self, forKey: .staticURL)
+        // Drawn in-app, so never over cleartext to a public host.
+        _url = try c.decode(LenientURL.self, forKey: .url).securedForLoading()
+        _staticURL = try c.decode(LenientURL.self, forKey: .staticURL).securedForLoading()
         _visibleInPicker =
             try c.decodeIfPresent(LenientBool.self, forKey: .visibleInPicker)
             ?? LenientBool(wrappedValue: true)

@@ -151,8 +151,14 @@ extension MockAPIServer {
                 // Only what was sent changes, as on the server.
                 var updated = status
                 let fields = formFields(body)
+                // Answered the way the server exports it: Mastodon 4.5's
+                // `quote_approval`, never a bare policy string.
                 if let quote = fields["quote_approval_policy"] {
-                    updated["quote_approval_policy"] = quote
+                    updated["quote_approval"] = [
+                        "automatic": quote == "nobody" ? [] : [quote],
+                        "manual": [],
+                        "current_user": "automatic",
+                    ]
                 }
                 if let reply = fields["reply_policy"] { updated["reply_policy"] = reply }
                 if let index = statusFixtures.firstIndex(where: { ($0["id"] as? String) == id }) {
@@ -183,7 +189,8 @@ extension MockAPIServer {
     }
 
     private func place(id: String) -> [String: Any] {
-        ["id": id, "name": "Stuttgart", "country": "Germany", "lat": 48.78, "lon": 9.18]
+        // Pixelfed's shape, as `Place::jsonSerialize` writes it.
+        ["id": id, "name": "Stuttgart", "country": "Germany", "lat": "48.78", "long": "9.18"]
     }
 
     private func collection(id: String, title: String, count: Int) -> [String: Any] {
