@@ -508,7 +508,7 @@ private struct ThemedAppShell: View {
     private var rootRoutes: [Route] {
         #if os(iOS)
             return [
-                .conversations, .explore, .lists, .interests, .subscriptions,
+                .conversations, .explore, .lists, .interests,
                 .collections(accountID: nil), .notifications, .bookmarks, .settings,
                 .search(query: nil),
             ]
@@ -686,12 +686,6 @@ private struct ThemedAppShell: View {
                             value: SidebarItem.route(.interests)
                         ) {
                             iPadDestination(.route(.interests), session: session)
-                        }
-                        Tab(
-                            "Subscriptions", systemImage: "dot.radiowaves.up.forward",
-                            value: SidebarItem.route(.subscriptions)
-                        ) {
-                            iPadDestination(.route(.subscriptions), session: session)
                         }
                     }
                     if session.capabilities.collections {
@@ -1077,8 +1071,6 @@ private struct ThemedAppShell: View {
         // Nextcloud Social surfaces.
         case .interests:
             InterestsView(session: session) { handle($0, session: session) }
-        case .subscriptions:
-            SubscriptionsView(session: session)
         case .memories:
             MemoriesView(session: session) { handle($0, session: session) }
         case .heldPosts:

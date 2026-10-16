@@ -239,6 +239,12 @@ public struct LocalNotifier: Sendable {
         case .moderationWarning: String(localized: "warning", comment: "Digest summary kind")
         case .severedRelationships: String(localized: "separation", comment: "Digest summary kind")
         case .annualReport: String(localized: "report", comment: "Digest summary kind")
+        case .storyReaction: String(localized: "reaction", comment: "Digest summary kind")
+        case .storyComment: String(localized: "story reply", comment: "Digest summary kind")
+        case .tagged: String(localized: "photo tag", comment: "Digest summary kind")
+        case .blueskyRepostLiked, .blueskyRepostReposted, .blueskyVerified,
+            .blueskyUnverified, .blueskyStarterPackJoined:
+            String(localized: "Bluesky update", comment: "Digest summary kind")
         default:
             // Everything this app has no name for — the kinds a newer server
             // can add — reads as the server's own raw value rather than being
@@ -380,6 +386,31 @@ public struct LocalNotifier: Sendable {
                 localized: "A moderator acted on your account", comment: "Notification title")
         case .severedRelationships:
             return String(localized: "Some of your follows were cut", comment: "Notification title")
+        case .storyReaction:
+            return String(
+                localized: "\(subject) reacted to your story", comment: "Notification title")
+        case .storyComment:
+            return String(
+                localized: "\(subject) replied to your story", comment: "Notification title")
+        case .tagged:
+            return String(
+                localized: "\(subject) tagged you in a photo", comment: "Notification title")
+        case .blueskyRepostLiked:
+            return String(
+                localized: "\(subject) liked your repost on Bluesky", comment: "Notification title")
+        case .blueskyRepostReposted:
+            return String(
+                localized: "\(subject) reposted your repost on Bluesky",
+                comment: "Notification title")
+        case .blueskyVerified:
+            return String(localized: "Bluesky verified your account", comment: "Notification title")
+        case .blueskyUnverified:
+            return String(
+                localized: "Bluesky no longer verifies your account", comment: "Notification title")
+        case .blueskyStarterPackJoined:
+            return String(
+                localized: "\(subject) joined Bluesky with your starter pack",
+                comment: "Notification title")
         default: return subject
         }
     }

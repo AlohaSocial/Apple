@@ -412,6 +412,9 @@ public struct StatusMenu: View {
                     Image(systemName: "text.quote")
                 }
             }
+            // The author's quote policy shuts this reader out
+            // (`quote_approval.current_user`): a quote would only ever wait.
+            .disabled(displayed.viewerMayQuote == false)
             NavigationLink(value: Route.quotes(statusID: displayed.id)) {
                 Label {
                     Text("Posts quoting this", comment: "Status menu item")

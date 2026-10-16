@@ -465,10 +465,13 @@ public struct NotificationsView: View {
         isLoading = true
         defer { if loadID == requestID { isLoading = false } }
 
+        let types = Endpoint.notifications.everyType(
+            onAlohaSocial: session.capabilities.isNextcloudSocial)
         do {
             if session.capabilities.groupedNotifications {
                 let results = try await session.client.decode(
-                    GroupedNotificationsResults.self, from: Endpoint.notifications.grouped())
+                    GroupedNotificationsResults.self,
+                    from: Endpoint.notifications.grouped(types: types))
                 guard !Task.isCancelled, loadID == requestID else { return }
                 groups = results.notificationGroups
                 accounts = Dictionary(
@@ -477,7 +480,8 @@ public struct NotificationsView: View {
                     results.statuses.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             } else {
                 let page = try await session.client.decode(
-                    LossyArray<MastodonNotification>.self, from: Endpoint.notifications.flat())
+                    LossyArray<MastodonNotification>.self,
+                    from: Endpoint.notifications.flat(types: types))
                 guard !Task.isCancelled, loadID == requestID else { return }
                 flat = page.elements
             }
@@ -517,14 +521,22 @@ public struct NotificationsView: View {
         case .status: AlohaSymbol.notificationsFilled
         case .update: AlohaSymbol.edit
         case .moderationWarning, .severedRelationships: AlohaSymbol.warning
+        case .storyReaction: "face.smiling"
+        case .storyComment: "bubble.left"
+        case .tagged: "person.crop.rectangle"
+        case .blueskyRepostLiked: AlohaSymbol.favouriteFilled
+        case .blueskyRepostReposted: AlohaSymbol.boost
+        case .blueskyVerified: "checkmark.seal.fill"
+        case .blueskyUnverified: "checkmark.seal"
+        case .blueskyStarterPackJoined: "person.3"
         default: AlohaSymbol.notifications
         }
     }
 
     private func tint(for kind: NotificationKind) -> Color {
         switch kind {
-        case .reblog: palette.boost
-        case .favourite: palette.favourite
+        case .reblog, .blueskyRepostReposted: palette.boost
+        case .favourite, .blueskyRepostLiked: palette.favourite
         case .moderationWarning, .severedRelationships: palette.destructive
         default: palette.secondaryLabel
         }
@@ -572,6 +584,33 @@ public struct NotificationsView: View {
             return String(localized: "\(who) edited a post", comment: "Notification summary")
         case .status:
             return String(localized: "\(who) posted", comment: "Notification summary")
+        case .storyReaction:
+            return String(
+                localized: "\(who) reacted to your story", comment: "Notification summary")
+        case .storyComment:
+            return String(
+                localized: "\(who) replied to your story", comment: "Notification summary")
+        case .tagged:
+            return String(
+                localized: "\(who) tagged you in a photo", comment: "Notification summary")
+        case .blueskyRepostLiked:
+            return String(
+                localized: "\(who) liked your repost on Bluesky", comment: "Notification summary")
+        case .blueskyRepostReposted:
+            return String(
+                localized: "\(who) reposted your repost on Bluesky",
+                comment: "Notification summary")
+        case .blueskyVerified:
+            return String(
+                localized: "Bluesky verified your account", comment: "Notification summary")
+        case .blueskyUnverified:
+            return String(
+                localized: "Bluesky no longer verifies your account",
+                comment: "Notification summary")
+        case .blueskyStarterPackJoined:
+            return String(
+                localized: "\(who) joined Bluesky with your starter pack",
+                comment: "Notification summary")
         default:
             return who
         }

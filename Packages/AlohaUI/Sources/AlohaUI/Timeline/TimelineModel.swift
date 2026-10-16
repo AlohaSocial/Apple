@@ -388,8 +388,20 @@ public final class TimelineModel {
         isPagingOlder = true
         defer { isPagingOlder = false }
 
+        let anchor: PageAnchor
+        if let nextCursor {
+            anchor = .url(nextCursor)
+        } else if key.source.pagesOnlyByLink {
+            // Favourites and bookmarks page by the mark's id; without the
+            // server's cursor there is no older page this side can name.
+            hasMoreOlderPosts = false
+            return
+        } else {
+            anchor = .olderThan(oldest)
+        }
+
         do {
-            let harvest = try await fetch(anchor: nextCursor.map { .url($0) } ?? .olderThan(oldest))
+            let harvest = try await fetch(anchor: anchor)
             isOffline = false
             errorMessage = nil
             guard !harvest.statuses.isEmpty else {
@@ -417,6 +429,13 @@ public final class TimelineModel {
     /// Fills a hole rather than closing it blindly.
     public func fillGap(id gapID: String) async {
         guard let index = rows.firstIndex(where: { $0.id == gapID }) else { return }
+        if key.source.pagesOnlyByLink {
+            // No status id can name the window under the gap (see
+            // `pagesOnlyByLink`), so the list is loaded again from the top.
+            lastRefresh = nil
+            await refresh()
+            return
+        }
         let above = rows[..<index].compactMap(\.status).last?.id
 
         do {

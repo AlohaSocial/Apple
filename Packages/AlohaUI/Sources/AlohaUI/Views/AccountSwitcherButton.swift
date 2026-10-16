@@ -33,9 +33,6 @@ struct AccountMenuButton: View {
                     item("Your lists", symbol: AlohaSymbol.list, route: .lists)
                     if session.capabilities.isNextcloudSocial {
                         item("My interests", symbol: "sparkles", route: .interests)
-                        item(
-                            "Subscriptions", symbol: "dot.radiowaves.up.forward",
-                            route: .subscriptions)
                     }
                     if session.capabilities.collections {
                         item(

@@ -478,7 +478,7 @@ public enum SidebarItem: Hashable, Sendable {
     /// The destinations that live in the sidebar rather than being pushed.
     public static let sidebarRoutes: [Route] = [
         .notifications, .conversations, .explore, .search(query: nil), .lists,
-        .interests, .subscriptions, .collections(accountID: nil),
+        .interests, .collections(accountID: nil),
         .followRequests, .favourites, .bookmarks, .archived, .statistics, .safety, .settings,
     ]
 }
@@ -562,9 +562,6 @@ public struct SidebarView: View {
                     row(
                         "My interests", symbol: "sparkles", route: .interests,
                         comment: "Sidebar item")
-                    row(
-                        "Subscriptions", symbol: "dot.radiowaves.up.forward",
-                        route: .subscriptions, comment: "Sidebar item")
                 }
                 if session.capabilities.collections {
                     row(
@@ -573,9 +570,9 @@ public struct SidebarView: View {
                 }
             } header: {
                 // "Explore" was wrong over these: Discover is already in the
-                // top group, and this section is lists, interests,
-                // subscriptions and albums — the things a person gathers, not
-                // where they stumble on new ones.
+                // top group, and this section is lists, interests and albums —
+                // the things a person gathers, not where they stumble on new
+                // ones.
                 Text("Library", comment: "Sidebar section")
             }
 

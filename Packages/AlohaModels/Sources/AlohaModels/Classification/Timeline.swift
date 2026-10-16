@@ -35,6 +35,12 @@ public enum TimelineSource: Codable, Sendable, Hashable {
     /// `local=true` narrows `public` to this instance.
     public var isLocalOnly: Bool { self == .local }
 
+    /// Paged by the favourite's or bookmark's own id rather than the post's,
+    /// as Mastodon pages them: a status id is no cursor here, and a
+    /// `max_id` built from one asks for the wrong window. Only the server's
+    /// `Link` URLs page these.
+    public var pagesOnlyByLink: Bool { self == .favourites || self == .bookmarks }
+
     public var requiresViewer: Bool {
         switch self {
         case .federated, .local, .hashtag, .trending: false

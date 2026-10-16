@@ -51,9 +51,17 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
     /// The quoted post itself, when the server embeds it (Mastodon 4.4 shape
     /// `{state, quoted_status}`, or the status directly on other servers).
     public var quote: QuotedStatus?
-    /// Who may quote this post: `public`, `followers` or `nobody` (Nextcloud
-    /// Social's `quote_approval_policy`). `nil` where the server says nothing.
+    /// Who may quote this post: `public`, `followers` or `nobody`. Read from
+    /// `quote_approval.automatic` (Mastodon 4.5's shape, which is what the
+    /// server sends on its own posts), or from a bare `quote_approval_policy`
+    /// where a server sends that. `nil` where the server says nothing.
     public var quoteApprovalPolicy: String?
+    /// Mastodon 4.5's `quote_approval`: who is approved, and where the reader
+    /// stands. Only a server's own posts carry it.
+    public var quoteApproval: QuoteApproval?
+    /// What a remote post's server allows — `reply`, `boost`, `like` → allowed
+    /// — when it publishes interaction policies. `nil` almost always.
+    public var interactionPolicy: [String: Bool]?
 
     // Nextcloud Social extras. All optional on the wire; absent elsewhere.
     /// PeerTube's thumbs-down, on videos.
@@ -125,6 +133,40 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         }
     }
 
+    /// Mastodon 4.5's `quote_approval` (`Stream::exportQuoteApproval`).
+    public struct QuoteApproval: Codable, Sendable, Hashable {
+        /// Who may quote without asking: `public`, `followers`; empty for
+        /// nobody.
+        public var automatic: [String]
+        /// Who would have to be asked. Always empty on Aloha Social, which
+        /// answers a quote request the moment it arrives.
+        public var manual: [String]
+        /// `automatic`, `manual`, `denied` or `unknown`, for the reader.
+        public var currentUser: String?
+
+        enum CodingKeys: String, CodingKey {
+            case automatic, manual
+            case currentUser = "current_user"
+        }
+
+        public init(automatic: [String] = [], manual: [String] = [], currentUser: String? = nil) {
+            self.automatic = automatic
+            self.manual = manual
+            self.currentUser = currentUser
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            automatic = (try? c.decodeIfPresent([String].self, forKey: .automatic)) ?? []
+            manual = (try? c.decodeIfPresent([String].self, forKey: .manual)) ?? []
+            currentUser = try? c.decodeIfPresent(String.self, forKey: .currentUser)
+        }
+
+        /// The policy the composer and the quote settings speak: the first
+        /// automatic audience, or `nobody` when there is none.
+        public var policy: String { automatic.first ?? "nobody" }
+    }
+
     /// A place a post was tagged with (Nextcloud Social).
     public struct StatusPlace: Codable, Sendable, Hashable, Identifiable {
         @FlexibleID public var id: String
@@ -133,10 +175,13 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         public var latitude: Double?
         public var longitude: Double?
 
+        /// The server's Pixelfed shape (`Place::jsonSerialize`): `long`, and
+        /// strings rather than numbers. `lon` is read too, for cached rows.
         enum CodingKeys: String, CodingKey {
             case id, name, country
             case latitude = "lat"
-            case longitude = "lon"
+            case longitude = "long"
+            case legacyLongitude = "lon"
         }
 
         public init(
@@ -154,9 +199,20 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             _id = try c.decode(FlexibleID.self, forKey: .id)
             name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-            country = try c.decodeIfPresent(String.self, forKey: .country)
-            latitude = try? c.decodeIfPresent(Double.self, forKey: .latitude)
-            longitude = try? c.decodeIfPresent(Double.self, forKey: .longitude)
+            country = try? c.decodeIfPresent(String.self, forKey: .country)
+            latitude = PlaceCoordinate.decode(c, .latitude)
+            longitude =
+                PlaceCoordinate.decode(c, .longitude)
+                ?? PlaceCoordinate.decode(c, .legacyLongitude)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            try c.encode(name, forKey: .name)
+            try c.encodeIfPresent(country, forKey: .country)
+            try c.encodeIfPresent(latitude, forKey: .latitude)
+            try c.encodeIfPresent(longitude, forKey: .longitude)
         }
 
         /// "Name, Country", or just the name.
@@ -251,6 +307,8 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         case quoteID = "quote_id"
         case quote
         case quoteApprovalPolicy = "quote_approval_policy"
+        case quoteApproval = "quote_approval"
+        case interactionPolicy = "interaction_policy"
         case dislikesCount = "dislikes_count"
         case disliked, archived, place
         case replyPolicy = "reply_policy"
@@ -303,7 +361,11 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         reactions = (try? c.decode(LossyArray<Reaction>.self, forKey: .reactions))?.elements
         _quoteID = try c.decode(FlexibleOptionalID.self, forKey: .quoteID)
         quote = try? c.decodeIfPresent(QuotedStatus.self, forKey: .quote)
-        quoteApprovalPolicy = try? c.decodeIfPresent(String.self, forKey: .quoteApprovalPolicy)
+        quoteApproval = try? c.decodeIfPresent(QuoteApproval.self, forKey: .quoteApproval)
+        quoteApprovalPolicy =
+            (try? c.decodeIfPresent(String.self, forKey: .quoteApprovalPolicy))
+            ?? quoteApproval?.policy
+        interactionPolicy = try? c.decodeIfPresent([String: Bool].self, forKey: .interactionPolicy)
         _dislikesCount = try c.decode(LenientInt.self, forKey: .dislikesCount)
         _disliked = try c.decode(LenientBool.self, forKey: .disliked)
         archived = (try? c.decodeIfPresent(LenientBool.self, forKey: .archived))?.wrappedValue
@@ -333,6 +395,7 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         card: Card? = nil, application: ApplicationSummary? = nil, text: String? = nil,
         filtered: [FilterResult]? = nil, reactions: [Reaction]? = nil, quoteID: String? = nil,
         quote: QuotedStatus? = nil, quoteApprovalPolicy: String? = nil,
+        quoteApproval: QuoteApproval? = nil, interactionPolicy: [String: Bool]? = nil,
         dislikesCount: Int = 0, disliked: Bool = false, archived: Bool? = nil,
         place: StatusPlace? = nil, replyPolicy: String? = nil, hiddenByAuthor: Bool? = nil,
         canHide: Bool? = nil, replyApproval: ReplyApproval? = nil, aiGenerated: Bool = false,
@@ -373,7 +436,9 @@ public struct Status: Codable, Sendable, Hashable, Identifiable {
         self.reactions = reactions
         _quoteID = .init(wrappedValue: quoteID)
         self.quote = quote
-        self.quoteApprovalPolicy = quoteApprovalPolicy
+        self.quoteApprovalPolicy = quoteApprovalPolicy ?? quoteApproval?.policy
+        self.quoteApproval = quoteApproval
+        self.interactionPolicy = interactionPolicy
         _dislikesCount = .init(wrappedValue: dislikesCount)
         _disliked = .init(wrappedValue: disliked)
         self.archived = archived
@@ -414,6 +479,24 @@ extension Status {
 
     /// The quoted post, when the server embedded it.
     public var quotedStatus: Status? { quote?.quotedStatus?.value }
+
+    /// Whether the reader may quote this post, where the server says:
+    /// `quote_approval.current_user` is `denied` when the policy shuts them
+    /// out, and a quote they post anyway would only ever stay pending. `nil`
+    /// where nothing was said, which leaves the action as it was.
+    public var viewerMayQuote: Bool? {
+        switch quoteApproval?.currentUser {
+        case "automatic", "manual": true
+        case "denied": false
+        default: nil
+        }
+    }
+
+    /// Whether a remote post's server lets the reader do one thing —
+    /// `reply`, `boost` or `like` — where it says. `nil` where it does not.
+    public func interactionAllowed(_ interaction: String) -> Bool? {
+        interactionPolicy?[interaction]
+    }
 
     /// Whether the viewer is the author of the drawn post.
     public func isOwn(viewerAccountID: String) -> Bool {

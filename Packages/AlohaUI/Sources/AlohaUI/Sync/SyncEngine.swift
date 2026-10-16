@@ -191,7 +191,9 @@ public final class SyncEngine {
 
     private func fetchUnreadCount(_ session: AccountSession) async throws -> Int {
         let endpoint = Endpoint.notifications.unreadCount(
-            grouped: session.capabilities.groupedNotifications)
+            grouped: session.capabilities.groupedNotifications,
+            types: Endpoint.notifications.everyType(
+                onAlohaSocial: session.capabilities.isNextcloudSocial))
         return try await session.client.decode(UnreadCount.self, from: endpoint).count
     }
 
@@ -267,10 +269,12 @@ public final class SyncEngine {
 /// Reads whichever notification surface the server has.
 enum NotificationSync {
     static func fetch(session: AccountSession) async throws -> [StoredNotification] {
+        let types = Endpoint.notifications.everyType(
+            onAlohaSocial: session.capabilities.isNextcloudSocial)
         if session.capabilities.groupedNotifications {
             let results = try await session.client.decode(
                 GroupedNotificationsResults.self,
-                from: Endpoint.notifications.grouped(limit: 40))
+                from: Endpoint.notifications.grouped(limit: 40, types: types))
 
             return results.notificationGroups.map { group in
                 StoredNotification(
@@ -285,7 +289,8 @@ enum NotificationSync {
         }
 
         let page = try await session.client.decode(
-            LossyArray<MastodonNotification>.self, from: Endpoint.notifications.flat(limit: 40))
+            LossyArray<MastodonNotification>.self,
+            from: Endpoint.notifications.flat(limit: 40, types: types))
 
         return page.elements.map { notification in
             StoredNotification(

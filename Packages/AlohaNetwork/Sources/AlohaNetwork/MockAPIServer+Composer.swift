@@ -12,7 +12,11 @@ extension MockAPIServer {
         case "api/v1/places/search":
             let q = (query.first { $0.name == "q" }?.value ?? "").lowercased()
             let places: [[String: Any]] = [
-                ["id": "p1", "name": "Berlin", "country": "Germany", "lat": 52.52, "lon": 13.405],
+                // Pixelfed's shape, as `Place::jsonSerialize` writes it.
+                [
+                    "id": "p1", "name": "Berlin", "country": "Germany", "lat": "52.52",
+                    "long": "13.405",
+                ],
                 ["id": "p2", "name": "Stuttgart", "country": "Germany"],
                 ["id": "p3", "name": "Honolulu", "country": "United States"],
             ]
