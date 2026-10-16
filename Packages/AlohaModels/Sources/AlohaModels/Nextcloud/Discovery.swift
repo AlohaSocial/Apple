@@ -19,11 +19,48 @@ public struct StarterPack: Codable, Sendable, Hashable, Identifiable {
     public var size: Int
     /// Resolved on the single-pack route only.
     public var accounts: [Account]
+    /// The handles the server does not hold yet. It fetches them in the
+    /// background, so the next look has them; one that will not resolve —
+    /// host down, account moved — stays here rather than silently dropping.
+    public var unresolved: [String]
+    /// Where the pack comes from. `nil` for the ones this instance chose;
+    /// `fediverse` for a Mastodon collection read in, `bluesky` for one of
+    /// Bluesky's suggested packs.
+    public var source: Source?
+    /// Who published a pack read in, as `user@host`.
+    public var curator: String?
+    /// Where it can be seen on the curator's own server.
+    public var url: URL?
+    /// Its hashtag, without `#`.
+    public var topic: String?
+    public var language: String?
+
+    public enum Source: Sendable, Hashable {
+        case fediverse, bluesky
+        case other(String)
+
+        init(_ raw: String) {
+            switch raw {
+            case "fediverse": self = .fediverse
+            case "bluesky": self = .bluesky
+            default: self = .other(raw)
+            }
+        }
+
+        var rawValue: String {
+            switch self {
+            case .fediverse: "fediverse"
+            case .bluesky: "bluesky"
+            case .other(let raw): raw
+            }
+        }
+    }
 
     public var id: String { slug }
 
     enum CodingKeys: String, CodingKey {
         case slug, name, description, handles, size, accounts
+        case unresolved, source, curator, url, topic, language
     }
 
     public init(from decoder: any Decoder) throws {
@@ -38,11 +75,42 @@ public struct StarterPack: Codable, Sendable, Hashable, Identifiable {
         } else {
             size = max(handles.count, accounts.count)
         }
+        unresolved = (try? c.decode([String].self, forKey: .unresolved)) ?? []
+        source = ((try? c.decodeIfPresent(String.self, forKey: .source)) ?? nil)
+            .flatMap { $0.isEmpty ? nil : Source($0) }
+        curator = Self.nonEmpty(try? c.decodeIfPresent(String.self, forKey: .curator))
+        url = Self.nonEmpty(try? c.decodeIfPresent(String.self, forKey: .url))
+            .flatMap(URL.init(string:))
+        topic = Self.nonEmpty(try? c.decodeIfPresent(String.self, forKey: .topic))
+        language = Self.nonEmpty(try? c.decodeIfPresent(String.self, forKey: .language))
+    }
+
+    private static func nonEmpty(_ value: String??) -> String? {
+        guard let value = value ?? nil, !value.isEmpty else { return nil }
+        return value
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(slug, forKey: .slug)
+        try c.encode(name, forKey: .name)
+        try c.encode(description, forKey: .description)
+        try c.encode(handles, forKey: .handles)
+        try c.encode(size, forKey: .size)
+        try c.encode(accounts, forKey: .accounts)
+        try c.encode(unresolved, forKey: .unresolved)
+        try c.encodeIfPresent(source?.rawValue, forKey: .source)
+        try c.encodeIfPresent(curator, forKey: .curator)
+        try c.encodeIfPresent(url, forKey: .url)
+        try c.encodeIfPresent(topic, forKey: .topic)
+        try c.encodeIfPresent(language, forKey: .language)
     }
 
     public init(
         slug: String, name: String, description: String = "", handles: [String] = [],
-        size: Int? = nil, accounts: [Account] = []
+        size: Int? = nil, accounts: [Account] = [], unresolved: [String] = [],
+        source: Source? = nil, curator: String? = nil, url: URL? = nil, topic: String? = nil,
+        language: String? = nil
     ) {
         self.slug = slug
         self.name = name
@@ -50,6 +118,12 @@ public struct StarterPack: Codable, Sendable, Hashable, Identifiable {
         self.handles = handles
         self.accounts = accounts
         self.size = size ?? max(handles.count, accounts.count)
+        self.unresolved = unresolved
+        self.source = source
+        self.curator = curator
+        self.url = url
+        self.topic = topic
+        self.language = language
     }
 }
 
