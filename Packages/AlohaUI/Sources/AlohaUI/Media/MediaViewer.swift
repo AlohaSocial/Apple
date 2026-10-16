@@ -303,7 +303,7 @@ public struct VideoAttachmentPlayer: View {
                         sourceIndex = 0
                         retryCount += 1
                     } label: {
-                        Text("Try again")
+                        Text("Try again", comment: "Retry media playback")
                     }
                     .buttonStyle(.glass)
                 }

@@ -50,71 +50,86 @@ struct AlohaSocialMacApp: App {
                 .onContinueUserActivity(Continuity.viewingTimeline) { activity in resume(activity) }
         }
         .modelContainer(environment.container)
-        .commands { MacCommands() }
+        .commands { AlohaCommands() }
         // A client is a reading surface: it opens at the width of a timeline
         // plus a thread, not at the default square.
         .defaultSize(width: 1180, height: 820)
         .defaultPosition(.center)
-    }
-}
 
-/// The Mac menu bar.
-///
-/// New Post goes through the same `alohasocial://compose` link the
-/// quick-compose widget and the Shortcuts use, so there is one definition of
-/// what opening the composer means and every entry point behaves identically
-/// (docs/09 §10).
-struct MacCommands: Commands {
-    var body: some Commands {
-        CommandGroup(replacing: .newItem) {
+        // The Mac's own preferences window (⌘,): the same settings form the
+        // app shows in its sidebar destination, rather than a second
+        // implementation of it. "Add account" cannot present from here —
+        // the sign-in sheet belongs to the main window — so it asks the
+        // shell, which owns it, via the same notification mechanism every
+        // other entry point uses.
+        Settings {
+            SettingsView {
+                NotificationCenter.default.post(name: .alohaAddAccount, object: nil)
+            }
+            .environment(environment)
+            .alohaTheme(
+                environment.theme, metrics: environment.metrics,
+                accent: environment.serverAccent)
+        }
+
+        // The menu bar extra: a way in from anywhere — new post, the three
+        // destinations — without bringing the window forward first. Each item
+        // posts what its menu-bar sibling posts, so the extra cannot behave
+        // differently from the menu bar it sits next to.
+        MenuBarExtra {
             Button {
-                NSWorkspace.shared.open(URL(string: "alohasocial://compose")!)
+                activate()
+                NotificationCenter.default.post(
+                    name: RouteResolver.composeRequested, object: nil)
             } label: {
                 Text("New Post", comment: "Menu item")
             }
-            .keyboardShortcut("n", modifiers: .command)
-        }
 
-        CommandMenu("Timeline") {
+            Divider()
+
             Button {
-                NotificationCenter.default.post(
-                    name: .alohaOpenRoute, object: nil,
-                    userInfo: ["route": Route.notifications])
+                openRoute(.notifications)
             } label: {
                 Text("Notifications", comment: "Menu item")
             }
-            .keyboardShortcut("1", modifiers: .command)
 
             Button {
-                NotificationCenter.default.post(
-                    name: .alohaOpenRoute, object: nil,
-                    userInfo: ["route": Route.explore])
+                openRoute(.explore)
             } label: {
                 Text("Discover", comment: "Menu item")
             }
-            .keyboardShortcut("2", modifiers: .command)
 
             Button {
-                NotificationCenter.default.post(
-                    name: .alohaOpenRoute, object: nil,
-                    userInfo: ["route": Route.conversations])
+                openRoute(.conversations)
             } label: {
                 Text("Messages", comment: "Menu item")
             }
-            .keyboardShortcut("3", modifiers: .command)
-        }
-
-        CommandGroup(replacing: .help) {
-            Button {
-                if let url = URL(string: "https://github.com/AlohaSocial/Apple/discussions") {
-                    NSWorkspace.shared.open(url)
-                }
-            } label: {
-                Text("Aloha Social on GitHub", comment: "Menu item")
+        } label: {
+            Label {
+                Text("Aloha Social", comment: "App name")
+            } icon: {
+                Image(systemName: "bubble.left.and.text.bubble.right")
             }
         }
     }
+
+    /// A menu-bar action lands in a running app whose window may be behind
+    /// forty others: bring it forward first, then navigate, so the
+    /// destination is actually seen.
+    private func activate() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    private func openRoute(_ route: Route) {
+        activate()
+        NotificationCenter.default.post(
+            name: .alohaOpenRoute, object: nil, userInfo: ["route": route])
+    }
 }
+
+// The menu bar itself is the shared `AlohaCommands` in AlohaUI — one
+// definition for the Mac app and the iPad windowing menu bar, rather than
+// two that can disagree (docs/09 §10).
 
 extension AlohaSocialMacApp {
     /// Every entry point — scheme, universal link, Handoff, intent,

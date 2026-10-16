@@ -824,18 +824,6 @@ public struct ComposerView: View {
 
     @ViewBuilder
     private var toolbarButtons: some View {
-        if model.canBeCard {
-            Button {
-                showsCardOptions.toggle()
-            } label: {
-                Image(systemName: "rectangle.on.rectangle")
-            }
-            .accessibilityLabel(Text("Post it as a card", comment: "Composer card section"))
-            .accessibilityValue(
-                showsCardOptions
-                    ? Text("Expanded", comment: "Accessibility state")
-                    : Text("Collapsed", comment: "Accessibility state"))
-        }
         Button {
             model.isShowingMediaPicker = true
         } label: {
@@ -852,120 +840,6 @@ public struct ComposerView: View {
         }
         .disabled(!model.attachments.isEmpty)
         .accessibilityLabel(Text("Add a poll", comment: "Composer action"))
-
-        Button {
-            model.showsContentWarningField.toggle()
-        } label: {
-            Image(systemName: AlohaSymbol.warning)
-        }
-        .accessibilityLabel(Text("Add a content warning", comment: "Composer action"))
-
-        Button {
-            model.addThreadSegment()
-        } label: {
-            Image(systemName: "text.append")
-        }
-        .accessibilityLabel(Text("Add to thread", comment: "Composer action"))
-
-        Button {
-            isShowingSchedule = true
-        } label: {
-            Image(systemName: model.scheduledAt == nil ? "clock" : "clock.fill")
-        }
-        .accessibilityLabel(Text("Schedule this post", comment: "Composer action"))
-
-        if model.capabilities.mediaFromNextcloudFiles {
-            Button {
-                isShowingNextcloudFiles = true
-            } label: {
-                Image(systemName: "folder")
-            }
-            .disabled(!model.canAddMedia)
-            .accessibilityLabel(
-                Text("Attach from your Nextcloud", comment: "Composer action"))
-        }
-
-        if model.isNextcloud {
-            Button {
-                isShowingGIFPicker = true
-            } label: {
-                Image(systemName: "photo.stack")
-            }
-            .disabled(!model.canAddMedia)
-            .accessibilityLabel(Text("Add a picture from the library", comment: "Composer action"))
-
-            Button {
-                isShowingPlacePicker = true
-            } label: {
-                Image(systemName: model.place == nil ? "mappin.and.ellipse" : "mappin.circle.fill")
-            }
-            .accessibilityLabel(Text("Add a place", comment: "Composer action"))
-        }
-
-        Button {
-            isShowingEmojiPicker = true
-        } label: {
-            Image(systemName: "face.smiling")
-        }
-        .accessibilityLabel(Text("Add a custom emoji", comment: "Composer action"))
-
-        Menu {
-            LanguagePicker(language: $model.language, fallback: model.defaultLanguage)
-        } label: {
-            if let code = model.language, !code.isEmpty {
-                Text(LanguagePicker.short(for: code))
-                    .font(.caption.weight(.bold))
-                    .frame(minWidth: 24, minHeight: 24)
-            } else {
-                Image(systemName: "character.book.closed")
-            }
-        }
-        .accessibilityLabel(Text("Language", comment: "Composer action"))
-
-        if model.canQuote, model.editingStatus == nil {
-            Menu {
-                Picker(selection: $model.quotePolicy) {
-                    Label {
-                        Text("Anybody", comment: "Quote policy")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.globe)
-                    }.tag(ComposerModel.QuotePolicy.public)
-                    Label {
-                        Text("People who follow me", comment: "Quote policy")
-                    } icon: {
-                        Image(systemName: "person.2")
-                    }.tag(ComposerModel.QuotePolicy.followers)
-                    Label {
-                        Text("Nobody but me", comment: "Quote policy")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.lock)
-                    }.tag(ComposerModel.QuotePolicy.nobody)
-                } label: {
-                    Text("Who may quote this", comment: "Composer picker")
-                }
-                .pickerStyle(.inline)
-            } label: {
-                Image(systemName: model.quotePolicy == .public ? "text.quote" : "text.badge.xmark")
-            }
-            .accessibilityLabel(Text("Who may quote this", comment: "Composer action"))
-        }
-
-        if !model.teams.isEmpty {
-            Menu {
-                Picker(selection: $model.postAs) {
-                    Text("Myself", comment: "Post as option").tag(TeamAccount?.none)
-                    ForEach(model.teams) { team in
-                        Text(team.name).tag(TeamAccount?.some(team))
-                    }
-                } label: {
-                    Text("Post as", comment: "Composer picker")
-                }
-                .pickerStyle(.inline)
-            } label: {
-                Image(systemName: model.postAs == nil ? "person" : "person.3.fill")
-            }
-            .accessibilityLabel(Text("Post as", comment: "Composer action"))
-        }
 
         Menu {
             Picker(selection: $model.visibility) {
@@ -998,21 +872,205 @@ public struct ComposerView: View {
         }
         .accessibilityLabel(Text("Who can see this", comment: "Composer action"))
 
-        if environment.intelligence.availability.isAvailable {
-            Menu {
-                ForEach(RewriteStyle.allCases) { style in
-                    Button {
-                        Task { await model.rewrite(style, using: environment.intelligence) }
-                    } label: {
-                        Text(style.displayName)
+        Menu {
+            if model.canBeCard {
+                Button {
+                    showsCardOptions.toggle()
+                } label: {
+                    Label {
+                        Text("Post it as a card", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: "rectangle.on.rectangle")
                     }
                 }
-            } label: {
-                Image(systemName: AlohaSymbol.sparkles)
+                .accessibilityLabel(Text("Post it as a card", comment: "Composer card section"))
+                .accessibilityValue(
+                    showsCardOptions
+                        ? Text("Expanded", comment: "Accessibility state")
+                        : Text("Collapsed", comment: "Accessibility state"))
             }
-            .disabled(model.text.isEmpty)
-            .accessibilityLabel(Text("Writing help", comment: "Composer action"))
+            Button {
+                model.showsContentWarningField.toggle()
+            } label: {
+                Label {
+                    Text("Add a content warning", comment: "Composer action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.warning)
+                }
+            }
+            .accessibilityLabel(Text("Add a content warning", comment: "Composer action"))
+
+            Button {
+                model.addThreadSegment()
+            } label: {
+                Label {
+                    Text("Add to thread", comment: "Composer action")
+                } icon: {
+                    Image(systemName: "text.append")
+                }
+            }
+            .accessibilityLabel(Text("Add to thread", comment: "Composer action"))
+
+            Button {
+                isShowingSchedule = true
+            } label: {
+                Label {
+                    Text("Schedule this post", comment: "Composer action")
+                } icon: {
+                    Image(systemName: model.scheduledAt == nil ? "clock" : "clock.fill")
+                }
+            }
+            .accessibilityLabel(Text("Schedule this post", comment: "Composer action"))
+
+            if model.capabilities.mediaFromNextcloudFiles {
+                Button {
+                    isShowingNextcloudFiles = true
+                } label: {
+                    Label {
+                        Text("Attach from your Nextcloud", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: "folder")
+                    }
+                }
+                .disabled(!model.canAddMedia)
+                .accessibilityLabel(
+                    Text("Attach from your Nextcloud", comment: "Composer action"))
+            }
+
+            if model.isNextcloud {
+                Button {
+                    isShowingGIFPicker = true
+                } label: {
+                    Label {
+                        Text("Add a picture from the library", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: "photo.stack")
+                    }
+                }
+                .disabled(!model.canAddMedia)
+                .accessibilityLabel(
+                    Text("Add a picture from the library", comment: "Composer action"))
+
+                Button {
+                    isShowingPlacePicker = true
+                } label: {
+                    Label {
+                        Text("Add a place", comment: "Composer action")
+                    } icon: {
+                        Image(
+                            systemName: model.place == nil
+                                ? "mappin.and.ellipse" : "mappin.circle.fill")
+                    }
+                }
+                .accessibilityLabel(Text("Add a place", comment: "Composer action"))
+            }
+
+            Button {
+                isShowingEmojiPicker = true
+            } label: {
+                Label {
+                    Text("Add a custom emoji", comment: "Composer action")
+                } icon: {
+                    Image(systemName: "face.smiling")
+                }
+            }
+            .accessibilityLabel(Text("Add a custom emoji", comment: "Composer action"))
+
+            Menu {
+                LanguagePicker(language: $model.language, fallback: model.defaultLanguage)
+            } label: {
+                if let code = model.language, !code.isEmpty {
+                    Text(LanguagePicker.short(for: code))
+                        .font(.caption.weight(.bold))
+                        .frame(minWidth: 24, minHeight: 24)
+                } else {
+                    Label {
+                        Text("Language", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: "character.book.closed")
+                    }
+                }
+            }
+            .accessibilityLabel(Text("Language", comment: "Composer action"))
+
+            if model.canQuote, model.editingStatus == nil {
+                Menu {
+                    Picker(selection: $model.quotePolicy) {
+                        Label {
+                            Text("Anybody", comment: "Quote policy")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.globe)
+                        }.tag(ComposerModel.QuotePolicy.public)
+                        Label {
+                            Text("People who follow me", comment: "Quote policy")
+                        } icon: {
+                            Image(systemName: "person.2")
+                        }.tag(ComposerModel.QuotePolicy.followers)
+                        Label {
+                            Text("Nobody but me", comment: "Quote policy")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.lock)
+                        }.tag(ComposerModel.QuotePolicy.nobody)
+                    } label: {
+                        Text("Who may quote this", comment: "Composer picker")
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label {
+                        Text("Who may quote this", comment: "Composer action")
+                    } icon: {
+                        Image(
+                            systemName: model.quotePolicy == .public
+                                ? "text.quote" : "text.badge.xmark")
+                    }
+                }
+                .accessibilityLabel(Text("Who may quote this", comment: "Composer action"))
+            }
+
+            if !model.teams.isEmpty {
+                Menu {
+                    Picker(selection: $model.postAs) {
+                        Text("Myself", comment: "Post as option").tag(TeamAccount?.none)
+                        ForEach(model.teams) { team in
+                            Text(team.name).tag(TeamAccount?.some(team))
+                        }
+                    } label: {
+                        Text("Post as", comment: "Composer picker")
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label {
+                        Text("Post as", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: model.postAs == nil ? "person" : "person.3.fill")
+                    }
+                }
+                .accessibilityLabel(Text("Post as", comment: "Composer action"))
+            }
+
+            if environment.intelligence.availability.isAvailable {
+                Menu {
+                    ForEach(RewriteStyle.allCases) { style in
+                        Button {
+                            Task { await model.rewrite(style, using: environment.intelligence) }
+                        } label: {
+                            Text(style.displayName)
+                        }
+                    }
+                } label: {
+                    Label {
+                        Text("Writing help", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: AlohaSymbol.sparkles)
+                    }
+                }
+                .disabled(model.text.isEmpty)
+                .accessibilityLabel(Text("Writing help", comment: "Composer action"))
+            }
+        } label: {
+            Image(systemName: "ellipsis")
         }
+        .accessibilityLabel(Text("More options", comment: "Composer additional actions"))
     }
 
     private var uploadProgress: some View {

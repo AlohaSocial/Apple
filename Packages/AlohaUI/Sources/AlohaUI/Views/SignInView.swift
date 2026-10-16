@@ -13,14 +13,18 @@ public struct SignInView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var model = SignInModel()
-    @State private var typed = ""
+    /// Bound to the shell's `signInAddress`, not a copy of it: what the
+    /// introduction's last page holds stays in the field, so the address is
+    /// typed once — here or there — and never asked for twice. A `State`
+    /// snapshot went stale whenever the sheet presented with an older value.
+    @Binding private var typed: String
     @FocusState private var isFieldFocused: Bool
 
     /// Opens with an address already in the field — the one the person typed
     /// on the introduction's last page, rather than asking them to type it
     /// twice.
-    public init(serverAddress: String = "") {
-        _typed = State(initialValue: serverAddress)
+    public init(serverAddress: Binding<String> = .constant("")) {
+        _typed = serverAddress
     }
 
     public var body: some View {
@@ -100,6 +104,9 @@ public struct SignInView: View {
             } label: {
                 Text("Continue", comment: "Sign-in action")
             }
+            // Return continues on a hardware keyboard: the sheet is a Mac
+            // window, and its primary action must answer Return.
+            .keyboardShortcut(.defaultAction)
             .disabled(typed.trimmingCharacters(in: .whitespaces).isEmpty)
         } footer: {
             VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
@@ -145,13 +152,13 @@ public struct SignInView: View {
                         Text(outcome.instance.domain)
                             .font(.caption)
                             .foregroundStyle(palette.secondaryLabel)
-                        if let users = outcome.instance.userCount {
-                            Text(
-                                "^[\(users) person](inflect: true)", comment: "Instance user count"
-                            )
-                            .font(.caption)
-                            .foregroundStyle(palette.tertiaryLabel)
-                        }
+                        // What the server reports about itself: people, posts,
+                        // connected servers — whichever of those this server's
+                        // API generation actually serves (v2 has no post or
+                        // server counts, and a missing number is omitted rather
+                        // than shown as zero).
+                        serverStats(outcome.instance)
+                        serverDetails(outcome.instance)
                     }
                 }
 
@@ -176,6 +183,7 @@ public struct SignInView: View {
                 } label: {
                     Text("Sign in", comment: "Sign-in action")
                 }
+                .keyboardShortcut(.defaultAction)
 
                 // Nextcloud Social's client API cannot create an account — an
                 // account there is a Nextcloud account — so there is never a
@@ -193,6 +201,53 @@ public struct SignInView: View {
                 }
             }
         }
+    }
+
+    /// People, posts and connected servers as one line of facts — each only
+    /// where the server answered it.
+    @ViewBuilder
+    private func serverStats(_ instance: InstanceDescription) -> some View {
+        let stats: [Text] = [
+            instance.userCount.map {
+                Text("^[\($0) person](inflect: true)", comment: "Instance user count")
+            },
+            instance.statusCount.map {
+                Text("^[\($0) post](inflect: true)", comment: "Instance post count")
+            },
+            instance.domainCount.map {
+                Text(
+                    "^[\($0) connected server](inflect: true)",
+                    comment: "Instance server count")
+            },
+        ].compactMap { $0 }
+        if !stats.isEmpty {
+            // One Text from many: `Text + Text` localises as a unit, and the
+            // separators join without a trailing one.
+            stats.dropFirst().reduce(stats[0]) { $0 + Text(verbatim: " · ") + $1 }
+                .font(.caption)
+                .foregroundStyle(palette.tertiaryLabel)
+        }
+    }
+
+    /// Version, registration state and languages: the three things that tell
+    /// a person whether this server takes new accounts and speaks theirs.
+    private func serverDetails(_ instance: InstanceDescription) -> some View {
+        var parts: [String] = []
+        if !instance.version.isEmpty { parts.append(instance.version) }
+        if instance.registrationsEnabled {
+            parts.append(
+                instance.approvalRequired
+                    ? String(localized: "Registrations open, approval required", comment: "Instance detail")
+                    : String(localized: "Registrations open", comment: "Instance detail"))
+        } else {
+            parts.append(String(localized: "Registrations closed", comment: "Instance detail"))
+        }
+        if !instance.languages.isEmpty {
+            parts.append(instance.languages.joined(separator: ", ").uppercased())
+        }
+        return Text(parts.joined(separator: " · "))
+            .font(.caption)
+            .foregroundStyle(palette.tertiaryLabel)
     }
 
     private var authorisingSection: some View {

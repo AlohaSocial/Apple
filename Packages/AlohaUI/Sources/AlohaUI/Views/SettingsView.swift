@@ -18,7 +18,11 @@ public struct SettingsView: View {
     /// Section titles and the words somebody might actually type looking for
     /// them — "dark" should find Appearance, not nothing.
     private static let searchTerms: [(title: String, keywords: String)] = [
-        ("Accounts", "account accounts add sign switch remove"),
+        ("Accounts", "account accounts add sign switch remove sign out log out"),
+        (
+            "Feeds",
+            "feeds modes home photos video shorts news audio screens timelines"
+        ),
         (
             "Your account",
             "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
@@ -86,6 +90,9 @@ public struct SettingsView: View {
     /// other way to see the tour again, and it is the only place the app
     /// explains itself.
     @State private var isShowingIntroduction = false
+    /// The account a sign-out confirmation is about. `nil` while no
+    /// confirmation is on screen.
+    @State private var signOutSession: AccountSession?
 
     public init(onAddAccount: @escaping () -> Void) {
         self.onAddAccount = onAddAccount
@@ -112,6 +119,12 @@ public struct SettingsView: View {
                     "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
                 ) {
                     yourAccountSection(session)
+                }
+                if shows(
+                    "Feeds",
+                    "feeds modes home photos video shorts news audio screens timelines"
+                ) {
+                    feedsSection(session)
                 }
                 if shows("Timeline", "timeline feed boosts replies pill position restore numbers") {
                     timelineSection(session)
@@ -347,6 +360,19 @@ public struct SettingsView: View {
             if let session = environment.activeSession {
                 NextcloudConnectView(session: session)
             }
+        }
+        .confirmationDialog(
+            Text("Sign out?", comment: "Sign-out confirmation"),
+            isPresented: Binding(
+                get: { signOutSession != nil },
+                set: { if !$0 { signOutSession = nil } }),
+            presenting: signOutSession
+        ) { session in
+            Button("Sign out", role: .destructive) {
+                Task { await environment.removeAccount(session.id) }
+            }
+        } message: { session in
+            Text(signOutMessage(for: session))
         }
         .task { cacheSize = await ImageLoader.shared.currentDiskSize() }
     }
@@ -658,7 +684,7 @@ public struct SettingsView: View {
                                 }),
                             in: 0...23
                         ) {
-                            Text("Digest \(idx + 1): \(session.settings.digestTimes[idx]):00")
+                            Text("Digest \(idx + 1): \(session.settings.digestTimes[idx]):00", comment: "Digest schedule accessibility label")
                         }
                     }
 
@@ -720,7 +746,7 @@ public struct SettingsView: View {
                             })
                     ) {
                         ForEach(0..<24) { hour in
-                            Text("\(hour):00").tag(hour)
+                            Text(verbatim: "\(hour):00").tag(hour)
                         }
                     }
                     .pickerStyle(.menu)
@@ -737,7 +763,7 @@ public struct SettingsView: View {
                             })
                     ) {
                         ForEach(0..<24) { hour in
-                            Text("\(hour):00").tag(hour)
+                            Text(verbatim: "\(hour):00").tag(hour)
                         }
                     }
                     .pickerStyle(.menu)
@@ -888,11 +914,77 @@ extension SettingsView {
         }
     }
 
-    /// The accounts section: one row per account, and the way in.
+    /// Which feeds get a screen, changeable while signed in. The choice used to
+    /// happen exactly once — after the first sign-in — and was unreachable
+    /// afterwards, so whoever skipped News or Audio could never get them back.
     ///
     /// Extracted from the body because the compiler refuses to type-check a
     /// builder this large ("unable to type-check in reasonable time"), which is
     /// the same problem the account row solved one level down.
+    private func feedsSection(_ session: AccountSession) -> some View {
+        Section {
+            ForEach(FeedMode.allCases.filter { session.capabilities.supports($0) }) { mode in
+                Toggle(isOn: feedBinding(mode, session: session)) {
+                    Label {
+                        Text(feedTitle(mode))
+                    } icon: {
+                        Image(systemName: mode.symbolName)
+                    }
+                }
+                // The shell always needs one feed: switching the last one off
+                // is refused rather than repaired afterwards.
+                .disabled(session.settings.enabledModes == [mode])
+            }
+        } header: {
+            Text("Feeds", comment: "Settings section")
+        } footer: {
+            Text(
+                "Each feed is its own screen. Only what this server can source is offered.",
+                comment: "Feeds section explanation")
+        }
+    }
+
+    private func feedBinding(_ mode: FeedMode, session: AccountSession) -> Binding<Bool> {
+        Binding(
+            get: { session.settings.enabledModes.contains(mode) },
+            set: { value in
+                Task { await setFeedEnabled(mode, enabled: value, session: session) }
+            })
+    }
+
+    private func setFeedEnabled(_ mode: FeedMode, enabled: Bool, session: AccountSession) async {
+        var modes = session.settings.enabledModes
+        if enabled {
+            if !modes.contains(mode) { modes.append(mode) }
+        } else {
+            modes.removeAll { $0 == mode }
+        }
+        guard !modes.isEmpty else { return }
+        // The sidebar and the tab bar both read this order.
+        let ordered = FeedMode.allCases.filter { modes.contains($0) }
+        await session.updateSettings { $0.enabledModes = ordered }
+    }
+
+    private func feedTitle(_ mode: FeedMode) -> String {
+        switch mode {
+        case .home: String(localized: "Home", comment: "Feed mode")
+        case .photos: String(localized: "Photos", comment: "Feed mode")
+        case .video: String(localized: "Video", comment: "Feed mode")
+        case .shorts: String(localized: "Shorts", comment: "Feed mode")
+        case .news: String(localized: "News", comment: "Feed mode")
+        case .audio: String(localized: "Audio", comment: "Feed mode")
+        }
+    }
+
+    private func signOutMessage(for session: AccountSession) -> String {
+        String(
+            localized:
+                "This removes \(session.snapshot.bestDisplayName) from this device. Your posts stay on the server.",
+            comment: "Sign-out explanation")
+    }
+
+    /// The accounts section: one row per account, the way in, and the explicit
+    /// way out.
     @ViewBuilder private var accountsSection: some View {
         @Bindable var environment = environment
         let activeAccountID = environment.activeSession?.id
@@ -911,8 +1003,26 @@ extension SettingsView {
             Button(action: onAddAccount) {
                 Text("Add account…", comment: "Settings action")
             }
+
+            // The explicit way out. Removing used to hide inside a swipe
+            // action, which is why nobody found it.
+            if let activeID = activeAccountID,
+                let active = environment.sessions.first(where: { $0.id == activeID })
+            {
+                Button(role: .destructive) {
+                    signOutSession = active
+                } label: {
+                    Text("Sign out", comment: "Settings action")
+                }
+            }
         } header: {
             Text("Accounts", comment: "Settings section")
+        } footer: {
+            if environment.activeSession != nil {
+                Text(
+                    "Signing out removes the account from this device. Your posts stay on the server.",
+                    comment: "Sign-out explanation")
+            }
         }
     }
 

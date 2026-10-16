@@ -385,15 +385,17 @@ struct QuickComposeProvider: TimelineProvider {
         SimpleEntry(date: Date())
     }
 
-    func snapshot(in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date())
+    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> Void) {
+        completion(SimpleEntry(date: Date()))
     }
 
     /// Nothing to show: the widget is a button, so its content never changes
     /// and the entry is stamped once.
-    func timeline(in context: Context) async -> Timeline<SimpleEntry> {
-        Timeline(
-            entries: [SimpleEntry(date: Date())], policy: .after(Date().addingTimeInterval(3600)))
+    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
+        completion(
+            Timeline(
+                entries: [SimpleEntry(date: Date())],
+                policy: .after(Date().addingTimeInterval(3600))))
     }
 }
 

@@ -59,9 +59,9 @@ public struct NotificationsView: View {
                         NavigationLink(value: Route.notificationRequests) {
                             HStack {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
-                                Text("Filtered notifications")
+                                Text("Filtered notifications", comment: "Filtered notifications section")
                                 Spacer()
-                                Text("\(summary.pendingRequestsCount)")
+                                Text(verbatim: "\(summary.pendingRequestsCount)")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(palette.accent)
                             }
@@ -82,9 +82,9 @@ public struct NotificationsView: View {
                 && visibleFlat.isEmpty
             {
                 ContentUnavailableView {
-                    Text("No matching activities")
+                    Text("No matching activities", comment: "Notification filter empty state")
                 } description: {
-                    Text("Choose another filter to see more activities.")
+                    Text("Choose another filter to see more activities.", comment: "Notification filter empty state guidance")
                 } actions: {
                     Button("Show all") { selectedKinds = [] }
                         .buttonStyle(.glass)

@@ -20,15 +20,13 @@ public struct PhotosModeView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var model: TimelineModel
-    // Grid is the default, per docs/06 §5: a 3-column square grid is what a
-    // photo mode opens on, and the feed is the slower, deliberate reading of
-    // the same posts. Remembered per device.
-    @AppStorage("aloha.photosLayout") private var layout: Layout = .grid
+    // Start with the photo feed; preserve a layout the person explicitly chose.
+    @AppStorage("aloha.photosLayout") private var layout: Layout = .feed
     @State private var stories: [Story] = []
     @State private var playingStoriesFrom: Int?
 
     enum Layout: String, CaseIterable {
-        case grid, feed
+        case feed, grid
     }
 
     public init(
@@ -51,15 +49,17 @@ public struct PhotosModeView: View {
             }
         }
         .background(palette.background)
-        // The display format sits over the content rather than in the toolbar:
-        // a toolbar item is four taps from the pictures and competes with the
-        // title for the only slot there, while the one control this screen has
-        // belongs where the thumb already is.
         .safeAreaInset(edge: .top, spacing: 0) {
-            formatBar
-                .padding(.vertical, AlohaMetrics.space2)
-                .background(palette.background.opacity(0.85))
+            if let message = model.errorMessage {
+                AlohaErrorStrip(message: message) { Task { await model.refresh() } }
+            }
         }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { layoutMenu }
+        }
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+        #endif
         .task {
             await model.appear()
             await loadStories()
@@ -77,52 +77,23 @@ public struct PhotosModeView: View {
         }
     }
 
-    /// The display format, as a two-state glass switcher rather than a plain
-    /// segmented control: an accent pill slides behind the chosen one, and each
-    /// state carries its own label, so "which layout am I on" never depends on
-    /// telling two icons apart.
-    private var formatBar: some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Spacer(minLength: 0)
-
-            HStack(spacing: 0) {
-                ForEach(PhotosModeView.Layout.allCases, id: \.rawValue) { option in
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            layout = option
-                        }
-                    } label: {
-                        Label {
-                            Text(title(for: option))
-                        } icon: {
-                            Image(systemName: symbolName(for: option))
-                        }
-                        .labelStyle(.iconOnly)
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(
-                            layout == option ? palette.onAccent : palette.secondaryLabel
-                        )
-                        .padding(.horizontal, AlohaMetrics.space3)
-                        .padding(.vertical, AlohaMetrics.space2)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .background {
-                            if layout == option {
-                                Capsule().fill(palette.accent)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text(title(for: option)))
-                    .accessibilityAddTraits(layout == option ? .isSelected : [])
+    /// Layout is a secondary choice; pictures get the space below the toolbar.
+    private var layoutMenu: some View {
+        Menu {
+            Picker(selection: $layout) {
+                ForEach(Layout.allCases, id: \.rawValue) { option in
+                    Label(title(for: option), systemImage: symbolName(for: option))
+                        .tag(option)
                 }
+            } label: {
+                Text("Layout", comment: "Photos layout picker")
             }
-            .unifiedGlass(.regular, in: Capsule())
-
-            Spacer(minLength: 0)
+            .pickerStyle(.inline)
+        } label: {
+            Image(systemName: symbolName(for: layout))
         }
-        .padding(.horizontal, AlohaMetrics.space3)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("Layout", comment: "Photos layout picker"))
+        .accessibilityLabel(Text("Photo layout", comment: "Photos layout menu"))
+        .accessibilityValue(Text(title(for: layout)))
     }
 
     private func title(for layout: PhotosModeView.Layout) -> String {
@@ -164,15 +135,18 @@ public struct PhotosModeView: View {
                         onAction: onAction
                     )
                     .onAppear {
-                        if status.id == statuses.last?.id {
-                            Task { await model.loadOlder() }
-                        }
+                        Task { await model.prefetchOlder(near: status.id) }
+                        model.prefetchMedia(around: status.id)
                     }
                 }
 
-                if statuses.isEmpty && !model.isRefreshing { emptyState }
+                loadingIndicator
+                if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
             }
+            .frame(maxWidth: 620)
+            .frame(maxWidth: .infinity)
         }
+        .accessibilityIdentifier("photos.feed")
     }
 
     // MARK: - Grid
@@ -201,14 +175,14 @@ public struct PhotosModeView: View {
                     cell(status)
                         .aspectRatio(1, contentMode: .fit)
                         .onAppear {
-                            if status.id == statuses.last?.id {
-                                Task { await model.loadOlder() }
-                            }
+                            Task { await model.prefetchOlder(near: status.id) }
+                            model.prefetchMedia(around: status.id)
                         }
                 }
             }
 
-            if statuses.isEmpty && !model.isRefreshing { emptyState }
+            loadingIndicator
+            if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
         }
     }
 
@@ -347,6 +321,17 @@ public struct PhotosModeView: View {
         stories = live.filter { $0.account.id == mine } + live.filter { $0.account.id != mine }
     }
 
+    @ViewBuilder
+    private var loadingIndicator: some View {
+        if (model.isRefreshing && statuses.isEmpty) || model.isPagingOlder {
+            ProgressView {
+                Text("Loading photos", comment: "Photos loading state")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(AlohaMetrics.space4)
+        }
+    }
+
     private var emptyState: some View {
         ContentUnavailableView {
             Text("No photos yet", comment: "Empty Photos mode")
@@ -417,6 +402,30 @@ public struct PhotoPostCard: View {
             details
         }
         .padding(.bottom, AlohaMetrics.space4)
+        #if !os(iOS)
+            .overlay {
+                if attachments.count > 1 {
+                    HStack {
+                        Button { page = max(0, page - 1) } label: {
+                            Image(systemName: "chevron.left")
+                                .frame(width: 44, height: 44)
+                        }
+                        .disabled(page == 0)
+                        .accessibilityLabel(Text("Previous photo", comment: "Photo carousel action"))
+                        Spacer()
+                        Button { page = min(attachments.count - 1, page + 1) } label: {
+                            Image(systemName: "chevron.right")
+                                .frame(width: 44, height: 44)
+                        }
+                        .disabled(page >= attachments.count - 1)
+                        .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
+                    }
+                    .buttonStyle(.glass)
+                    .padding(AlohaMetrics.space2)
+                }
+            }
+        #endif
+        .overlay(alignment: .bottom) { Divider().foregroundStyle(palette.separator) }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.\(displayed.id)")
     }
@@ -483,14 +492,16 @@ public struct PhotoPostCard: View {
     private var media: some View {
         ZStack {
             if attachments.count > 1 {
-                TabView(selection: $page) {
-                    ForEach(Array(attachments.enumerated()), id: \.element.id) {
-                        offset, attachment in
-                        picture(attachment).tag(offset)
-                    }
-                }
                 #if os(iOS)
+                    TabView(selection: $page) {
+                        ForEach(Array(attachments.enumerated()), id: \.element.id) {
+                            offset, attachment in
+                            picture(attachment).tag(offset)
+                        }
+                    }
                     .tabViewStyle(.page(indexDisplayMode: .never))
+                #else
+                    picture(attachments[min(page, attachments.count - 1)])
                 #endif
             } else if let first = attachments.first {
                 picture(first)
@@ -541,9 +552,15 @@ public struct PhotoPostCard: View {
         .sensoryFeedback(.success, trigger: isHearting) { _, new in new }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(Text("Opens the media viewer", comment: "Accessibility hint"))
+        .accessibilityHint(
+            isCovered
+                ? Text("Tap to show", comment: "Covered media hint")
+                : Text("Opens the media viewer", comment: "Accessibility hint"))
         .accessibilityAction(named: Text("Favourite", comment: "Accessibility action")) { heart() }
-        .mediaTransitionSource(id: attachments.first?.id ?? displayed.id, in: mediaTransition)
+        .mediaTransitionSource(
+            id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
+            in: mediaTransition)
+        .onChange(of: attachments.map(\.id)) { _, _ in page = 0 }
     }
 
     private func picture(_ attachment: MediaAttachment) -> some View {
@@ -553,6 +570,8 @@ public struct PhotoPostCard: View {
                 blurhash: attachment.blurhash,
                 contentMode: .fill,
                 accessibilityText: attachment.description)
+                .blur(radius: isCovered ? 24 : 0)
+                .accessibilityHidden(isCovered)
 
             if attachment.type.isPlayable {
                 Image(systemName: AlohaSymbol.play)
@@ -595,12 +614,14 @@ public struct PhotoPostCard: View {
     }
 
     private func heart() {
-        guard !displayed.favourited else { return }
+        guard !isCovered, !displayed.favourited else { return }
         onAction(.favourite(status))
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { isHearting = true }
+        withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5)) {
+            isHearting = true
+        }
         Task {
             try? await Task.sleep(for: .milliseconds(650))
-            withAnimation(.easeOut(duration: 0.25)) { isHearting = false }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { isHearting = false }
         }
     }
 
@@ -640,7 +661,9 @@ public struct PhotoPostCard: View {
         }
         .padding(.horizontal, AlohaMetrics.space1)
         .padding(.top, AlohaMetrics.space1)
-        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.55),
+            value: displayed.favourited)
     }
 
     private func actionButton(

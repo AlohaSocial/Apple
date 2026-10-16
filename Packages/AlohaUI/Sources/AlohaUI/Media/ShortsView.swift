@@ -597,7 +597,7 @@ struct ShortPlayer: View {
             if isCurrent && !isCovered && !isReady {
                 if playbackFailed {
                     VStack(spacing: AlohaMetrics.space2) {
-                        Text("This video could not be played.")
+                        Text("This video could not be played.", comment: "Short video playback error")
                             .font(.callout)
                         Button("Try again") {
                             sourceIndex = 0

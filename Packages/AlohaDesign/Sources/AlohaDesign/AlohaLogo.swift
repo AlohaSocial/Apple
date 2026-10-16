@@ -6,9 +6,8 @@ import SwiftUI
 /// things appear together.
 ///
 /// An app that shows a generic SF Symbol where its own logo should be looks
-/// like a prototype of itself. The logo lives in this package's asset catalog
-/// so every target — iOS, iPad, Mac, the widgets — draws the same mark without
-/// the app target's bundle being reachable from a package.
+/// like a prototype of itself. Shared vector geometry lets every target draw
+/// the same mark without reaching into the app target's bundle.
 public struct AlohaLogo: View {
     @Environment(\.alohaPalette) private var palette
 
@@ -18,7 +17,7 @@ public struct AlohaLogo: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            AlohaLogoMark(size: 96)
+            AnimatedAlohaLogoMark(size: 96)
             AlohaWordmark()
         }
         .accessibilityElement(children: .combine)
@@ -29,9 +28,8 @@ public struct AlohaLogo: View {
 /// The mark on its own, at any size: above a sign-in field, in an empty state,
 /// or wherever the wordmark would be too much.
 ///
-/// It lives here, in the design package, so no other package has to reach into
-/// this one's asset catalog — an `Image(_:bundle:)` in another module resolves
-/// against *that* module's resources and silently draws nothing.
+/// Native vector geometry stays crisp at any size and leaves the surrounding
+/// surface visible in every theme. The paths follow the original brand SVG.
 public struct AlohaLogoMark: View {
     private let size: CGFloat
 
@@ -40,11 +38,36 @@ public struct AlohaLogoMark: View {
     }
 
     public var body: some View {
-        Image("AlohaLogo", bundle: .module)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: size, height: size)
-            .accessibilityHidden(true)
+        Canvas { context, canvasSize in
+            let bounds = CGRect(origin: .zero, size: canvasSize)
+            context.fill(
+                AlohaBrandPaths.flower(in: bounds),
+                with: .color(Color(red: 232.0 / 255, green: 96.0 / 255, blue: 76.0 / 255)))
+            context.fill(AlohaBrandPaths.glyph(in: bounds), with: .color(.white))
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A quiet breathing mark while loading or welcoming, without delaying launch.
+public struct AnimatedAlohaLogoMark: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isAnimating = false
+    private let size: CGFloat
+
+    public init(size: CGFloat = 96) { self.size = size }
+
+    public var body: some View {
+        AlohaLogoMark(size: size)
+            .scaleEffect(reduceMotion ? 1 : (isAnimating ? 1.025 : 0.975))
+            .rotationEffect(.degrees(reduceMotion ? 0 : (isAnimating ? 3 : -3)))
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 2).repeatForever(autoreverses: true),
+                value: isAnimating
+            )
+            .onAppear { isAnimating = !reduceMotion }
+            .onChange(of: reduceMotion) { _, reduced in isAnimating = !reduced }
     }
 }
 

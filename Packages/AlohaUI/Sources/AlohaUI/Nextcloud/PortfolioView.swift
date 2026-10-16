@@ -177,7 +177,7 @@ public struct PortfolioView: View {
                                 .foregroundStyle(palette.secondaryLabel)
                         }
                         if !PortfolioPreview.canSave(settings) {
-                            Text("Choose an album before publishing your portfolio.")
+                            Text("Choose an album before publishing your portfolio.", comment: "Portfolio validation")
                                 .font(.footnote)
                                 .foregroundStyle(palette.secondaryLabel)
                         }
@@ -236,7 +236,7 @@ public struct PortfolioView: View {
                 if let loaded,
                     settings.source != loaded.source || settings.collectionID != loaded.collectionID
                 {
-                    Text("Save your changes to preview photos from the newly selected source.")
+                    Text("Save your changes to preview photos from the newly selected source.", comment: "Portfolio preview guidance")
                         .font(.footnote)
                         .foregroundStyle(palette.secondaryLabel)
                         .padding()

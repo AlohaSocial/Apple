@@ -75,7 +75,16 @@ import XCTest
             XCTAssertTrue(
                 app.navigationBars["New post"].waitForExistence(timeout: 5), "Composer did not open"
             )
+            XCTAssertTrue(app.buttons["Add media"].exists)
+            XCTAssertTrue(app.buttons["Who can see this"].exists)
+            let more = app.buttons["More options"].firstMatch
+            XCTAssertTrue(more.exists, "Additional composer tools are not reachable")
             shoot("13-composer")
+            more.tap()
+            let warning = app.buttons["Add a content warning"].firstMatch
+            XCTAssertTrue(warning.waitForExistence(timeout: 5))
+            warning.tap()
+            XCTAssertTrue(app.textFields["Content warning"].waitForExistence(timeout: 5))
             app.buttons["Cancel"].firstMatch.tap()
         }
 

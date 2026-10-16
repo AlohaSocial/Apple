@@ -162,4 +162,9 @@ extension Notification.Name {
     /// Posted by Handoff continuation in the app target and observed by the
     /// shell. Declared here so both sides name the same thing.
     public static let alohaOpenRoute = Notification.Name("aloha.openRoute")
+
+    /// Posted when something outside the main window asks for the sign-in
+    /// screen — the Settings scene's "Add account" row. The shell owns the
+    /// sign-in sheet, so it is the one watching for this.
+    public static let alohaAddAccount = Notification.Name("aloha.addAccount")
 }

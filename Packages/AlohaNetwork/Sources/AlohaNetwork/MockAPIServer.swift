@@ -744,6 +744,9 @@ public enum Fixtures {
             "thumbnail": ["url": "https://\(host)/thumbnail.png"],
             "languages": ["en"],
             "rules": [["id": "1", "text": "Be kind."]],
+            // Real v2 servers report monthly actives here; without it the
+            // sign-in screen's server facts have nothing to show.
+            "usage": ["users": ["active_month": 128]],
             "registrations": ["enabled": false, "approval_required": false],
             "contact": ["email": "admin@\(host)"],
             "api_versions": ["mastodon": 3],

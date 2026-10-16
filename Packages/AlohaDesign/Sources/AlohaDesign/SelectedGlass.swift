@@ -49,8 +49,8 @@ extension View {
 
 #Preview {
     VStack(spacing: 8) {
-        Text("Selected").padding().selectedGlass(true, tint: .accentColor)
-        Text("Not selected").padding().selectedGlass(false, tint: .accentColor)
+        Text(verbatim: "Selected").padding().selectedGlass(true, tint: .accentColor)
+        Text(verbatim: "Not selected").padding().selectedGlass(false, tint: .accentColor)
     }
     .padding()
 }

@@ -4,10 +4,23 @@ import AlohaDesign
 import AlohaModels
 import SwiftUI
 
-/// The root. A tab bar on iPhone, a split view everywhere else.
+/// Applies the theme before the shell reads its palette, including presentations.
 public struct AppShell: View {
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    public init() {}
+
+    public var body: some View {
+        ThemedAppShell()
+            .alohaTheme(
+                environment.theme, metrics: environment.metrics, accent: environment.serverAccent)
+    }
+}
+
+/// The root. A tab bar on iPhone, a split view everywhere else.
+private struct ThemedAppShell: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.alohaPalette) private var palette
 
     /// A tab bar selection that can be a mode *or* the messages tab.
     /// Tagging the extra tab with `FeedMode.home` made the two collide.
@@ -21,6 +34,7 @@ public struct AppShell: View {
     @State private var sidebarItem: SidebarItem = .mode(.home)
     @State private var selectedSource: TimelineSource = .home
     @State private var path: [Route] = []
+    @State private var iPadPaths: [SidebarItem: [Route]] = [:]
     @State private var isPresentingSignIn = false
     /// The address typed on the introduction, for the sign-in screen to open
     /// with — or empty when the person chose "skip" and will type it there.
@@ -45,28 +59,9 @@ public struct AppShell: View {
     @State private var sheet: ShellSheet?
     @Environment(\.scenePhase) private var scenePhase
 
-    public init() {}
+    init() {}
 
-    /// The theme wraps everything the shell can put on screen, including its
-    /// presentations. It cannot be one more link in the chain below.
-    ///
-    /// `alohaTheme` works by writing into the environment, and a `.sheet`
-    /// attached *above* that write does not inherit it — the presentation is a
-    /// sibling of the environment modifier, not a descendant. With the theme
-    /// applied mid-chain, every sheet the shell owns — composer, sign-in,
-    /// report, edit, and the media viewer — fell back to the `@Entry` default
-    /// in `AlohaDesign`, which is Warm Light. The app ran in Black and the
-    /// composer opened cream.
-    ///
-    /// Nesting rather than appending is what makes that unrepeatable: a
-    /// `.sheet` added to `content` later is inside the wrap by construction,
-    /// wherever in the chain it lands.
-    public var body: some View {
-        content
-            .alohaTheme(
-                environment.theme, metrics: environment.metrics, accent: environment.serverAccent
-            )
-    }
+    var body: some View { content }
 
     private var content: some View {
         root
@@ -117,6 +112,12 @@ public struct AppShell: View {
                 // Where Handoff arrives.
                 if let route = note.userInfo?["route"] as? Route { open(route) }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .alohaAddAccount)) { _ in
+                // Where the Settings scene's "Add account" row arrives: the
+                // sign-in sheet belongs to this shell, wherever the request
+                // came from.
+                isPresentingSignIn = true
+            }
     }
 
     /// What a person sees, in the order it is fair to ask it of them:
@@ -137,28 +138,36 @@ public struct AppShell: View {
             // Not a bare spinner: the app is saying what it is while it
             // loads, which is the only thing it can honestly say yet.
             VStack(spacing: AlohaMetrics.space4) {
-                AlohaLogoMark(size: 96)
+                AnimatedAlohaLogoMark(size: 96)
                 Text("Aloha Social", comment: "App name")
-                    .font(AlohaType.title.weight(.bold))
+                    .font(AlohaType.wordmark.weight(.bold))
                     .fontDesign(.rounded)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(palette.background)
         } else if let session = environment.activeSession {
-            promptForModesIfNeeded(session)
             shell(session)
                 // Switching accounts has to change view identity: every
                 // timeline holds its model in `@State`, and without this the
                 // previous account's posts stay on screen and its client keeps
                 // serving the actions (docs/03 §6).
                 .id(session.id)
+                // Deciding which feeds a first session gets belongs to the
+                // moment the shell appears, not to the evaluation of this
+                // body: `chosenModes` is state, and a `@ViewBuilder` will not
+                // take a statement that returns `()` anyway.
+                .onAppear {
+                    repairFeedSelection(session.visibleModes)
+                    promptForModesIfNeeded(session)
+                }
+                .onChange(of: session.visibleModes) { _, modes in
+                    repairFeedSelection(modes)
+                }
                 .sheet(
                     item: Binding(
-                        get: { self.chosenModes.map { ModeSelection($0) } },
+                        get: { self.chosenModes.map { ModeSelection(modes: $0) } },
                         set: { newValue in
-                            guard let newValue else { return }
-                            self.chosenModes = nil
-                            Self.recordChosenModes(newValue.modes)
+                            if newValue == nil { self.chosenModes = nil }
                         })
                 ) { selection in
                     NavigationStack {
@@ -167,14 +176,14 @@ public struct AppShell: View {
                                 get: { selection.modes },
                                 set: { newValue in self.chosenModes = newValue }),
                             capabilities: session.capabilities,
-                            onContinue: { self.chosenModes = nil }
+                            onContinue: {
+                                finishModeSelection(session)
+                            }
                         )
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
                                 Button {
-                                    guard let modes = self.chosenModes else { return }
-                                    Self.recordChosenModes(modes)
-                                    self.chosenModes = nil
+                                    finishModeSelection(session)
                                 } label: {
                                     Text("Continue", comment: "Settings action")
                                         .font(.body.weight(.semibold))
@@ -203,6 +212,33 @@ public struct AppShell: View {
         chosenModes = Set(session.visibleModes)
     }
 
+    private func finishModeSelection(_ session: AccountSession) {
+        guard let chosenModes, !chosenModes.isEmpty else { return }
+        let ordered = FeedMode.allCases.filter {
+            chosenModes.contains($0) && session.capabilities.supports($0)
+        }
+        guard !ordered.isEmpty else { return }
+        self.chosenModes = nil
+        Task {
+            await session.updateSettings { $0.enabledModes = ordered }
+            Self.recordChosenModes(Set(ordered))
+        }
+    }
+
+    /// A removed feed must not remain the selection of a tab that no longer exists.
+    private func repairFeedSelection(_ modes: [FeedMode]) {
+        guard let fallback = modes.first else { return }
+        if !modes.contains(selectedMode) { selectedMode = fallback }
+        if case .mode(let mode) = selectedTab, !modes.contains(mode) {
+            selectedTab = .mode(fallback)
+            path = []
+        }
+        if case .mode(let mode) = sidebarItem, !modes.contains(mode) {
+            sidebarItem = .mode(fallback)
+            path = []
+        }
+    }
+
     /// The introduction, and — for a first launch only — the terms behind it.
     private func introduction(offeringTerms: Bool) -> some View {
         WelcomeView { address in
@@ -226,7 +262,7 @@ public struct AppShell: View {
     /// The feeds chosen once, so `chosenModes` can hold a value.
     private struct ModeSelection: Hashable, Identifiable {
         let modes: Set<FeedMode>
-        var id: Set<FeedMode> { modes }
+        var id: String { "mode-selection" }
     }
 
     private static let chosenModesKey = "aloha.chosenModes"
@@ -267,38 +303,61 @@ public struct AppShell: View {
             selectedTab = .mode(key.mode)
             sidebarItem = .mode(key.mode)
             selectedSource = key.source
+            iPadPaths[.mode(key.mode)] = []
             path = []
         } else if !usesSidebar, route == .conversations {
             // On a phone direct messages are a tab, not a push.
             selectedTab = .messages
             path = []
-        } else if usesSidebar, SidebarItem.sidebarRoutes.contains(route) {
+        } else if usesSidebar, rootRoutes.contains(route) {
             // On a split view these are sidebar rows, not pushes.
             sidebarItem = .route(route)
             path = []
         } else {
-            path.append(route)
+            push(route)
         }
+    }
+
+    private var rootRoutes: [Route] {
+        #if os(iOS)
+            return [
+                .conversations, .explore, .lists, .interests, .subscriptions,
+                .collections(accountID: nil), .notifications, .bookmarks, .settings,
+                .search(query: nil),
+            ]
+        #else
+            return SidebarItem.sidebarRoutes
+        #endif
     }
 
     private var usesSidebar: Bool {
         #if os(iOS)
-            sizeClass != .compact
+            UIDevice.current.userInterfaceIdiom == .pad
         #else
             true
         #endif
     }
-    @ViewBuilder
-    private func shell(_ session: AccountSession) -> some View {
+    // Erase at the platform boundary so the root does not embed every tab tree.
+    private func shell(_ session: AccountSession) -> AnyView {
         #if os(iOS)
-            if sizeClass == .compact {
-                tabShell(session)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                return AnyView(tabShell(session))
             } else {
-                splitShell(session)
+                return AnyView(iPadShell(session))
             }
         #else
-            splitShell(session)
+            return AnyView(splitShell(session))
         #endif
+    }
+
+    private func push(_ route: Route) {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                iPadPaths[sidebarItem, default: []].append(route)
+                return
+            }
+        #endif
+        path.append(route)
     }
 
     // MARK: - iPhone
@@ -348,39 +407,159 @@ public struct AppShell: View {
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
             }
-            // The one way to write something: a button beside the tab bar, not
-            // a toolbar icon and not a floating circle. A toolbar puts it four
-            // taps from the content and a floating button duplicates the tab
-            // bar's thumb zone — the accessory slot is where Apple puts the
-            // primary action of a tab app.
-            .tabViewBottomAccessory {
-                composeAccessory
-            }
+            // No bottom accessory: composing lives in the toolbar, where the
+            // platform puts it, rather than in a second bar above the tab bar.
         }
     #endif
 
-    /// New post in the tab bar's accessory slot: labelled, always on screen,
-    /// out of the way of the thumb.
-    @available(iOS 18.0, tvOS 18.0, visionOS 2.0, *)
-    private var composeAccessory: some View {
-        Button {
-            composing = ComposerPresentation()
-        } label: {
-            Label {
-                Text("New post", comment: "Compose accessory")
-            } icon: {
-                Image(systemName: AlohaSymbol.compose)
+    #if os(iOS)
+        private func iPadShell(_ session: AccountSession) -> some View {
+            TabView(selection: $sidebarItem) {
+                ForEach(session.visibleModes) { mode in
+                    Tab(
+                        modeTitle(mode), systemImage: mode.symbolName, value: SidebarItem.mode(mode)
+                    ) {
+                        iPadDestination(.mode(mode), session: session)
+                    }
+                }
+                Tab(
+                    "Direct messages", systemImage: "envelope",
+                    value: SidebarItem.route(.conversations)
+                ) {
+                    iPadDestination(.route(.conversations), session: session)
+                }
+                Tab("Discover", systemImage: "safari", value: SidebarItem.route(.explore)) {
+                    iPadDestination(.route(.explore), session: session)
+                }
+                TabSection("Library") {
+                    Tab(
+                        "Your lists", systemImage: "list.bullet.rectangle",
+                        value: SidebarItem.route(.lists)
+                    ) {
+                        iPadDestination(.route(.lists), session: session)
+                    }
+                    if session.capabilities.isNextcloudSocial {
+                        Tab(
+                            "My interests", systemImage: "sparkles",
+                            value: SidebarItem.route(.interests)
+                        ) {
+                            iPadDestination(.route(.interests), session: session)
+                        }
+                        Tab(
+                            "Subscriptions", systemImage: "dot.radiowaves.up.forward",
+                            value: SidebarItem.route(.subscriptions)
+                        ) {
+                            iPadDestination(.route(.subscriptions), session: session)
+                        }
+                    }
+                    if session.capabilities.collections {
+                        Tab(
+                            "Albums", systemImage: "rectangle.stack",
+                            value: SidebarItem.route(.collections(accountID: nil))
+                        ) {
+                            iPadDestination(.route(.collections(accountID: nil)), session: session)
+                        }
+                    }
+                }
+                .tabPlacement(.sidebarOnly)
+                TabSection("Account") {
+                    Tab("Activities", systemImage: "bell", value: SidebarItem.route(.notifications))
+                    {
+                        iPadDestination(.route(.notifications), session: session)
+                    }
+                    Tab("Bookmarks", systemImage: "bookmark", value: SidebarItem.route(.bookmarks))
+                    {
+                        iPadDestination(.route(.bookmarks), session: session)
+                    }
+                    Tab("Settings", systemImage: "gearshape", value: SidebarItem.route(.settings)) {
+                        iPadDestination(.route(.settings), session: session)
+                    }
+                    Tab("Liked posts", systemImage: "heart", value: SidebarItem.route(.favourites))
+                    {
+                        iPadDestination(.route(.favourites), session: session)
+                    }
+                    Tab(
+                        "Follow requests", systemImage: "person.badge.clock",
+                        value: SidebarItem.route(.followRequests)
+                    ) {
+                        iPadDestination(.route(.followRequests), session: session)
+                    }
+                    Tab("Blocking", systemImage: "hand.raised", value: SidebarItem.route(.safety)) {
+                        iPadDestination(.route(.safety), session: session)
+                    }
+                    if session.capabilities.isNextcloudSocial {
+                        Tab(
+                            "Archived posts", systemImage: "archivebox",
+                            value: SidebarItem.route(.archived)
+                        ) {
+                            iPadDestination(.route(.archived), session: session)
+                        }
+                        Tab(
+                            "Statistics", systemImage: "chart.bar.xaxis",
+                            value: SidebarItem.route(.statistics)
+                        ) {
+                            iPadDestination(.route(.statistics), session: session)
+                        }
+                    }
+                }
+                .tabPlacement(.sidebarOnly)
+                .defaultSectionExpansion(.collapsed)
+                Tab(
+                    "Search", systemImage: "magnifyingglass",
+                    value: SidebarItem.route(.search(query: nil)), role: .search
+                ) {
+                    iPadDestination(.route(.search(query: nil)), session: session)
+                }
             }
-            .font(.headline)
-            .frame(maxWidth: .infinity)
+            .tabViewStyle(.sidebarAdaptable)
+            .tabViewSidebarBottomBar {
+                AccountMenuButton(
+                    session: session, onOpen: open,
+                    onAddAccount: { isPresentingSignIn = true },
+                    showsBrowseDestinations: false, showsName: true, usesCompactMenu: true)
+            }
+            .onChange(of: sidebarItem) { _, item in
+                path = []
+                if case .mode(let mode) = item { selectedMode = mode }
+            }
         }
-        .buttonStyle(.glassProminent)
-        .keyboardShortcut("n", modifiers: .command)
-        .accessibilityLabel(Text("New post", comment: "Compose button"))
-        // No tint: the accent the app already wears is the one this button
-        // takes. Re-deriving it here from the theme created a second source
-        // of truth that ignored the server's colour and the colour scheme.
-    }
+
+        private func iPadDestination(_ item: SidebarItem, session: AccountSession) -> some View {
+            AnyView(
+                NavigationStack(
+                    path: Binding(
+                        get: { iPadPaths[item, default: []] },
+                        set: { iPadPaths[item] = $0 }
+                    )
+                ) {
+                    Group {
+                        switch item {
+                        case .mode(let mode): modeRoot(mode, session: session)
+                        case .route(let route): destination(route, session: session)
+                        }
+                    }
+                    .navigationDestination(for: Route.self) { destination($0, session: session) }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        iPadAccountToolbar(session)
+                        composeToolbar
+                    }
+                    .background(palette.background.ignoresSafeArea())
+                })
+        }
+    #endif
+
+    #if os(iOS)
+        @ToolbarContentBuilder
+        private func iPadAccountToolbar(_ session: AccountSession) -> some ToolbarContent {
+            ToolbarItem(id: "account-menu", placement: .topBarLeading) {
+                AccountMenuButton(
+                    session: session, onOpen: open,
+                    onAddAccount: { isPresentingSignIn = true },
+                    showsBrowseDestinations: false, usesCompactMenu: true)
+            }
+        }
+    #endif
 
     // MARK: - iPad, Mac, Vision
 
@@ -391,7 +570,9 @@ public struct AppShell: View {
                 selection: $sidebarItem,
                 selectedSource: $selectedSource,
                 onAddAccount: { isPresentingSignIn = true },
-                onSwitchAccount: { environment.setActiveAccount($0) })
+                onSwitchAccount: { environment.setActiveAccount($0) }
+            )
+            .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
             NavigationStack(path: $path) {
                 Group {
@@ -404,13 +585,23 @@ public struct AppShell: View {
                 }
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
+            .toolbar { composeToolbar }
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
+            // The window's own ground, not the system's. A reading column is
+            // centred in this space, and without this the space around it was
+            // window background — a cool white the app never uses — so the
+            // column read as a sheet of paper dropped on the wrong desk.
+            .background(palette.background.ignoresSafeArea())
         }
         // A sidebar the width of its content, not the default narrow sliver:
         // "Direct messages" and "Subscriptions" are two-line labels at the
         // default, and this is the navigation for a reading app on a big
         // screen.
-        .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
-        #if os(macOS)
+        #if os(iOS)
+            .navigationSplitViewStyle(.balanced)
+        #elseif os(macOS)
             // The Mac's own convention: the content leads and the sidebar is
             // the affordance beside it. On iPad the balanced split is the one
             // Apple uses, and it is the default there.
@@ -421,20 +612,30 @@ public struct AppShell: View {
             path = []
             if case .mode(let mode) = item { selectedMode = mode }
         }
-        .toolbar {
-            ToolbarItem {
-                Button {
-                    composing = ComposerPresentation()
-                } label: {
-                    Label {
-                        Text("New post", comment: "Toolbar action")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.compose)
-                    }
+    }
+
+    @ToolbarContentBuilder
+    private var composeToolbar: some ToolbarContent {
+        ToolbarItem(id: "compose-post", placement: composeToolbarPlacement) {
+            Button {
+                composing = ComposerPresentation()
+            } label: {
+                Label {
+                    Text("New post", comment: "Toolbar action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.compose)
                 }
-                .keyboardShortcut("n", modifiers: .command)
             }
+            .keyboardShortcut("n", modifiers: .command)
         }
+    }
+
+    private var composeToolbarPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+            .topBarTrailing
+        #else
+            .primaryAction
+        #endif
     }
 
     @ViewBuilder
@@ -494,7 +695,9 @@ public struct AppShell: View {
                 // The home mode is whichever of the three you are reading, so
                 // the title says which rather than always "My Feed".
                 .navigationTitle(sourceTitle)
-                .readerColumn
+                #if !os(iOS)
+                    .readerColumn
+                #endif
                 .onAppear { environment.sync.noteTimelineVisible(for: session.id) },
                 session: session)
         }
@@ -523,7 +726,7 @@ public struct AppShell: View {
                     // Only on the phone: the split shell carries both of these
                     // in the sidebar — the account drawer at its foot, and a
                     // search field at its head.
-                    if sizeClass == .compact {
+                    if !usesSidebar {
                         ToolbarItem(placement: .topBarLeading) {
                             AccountMenuButton(
                                 session: session,
@@ -551,8 +754,18 @@ public struct AppShell: View {
             #endif
     }
 
-    @ViewBuilder
     private func destination(_ route: Route, session: AccountSession) -> some View {
+        AnyView(destinationContent(route, session: session))
+            .toolbar {
+                if usesSidebar { composeToolbar }
+                #if os(iOS)
+                    if usesSidebar { iPadAccountToolbar(session) }
+                #endif
+            }
+    }
+
+    @ViewBuilder
+    private func destinationContent(_ route: Route, session: AccountSession) -> some View {
         switch route {
         case .thread(let statusID):
             ThreadView(statusID: statusID, session: session) { handle($0, session: session) }
@@ -577,18 +790,22 @@ public struct AppShell: View {
                 .readerColumn
         case .settings:
             SettingsView(onAddAccount: { isPresentingSignIn = true })
+                .readerColumn
         case .explore:
             ExploreView(session: session) { handle($0, session: session) }
-                .readerColumn
         case .search(let query):
             SearchView(session: session, initialQuery: query) { handle($0, session: session) }
                 .readerColumn
         case .lists:
             ListsView(session: session)
+                .readerColumn
         case .filters:
             FiltersView(session: session)
+                .readerColumn
         case .safety:
             SafetyListsView(session: session)
+                .readerColumn
+                .readerColumn
         case .conversations:
             ConversationsView(
                 session: session,
@@ -705,11 +922,11 @@ public struct AppShell: View {
     private func handle(_ action: StatusRowAction, session: AccountSession) {
         switch action {
         case .open(let status):
-            path.append(.thread(statusID: status.displayed.id))
+            push(.thread(statusID: status.displayed.id))
         case .watch(let status):
-            path.append(.video(statusID: status.displayed.id))
+            push(.video(statusID: status.displayed.id))
         case .openProfile(let account):
-            path.append(.profile(accountID: account.id))
+            push(.profile(accountID: account.id))
         case .openMedia(let status, let index):
             mediaPresentation = MediaPresentation(
                 statusID: status.id, attachments: status.mediaAttachments, index: index)
@@ -718,19 +935,15 @@ public struct AppShell: View {
         case .followLink(let link):
             switch link {
             case .mention(let accountID, let acct, _):
-                path.append(accountID.map { Route.profile(accountID: $0) } ?? .handle(acct))
+                push(accountID.map { Route.profile(accountID: $0) } ?? .handle(acct))
             case .hashtag(let name, _):
-                path.append(.hashtag(name))
+                push(.hashtag(name))
             case .web(let url):
-                #if canImport(UIKit)
-                    UIApplication.shared.open(url)
-                #endif
+                openURL(url)
             }
         case .openCard(let card):
             if let url = card.url {
-                #if canImport(UIKit)
-                    UIApplication.shared.open(url)
-                #endif
+                openURL(url)
             }
         case .report(let status):
             reportTarget = ReportTarget(
@@ -796,6 +1009,18 @@ public struct AppShell: View {
         #endif
     }
 
+    /// Links inside posts and cards open in the browser on every platform.
+    /// Without the AppKit branch a tap on a link did nothing on the Mac:
+    /// the UIKit-only `open` compiled away and the action fell through
+    /// silently, so no web content was reachable from a timeline there.
+    private func openURL(_ url: URL) {
+        #if canImport(UIKit)
+            UIApplication.shared.open(url)
+        #elseif canImport(AppKit)
+            NSWorkspace.shared.open(url)
+        #endif
+    }
+
     private func handle(_ url: URL) {
         // The browser fallback for sign-in comes back this way, and it is not
         // a navigation destination.
@@ -817,7 +1042,7 @@ public struct AppShell: View {
             selectedSource = key.source
             path = []
         } else {
-            path.append(route)
+            push(route)
         }
     }
 }
@@ -878,8 +1103,8 @@ extension View {
     ///
     /// Full window width runs a post's text to twelve hundred point, which is
     /// unreadable — the eye cannot find the start of the next line. Mail and
-    /// Reader constrain their columns on the Mac, and so does this: a 680-point
-    /// column, centred, with the rest of the window quiet around it. On a phone
+    /// Reader constrain their columns, and so does this: 820 points on iPad
+    /// and 680 on Mac, centred, with the rest of the window quiet around it. On a phone
     /// the tab shell already fills the screen and the constraint would only
     /// add margins, so it does nothing there.
     @ViewBuilder
@@ -888,17 +1113,15 @@ extension View {
             if UIDevice.current.userInterfaceIdiom == .phone {
                 self
             } else {
-                column
+                column(width: 820)
             }
         #else
-            column
+            column(width: 680)
         #endif
     }
 
-    private var column: some View {
-        self
-            .frame(maxWidth: 680)
-            .frame(maxWidth: .infinity)
+    private func column(width: CGFloat) -> some View {
+        modifier(ReaderColumn(width: width))
     }
 
     /// `fullScreenCover` does not exist on macOS; a sheet is the right
@@ -924,3 +1147,16 @@ extension View {
 #elseif canImport(AppKit)
     import AppKit
 #endif
+
+/// The surrounding canvas must inherit the same theme as the reading surface.
+private struct ReaderColumn: ViewModifier {
+    @Environment(\.alohaPalette) private var palette
+    let width: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: width)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.background.ignoresSafeArea())
+    }
+}

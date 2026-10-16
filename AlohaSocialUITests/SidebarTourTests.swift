@@ -33,6 +33,7 @@ import XCTest
 
         /// Deeper than the sidebar: the screens a click on content reaches.
         func testContentScreensOnSplitShell() throws {
+            continueAfterFailure = false
             #if os(iOS)
                 try XCTSkipIf(
                     UIDevice.current.userInterfaceIdiom != .pad, "Sidebar exists on iPad only")
@@ -40,16 +41,19 @@ import XCTest
             XCTAssertTrue(app.labelled("Alice").waitForExistence(timeout: 20))
 
             // Thread from a row body.
-            let body = app.labelled("Test post number 1 with")
+            let body = app.staticTexts.matching(
+                NSPredicate(format: "label BEGINSWITH 'Test post number 1 with'")
+            ).firstMatch
             XCTAssertTrue(body.waitForExistence(timeout: 5))
-            body.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.06)).tapOrClick()
+            body.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tapOrClick()
             XCTAssertTrue(
                 app.labelled("Reply 1 to that").waitForExistence(timeout: 8), "Thread did not open")
             shoot("22-split-thread")
 
             // Profile from the avatar in the focused post.
-            app.labelled("Test post number 1 with")
-                .coordinate(withNormalizedOffset: CGVector(dx: 0.035, dy: 0.05)).tapOrClick()
+            let profile = app.collectionViews.staticTexts["Alice"].firstMatch
+            XCTAssertTrue(profile.waitForExistence(timeout: 5))
+            profile.tapOrClick()
             XCTAssertTrue(
                 app.labelled("Followers").waitForExistence(timeout: 8), "Profile did not open")
             shoot("23-split-profile")
@@ -67,7 +71,8 @@ import XCTest
             // Explore with data.
             app.sidebarRow("Discover").tapOrClick()
             XCTAssertTrue(
-                app.labelled("photography").waitForExistence(timeout: 8), "Explore has no trends")
+                app.labelled("People to follow").waitForExistence(timeout: 8),
+                "Discover has no people section")
             shoot("25-split-explore")
 
             // Lists with data.
@@ -81,7 +86,10 @@ import XCTest
             shoot("27-split-conversations")
 
             // The search field at the top of the sidebar, where the web has it.
-            let field = app.textFields.firstMatch
+            #if os(iOS)
+                app.sidebarRow("Search").tapOrClick()
+            #endif
+            let field = app.searchFields.firstMatch
             XCTAssertTrue(field.waitForExistence(timeout: 5), "No search field in the sidebar")
             field.tapOrClick()
             field.typeText("alice\n")
@@ -91,23 +99,28 @@ import XCTest
             shoot("30-sidebar-search")
             app.sidebarRow("My Feed").tapOrClick()
 
-            // The account drawer: collapsed until the current account is
+            // The account menu: collapsed until the current account is
             // clicked, then it holds the pages that are about you.
             let toggle = app.buttons.matching(
                 NSPredicate(format: "label CONTAINS 'account menu'")
             ).firstMatch
-            XCTAssertTrue(toggle.waitForExistence(timeout: 5), "No account drawer toggle")
+            XCTAssertTrue(toggle.waitForExistence(timeout: 5), "No account menu toggle")
             XCTAssertFalse(
                 app.buttons["Settings"].exists,
-                "The account drawer was open before anybody asked for it")
+                "The account menu was open before anybody asked for it")
             toggle.tapOrClick()
-            for item in [
-                "My profile", "Follow requests", "Liked posts", "Bookmarks",
-                "Blocking", "Settings",
-            ] {
+            #if os(iOS)
+                let accountItems = ["My profile", "Settings"]
+            #else
+                let accountItems = [
+                    "My profile", "Follow requests", "Liked posts", "Bookmarks", "Blocking",
+                    "Settings",
+                ]
+            #endif
+            for item in accountItems {
                 XCTAssertTrue(
                     app.buttons[item].waitForExistence(timeout: 4),
-                    "\(item) missing from the account drawer")
+                    "\(item) missing from the account menu")
             }
             shoot("29-account-drawer")
             app.buttons["Settings"].tapOrClick()
@@ -117,10 +130,19 @@ import XCTest
 
             // Media viewer from Photos.
             app.sidebarRow("Photos").tapOrClick()
+            shoot("99-ipad-photos-toolbar")
+            print("IPAD PHOTO TOOLBAR:\n\(app.debugDescription)")
+            if !app.buttons["Photo layout"].firstMatch.exists {
+                let overflow = app.navigationBars.buttons["More"].firstMatch
+                if overflow.exists { overflow.tapOrClick() }
+            }
+            app.buttons["Photo layout"].firstMatch.tapOrClick()
+            app.buttons["Grid"].firstMatch.tapOrClick()
             let tile = app.buttons.matching(NSPredicate(format: "label CONTAINS 'photograph'"))
                 .firstMatch
             XCTAssertTrue(tile.waitForExistence(timeout: 8), "No photo tile")
             tile.tapOrClick()
+            XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5), "Viewer did not open")
             sleep(2)
             shoot("28-split-viewer")
         }
@@ -155,7 +177,7 @@ import XCTest
             }
         }
 
-        /// Activities moved out of the sidebar and into the account drawer,
+        /// Activities moved out of the sidebar and into the account menu,
         /// under My profile: the sidebar is feeds, and this is about you.
         func testActivitiesLivesInTheAccountDrawer() throws {
             #if os(iOS)
@@ -172,7 +194,7 @@ import XCTest
             let toggle = app.buttons.matching(
                 NSPredicate(format: "label CONTAINS 'account menu'")
             ).firstMatch
-            XCTAssertTrue(toggle.waitForExistence(timeout: 8), "No account drawer toggle")
+            XCTAssertTrue(toggle.waitForExistence(timeout: 8), "No account menu toggle")
             toggle.tapOrClick()
 
             let activities = app.labelled("Activities")

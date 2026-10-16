@@ -228,6 +228,7 @@ public final class TimelineModel {
             hasFetchedBefore: lastRefresh != nil,
             newestRowID: rows.compactMap(\.status).first?.id)
         let direction = plan.direction
+        if direction == .cold { hasMoreOlderPosts = true }
 
         do {
             // Fetch the head as well as new arrivals: since_id responses never
@@ -267,6 +268,7 @@ public final class TimelineModel {
             if direction == .cold || rows.isEmpty {
                 rows = filtered
                 nextCursor = harvest.nextCursor
+                hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
                 ensureCaughtUpDivider()
             } else {
                 // Hold new rows behind a pill rather than moving what the person
@@ -325,15 +327,35 @@ public final class TimelineModel {
         pendingNewCount = 0
     }
 
+    private var hasMoreOlderPosts = true
+
+    /// Request the next page while a screenful of cached posts remains.
+    public func prefetchOlder(near statusID: String) async {
+        let ids = rows.compactMap(\.status).map(\.id)
+        guard Self.shouldPrefetchOlder(visibleID: statusID, loadedIDs: ids) else { return }
+        await loadOlder()
+    }
+
+    static func shouldPrefetchOlder(visibleID: String, loadedIDs: [String]) -> Bool {
+        guard let index = loadedIDs.firstIndex(of: visibleID) else { return false }
+        return loadedIDs.count - index - 1 < 8
+    }
+
     public func loadOlder() async {
-        guard !isPagingOlder, let oldest = rows.compactMap(\.status).last?.id else { return }
+        guard hasMoreOlderPosts, !isPagingOlder,
+            let oldest = rows.compactMap(\.status).last?.id else { return }
         isPagingOlder = true
         defer { isPagingOlder = false }
 
         do {
             let harvest = try await fetch(anchor: nextCursor.map { .url($0) } ?? .olderThan(oldest))
+            isOffline = false
+            errorMessage = nil
             guard !harvest.statuses.isEmpty else {
-                nextCursor = nil
+                // A client-side media filter can leave a fetched page empty
+                // even though the server still has another cursor.
+                nextCursor = harvest.nextCursor
+                hasMoreOlderPosts = harvest.nextCursor != nil
                 return
             }
             let merged = try await session.timelineStore.apply(
@@ -342,6 +364,7 @@ public final class TimelineModel {
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
+            hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
             Task { await Self.warmRichText(harvest.statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
