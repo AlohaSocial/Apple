@@ -215,6 +215,16 @@ public final class DraftRecord {
     /// through can resume rather than re-post.
     public var threadIndex: Int = 0
     public var threadGroupID: UUID?
+    // Added after the first release, each with a default, so SwiftData's
+    // lightweight migration opens an older store as it is: a store that
+    // failed to open is replaced, and that would lose the very drafts these
+    // fields exist to keep whole.
+    /// The post being quoted, so a queued quote still quotes when it sends.
+    public var quotedID: String?
+    /// Who may quote it: `public`, `followers` or `nobody`.
+    public var quotePolicy: String?
+    /// The segments after the first, for a thread that has not gone out yet.
+    public var threadSegments: [String] = []
 
     public init(accountID: UUID, text: String = "") {
         self.accountID = accountID
