@@ -70,6 +70,15 @@ public actor APIClient {
         return try decodeBody(type, response.data, context: endpoint.path)
     }
 
+    /// The value and the response it came in, for the routes whose headers
+    /// say more than the body (`X-Social-Thread-Filling`).
+    public func decodeWithResponse<T: Decodable & Sendable>(
+        _ type: T.Type, from endpoint: Endpoint
+    ) async throws -> (T, RawResponse) {
+        let response = try await perform(endpoint, followingURL: nil)
+        return (try decodeBody(type, response.data, context: endpoint.path), response)
+    }
+
     /// A page, with its cursors. `limit` is remembered so `mayHaveMore` can fall
     /// back to the row count on the routes that send no `Link` header.
     public func page<T: Decodable & Sendable>(
@@ -165,7 +174,8 @@ public actor APIClient {
         return RawResponse(
             data: data,
             statusCode: http.statusCode,
-            link: LinkHeader(parsing: http.value(forHTTPHeaderField: "Link"))
+            link: LinkHeader(parsing: http.value(forHTTPHeaderField: "Link")),
+            socialHeaders: RawResponse.socialHeaders(of: http)
         )
     }
 
@@ -205,11 +215,27 @@ public struct RawResponse: Sendable {
     public var data: Data
     public var statusCode: Int
     public var link: LinkHeader
+    /// Aloha Social's own `X-Social-*` headers, keyed in lower case: they say
+    /// when an answer is still being filled in from elsewhere.
+    public var socialHeaders: [String: String]
 
-    public init(data: Data, statusCode: Int, link: LinkHeader) {
+    public init(
+        data: Data, statusCode: Int, link: LinkHeader, socialHeaders: [String: String] = [:]
+    ) {
         self.data = data
         self.statusCode = statusCode
         self.link = link
+        self.socialHeaders = socialHeaders
+    }
+
+    static func socialHeaders(of response: HTTPURLResponse) -> [String: String] {
+        var result: [String: String] = [:]
+        for (key, value) in response.allHeaderFields {
+            guard let name = (key as? String)?.lowercased(), name.hasPrefix("x-social-")
+            else { continue }
+            result[name] = "\(value)"
+        }
+        return result
     }
 
     /// How many rows the query returned, for the "shorter than limit is the
