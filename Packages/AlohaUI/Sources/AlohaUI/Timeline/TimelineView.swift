@@ -53,7 +53,8 @@ public struct TimelineView: View {
                     return nil
                 }.first
             },
-            onAction: onAction
+            onAction: onAction,
+            onRefresh: { await model.refresh() }
         )
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .task { await model.appear() }

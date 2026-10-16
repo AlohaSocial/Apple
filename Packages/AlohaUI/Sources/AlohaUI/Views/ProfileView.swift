@@ -724,6 +724,7 @@ public struct ProfileView: View {
             .controlSize(.small)
 
             Menu {
+                OpenInNewWindowButton(.profile(accountID: account.id))
                 if relationship?.following == true {
                     // Nextcloud Social enforces this as a predicate of the
                     // timeline query rather than by filtering a page.

@@ -315,6 +315,8 @@ public struct StatusMenu: View {
     }
 
     public var body: some View {
+        OpenInNewWindowButton(.thread(statusID: displayed.id))
+
         Button {
             onAction(.share(status))
         } label: {

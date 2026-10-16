@@ -7,11 +7,16 @@ import SwiftUI
 /// Applies the theme before the shell reads its palette, including presentations.
 public struct AppShell: View {
     @Environment(AppEnvironment.self) private var environment
+    private let initialRoute: Route?
 
-    public init() {}
+    /// `initialRoute` opens the shell already showing a destination — a
+    /// window of its own for a thread or a profile (see `RouteWindow`).
+    public init(initialRoute: Route? = nil) {
+        self.initialRoute = initialRoute
+    }
 
     public var body: some View {
-        ThemedAppShell()
+        ThemedAppShell(initialRoute: initialRoute)
             .alohaTheme(
                 environment.theme, metrics: environment.metrics, accent: environment.serverAccent)
     }
@@ -60,7 +65,20 @@ private struct ThemedAppShell: View {
     @State private var sheet: ShellSheet?
     @Environment(\.scenePhase) private var scenePhase
 
-    init() {}
+    /// Set on a window opened for one destination. Such a window shows it and
+    /// otherwise stays out of the way: the app-wide requests — compose, open a
+    /// route, add an account — are for the main window, or every open thread
+    /// window would answer them too.
+    private let initialRoute: Route?
+
+    /// The account load and the sync engine are the process's, not a
+    /// window's: loading again from a second window would replace the
+    /// sessions the first one is showing.
+    private static var hasStarted = false
+
+    init(initialRoute: Route? = nil) {
+        self.initialRoute = initialRoute
+    }
 
     var body: some View { content }
 
@@ -118,7 +136,7 @@ private struct ThemedAppShell: View {
                 // The compose deep link — from the quick-compose widget, or a
                 // Shortcut — reached here because the composer is a sheet the
                 // shell owns, not a navigation destination.
-                guard environment.activeSession != nil else { return }
+                guard initialRoute == nil, environment.activeSession != nil else { return }
                 composing = ComposerPresentation()
             }
             .onReceive(
@@ -126,7 +144,9 @@ private struct ThemedAppShell: View {
             ) { _ in
                 // Stories are a Nextcloud Social extension; on any other
                 // server the control opens the app and nothing more.
-                guard environment.activeSession?.capabilities.stories == true else { return }
+                guard initialRoute == nil,
+                    environment.activeSession?.capabilities.stories == true
+                else { return }
                 isComposingStory = true
             }
             .sheet(isPresented: $isComposingStory) {
@@ -136,14 +156,18 @@ private struct ThemedAppShell: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
+                guard initialRoute == nil else { return }
                 if let route = note.userInfo?["route"] as? Route { open(route) }
             }
             .onReceive(NotificationCenter.default.publisher(for: .alohaAddAccount)) { _ in
                 // Where the Settings scene's "Add account" row arrives: the
                 // sign-in sheet belongs to this shell, wherever the request
                 // came from.
+                guard initialRoute == nil else { return }
                 isPresentingSignIn = true
             }
+            // The menu bar acts on the window in front (see `ShellCommands`).
+            .focusedSceneValue(\.shellCommands, shellCommands)
     }
 
     /// What a person sees, in the order it is fair to ask it of them:
@@ -299,6 +323,11 @@ private struct ThemedAppShell: View {
     }
 
     private func start() async {
+        guard !Self.hasStarted else {
+            if let initialRoute { open(initialRoute) }
+            return
+        }
+        Self.hasStarted = true
         await environment.load()
         #if DEBUG
             if MockMode.isEnabled {
@@ -321,6 +350,7 @@ private struct ThemedAppShell: View {
         if shouldAsk { _ = await environment.notifier.requestAuthorisation() }
         // An intent that opened the app left its destination behind.
         if let pending = IntentNavigation.take() { open(pending) }
+        if let initialRoute { open(initialRoute) }
     }
 
     func open(_ route: Route) {
@@ -384,6 +414,37 @@ private struct ThemedAppShell: View {
             }
         #endif
         path.append(route)
+    }
+
+    /// The menu bar's Back: one step off whichever stack is showing.
+    private func goBack() {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                if iPadPaths[sidebarItem]?.isEmpty == false {
+                    iPadPaths[sidebarItem]?.removeLast()
+                }
+                return
+            }
+        #endif
+        if !path.isEmpty { path.removeLast() }
+    }
+
+    private var canGoBack: Bool {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                return iPadPaths[sidebarItem]?.isEmpty == false
+            }
+        #endif
+        return !path.isEmpty
+    }
+
+    private var shellCommands: ShellCommands? {
+        guard environment.activeSession != nil else { return nil }
+        return ShellCommands(
+            compose: { composing = ComposerPresentation() },
+            open: { open($0) },
+            back: { goBack() },
+            canGoBack: canGoBack)
     }
 
     // MARK: - iPhone
