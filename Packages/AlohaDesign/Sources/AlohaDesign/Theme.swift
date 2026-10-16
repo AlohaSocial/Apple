@@ -460,6 +460,20 @@ extension View {
         modifier(AlohaThemeModifier(theme: theme, metrics: metrics, accent: accent))
     }
 
+    /// The ground behind a whole window's content — a reading column's
+    /// margins, a split view's detail. A warm theme paints its own, or the
+    /// margins are the window's cool white; the System theme leaves the
+    /// window's own, so a grouped list is not framed in a colour it does not
+    /// have.
+    @ViewBuilder
+    public func alohaWindowGround(_ palette: AlohaPalette) -> some View {
+        if palette.usesSystemGrounds {
+            self
+        } else {
+            background(palette.background.ignoresSafeArea())
+        }
+    }
+
     /// The app's own ground beneath a scrolling container.
     ///
     /// `List` and `Form` paint the system's grouped background over whatever is
