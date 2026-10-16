@@ -530,6 +530,22 @@ public struct StatusMenu: View {
             }
         }
 
+        // One post put under a filter by name (`/api/v2/filters/{id}/statuses`),
+        // for the post a keyword cannot describe without catching others.
+        if !isOwn, session?.capabilities.filtersV2 == true {
+            Button {
+                NotificationCenter.default.post(
+                    name: .alohaOpenRoute, object: nil,
+                    userInfo: ["route": Route.filterPost(statusID: displayed.id)])
+            } label: {
+                Label {
+                    Text("Filter this post…", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
+            }
+        }
+
         if isOwn { ownSection }
 
         // The thread's author can put a reply away (`can_hide`), and bring it

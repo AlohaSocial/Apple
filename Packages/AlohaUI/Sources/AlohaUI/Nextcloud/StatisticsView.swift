@@ -59,7 +59,11 @@ public struct StatisticsView: View {
                     namedCounts(
                         Text("Sites you link to", comment: "Statistics section"), statistics.domains
                     )
+                    bestPosts(statistics)
                     partners(statistics)
+                    engagementSources(statistics)
+                    audience(statistics)
+                    reach(statistics)
                     media(statistics)
                 } else if !isLoading && errorMessage == nil {
                     ContentUnavailableView {
@@ -196,16 +200,27 @@ public struct StatisticsView: View {
                     Text("Favourites", comment: "Statistics tile"))
                 tile(e["boosts"] ?? e["reblogs"] ?? 0, Text("Boosts", comment: "Statistics tile"))
                 tile(e["replies"] ?? 0, Text("Replies", comment: "Statistics tile"))
+                // Mastodon 4.5's quote posts, counted on Aloha Social since
+                // the statistics learned them.
+                if let quotes = e["quotes"] {
+                    tile(quotes, Text("Quotes", comment: "Statistics tile"))
+                }
                 if let reach = e["reach"] {
                     tile(reach, Text("Estimated reach", comment: "Statistics tile"))
                 }
-                if let rate = r["engagement"] ?? r["engagement_rate"] {
+                // `per_follower` is what the server sends, already a percentage.
+                if let rate = r["per_follower"] {
+                    tile(
+                        rate / 100, Text("Per follower", comment: "Statistics tile"),
+                        asPercent: true)
+                } else if let rate = r["engagement"] ?? r["engagement_rate"] {
                     tile(rate, Text("Per follower", comment: "Statistics tile"), asPercent: true)
                 }
                 if let average = r["average"] ?? r["per_post"] {
                     tile(average, Text("Per post", comment: "Statistics tile"), fraction: true)
                 }
-                if let silent = e["silent"] {
+                // Under `rates`, beside the share it is of what was written.
+                if let silent = r["silent"] ?? e["silent"] {
                     tile(silent, Text("Posts with no reply", comment: "Statistics tile"))
                 }
             }
@@ -444,6 +459,144 @@ public struct StatisticsView: View {
                 }
             }
             .card(palette)
+        }
+    }
+
+    /// The posts that did best, each with what came back to it — quotes too.
+    @ViewBuilder
+    private func bestPosts(_ statistics: AccountStatistics) -> some View {
+        if !statistics.best.isEmpty {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+                Text("What did best", comment: "Statistics section").font(AlohaType.section)
+                ForEach(statistics.best.prefix(5)) { post in
+                    VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                        Text(post.excerpt)
+                            .font(.footnote)
+                            .lineLimit(2)
+                        HStack(spacing: AlohaMetrics.space3) {
+                            countLabel(post.likes, symbol: AlohaSymbol.favourite)
+                            countLabel(post.boosts, symbol: AlohaSymbol.boost)
+                            countLabel(post.replies, symbol: AlohaSymbol.reply)
+                            countLabel(post.quotes, symbol: "quote.bubble")
+                            Spacer(minLength: 0)
+                            if let date = post.publishedAt {
+                                Text(date, format: .dateTime.day().month(.abbreviated))
+                            }
+                        }
+                        .font(AlohaType.meta)
+                        .foregroundStyle(palette.secondaryLabel)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        Text(
+                            "\(post.excerpt). ^[\(post.likes) favourite](inflect: true), ^[\(post.boosts) boost](inflect: true), ^[\(post.replies) reply](inflect: true), ^[\(post.quotes) quote](inflect: true).",
+                            comment: "Statistics best post, read aloud"))
+                }
+            }
+            .card(palette)
+        }
+    }
+
+    private func countLabel(_ value: Int, symbol: String) -> some View {
+        HStack(spacing: 2) {
+            Image(systemName: symbol)
+            Text(value, format: .number)
+                .monospacedDigit()
+        }
+    }
+
+    /// Where the favourites, boosts and replies came from, by server.
+    @ViewBuilder
+    private func engagementSources(_ statistics: AccountStatistics) -> some View {
+        if let sources = statistics.engagementSources, !sources.servers.isEmpty {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                Text("Where the answers came from", comment: "Statistics section")
+                    .font(AlohaType.section)
+                Text(
+                    "\((sources.localShare / 100).formatted(.percent.precision(.fractionLength(0)))) from people on your own server.",
+                    comment: "Statistics engagement sources, share from this server"
+                )
+                .font(AlohaType.meta)
+                .foregroundStyle(palette.secondaryLabel)
+                hostRows(sources.servers)
+            }
+            .card(palette)
+        }
+    }
+
+    /// Who is listening, and where they are — and who arrived through a
+    /// Bluesky starter pack naming the account.
+    @ViewBuilder
+    private func audience(_ statistics: AccountStatistics) -> some View {
+        if let audience = statistics.audience,
+            !audience.instances.isEmpty || audience.starterPackJoins > 0
+        {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                Text("Your followers' servers", comment: "Statistics section")
+                    .font(AlohaType.section)
+                if audience.starterPackJoins > 0 {
+                    Label {
+                        Text(
+                            "^[\(audience.starterPackJoins) person](inflect: true) followed you from a Bluesky starter pack.",
+                            comment: "Statistics starter pack joins")
+                    } icon: {
+                        Image(systemName: "person.3.sequence")
+                    }
+                    .font(.footnote)
+                }
+                hostRows(audience.instances)
+            }
+            .card(palette)
+        }
+    }
+
+    /// How far the posts went: the servers they were delivered to, and the
+    /// networks they also went out on.
+    @ViewBuilder
+    private func reach(_ statistics: AccountStatistics) -> some View {
+        if let reach = statistics.reach, reach.instances > 0 || !reach.networks.isEmpty {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+                Text("How far they went", comment: "Statistics section").font(AlohaType.section)
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 120), spacing: AlohaMetrics.space3)],
+                    spacing: AlohaMetrics.space3
+                ) {
+                    if reach.instances > 0 {
+                        tile(
+                            Double(reach.instances),
+                            Text("Servers delivered to", comment: "Statistics tile"))
+                    }
+                    ForEach(reach.networks) { network in
+                        tile(
+                            Double(network.posts),
+                            Text(
+                                "Posts also on \(networkName(network.network))",
+                                comment: "Statistics tile: posts that also went out on a network"
+                            ))
+                    }
+                }
+            }
+            .card(palette)
+        }
+    }
+
+    private func networkName(_ raw: String) -> String {
+        switch raw.lowercased() {
+        case "bluesky", "atproto": String(localized: "Bluesky", comment: "Network name")
+        default: raw.capitalized
+        }
+    }
+
+    private func hostRows(_ rows: [AccountStatistics.HostCount]) -> some View {
+        ForEach(rows.prefix(8)) { row in
+            HStack {
+                Text(row.host).lineLimit(1)
+                Spacer()
+                Text(row.count, format: .number)
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+            }
+            .font(.footnote)
         }
     }
 

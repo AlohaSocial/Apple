@@ -233,6 +233,7 @@ public struct SettingsView: View {
                         session.capabilities.isNextcloudSocial
                     {
                         AIContentFilterRow(session: session)
+                        FilesCommentsRow(session: session)
                         BlueskySettingsRows(session: session)
                     }
                     if environment.activeSession?.capabilities.isNextcloudSocial == true {

@@ -278,6 +278,10 @@ public struct ExploreView: View {
                     }
                 }
 
+                if session.bluesky.isAvailable {
+                    BlueskySuggestionsSection(session: session, onAction: onAction)
+                }
+
                 if !popular.isEmpty {
                     SwiftUI.Section {
                         ForEach(popular) { account in
@@ -506,6 +510,10 @@ public struct ExploreView: View {
                 } header: {
                     Text("On other servers", comment: "Discover section")
                 }
+            }
+
+            if session.bluesky.isAvailable {
+                BlueskyTrendsSection(session: session)
             }
 
             if !trendingLinks.isEmpty {
