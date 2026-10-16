@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
+import AlohaHTML
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
 
 public struct ThreadView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(AppEnvironment.self) private var environment
+    @State private var isShowingSummary = false
 
     private let statusID: String
     private let session: AccountSession
@@ -64,6 +67,41 @@ public struct ThreadView: View {
                 if !ancestors.isEmpty { proxy.scrollTo("focused", anchor: .top) }
             }
             .refreshable { await load() }
+            .toolbar {
+                if canSummarise {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            isShowingSummary = true
+                        } label: {
+                            Label {
+                                Text("Summarise thread", comment: "Thread action")
+                            } icon: {
+                                Image(systemName: AlohaSymbol.sparkles)
+                            }
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingSummary) {
+                SummarySheet(passages: passages, intelligence: environment.intelligence)
+            }
+        }
+    }
+
+    /// Only where a summary saves reading: a post and one reply is quicker to
+    /// read than to have summarised.
+    private var canSummarise: Bool {
+        environment.intelligence.availability.isAvailable && focused != nil
+            && ancestors.count + descendants.count >= 2
+    }
+
+    /// The thread in reading order, each post as "who: what", so the summary
+    /// can say who argued what rather than flattening everyone into one voice.
+    private var passages: [String] {
+        let parser = StatusHTMLParser()
+        return (ancestors + (focused.map { [$0] } ?? []) + descendants).map { status in
+            let post = status.displayed
+            return "\(post.account.bestDisplayName): \(parser.plainText(post.content))"
         }
     }
 
