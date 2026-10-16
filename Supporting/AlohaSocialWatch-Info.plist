@@ -2,6 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The watch app and its complications share the snapshot they draw
+	     from and the pairing's token (Supporting/README.md). -->
+	<key>AlohaAppGroupEnabled</key>
+	<true/>
+	<!-- A tapped complication opens the app on alohasocial://watch/… -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>social.aloha.app.watch</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>alohasocial</string>
+			</array>
+		</dict>
+	</array>
 	<!-- The watchOS app talks to the same self-hosted servers, including
 	     plain-http private-network addresses, so it needs the same ATS
 	     exception as the iOS app (see Supporting/Info.plist). -->

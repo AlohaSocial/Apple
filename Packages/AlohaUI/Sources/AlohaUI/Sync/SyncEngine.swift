@@ -76,6 +76,10 @@ public final class SyncEngine {
         let total = unreadCounts.values.reduce(0, +)
         AppGroup.defaults.set(total, forKey: AppGroup.unreadTotalKey)
         WidgetReloader.reloadAll()
+        #if os(iOS)
+            // The watch face counts the paired account only, not the total.
+            WatchBridge.shared.sendUnread(unreadCounts)
+        #endif
         Task { await notifier.setBadge(total) }
     }
 
