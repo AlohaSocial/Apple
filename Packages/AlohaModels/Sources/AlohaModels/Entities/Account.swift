@@ -91,10 +91,20 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         _url = try c.decode(LenientURL.self, forKey: .url)
         _uri = try c.decode(LenientURL.self, forKey: .uri)
-        _avatar = try c.decode(LenientURL.self, forKey: .avatar)
+        let avatar = try c.decode(LenientURL.self, forKey: .avatar)
+        _avatar = avatar
         _avatarStatic = try c.decode(LenientURL.self, forKey: .avatarStatic)
-        _header = try c.decode(LenientURL.self, forKey: .header)
-        _headerStatic = try c.decode(LenientURL.self, forKey: .headerStatic)
+        // Nextcloud fills a missing header with the avatar image
+        // (`Person::exportAsLocal`), which draws the face again, stretched, as
+        // a banner. The same picture in both places is no header at all.
+        let header = try c.decode(LenientURL.self, forKey: .header)
+        if header.wrappedValue != nil, header.wrappedValue == avatar.wrappedValue {
+            _header = .init(wrappedValue: nil)
+            _headerStatic = .init(wrappedValue: nil)
+        } else {
+            _header = header
+            _headerStatic = try c.decode(LenientURL.self, forKey: .headerStatic)
+        }
         _locked = try c.decode(LenientBool.self, forKey: .locked)
         _bot = try c.decode(LenientBool.self, forKey: .bot)
         _discoverable = try c.decode(LenientBool.self, forKey: .discoverable)

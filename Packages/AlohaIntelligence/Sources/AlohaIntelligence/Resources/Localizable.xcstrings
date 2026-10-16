@@ -2,43 +2,147 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%lld people" : {
-      "comment" : "Alt text fragment"
+      "comment" : "Alt text fragment",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Personen"
+          }
+        }
+      }
     },
     "A picture" : {
-      "comment" : "Alt text fallback"
+      "comment" : "Alt text fallback",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Bild"
+          }
+        }
+      }
     },
     "Make friendlier" : {
-      "comment" : "Rewrite action"
+      "comment" : "Rewrite action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freundlicher formulieren"
+          }
+        }
+      }
     },
     "Make more concise" : {
-      "comment" : "Rewrite action"
+      "comment" : "Rewrite action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kürzer fassen"
+          }
+        }
+      }
     },
     "Make more formal" : {
-      "comment" : "Rewrite action"
+      "comment" : "Rewrite action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Förmlicher formulieren"
+          }
+        }
+      }
     },
     "One person" : {
-      "comment" : "Alt text fragment"
+      "comment" : "Alt text fragment",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Person"
+          }
+        }
+      }
     },
     "Proofread" : {
-      "comment" : "Rewrite action"
+      "comment" : "Rewrite action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korrekturlesen"
+          }
+        }
+      }
     },
     "Rephrase" : {
-      "comment" : "Rewrite action"
+      "comment" : "Rewrite action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umformulieren"
+          }
+        }
+      }
     },
     "Shorten" : {
-      "comment" : "Rewrite action"
+      "comment" : "Rewrite action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kürzen"
+          }
+        }
+      }
     },
     "Text reads: %@." : {
-      "comment" : "Alt text fragment for text in image"
+      "comment" : "Alt text fragment for text in image",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text im Bild: %@."
+          }
+        }
+      }
     },
     "The on-device model is still downloading." : {
-      "comment" : "Intelligence unavailable reason"
+      "comment" : "Intelligence unavailable reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Modell auf dem Gerät wird noch geladen."
+          }
+        }
+      }
     },
     "Turn on Apple Intelligence in Settings to use these." : {
-      "comment" : "Intelligence unavailable reason"
+      "comment" : "Intelligence unavailable reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktiviere Apple Intelligence in den Einstellungen, um diese Funktionen zu nutzen."
+          }
+        }
+      }
     },
     "with %@" : {
-      "comment" : "Alt text fragment"
+      "comment" : "Alt text fragment",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mit %@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

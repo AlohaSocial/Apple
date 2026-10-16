@@ -64,7 +64,7 @@ enum PlaybackOutcome: Sendable {
 /// One place that says what a video did, so a poster that never gives way to
 /// picture can be read about in Console rather than guessed at.
 enum PlaybackLog {
-    static let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "playback")
+    static let logger = Logger(subsystem: "social.aloha.app", category: "playback")
 }
 
 /// One attempt at one source, judged.

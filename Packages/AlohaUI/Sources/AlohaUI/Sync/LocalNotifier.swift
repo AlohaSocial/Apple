@@ -12,7 +12,7 @@ public struct LocalNotifier: Sendable {
     /// `UNUserNotificationCenter` is a non-`Sendable` singleton that is safe to
     /// reach from anywhere, so it is fetched per call rather than stored.
     private var center: UNUserNotificationCenter { .current() }
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "notifications")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "notifications")
 
     public init() {}
 

@@ -31,7 +31,7 @@ public final class SyncEngine {
 
     private weak var environment: AppEnvironment?
     private let notifier: LocalNotifier
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "sync")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "sync")
 
     public init(notifier: LocalNotifier = LocalNotifier()) {
         self.notifier = notifier

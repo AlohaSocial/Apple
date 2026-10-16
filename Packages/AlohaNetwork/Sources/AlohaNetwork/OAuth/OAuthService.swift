@@ -22,7 +22,7 @@ public struct OAuthService: Sendable {
     public static let scopes = "read write follow push"
 
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "oauth")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "oauth")
 
     public init(transport: any HTTPTransport = URLSessionTransport()) {
         self.transport = transport

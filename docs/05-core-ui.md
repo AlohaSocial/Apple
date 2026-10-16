@@ -54,13 +54,14 @@ No custom blur stacks, no reimplemented navigation bars.
 - Every role defined for light and dark, and for increased-contrast variants of
   both. Asset catalog colour sets with all four appearances; never a literal
   colour in a view.
-- The accent is a warm coral-to-amber; boost is green, favourite is amber,
+- The accent is the server's (see *The accent colour* below), with a warm
+  coral as the fallback; boost is green, favourite is amber,
   bookmark is violet — kept distinct at the smallest size a badge is drawn and
   distinguishable under the common colour-vision deficiencies, verified by the
   contrast test in [12-conventions-quality.md](12-conventions-quality.md) §5.
 - **Themes**: a small set of built-in themes (System, Warm Light, Warm Dark,
-  High Contrast Light, High Contrast Dark, Dim, Black) plus a custom theme with
-  a user-chosen accent. Themes change colour roles only, never layout or type
+  High Contrast Light, High Contrast Dark, Dim, Black). There is no
+  user-chosen accent. Themes change colour roles only, never layout or type
   scale.
 
 ### Typography
@@ -105,6 +106,7 @@ favourite amber and bookmark violet never move: they carry meaning.
 
 The **app icon** is still a choice (`AlohaIconVariant`), because an icon is
 about finding the app on a crowded Home Screen rather than about the server.
+The icon's colour never feeds into the accent.
 
 ## 3. Timeline
 
@@ -210,7 +212,7 @@ exist undocumented.
   join date, fields table with verified-link checkmarks, note (rich text),
   follower/following/post counts, and the relationship state.
 - Relationship controls: Follow / Unfollow / Cancel request, a **bell** for
-  post notifications, a **hide boosts** switch (Nextcloud Social honours
+  post notifications, a **hide boosts** switch (Nextcloud honours
   `reblogs` on `POST /accounts/{id}/follow` and enforces it in the timeline
   query, not by filtering a page), Add to list, Mention, Direct message,
   Block, Mute (with duration and "also mute notifications"), Report, Block
@@ -242,7 +244,7 @@ exist undocumented.
   settings screen with the five decisions (`for_not_following`,
   `for_not_followers`, `for_new_accounts`, `for_private_mentions`,
   `for_limited_accounts`), each `accept` / `filter` / `drop`. Note that on
-  Nextcloud Social **`drop` behaves as `filter`** — the UI says so in a footnote
+  Nextcloud **`drop` behaves as `filter`** — the UI says so in a footnote
   rather than pretending otherwise. The policy screen is reachable from both
   Settings → Notifications and the Notifications screen; when there are
   pending filtered requests, their count is shown next to the policy link.
@@ -273,7 +275,7 @@ One screen, segmented.
   (`/trends/statuses`), trending links (`/trends/links`), suggested accounts
   (`/api/v2/suggestions`, dismissible via `DELETE /suggestions/{id}`), and the
   directory (`/api/v1/directory`).
-  Note Nextcloud Social's `Tag.history` carries a single bucket and
+  Note Nextcloud's `Tag.history` carries a single bucket and
   `accounts` is always `0` — the UI must not draw a sparkline from one point or
   claim a participant count. Show uses only.
 - **Other servers' directories** (`/api/v1/directories`, `/directories/search`)
@@ -330,7 +332,7 @@ than what it does.
 Grouped, searchable (on platforms with settings search).
 
 - **Accounts** — list, add, reorder, sign out, per-account settings.
-- **Appearance** — theme, accent, text size offset, line spacing, serif body,
+- **Appearance** — theme, app icon, text size offset, line spacing, serif body,
   avatar shape (circle/rounded square), compact/comfortable/spacious density,
   show/hide counts, hide the app badge.
 - **Modes** — which modes appear, in what order, on which platforms.
@@ -351,7 +353,7 @@ Grouped, searchable (on platforms with settings search).
   only**: a filter of three words is three ids in v1 and one in v2, and an
   editor that mixed the two would delete the wrong row. Keywords are edited in
   place with Rails' `keywords_attributes[n][…]`, which is the shape both
-  Mastodon and Nextcloud Social take; a removed one is sent with `_destroy`
+  Mastodon and Nextcloud take; a removed one is sent with `_destroy`
   rather than left out, because the server leaves what it is not told about
   alone. Saving refreshes the local store too, so a new filter takes effect over
   cached content immediately.
@@ -366,7 +368,7 @@ Grouped, searchable (on platforms with settings search).
 - **Your year** — the annual report, under Your account. Mastodon's
   `#Wrapstodon` over `/api/v1/annual_reports`: an archetype in a sentence, a
   month-by-month chart of posts and arrivals, the hashtags, and the three posts
-  that travelled furthest. Nextcloud Social serves this and its own web client
+  that travelled furthest. Nextcloud serves this and its own web client
   has no page for it, so the app is the first place it can be read. `generate`
   is still called before reading — this server answers instantly with nothing to
   do, and a server that does need it will act on it.

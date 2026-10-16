@@ -11,7 +11,7 @@ import OSLog
 /// always means `false`.
 public struct CapabilityDetector: Sendable {
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "capabilities")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "capabilities")
 
     public init(transport: any HTTPTransport = URLSessionTransport()) {
         self.transport = transport
@@ -61,9 +61,6 @@ public struct CapabilityDetector: Sendable {
             .theme(
                 nextcloudRoot: ServerCapabilities.minimal(apiBase: apiBase).nextcloudRoot)
 
-        // `only_video` and `only_news` are this app's own. Mastodon accepts
-        // unknown query parameters silently, so the absence of a 422 is not
-        // proof — the software name has to agree (docs/02 §4).
         // Resolve every concurrent probe before building the result: `&&` takes
         // an autoclosure, which cannot capture an `async let`.
         let hasGroupedRoute = await grouped
@@ -76,26 +73,16 @@ public struct CapabilityDetector: Sendable {
         let languages = await translationLanguages
         let theme = await serverTheme
 
-        // `only_video` and `only_news` are this app's own. Mastodon accepts
-        // unknown query parameters silently, so the absence of a 422 is not
-        // proof — the software name has to agree (docs/02 §4).
-        let videoNarrowing =
-            isNextcloudSocial
-            ? await acceptsNarrowing(apiBase: apiBase, token: accessToken, parameter: "only_video")
-            : false
-        let newsNarrowing =
-            isNextcloudSocial
-            ? await acceptsNarrowing(apiBase: apiBase, token: accessToken, parameter: "only_news")
-            : false
-        // only_media is Mastodon's own on the account timeline and Nextcloud's
-        // on the public one; assume it where the server is either.
-        let mediaNarrowing: Bool
-        if isNextcloudSocial {
-            mediaNarrowing = true
-        } else {
-            mediaNarrowing = await acceptsNarrowing(
-                apiBase: apiBase, token: accessToken, parameter: "only_media")
-        }
+        // Decided by the software name alone. A request cannot tell: Nextcloud
+        // reads a fixed list of timeline parameters and Mastodon ignores what
+        // it does not know, so an unsupported narrowing answers 200 exactly
+        // like a supported one (`ProbeOptions::fromArray`; docs/15 §1).
+        // `only_video` and `only_news` are Nextcloud's; `only_media` is
+        // Nextcloud's and Mastodon's own on the public timeline. Everywhere
+        // else the filter runs on the client.
+        let videoNarrowing = isNextcloudSocial
+        let newsNarrowing = isNextcloudSocial
+        let mediaNarrowing = isNextcloudSocial || softwareName == "mastodon"
 
         return ServerCapabilities(
             apiBase: apiBase,
@@ -171,27 +158,6 @@ public struct CapabilityDetector: Sendable {
     /// Nextcloud Social answers a **422** for a `{timeline}` it does not know,
     /// and accepts its own narrowings. A 422 here means the parameter was
     /// rejected; anything 2xx means it was taken.
-    private func acceptsNarrowing(apiBase: URL, token: String?, parameter: String) async -> Bool {
-        guard
-            var components = URLComponents(
-                url: apiBase.appending(path: "api/v1/timelines/public/"),
-                resolvingAgainstBaseURL: false)
-        else { return false }
-        components.queryItems = [
-            URLQueryItem(name: "limit", value: "1"),
-            URLQueryItem(name: parameter, value: "true"),
-        ]
-        guard let url = components.url else { return false }
-
-        var request = URLRequest(url: url)
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        request.timeoutInterval = 8
-
-        guard let (_, response) = try? await transport.send(request) else { return false }
-        return (200..<300).contains(response.statusCode)
-    }
-
     private func fetchTranslationLanguages(apiBase: URL, token: String?) async -> [String: [String]]
     {
         var request = URLRequest(

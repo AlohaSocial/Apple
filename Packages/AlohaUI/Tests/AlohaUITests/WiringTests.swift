@@ -19,7 +19,7 @@ struct WiringTests {
     /// domain. The widget showed the wrong account for exactly this reason.
     @Test("Shared state uses the app group, not the standard domain")
     func sharedDefaultsAreTheAppGroup() {
-        #expect(AppGroup.identifier == "group.com.nextcloud.alohasocial")
+        #expect(AppGroup.identifier == "group.social.aloha.app")
 
         let key = "aloha.test.\(UUID().uuidString)"
         AppGroup.defaults.set("written", forKey: key)
@@ -33,7 +33,7 @@ struct WiringTests {
     /// no group is private to whichever process built it.
     @Test("The shared credential store carries an access group")
     func credentialStoreIsShared() {
-        #expect(AppGroup.keychainAccessGroup == "com.nextcloud.alohasocial")
+        #expect(AppGroup.keychainAccessGroup == "social.aloha.app")
         // Constructing it is the check: a store with no group compiles equally
         // well and fails only at runtime, in another process.
         _ = CredentialStore.shared

@@ -12,7 +12,7 @@ cleanly.
 
 To turn push on:
 
-1. Enable **Push Notifications** for `com.nextcloud.alohasocial` in the Apple
+1. Enable **Push Notifications** for `social.aloha.app` in the Apple
    Developer portal, and let Xcode regenerate the profile.
 2. Add the capability in Xcode (Signing & Capabilities → + → Push
    Notifications), which writes `aps-environment` for you.

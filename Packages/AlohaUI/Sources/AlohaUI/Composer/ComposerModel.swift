@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaHTML
 import AlohaIntelligence
 import AlohaModels
 import AlohaNetwork
@@ -52,6 +53,12 @@ public final class ComposerModel {
     public var videoLicence = ""
     /// Set after posting when a moderator must look at the post first.
     public private(set) var wasHeldForReview = false
+    /// The last attempt failed in a way that says nothing about whether the
+    /// server made the post — a timeout, a dropped connection, a 5xx. The
+    /// server only stores the `Idempotency-Key` once the post exists
+    /// (`StatusApiController::createPost`), so a retry that overtakes a slow
+    /// first attempt is not caught there. Checked before the next send.
+    private var previousAttemptMayHaveLanded = false
     /// What `/dice`, `/flip` and `/pick` landed on, filled in as the post goes
     /// out. Shown once and then forgotten: the result is part of the post, not
     /// of the composer.
@@ -551,12 +558,20 @@ public final class ComposerModel {
                 posted = try await session.client.decode(
                     Status.self, from: Endpoint.composing.edit(editingStatus.id, draft))
             } else {
-                // One request, decoded twice: the status, and the one extra
-                // flag Nextcloud Social adds when a moderator must look first.
-                let response = try await session.client.send(Endpoint.composing.post(draft))
-                posted = try AlohaJSON.decoder.decode(Status.self, from: response.data)
-                let flags = try? AlohaJSON.decoder.decode(ReviewFlags.self, from: response.data)
-                wasHeldForReview = flags?.heldForReview ?? false
+                if previousAttemptMayHaveLanded, draft.scheduledAt == nil,
+                    let landed = await alreadyPosted(draft)
+                {
+                    posted = landed
+                } else {
+                    // One request, decoded twice: the status, and the one extra
+                    // flag Nextcloud Social adds when a moderator must look first.
+                    let response = try await session.client.send(Endpoint.composing.post(draft))
+                    posted = try AlohaJSON.decoder.decode(Status.self, from: response.data)
+                    let flags = try? AlohaJSON.decoder.decode(
+                        ReviewFlags.self, from: response.data)
+                    wasHeldForReview = flags?.heldForReview ?? false
+                }
+                previousAttemptMayHaveLanded = false
             }
             try? await session.timelineStore.updateStatus(accountID: session.id, status: posted)
             if editingStatus == nil, !wasHeldForReview { session.notePosted(posted) }
@@ -592,9 +607,41 @@ public final class ComposerModel {
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "Couldn't post that.", comment: "Post failed")
             // The composer keeps everything intact so the person can retry.
-            await saveDraftIfNeeded(queued: (error as? APIError)?.isTransient ?? false)
+            let isTransient = (error as? APIError)?.isTransient ?? false
+            if editingStatus == nil, isTransient { previousAttemptMayHaveLanded = true }
+            await saveDraftIfNeeded(queued: isTransient)
             return false
         }
+    }
+
+    /// The post an attempt that timed out made after all, if it did: the same
+    /// words, the same reply target and the same media, in the account's last
+    /// few posts from the last quarter of an hour. Anything less certain than
+    /// that posts again — a missing post is worse than a rare duplicate.
+    private func alreadyPosted(_ draft: StatusPost) async -> Status? {
+        let recent = try? await session.client.decode(
+            LossyArray<Status>.self,
+            from: Endpoint.timelines.timeline(
+                .account(
+                    id: session.snapshot.serverAccountID, includeReplies: true,
+                    onlyMedia: false),
+                limit: 5))
+        let parser = StatusHTMLParser()
+        let wanted = Self.normalised(draft.text)
+        let cutoff = Date().addingTimeInterval(-15 * 60)
+        return recent?.elements.first { status in
+            status.createdAt >= cutoff
+                && status.inReplyToID == draft.inReplyToID
+                && Set(status.mediaAttachments.map(\.id)) == Set(draft.mediaIDs)
+                && Self.normalised(parser.plainText(status.content)) == wanted
+        }
+    }
+
+    /// Whitespace collapsed, because the server's HTML turns line breaks into
+    /// paragraphs and the plain-text projection does not give them back as
+    /// they were typed.
+    private static func normalised(_ text: String) -> String {
+        text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     /// The one field beyond the Status entity a post can come back with.

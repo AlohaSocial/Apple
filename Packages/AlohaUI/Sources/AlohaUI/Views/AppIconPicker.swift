@@ -10,8 +10,9 @@ import SwiftUI
     ///
     /// The previews are drawn rather than loaded: an alternate icon lives in
     /// the asset catalog as an *icon*, which `UIImage(named:)` will not reliably
-    /// hand back, and redrawing the mark in SwiftUI keeps the two in step
-    /// without shipping the artwork twice.
+    /// hand back. Each one tints the one-colour mark (`AlohaMark`, the @ cut
+    /// out) on the icon's sand ground, which is how the icons are recoloured
+    /// too.
     struct AppIconPicker: View {
         @Environment(\.alohaPalette) private var palette
 
@@ -64,26 +65,25 @@ import SwiftUI
         }
     }
 
-    /// The artwork itself: the same flower the Home Screen gets, at the size
-    /// the row shows it.
+    /// The mark, drawn small: sand ground, hibiscus in the variant's colour.
     private struct IconPreview: View {
         @Environment(\.alohaPalette) private var palette
 
         let accent: AlohaIconVariant
         let isSelected: Bool
 
-        private var imageName: String {
-            accent == .aloha ? "Aloha" : "AlohaIcon-\(accent.rawValue.capitalized)"
-        }
-
         var body: some View {
-            Image(imageName)
-                .resizable()
-                .scaledToFill()
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                .fill(Color(red: 0.984, green: 0.957, blue: 0.918))
                 .frame(width: 60, height: 60)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-                )
+                .overlay {
+                    Image("AlohaMark", bundle: .module)
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .frame(width: 36, height: 36)
+                        .foregroundStyle(accent.swatch)
+                }
                 // Drawn inside the frame: a ring that hung outside the tile
                 // overlapped its neighbour at the spacing this row uses.
                 .overlay {

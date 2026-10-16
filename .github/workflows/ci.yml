@@ -1,3 +1,12 @@
+# SPDX-License-Identifier: MIT
+#
+# The gates docs/12 §6 specifies. That table described this file for months
+# before it existed: 290 tests, a forty-screen tour and an accessibility audit
+# were in the repository with nothing running them.
+#
+# A pull request that fails any job does not merge. There are no exceptions for
+# "just a small change" (docs/12 §6).
+
 name: CI
 
 on:
@@ -299,3 +308,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run the gate
         run: python3 tools/check-licence.py
+
+  # The localisation gate: every user-facing string has a translator comment.
+  localisation:
+    name: Localisation gate
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every user-facing string has a translator comment
+        run: python3 tools/check-localisation.py

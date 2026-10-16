@@ -68,6 +68,18 @@ private struct ThemedAppShell: View {
             .overlay {
                 if isCelebrating { ConfettiView(isFalling: isCelebrating) }
             }
+            #if os(iOS)
+                // The watch follows the active account and its colour; both
+                // can change without the other, so both are the trigger.
+                .onChange(
+                    of: WatchTrigger(
+                        account: environment.activeSession?.id, accent: environment.serverAccent),
+                    initial: true
+                ) {
+                    WatchBridge.shared.activate()
+                    WatchBridge.shared.send(environment.watchPairing())
+                }
+            #endif
             .onChange(of: environment.activeSession?.lastPosted?.id) { _, id in
                 guard id != nil, FirstPost.isStillToCome else { return }
                 FirstPost.recordPosted()
@@ -1148,6 +1160,12 @@ extension View {
     import AppKit
 #endif
 
+#if os(iOS)
+    private struct WatchTrigger: Equatable {
+        var account: UUID?
+        var accent: AlohaThemeModifier.ServerTheme?
+    }
+#endif
 /// The surrounding canvas must inherit the same theme as the reading surface.
 private struct ReaderColumn: ViewModifier {
     @Environment(\.alohaPalette) private var palette

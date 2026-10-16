@@ -8,10 +8,10 @@ import UniformTypeIdentifiers
 /// Handoff and Spotlight, both resolving through `RouteResolver` so every entry
 /// point behaves identically (docs/09 §11, §12).
 public enum Continuity {
-    public static let viewingTimeline = "com.nextcloud.alohasocial.viewingTimeline"
-    public static let viewingStatus = "com.nextcloud.alohasocial.viewingStatus"
-    public static let viewingProfile = "com.nextcloud.alohasocial.viewingProfile"
-    public static let composing = "com.nextcloud.alohasocial.composing"
+    public static let viewingTimeline = "social.aloha.app.viewingTimeline"
+    public static let viewingStatus = "social.aloha.app.viewingStatus"
+    public static let viewingProfile = "social.aloha.app.viewingProfile"
+    public static let composing = "social.aloha.app.composing"
 
     public static let allActivityTypes = [
         viewingTimeline, viewingStatus, viewingProfile, composing,
@@ -62,7 +62,7 @@ public enum Continuity {
 /// Only what a person chose to keep is indexed. Putting a stranger's posts into
 /// the device search index is not something anybody consented to (docs/09 §12).
 public enum SpotlightIndexer {
-    private static let domain = "com.nextcloud.alohasocial.bookmarks"
+    private static let domain = "social.aloha.app.bookmarks"
 
     public static func index(bookmarks: [Status], accountID: UUID) async {
         let items = bookmarks.map { status -> CSSearchableItem in

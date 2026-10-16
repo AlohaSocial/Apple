@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaDesign
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
@@ -41,6 +42,7 @@ struct WatchRootView: View {
             }
             .navigationTitle(Text("Aloha", comment: "Watch app title"))
         }
+        .serverTint(link.serverTheme)
         .task { link.activate() }
     }
 }

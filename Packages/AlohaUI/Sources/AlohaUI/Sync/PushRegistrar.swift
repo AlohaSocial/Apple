@@ -13,7 +13,7 @@ import OSLog
 /// waits for a push that never comes and one that polls (docs/08 §2).
 public struct PushRegistrar: Sendable {
     private let credentials: CredentialStore
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "push")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "push")
 
     public init(credentials: CredentialStore) {
         self.credentials = credentials

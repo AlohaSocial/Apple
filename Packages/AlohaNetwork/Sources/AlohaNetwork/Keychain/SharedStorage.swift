@@ -8,7 +8,7 @@ import Foundation
 /// app and reading it from an extension silently returns nothing, because each
 /// process has its own standard domain. Naming it once removes the chance.
 public enum AppGroup {
-    public static let identifier = "group.com.nextcloud.alohasocial"
+    public static let identifier = "group.social.aloha.app"
 
     /// Whether this binary may use the shared app group.
     ///
@@ -38,7 +38,7 @@ public enum AppGroup {
     /// the app was still entitled to.
     public static let keychainAccessGroup: String? =
         Bundle.main.object(forInfoDictionaryKey: "AlohaKeychainSharingEnabled") as? Bool ?? true
-        ? "com.nextcloud.alohasocial"
+        ? "social.aloha.app"
         : nil
 
     // Keys shared across processes.

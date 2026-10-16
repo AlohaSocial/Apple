@@ -108,13 +108,17 @@ public struct SignInView: View {
             // window, and its primary action must answer Return.
             .keyboardShortcut(.defaultAction)
             .disabled(typed.trimmingCharacters(in: .whitespaces).isEmpty)
+        } header: {
+            BrandMark(size: 72)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, AlohaMetrics.space3)
         } footer: {
             VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 Text(
-                    "Aloha Social works with Nextcloud Social, Mastodon, and any server that speaks the Mastodon API.",
+                    "Aloha Social works with Nextcloud, Mastodon, and any server that speaks the Mastodon API.",
                     comment: "Sign-in explanation")
-                Link(destination: URL(string: "https://github.com/AlohaSocial/social")!) {
-                    Text("What is Nextcloud Social?", comment: "Sign-in link")
+                Link(destination: URL(string: "https://nextcloud.com")!) {
+                    Text("What is Nextcloud?", comment: "Sign-in link")
                 }
             }
         }

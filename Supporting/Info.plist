@@ -6,8 +6,8 @@
 	<false/>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.nextcloud.alohasocial.refresh</string>
-		<string>com.nextcloud.alohasocial.maintenance</string>
+		<string>social.aloha.app.refresh</string>
+		<string>social.aloha.app.maintenance</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -15,7 +15,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.nextcloud.alohasocial</string>
+			<string>social.aloha.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>alohasocial</string>
@@ -29,10 +29,10 @@
 	</dict>
 	<key>NSUserActivityTypes</key>
 	<array>
-		<string>com.nextcloud.alohasocial.viewingTimeline</string>
-		<string>com.nextcloud.alohasocial.viewingStatus</string>
-		<string>com.nextcloud.alohasocial.viewingProfile</string>
-		<string>com.nextcloud.alohasocial.composing</string>
+		<string>social.aloha.app.viewingTimeline</string>
+		<string>social.aloha.app.viewingStatus</string>
+		<string>social.aloha.app.viewingProfile</string>
+		<string>social.aloha.app.composing</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

@@ -45,7 +45,7 @@ public final class TimelineModel {
     /// re-syncing on every appearance of the same row).
     @ObservationIgnored private var markerAdvancedThisSession = false
 
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "timeline")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "timeline")
 
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key

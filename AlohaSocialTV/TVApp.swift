@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 import AVKit
+import AlohaDesign
 import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
+import CoreImage.CIFilterBuiltins
 import SwiftUI
 
 /// Video only: Video mode and Shorts mode, nothing else (docs/09 §5).
@@ -50,13 +52,17 @@ struct TVRootView: View {
                 }
             }
         }
+        .serverTint(model.serverTheme)
         .task { await model.restore() }
     }
 }
 
 /// `ASWebAuthenticationSession` does not exist on tvOS, so sign-in goes through
-/// the out-of-band redirect Nextcloud Social's OAuth controller supports: a code
-/// shown on a phone and typed here, six characters, once (docs/03 §7).
+/// the out-of-band redirect the Social app's OAuth controller supports: the
+/// authorise page opens on a phone from a QR code, and the code it shows comes
+/// back here (docs/03 §7). That code is sixty mixed-case characters
+/// (`ClientService::generateToken`), which nobody types with a remote — the
+/// phone copies it and the iPhone's Apple TV keyboard pastes it.
 struct TVSignInView: View {
     @Environment(TVModel.self) private var model
 
@@ -86,22 +92,33 @@ struct TVSignInView: View {
             } else {
                 VStack(spacing: 16) {
                     Text(
-                        "On your phone, open this address and sign in:",
+                        "Scan this with your phone and sign in:",
                         comment: "tvOS out-of-band instruction")
-                    Text(model.pendingAuthorisationURL?.absoluteString ?? "")
-                        .font(.footnote.monospaced())
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 900)
+                    if let url = model.pendingAuthorisationURL {
+                        QRCodeView(text: url.absoluteString)
+                            .frame(width: 320, height: 320)
+                        Text(url.absoluteString)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(3)
+                            .frame(maxWidth: 900)
+                    }
 
                     Text(
-                        "Then type the code it gives you:", comment: "tvOS out-of-band instruction")
+                        "Copy the code it shows, select the field below, and paste it with the keyboard that appears on your iPhone:",
+                        comment: "tvOS out-of-band instruction"
+                    )
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 900)
                     TextField(
                         text: $code,
                         prompt: Text("Code", comment: "tvOS code field")
                     ) {
                         Text("Code", comment: "tvOS code field")
                     }
-                    .frame(maxWidth: 400)
+                    .autocorrectionDisabled()
+                    .frame(maxWidth: 900)
 
                     Button {
                         Task { await model.finishSignIn(code: code) }
@@ -238,5 +255,31 @@ struct TVShortsView: View {
             }
         }
         .task { await model.loadShorts() }
+    }
+}
+
+/// The authorise URL as a QR code, drawn crisp at any size: Core Image makes
+/// one module per pixel, and nearest-neighbour scaling keeps the edges hard
+/// enough for a phone camera across a living room.
+struct QRCodeView: View {
+    let text: String
+
+    var body: some View {
+        if let image = Self.image(for: text) {
+            Image(decorative: image, scale: 1)
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .padding(16)
+                .background(.white, in: .rect(cornerRadius: 12))
+        }
+    }
+
+    private static func image(for text: String) -> CGImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8)
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        return CIContext().createCGImage(output, from: output.extent)
     }
 }

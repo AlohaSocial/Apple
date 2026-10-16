@@ -37,7 +37,7 @@ Comment *why*, not *what*. Every non-obvious server workaround gets a comment
 naming the behaviour it works around and, where possible, the route:
 
 ```swift
-// Nextcloud Social can send "" for avatar (Person::exportAsLocal falls through
+// Nextcloud can send "" for avatar (Person::exportAsLocal falls through
 // to a possibly-empty stored value), so decode as String and treat empty as nil
 // rather than failing the whole Account.
 ```
@@ -50,7 +50,7 @@ Framework: **Swift Testing** (`import Testing`). XCTest only for UI tests.
 
 | Area | Requirement |
 |---|---|
-| Wire-type decoding | Every entity, from real fixture JSON captured from both a Nextcloud Social instance and mastodon.social. Including the known-malformed cases: empty `avatar`, absent `poll`, `meta` as `[]`, ids as numbers and as strings. |
+| Wire-type decoding | Every entity, from real fixture JSON captured from both a Nextcloud instance and mastodon.social. Including the known-malformed cases: empty `avatar`, absent `poll`, `meta` as `[]`, ids as numbers and as strings. |
 | `LossyArray` | A page with one bad element decodes the rest. |
 | `Link` header parsing | Every documented form, plus absent, malformed, and single-rel. |
 | API base discovery | Each candidate order, first-wins, all-fail, timeout, and the re-probe trigger. |
@@ -69,8 +69,8 @@ Framework: **Swift Testing** (`import Testing`). XCTest only for UI tests.
 A `MockAPIServer` in a test support package, serving the fixture corpus over a
 `URLProtocol` subclass. It can be configured to behave as:
 
-- Nextcloud Social with the root rewrite,
-- Nextcloud Social **without** the rewrite (API only under `/index.php/apps/social/`),
+- Nextcloud with the root rewrite,
+- Nextcloud **without** the rewrite (API only under `/index.php/apps/social/`),
 - stock Mastodon 4.3,
 - a server that 404s the extension routes,
 - a server that rate-limits,
@@ -227,7 +227,7 @@ the pixels.
 
 ## 7. Logging
 
-- `OSLog` with a subsystem per package (`com.nextcloud.alohasocial.network`, …)
+- `OSLog` with a subsystem per package (`social.aloha.app.network`, …)
   and categories per area.
 - Privacy annotations on every interpolation: `.public` only for things that are
   genuinely not personal (status codes, route templates, durations). Handles,

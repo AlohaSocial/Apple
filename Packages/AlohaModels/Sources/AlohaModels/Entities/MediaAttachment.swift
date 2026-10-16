@@ -27,6 +27,10 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
         public var original: Dimensions?
         public var small: Dimensions?
         public var focus: Focus?
+        /// Seconds, at the top level. Where Nextcloud puts a locally uploaded
+        /// video's length (`AttachmentMeta::$duration`), rather than under
+        /// `original` as Mastodon does.
+        public var duration: Double?
 
         public struct Dimensions: Codable, Sendable, Hashable {
             public var width: Int?
@@ -55,6 +59,41 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
                 self.bitrate = bitrate
             }
 
+            /// Every field on its own: one value in a shape this did not expect
+            /// must cost that field, not the whole `meta` — `meta` is decoded
+            /// with `try?`, so a throw here used to drop the aspect ratio and
+            /// the duration along with it. Nextcloud sends `frame_rate` as a
+            /// number (`AttachmentMetaDim::getFloat`); Mastodon sends `"30/1"`.
+            public init(from decoder: any Decoder) throws {
+                let c = try decoder.container(keyedBy: CodingKeys.self)
+                width = Self.number(c, .width).map { Int($0) }
+                height = Self.number(c, .height).map { Int($0) }
+                size = try? c.decodeIfPresent(String.self, forKey: .size)
+                aspect = Self.number(c, .aspect)
+                duration = Self.number(c, .duration)
+                bitrate = Self.number(c, .bitrate).map { Int($0) }
+                if let text = try? c.decodeIfPresent(String.self, forKey: .frameRate) {
+                    frameRate = text
+                } else if let value = try? c.decodeIfPresent(Double.self, forKey: .frameRate) {
+                    frameRate = value.rounded() == value ? String(Int(value)) : String(value)
+                } else {
+                    frameRate = nil
+                }
+            }
+
+            /// A number, or a string holding one: both turn up in the wild.
+            static func number(
+                _ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys
+            )
+                -> Double?
+            {
+                if let value = try? c.decodeIfPresent(Double.self, forKey: key) { return value }
+                if let text = try? c.decodeIfPresent(String.self, forKey: key) {
+                    return Double(text)
+                }
+                return nil
+            }
+
             /// Width over height. Prefers the server's own `aspect` and falls
             /// back to the dimensions; `nil` when the server filled in neither,
             /// which is the case that defers Shorts classification (docs/06 §4).
@@ -74,10 +113,29 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
             }
         }
 
-        public init(original: Dimensions? = nil, small: Dimensions? = nil, focus: Focus? = nil) {
+        enum CodingKeys: String, CodingKey {
+            case original, small, focus, duration
+        }
+
+        public init(
+            original: Dimensions? = nil, small: Dimensions? = nil, focus: Focus? = nil,
+            duration: Double? = nil
+        ) {
             self.original = original
             self.small = small
             self.focus = focus
+            self.duration = duration
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            original = try? c.decodeIfPresent(Dimensions.self, forKey: .original)
+            small = try? c.decodeIfPresent(Dimensions.self, forKey: .small)
+            focus = try? c.decodeIfPresent(Focus.self, forKey: .focus)
+            duration =
+                (try? c.decodeIfPresent(Double.self, forKey: .duration))
+                ?? (try? c.decodeIfPresent(String.self, forKey: .duration)).flatMap { $0 }
+                .flatMap(Double.init)
         }
     }
 
@@ -128,7 +186,8 @@ extension MediaAttachment {
 
     public var aspectRatio: Double? { meta?.original?.resolvedAspect }
 
-    public var duration: Double? { meta?.original?.duration }
+    /// Mastodon's place first, then Nextcloud's for a local upload.
+    public var duration: Double? { meta?.original?.duration ?? meta?.duration }
 
     /// True only for visual video attachments. Audio is playable, but must
     /// never enter the video or Shorts feeds.

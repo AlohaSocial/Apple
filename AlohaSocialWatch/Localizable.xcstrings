@@ -1,0 +1,50 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Aloha" : {
+      "comment" : "Watch app title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aloha"
+          }
+        }
+      }
+    },
+    "Not paired yet" : {
+      "comment" : "Watch, no credentials",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht verbunden"
+          }
+        }
+      }
+    },
+    "Nothing yet" : {
+      "comment" : "Watch empty timeline",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts"
+          }
+        }
+      }
+    },
+    "Open Aloha Social on your iPhone to finish setting this up." : {
+      "comment" : "Watch, no credentials detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Aloha Social auf deinem iPhone, um die Einrichtung abzuschließen."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.1"
+}

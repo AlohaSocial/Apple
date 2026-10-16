@@ -1,0 +1,146 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
+          }
+        }
+      }
+    },
+    "Handle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Handle"
+          }
+        }
+      }
+    },
+    "How many things happened." : {
+      "comment" : "Widget description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie viel passiert ist."
+          }
+        }
+      }
+    },
+    "Latest posts" : {
+      "comment" : "Widget name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neueste Beiträge"
+          }
+        }
+      }
+    },
+    "Nothing yet" : {
+      "comment" : "Empty widget",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts"
+          }
+        }
+      }
+    },
+    "Recent posts from your home timeline." : {
+      "comment" : "Widget description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktuelle Beiträge von deiner Startseite."
+          }
+        }
+      }
+    },
+    "Unread notifications" : {
+      "comment" : "Widget name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungelesene Benachrichtigungen"
+          }
+        }
+      }
+    },
+    "Upload failed" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hochladen fehlgeschlagen"
+          }
+        }
+      }
+    },
+    "Upload finished" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hochladen abgeschlossen"
+          }
+        }
+      }
+    },
+    "Uploading media" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medien werden hochgeladen"
+          }
+        }
+      }
+    },
+    "Which account to show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welches Konto angezeigt wird."
+          }
+        }
+      }
+    },
+    "^[%lld notification](inflect: true)" : {
+      "comment" : "Widget text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Benachrichtigung](inflect: true)"
+          }
+        }
+      }
+    },
+    "unread" : {
+      "comment" : "Widget label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ungelesen"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.1"
+}

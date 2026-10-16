@@ -19,7 +19,7 @@ public actor ImageLoader {
     private let diskDirectory: URL?
     private let diskCeiling: Int
     private var inFlight: [String: Task<CGImage?, Never>] = [:]
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "images")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "images")
 
     public init(
         session: URLSession = URLSession(configuration: .imageLoading),

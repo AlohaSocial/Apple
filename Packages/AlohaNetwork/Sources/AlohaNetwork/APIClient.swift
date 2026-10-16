@@ -15,7 +15,7 @@ public actor APIClient {
 
     private let transport: any HTTPTransport
     private let rateLimiter: RateLimiter
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "network")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "network")
 
     public init(
         accountID: UUID,

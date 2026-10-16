@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaDesign
 import AlohaModels
 import AlohaNetwork
 import Foundation
@@ -16,6 +17,10 @@ final class TVModel {
     private(set) var continueWatching: [ContinueWatchingItem] = []
     private(set) var pendingAuthorisationURL: URL?
     private(set) var errorMessage: String?
+    /// The colour of the signed-in server, read from Nextcloud's `theming`
+    /// capability exactly as the phone reads it. `nil` leaves tvOS's own focus
+    /// tint, which is also what a plain Mastodon gets.
+    private(set) var serverTheme: AlohaThemeModifier.ServerTheme?
 
     private var capabilities: ServerCapabilities?
     private var registration: ClientRegistration?
@@ -35,6 +40,25 @@ final class TVModel {
 
         apiBase = base
         client = APIClient(accountID: id, apiBase: base, accessToken: token)
+        await loadServerTheme()
+    }
+
+    /// Public and unauthenticated, so it can run before anything else does;
+    /// fetched per launch rather than stored, because a TV app launches rarely
+    /// and an administrator may have changed the colour since.
+    func loadServerTheme() async {
+        guard let apiBase else { return }
+        let root = ServerCapabilities.minimal(apiBase: apiBase).nextcloudRoot
+        guard let theme = await NextcloudThemeProbe().theme(nextcloudRoot: root),
+            theme.hasColour
+        else {
+            serverTheme = nil
+            return
+        }
+        serverTheme = AlohaThemeModifier.ServerTheme(
+            brightHex: theme.hex(onDarkBackground: false),
+            darkHex: theme.hex(onDarkBackground: true),
+            textHex: theme.textHex)
     }
 
     func beginSignIn(host: String) async {
@@ -97,6 +121,7 @@ final class TVModel {
 
             client = APIClient(accountID: id, apiBase: apiBase, accessToken: token.accessToken)
             pendingAuthorisationURL = nil
+            await loadServerTheme()
         } catch {
             errorMessage = String(
                 localized: "That code didn't work. Try again.", comment: "tvOS sign-in error")

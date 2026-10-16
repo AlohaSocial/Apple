@@ -22,7 +22,7 @@ public final class ComposerUploader {
 
     private let session: AccountSession
     private let preparer = MediaPreparer()
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "upload")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "upload")
 
     /// The picture as it was chosen, kept so a filter can be applied to the
     /// original rather than to an already-filtered copy — flicking from Vivid

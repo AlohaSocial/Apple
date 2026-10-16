@@ -38,7 +38,7 @@ public final class AppEnvironment {
 
     private static let themeKey = "aloha.theme"
     private static let activeAccountKey = AppGroup.activeAccountKey
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "environment")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "environment")
 
     public init(
         container: ModelContainer,
@@ -76,6 +76,21 @@ public final class AppEnvironment {
             brightHex: theme.hex(onDarkBackground: false),
             darkHex: theme.hex(onDarkBackground: true),
             textHex: theme.textHex)
+    }
+
+    /// What the watch needs to follow the active account, or `nil` when there
+    /// is none. A function rather than a property because it reads the
+    /// Keychain, which a view body should not do on every pass.
+    public func watchPairing() -> WatchPairing? {
+        guard let session = activeSession,
+            let token = (try? credentials.token(for: session.id)) ?? nil
+        else { return nil }
+        let accent = serverAccent
+        return WatchPairing(
+            accountID: session.id, apiBase: session.snapshot.apiBase, token: token,
+            handle: session.snapshot.qualifiedHandle,
+            accentBrightHex: accent?.brightHex, accentDarkHex: accent?.darkHex,
+            accentTextHex: accent?.textHex)
     }
 
     public var activeSession: AccountSession? {

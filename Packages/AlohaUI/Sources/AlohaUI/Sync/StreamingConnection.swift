@@ -31,7 +31,7 @@ public nonisolated final class StreamingConnection: @unchecked Sendable {
     private var task: URLSessionWebSocketTask?
     private var attempt = 0
     private var isClosing = false
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "streaming")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "streaming")
 
     public private(set) var isOpen = false
 

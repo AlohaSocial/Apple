@@ -30,7 +30,7 @@ public struct NextcloudPush: Sendable {
     static let proxyUserAgent = AlohaUserAgent.value + " (Strict VoIP)"
 
     private let transport: any HTTPTransport
-    private let logger = Logger(subsystem: "com.nextcloud.alohasocial", category: "ncpush")
+    private let logger = Logger(subsystem: "social.aloha.app", category: "ncpush")
 
     public init(transport: any HTTPTransport = URLSessionTransport()) {
         self.transport = transport
