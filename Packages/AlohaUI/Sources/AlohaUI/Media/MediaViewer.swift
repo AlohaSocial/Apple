@@ -104,6 +104,7 @@ public struct MediaViewer: View {
                 contentMode: .fit,
                 accessibilityText: attachment.description
             )
+            .modifier(ImageDragSource(url: attachment.url))
             .scaleEffect(zoom, anchor: .center)
             .offset(offset)
             .onTapGesture(count: 2) {
@@ -116,17 +117,24 @@ public struct MediaViewer: View {
         }
     }
 
+    /// Real Liquid Glass, tinted down so a white photograph behind it does
+    /// not wash the glyph out — the reason these were a black circle under
+    /// a material before.
+    static let controlGlass = Glass.regular.tint(.black.opacity(0.25)).interactive()
+
     private var controls: some View {
         VStack {
-            HStack {
+            // One container, so the three controls sample the picture as one
+            // layer and merge as they should when they come close.
+            GlassEffectContainer {
+                HStack {
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")
                         .font(.body.weight(.semibold))
                         .padding(10)
-                        .background(.black.opacity(0.3), in: Circle())
-                        .unifiedGlass(.subtle, in: Circle())
+                        .glassEffect(Self.controlGlass, in: Circle())
                 }
                 .accessibilityLabel(Text("Close", comment: "Media viewer action"))
 
@@ -140,7 +148,7 @@ public struct MediaViewer: View {
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .unifiedGlass(.regular, in: Capsule())
+                            .glassEffect(Self.controlGlass, in: Capsule())
                     }
                     .accessibilityLabel(Text("Show description", comment: "Media viewer action"))
                 }
@@ -150,10 +158,10 @@ public struct MediaViewer: View {
                         Image(systemName: AlohaSymbol.share)
                             .font(.body.weight(.semibold))
                             .padding(10)
-                            .background(.black.opacity(0.3), in: Circle())
-                            .unifiedGlass(.subtle, in: Circle())
+                            .glassEffect(Self.controlGlass, in: Circle())
                     }
                 }
+            }
             }
             .foregroundStyle(.white)
             .padding(AlohaMetrics.space3)
@@ -327,8 +335,7 @@ public struct VideoAttachmentPlayer: View {
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .padding(10)
-                                    .background(.black.opacity(0.3), in: Circle())
-                                    .unifiedGlass(.subtle, in: Circle())
+                                    .glassEffect(MediaViewer.controlGlass, in: Circle())
                             }
                             .accessibilityLabel(Text("Share video", comment: "Video action"))
                         }
@@ -525,8 +532,7 @@ private struct VideoControlsOverlay: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(12)
-                    .background(.black.opacity(0.3), in: Circle())
-                    .unifiedGlass(.subtle, in: Circle())
+                    .glassEffect(MediaViewer.controlGlass, in: Circle())
             }
             .buttonStyle(.plain)
         }
