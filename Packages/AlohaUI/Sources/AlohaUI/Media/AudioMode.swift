@@ -185,7 +185,11 @@ public struct AudioModeView: View {
         }
         .listStyle(.plain)
         .safeAreaInset(edge: .bottom) {
-            if coordinator.nowPlaying != nil { miniPlayer }
+            if coordinator.nowPlaying != nil, !usesTabAccessory {
+                AudioMiniPlayer()
+                    .padding(AlohaMetrics.space3)
+                    .background(.regularMaterial)
+            }
         }
         .task { await model.appear() }
         .refreshable { await model.refresh() }
@@ -229,44 +233,95 @@ public struct AudioModeView: View {
         .onTapGesture { onAction(.open(status)) }
     }
 
-    private var miniPlayer: some View {
+    /// On a phone the player lives in the tab bar's accessory, where it
+    /// stays across tabs; drawing it here as well would show it twice.
+    private var usesTabAccessory: Bool {
+        #if os(iOS)
+            UIDevice.current.userInterfaceIdiom == .phone
+        #else
+            false
+        #endif
+    }
+
+    private func title(for status: Status) -> String {
+        audioTitle(status)
+    }
+}
+
+private func audioTitle(_ status: Status) -> String {
+    let plain = status.displayed.content
+        .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    return plain.isEmpty
+        ? String(localized: "Untitled audio", comment: "Audio with no text") : plain
+}
+
+/// What is playing, with play/pause and stop.
+///
+/// It used to live inside the Audio feed and vanished the moment you
+/// changed tab, although the audio kept playing — the only control left was
+/// the lock screen. On a phone it now sits in the tab bar's accessory, so it
+/// follows you; when the bar is minimised it shrinks to the essentials.
+struct AudioMiniPlayer: View {
+    @Environment(\.alohaPalette) private var palette
+    #if os(iOS)
+        @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    #endif
+
+    private var coordinator: AudioPlayerCoordinator { .shared }
+
+    private var isInline: Bool {
+        #if os(iOS)
+            placement == .inline
+        #else
+            false
+        #endif
+    }
+
+    var body: some View {
         HStack(spacing: AlohaMetrics.space3) {
             Button {
                 coordinator.togglePlayPause()
             } label: {
                 Image(systemName: coordinator.isPlaying ? AlohaSymbol.pause : AlohaSymbol.play)
                     .font(.body)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(minWidth: 32, minHeight: 32)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(
+                coordinator.isPlaying
+                    ? Text("Pause", comment: "Audio action")
+                    : Text("Play", comment: "Audio action"))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(coordinator.nowPlaying.map(title) ?? "")
+                Text(coordinator.nowPlaying.map(audioTitle) ?? "")
                     .font(.caption.weight(.medium))
+                    .foregroundStyle(palette.label)
                     .lineLimit(1)
-                if coordinator.duration > 0 {
+                if !isInline, coordinator.duration > 0 {
                     ProgressView(value: coordinator.position, total: coordinator.duration)
                         .progressViewStyle(.linear)
+                        .tint(palette.accent)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                coordinator.stop()
-            } label: {
-                Image(systemName: "xmark").font(.caption)
+            if !isInline {
+                Button {
+                    coordinator.stop()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption)
+                        .frame(minWidth: 32, minHeight: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Stop", comment: "Audio action"))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Stop", comment: "Audio action"))
         }
-        .padding(AlohaMetrics.space3)
-        .background(.regularMaterial)
-    }
-
-    private func title(for status: Status) -> String {
-        let plain = status.displayed.content
-            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return plain.isEmpty
-            ? String(localized: "Untitled audio", comment: "Audio with no text") : plain
+        .padding(.horizontal, AlohaMetrics.space3)
     }
 }
 

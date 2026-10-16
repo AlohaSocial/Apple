@@ -7,6 +7,7 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
+import TipKit
 
 /// Full-screen vertical pager, one short per page, edge to edge — laid out
 /// the way a short-video app lays it out: a Following / For You switch at
@@ -102,9 +103,17 @@ public struct ShortsView: View {
                     .frame(maxWidth: PlatformBehavior.shortsColumnWidth)
                 }
 
-                topBar
-                    .padding(.top, proxy.safeAreaInsets.top)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                VStack(spacing: AlohaMetrics.space2) {
+                    topBar
+                    // Once, under the switch: the double tap is the gesture
+                    // this screen is built around, and nothing shows it.
+                    if !shorts.isEmpty {
+                        TipView(ShortsDoubleTapTip())
+                            .padding(.horizontal, AlohaMetrics.space4)
+                    }
+                }
+                .padding(.top, proxy.safeAreaInsets.top)
+                .frame(maxHeight: .infinity, alignment: .top)
 
                 progressBar
                     .padding(.bottom, proxy.safeAreaInsets.bottom)
@@ -296,6 +305,7 @@ public struct ShortsView: View {
     }
 
     private func heart(_ status: Status) {
+        ShortsDoubleTapTip().invalidate(reason: .actionPerformed)
         if !status.displayed.favourited { onAction(.favourite(status)) }
         // The heart is the whole reward for the gesture; without it a
         // double tap feels like it did nothing.
@@ -430,10 +440,11 @@ public struct ShortsView: View {
                 label: Text("Bookmark", comment: "Shorts action")
             ) { onAction(.bookmark(status)) }
 
-            railButton(
-                symbol: AlohaSymbol.share, tint: .white, count: nil,
-                label: Text("Share", comment: "Shorts action")
-            ) { onAction(.share(status)) }
+            StatusShareLink(status: status) {
+                railLabel(symbol: AlohaSymbol.share, tint: .white, count: nil)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Share", comment: "Shorts action"))
 
             Menu {
                 StatusMenu(status: status, onAction: onAction)
@@ -455,23 +466,27 @@ public struct ShortsView: View {
         symbol: String, tint: Color, count: Int?, label: Text, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: symbol)
-                    .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(tint)
-                if let count, count > 0 {
-                    Text(count, format: .number.notation(.compactName))
-                        .font(.caption.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(.white)
-                }
-            }
-            .frame(width: 48)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-            .shadow(color: .black.opacity(0.4), radius: 3)
+            railLabel(symbol: symbol, tint: tint, count: count)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+
+    private func railLabel(symbol: String, tint: Color, count: Int?) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: symbol)
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(tint)
+            if let count, count > 0 {
+                Text(count, format: .number.notation(.compactName))
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 48)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .shadow(color: .black.opacity(0.4), radius: 3)
     }
 
     /// The shape of the feed arriving: one phone-shaped page of stub, which

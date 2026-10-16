@@ -22,19 +22,24 @@ private struct ThemedAppShell: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.alohaPalette) private var palette
 
-    /// A tab bar selection that can be a mode *or* the messages tab.
-    /// Tagging the extra tab with `FeedMode.home` made the two collide.
-    private enum TabSelection: Hashable {
-        case mode(FeedMode)
-        case messages
-    }
+    /// A tab bar selection that can be a mode *or* one of the other tabs.
+    private typealias TabSelection = ShellTab
 
     @State private var selectedTab: TabSelection = .mode(.home)
     @State private var selectedMode: FeedMode = .home
     @State private var sidebarItem: SidebarItem = .mode(.home)
     @State private var selectedSource: TimelineSource = .home
-    @State private var path: [Route] = []
-    @State private var iPadPaths: [SidebarItem: [Route]] = [:]
+    /// What each phone tab has pushed, so leaving a tab and coming back
+    /// finds the screen you left there. One shared path made a screen pushed
+    /// on one tab turn up on the next.
+    @State private var tabPaths: [TabSelection: [Route]] = [:]
+    /// The same, per sidebar row, for the iPad, Mac and Vision shells.
+    @State private var sidebarPaths: [SidebarItem: [Route]] = [:]
+    /// Where this scene was, rewritten as it changes (`ShellRestoration`).
+    @SceneStorage("aloha.shell.restoration") private var storedRestoration: Data?
+    /// Nothing is written back until the stored state has been read, or the
+    /// first launch's empty shell would overwrite it.
+    @State private var hasRestored = false
     @State private var isPresentingSignIn = false
     /// The address typed on the introduction, for the sign-in screen to open
     /// with — or empty when the person chose "skip" and will type it there.
@@ -106,6 +111,17 @@ private struct ThemedAppShell: View {
             .translationHost(translator)
             .environment(translator)
             .task { await start() }
+            .onChange(of: restoration) { _, restoration in
+                storedRestoration = restoration?.encoded()
+            }
+            .onChange(of: environment.activeSession?.id) { previous, current in
+                // Another account's pushed screens mean nothing on this one:
+                // a thread id from one server is a stranger's post, or none,
+                // on the next.
+                guard previous != nil, previous != current else { return }
+                tabPaths = [:]
+                sidebarPaths = [:]
+            }
             .onChange(of: scenePhase) { _, phase in
                 // A socket closes on background immediately; BGAppRefreshTask
                 // takes over from there (docs/08 §6).
@@ -243,11 +259,18 @@ private struct ThemedAppShell: View {
         if !modes.contains(selectedMode) { selectedMode = fallback }
         if case .mode(let mode) = selectedTab, !modes.contains(mode) {
             selectedTab = .mode(fallback)
-            path = []
+            tabPaths[.mode(mode)] = nil
+        }
+        // One feed more can leave Activities without room on the tab bar.
+        if selectedTab == .notifications,
+            !ShellTab.showsNotificationsTab(feedCount: modes.count)
+        {
+            selectedTab = .mode(fallback)
+            tabPaths[.notifications] = nil
         }
         if case .mode(let mode) = sidebarItem, !modes.contains(mode) {
             sidebarItem = .mode(fallback)
-            path = []
+            sidebarPaths[.mode(mode)] = nil
         }
     }
 
@@ -295,6 +318,7 @@ private struct ThemedAppShell: View {
         environment.sync.attach(to: environment)
         environment.sync.start()
         environment.notifier.registerCategories()
+        AlohaTips.configure()
         // Permission is asked once an account exists — there is nothing to
         // notify about before that, and a prompt on the welcome screen is the
         // pattern Apple's guidance says not to use.
@@ -305,8 +329,62 @@ private struct ThemedAppShell: View {
         // Whether they said yes is the notifier's to remember; the shell only
         // has to have asked once.
         if shouldAsk { _ = await environment.notifier.requestAuthorisation() }
-        // An intent that opened the app left its destination behind.
+        restoreShell()
+        // An intent that opened the app left its destination behind, and it
+        // outranks wherever the scene was.
         if let pending = IntentNavigation.take() { open(pending) }
+    }
+
+    /// Puts back the tab, the sidebar row and what was pushed on each.
+    private func restoreShell() {
+        defer { hasRestored = true }
+        #if DEBUG
+            // The screen tours start every test from the top, not from
+            // wherever the last one left the simulator.
+            if MockMode.isEnabled { return }
+        #endif
+        guard let session = environment.activeSession,
+            let restored = ShellRestoration.decode(storedRestoration, for: session.id)
+        else { return }
+        tabPaths = restored.tabPaths
+        sidebarPaths = restored.restoredSidebarPaths
+        selectedTab = restored.tab
+        sidebarItem = restored.sidebarItem.item
+        if usesSidebar {
+            if case .mode(let mode) = sidebarItem { selectedMode = mode }
+        } else if case .mode(let mode) = selectedTab {
+            selectedMode = mode
+        }
+        repairFeedSelection(session.visibleModes)
+    }
+
+    /// What the scene would restore to now; nil until the stored state has
+    /// been read back, so that read cannot be overwritten before it happens.
+    private var restoration: ShellRestoration? {
+        guard hasRestored, let id = environment.activeSession?.id else { return nil }
+        return ShellRestoration(
+            accountID: id, tab: selectedTab, tabPaths: tabPaths,
+            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths)
+    }
+
+    /// Whether Activities is a tab of its own on this phone, or stays in the
+    /// account menu because a tab would push the bar past five.
+    private var showsNotificationsTab: Bool {
+        environment.activeSession.map {
+            ShellTab.showsNotificationsTab(feedCount: $0.visibleModes.count)
+        } ?? false
+    }
+
+    private func unreadNotifications(_ session: AccountSession) -> Int {
+        environment.sync.unreadCounts[session.id] ?? 0
+    }
+
+    private func tabPath(_ tab: TabSelection) -> Binding<[Route]> {
+        Binding(get: { tabPaths[tab, default: []] }, set: { tabPaths[tab] = $0 })
+    }
+
+    private func sidebarPath(_ item: SidebarItem) -> Binding<[Route]> {
+        Binding(get: { sidebarPaths[item, default: []] }, set: { sidebarPaths[item] = $0 })
     }
 
     func open(_ route: Route) {
@@ -315,16 +393,20 @@ private struct ThemedAppShell: View {
             selectedTab = .mode(key.mode)
             sidebarItem = .mode(key.mode)
             selectedSource = key.source
-            iPadPaths[.mode(key.mode)] = []
-            path = []
+            tabPaths[.mode(key.mode)] = []
+            sidebarPaths[.mode(key.mode)] = []
         } else if !usesSidebar, route == .conversations {
             // On a phone direct messages are a tab, not a push.
             selectedTab = .messages
-            path = []
+            tabPaths[.messages] = []
+        } else if !usesSidebar, route == .notifications, showsNotificationsTab {
+            // And so are activities, where the tab bar has room for them.
+            selectedTab = .notifications
+            tabPaths[.notifications] = []
         } else if usesSidebar, rootRoutes.contains(route) {
             // On a split view these are sidebar rows, not pushes.
             sidebarItem = .route(route)
-            path = []
+            sidebarPaths[.route(route)] = []
         } else {
             push(route)
         }
@@ -362,14 +444,14 @@ private struct ThemedAppShell: View {
         #endif
     }
 
+    /// Onto the stack of whatever is showing: the current tab on a phone,
+    /// the current sidebar row everywhere else.
     private func push(_ route: Route) {
-        #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                iPadPaths[sidebarItem, default: []].append(route)
-                return
-            }
-        #endif
-        path.append(route)
+        if usesSidebar {
+            sidebarPaths[sidebarItem, default: []].append(route)
+        } else {
+            tabPaths[selectedTab, default: []].append(route)
+        }
     }
 
     // MARK: - iPhone
@@ -379,7 +461,7 @@ private struct ThemedAppShell: View {
             TabView(selection: $selectedTab) {
                 ForEach(session.visibleModes) { mode in
                     Tab(value: TabSelection.mode(mode)) {
-                        NavigationStack(path: $path) {
+                        NavigationStack(path: tabPath(.mode(mode))) {
                             modeRoot(mode, session: session)
                                 .navigationDestination(for: Route.self) {
                                     destination($0, session: session)
@@ -398,7 +480,7 @@ private struct ThemedAppShell: View {
                 }
 
                 Tab(value: TabSelection.messages) {
-                    NavigationStack(path: $path) {
+                    NavigationStack(path: tabPath(.messages)) {
                         ConversationsView(
                             session: session,
                             onAction: { handle($0, session: session) },
@@ -415,12 +497,40 @@ private struct ThemedAppShell: View {
                     )
                     Text("Messages", comment: "Tab title")
                 }
+
+                if ShellTab.showsNotificationsTab(feedCount: session.visibleModes.count) {
+                    Tab(value: TabSelection.notifications) {
+                        NavigationStack(path: tabPath(.notifications)) {
+                            NotificationsView(session: session) { handle($0, session: session) }
+                                .navigationDestination(for: Route.self) {
+                                    destination($0, session: session)
+                                }
+                        }
+                    } label: {
+                        Image(
+                            systemName: selectedTab == .notifications
+                                ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications
+                        )
+                        Text("Activities", comment: "Tab title")
+                    }
+                    // The count the app icon already wears, where it can be
+                    // acted on. Zero draws no badge.
+                    .badge(unreadNotifications(session))
+                }
             }
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
             }
-            // No bottom accessory: composing lives in the toolbar, where the
-            // platform puts it, rather than in a second bar above the tab bar.
+            // Reading down a feed gives the screen to the posts; scrolling
+            // back up, or reaching the top, brings the bar back.
+            .tabBarMinimizeBehavior(.onScrollDown)
+            // Composing lives in the toolbar, where the platform puts it. The
+            // accessory is for what plays across tabs: audio started in the
+            // Audio feed keeps its controls on every other tab, and the slot
+            // is only there while something is playing.
+            .tabViewBottomAccessory(isEnabled: AudioPlayerCoordinator.shared.nowPlaying != nil) {
+                AudioMiniPlayer()
+            }
         }
     #endif
 
@@ -531,19 +641,13 @@ private struct ThemedAppShell: View {
                     showsBrowseDestinations: false, showsName: true, usesCompactMenu: true)
             }
             .onChange(of: sidebarItem) { _, item in
-                path = []
                 if case .mode(let mode) = item { selectedMode = mode }
             }
         }
 
         private func iPadDestination(_ item: SidebarItem, session: AccountSession) -> some View {
             AnyView(
-                NavigationStack(
-                    path: Binding(
-                        get: { iPadPaths[item, default: []] },
-                        set: { iPadPaths[item] = $0 }
-                    )
-                ) {
+                NavigationStack(path: sidebarPath(item)) {
                     Group {
                         switch item {
                         case .mode(let mode): modeRoot(mode, session: session)
@@ -586,7 +690,7 @@ private struct ThemedAppShell: View {
             )
             .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
-            NavigationStack(path: $path) {
+            NavigationStack(path: sidebarPath(sidebarItem)) {
                 Group {
                     switch sidebarItem {
                     case .mode(let mode):
@@ -597,6 +701,10 @@ private struct ThemedAppShell: View {
                 }
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
+            // A stack per sidebar row, as on iPad: each row keeps what was
+            // pushed on it. A fresh stack for each row rather than one stack
+            // whose path is swapped, which would animate as a pop and a push.
+            .id(sidebarItem)
             .toolbar { composeToolbar }
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -620,8 +728,6 @@ private struct ThemedAppShell: View {
             .navigationSplitViewStyle(.prominentDetail)
         #endif
         .onChange(of: sidebarItem) { _, item in
-            // A new root; whatever was pushed belonged to the old one.
-            path = []
             if case .mode(let mode) = item { selectedMode = mode }
         }
     }
@@ -743,7 +849,10 @@ private struct ThemedAppShell: View {
                             AccountMenuButton(
                                 session: session,
                                 onOpen: { open($0) },
-                                onAddAccount: { isPresentingSignIn = true })
+                                onAddAccount: { isPresentingSignIn = true },
+                                showsActivities: !showsNotificationsTab,
+                                unreadActivities: showsNotificationsTab
+                                    ? 0 : unreadNotifications(session))
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink(value: Route.search(query: nil)) {
@@ -1003,16 +1112,34 @@ private struct ThemedAppShell: View {
         }
     }
 
+    /// The fallback for a `.share` that did not come from a `ShareLink`.
+    /// Every button the app draws is a `ShareLink` now (`StatusShareLink`);
+    /// this stays correct for anything that still sends the action.
     private func share(_ status: Status) {
         guard let url = status.displayed.url else { return }
         #if canImport(UIKit)
             let activity = UIActivityViewController(
                 activityItems: [url], applicationActivities: nil)
-            UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .first { $0.activationState == .foregroundActive }?
-                .keyWindow?.rootViewController?
-                .present(activity, animated: true)
+            guard
+                let window = UIApplication.shared.connectedScenes
+                    .compactMap({ $0 as? UIWindowScene })
+                    .first(where: { $0.activationState == .foregroundActive })?
+                    .keyWindow,
+                var presenter = window.rootViewController
+            else { return }
+            // The root is busy while it presents a sheet, and a second
+            // presentation from it fails without a word: present from the
+            // top of the stack instead.
+            while let presented = presenter.presentedViewController { presenter = presented }
+            // On iPad the controller is a popover and UIKit raises without an
+            // anchor. A centred, arrowless one is honest about having none.
+            if let popover = activity.popoverPresentationController {
+                popover.sourceView = window
+                popover.sourceRect = CGRect(
+                    x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            presenter.present(activity, animated: true)
         #elseif canImport(AppKit)
             let picker = NSSharingServicePicker(items: [url])
             if let view = NSApplication.shared.keyWindow?.contentView {
@@ -1049,13 +1176,9 @@ private struct ThemedAppShell: View {
         }
 
         guard let route = RouteResolver.route(for: url) else { return }
-        if case .timeline(let key) = route {
-            selectedMode = key.mode
-            selectedSource = key.source
-            path = []
-        } else {
-            push(route)
-        }
+        // The same decisions a route from anywhere else gets: a timeline
+        // selects its tab, a root destination its tab or row.
+        open(route)
     }
 }
 

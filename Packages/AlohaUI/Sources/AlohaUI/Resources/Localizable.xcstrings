@@ -260,6 +260,17 @@
         }
       }
     },
+    "%@, account menu, ^[%lld unread activity](inflect: true)" : {
+      "comment" : "Accessibility label for the account drawer toggle with unread activities",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, Kontomenü, ^[%lld ungelesene Aktivität](inflect: true)"
+          }
+        }
+      }
+    },
     "%@, at %@" : {
       "comment" : "Watch page chapter accessibility label",
       "localizations" : {
@@ -2337,6 +2348,17 @@
         }
       }
     },
+    "Choose whose posts" : {
+      "comment" : "Tip title: the timeline source switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle, wessen Beiträge"
+          }
+        }
+      }
+    },
     "Choose…" : {
       "comment" : "Profile editing action",
       "localizations" : {
@@ -3447,6 +3469,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fertig"
+          }
+        }
+      }
+    },
+    "Double-tap a photo to favourite it." : {
+      "comment" : "Tip detail: double-tap a photo",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe doppelt auf ein Foto, um es zu favorisieren."
+          }
+        }
+      }
+    },
+    "Double-tap anywhere on a short to favourite it without looking for the button." : {
+      "comment" : "Tip detail: double-tap a short",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe irgendwo doppelt auf ein Short, um es zu favorisieren, ohne nach der Taste zu suchen."
+          }
+        }
+      }
+    },
+    "Double-tap to favourite" : {
+      "comment" : "Tip title: double-tap a short or a photo",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Favorisieren doppeltippen"
           }
         }
       }
@@ -6718,6 +6773,17 @@
         }
       }
     },
+    "Nothing" : {
+      "comment" : "Swipe action setting: the edge does nothing",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts"
+          }
+        }
+      }
+    },
     "Nothing answered at that address." : {
       "comment" : "Manual API base failure",
       "localizations" : {
@@ -8502,6 +8568,17 @@
         }
       }
     },
+    "Remove bookmark" : {
+      "comment" : "Swipe action on a post / Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesezeichen entfernen"
+          }
+        }
+      }
+    },
     "Remove choice" : {
       "comment" : "Poll editor action"
     },
@@ -10256,8 +10333,63 @@
         }
       }
     },
+    "Swipe a post" : {
+      "comment" : "Tip title: swipe actions on timeline posts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitrag wischen"
+          }
+        }
+      }
+    },
+    "Swipe from either edge to reply, favourite, boost or bookmark. You choose which in Settings." : {
+      "comment" : "Tip detail: swipe actions on timeline posts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wische von einer der Kanten, um zu antworten, zu favorisieren, zu teilen oder ein Lesezeichen zu setzen. Was dabei passiert, legst du in den Einstellungen fest."
+          }
+        }
+      }
+    },
+    "Swipe left" : {
+      "comment" : "Settings item: the action a swipe from the trailing edge performs",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach links wischen"
+          }
+        }
+      }
+    },
+    "Swipe right" : {
+      "comment" : "Settings item: the action a swipe from the leading edge performs",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach rechts wischen"
+          }
+        }
+      }
+    },
     "Switch account" : {
       "comment" : "Account switcher action"
+    },
+    "Switch between the people you follow, your server, and everyone it knows." : {
+      "comment" : "Tip detail: the timeline source switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechsle zwischen den Leuten, denen du folgst, deinem Server und allen, die er kennt."
+          }
+        }
+      }
     },
     "Tag people" : {
       "comment" : "Screen title\nStatus menu item",
@@ -11238,6 +11370,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Blockierung aufheben"
+          }
+        }
+      }
+    },
+    "Undo boost" : {
+      "comment" : "Swipe action on a post / Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilen rückgängig machen"
+          }
+        }
+      }
+    },
+    "Unfavourite" : {
+      "comment" : "Swipe action on a post / Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr favorisieren"
           }
         }
       }

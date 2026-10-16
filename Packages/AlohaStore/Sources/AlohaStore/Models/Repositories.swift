@@ -39,7 +39,7 @@ public actor SupportStore {
         ).first?.lastReadID
     }
 
-    static func isNewer(_ candidate: String, than current: String) -> Bool {
+    public static func isNewer(_ candidate: String, than current: String) -> Bool {
         if candidate.count != current.count { return candidate.count > current.count }
         return candidate > current
     }
