@@ -131,6 +131,28 @@
         }
       }
     },
+    "%@ joined Bluesky with your starter pack" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist Bluesky mit deinem Starterpaket beigetreten"
+          }
+        }
+      }
+    },
+    "%@ liked your repost on Bluesky" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ gefällt dein Repost auf Bluesky"
+          }
+        }
+      }
+    },
     "%@ mentioned you" : {
       "comment" : "Notification summary\nNotification title",
       "localizations" : {
@@ -160,6 +182,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ hat etwas veröffentlicht"
+          }
+        }
+      }
+    },
+    "%@ reacted to your story" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat auf deine Story reagiert"
+          }
+        }
+      }
+    },
+    "%@ replied to your story" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat auf deine Story geantwortet"
+          }
+        }
+      }
+    },
+    "%@ reposted your repost on Bluesky" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat deinen Repost auf Bluesky geteilt"
+          }
+        }
+      }
+    },
+    "%@ tagged you in a photo" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat dich auf einem Foto markiert"
           }
         }
       }
@@ -2109,7 +2175,7 @@
       }
     },
     "Blocked servers" : {
-      "comment" : "Safety section",
+      "comment" : "Safety section\nMigration list",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2177,6 +2243,39 @@
         }
       }
     },
+    "Bluesky no longer verifies your account" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluesky verifiziert dein Konto nicht mehr"
+          }
+        }
+      }
+    },
+    "Bluesky update" : {
+      "comment" : "Digest summary kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluesky-Neuigkeit"
+          }
+        }
+      }
+    },
+    "Bluesky verified your account" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluesky hat dein Konto verifiziert"
+          }
+        }
+      }
+    },
     "Blur" : {
       "comment" : "Filter action name",
       "localizations" : {
@@ -2211,7 +2310,7 @@
       }
     },
     "Bookmarks" : {
-      "comment" : "Screen title",
+      "comment" : "Screen title\nMigration list",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4540,6 +4639,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Richte dein Konto fertig ein"
+          }
+        }
+      }
+    },
+    "Finish setting up your account to use Bluesky" : {
+      "comment" : "Settings item, account not set up",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Richte dein Konto fertig ein, um Bluesky zu nutzen"
           }
         }
       }
@@ -14697,8 +14807,30 @@
         }
       }
     },
+    "photo tag" : {
+      "comment" : "Digest summary kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foto-Markierung"
+          }
+        }
+      }
+    },
     "poll" : {
       "comment" : "Digest summary kind"
+    },
+    "reaction" : {
+      "comment" : "Digest summary kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reaktion"
+          }
+        }
+      }
     },
     "reply" : {
       "comment" : "Digest summary kind"
@@ -14714,6 +14846,17 @@
     },
     "sign-up" : {
       "comment" : "Digest summary kind"
+    },
+    "story reply" : {
+      "comment" : "Digest summary kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Story-Antwort"
+          }
+        }
+      }
     },
     "tails" : {
       "comment" : "Coin flip result",
