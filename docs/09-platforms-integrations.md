@@ -83,6 +83,17 @@ Video only. Video mode and Shorts mode, nothing else.
   beyond search.
 - Search via the system keyboard and dictation, backed by `/api/v2/search`
   narrowed to statuses with video.
+- **Top Shelf** (`AlohaTopShelf`, `social.aloha.app.tv.topshelf`): when the
+  app sits in the top row, the shelf shows *Continue watching* (with each
+  video's progress) and the newest videos from *Following*. The TV app writes
+  what its Video tab loaded into the app group (`TopShelfSnapshot`) and asks
+  the system to redraw only when that changed; the extension reads it, and
+  goes to the server itself only when the snapshot is missing or older than
+  half an hour, with the account the app keeps in the shared Keychain group
+  (`TVAccountStore`). Posts with sensitive media or a content warning are left
+  off: the shelf draws stills full size on the home screen, with no way to
+  hide them. Select and Play open `alohasocial://tv/show|play/<id>?t=<s>`,
+  which starts the video where it was left.
 
 ## 6. Share extension
 
