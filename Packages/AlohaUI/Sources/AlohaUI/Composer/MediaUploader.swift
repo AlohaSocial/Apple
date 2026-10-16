@@ -46,6 +46,17 @@ public final class ComposerUploader {
         self.session = session
     }
 
+    /// Re-encoding a photo is the heaviest thing the composer does — a
+    /// 48-megapixel HEIC decode — so it runs off the main actor, where it
+    /// used to stall typing and scrolling while it worked.
+    @concurrent
+    private static func prepare(
+        _ data: Data, filename: String, quality: MediaPreparer.Quality = .high,
+        with preparer: MediaPreparer
+    ) async -> MediaPreparer.Prepared? {
+        preparer.prepareImage(data, filename: filename, quality: quality)
+    }
+
     private var limits: ServerLimits { session.capabilities.limits }
 
     public var canAddMore: Bool { attachments.count < limits.maxMediaAttachments }
@@ -64,7 +75,8 @@ public final class ComposerUploader {
             break
 
         case .needsTranscode(_, let target) where target == "image/jpeg":
-            guard let prepared = preparer.prepareImage(data, filename: filename) else {
+            guard let prepared = await Self.prepare(data, filename: filename, with: preparer)
+            else {
                 errorMessage = String(
                     localized: "That image couldn't be converted.", comment: "Upload failure")
                 return
@@ -81,7 +93,9 @@ public final class ComposerUploader {
 
         case .tooLarge(let size, _, let isVideo) where !isVideo:
             // One attempt at bringing it under the ceiling before refusing.
-            guard let prepared = preparer.prepareImage(data, filename: filename, quality: .high),
+            guard
+                let prepared = await Self.prepare(
+                    data, filename: filename, quality: .high, with: preparer),
                 prepared.data.count <= limits.imageSizeLimit
             else {
                 errorMessage = UploadPreflight.explanation(

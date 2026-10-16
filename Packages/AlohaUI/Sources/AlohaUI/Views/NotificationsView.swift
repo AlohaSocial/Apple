@@ -129,35 +129,20 @@ public struct NotificationsView: View {
     /// notification appears (handled in `flatRow`).
     private var flatRowsWithMarker: some View {
         let notifications = visibleFlat
-        guard let markerID = caughtUpNotificationID,
-            let markerIdx = notifications.firstIndex(where: { $0.id == markerID })
-        else {
-            return AnyView(
-                ForEach(notifications) { notification in
-                    flatRow(notification)
-                        .listRowBackground(palette.background)
-                })
-        }
-        // Insert divider after the marker
-        var rows: [AnyView] = []
-        for (idx, notification) in notifications.enumerated() {
-            rows.append(
-                AnyView(
-                    flatRow(notification)
-                        .listRowBackground(palette.background)
-                ))
-            if idx == markerIdx {
-                rows.append(
-                    AnyView(
-                        caughtUpDivider(after: markerID)
-                            .listRowBackground(palette.background)
-                    ))
+        let markerID = caughtUpNotificationID
+        let markerIndex = markerID.flatMap { id in notifications.firstIndex { $0.id == id } }
+        return ForEach(
+            ActivityListRow.rows(notifications, dividerAfter: markerIndex, markerID: markerID)
+        ) { row in
+            switch row {
+            case .item(let notification):
+                flatRow(notification)
+                    .listRowBackground(palette.background)
+            case .caughtUp(let after):
+                caughtUpDivider(after: after)
+                    .listRowBackground(palette.background)
             }
         }
-        return AnyView(
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                row
-            })
     }
 
     nonisolated static func matches(
@@ -281,13 +266,15 @@ public struct NotificationsView: View {
                 }
 
                 if let status {
-                    Text(
-                        status.displayed.spoilerText.isEmpty
-                            ? plainPreview(status) : status.displayed.spoilerText
-                    )
+                    Group {
+                        if status.displayed.spoilerText.isEmpty {
+                            StatusPlainPreview(status: status)
+                        } else {
+                            Text(status.displayed.spoilerText).lineLimit(2)
+                        }
+                    }
                     .font(.caption)
                     .foregroundStyle(palette.secondaryLabel)
-                    .lineLimit(2)
                 }
                 if let date = group.latestPageNotificationAt {
                     activityDate(date)
@@ -341,34 +328,22 @@ public struct NotificationsView: View {
     /// marker's.
     private var groupedRowsWithMarker: some View {
         let groups = visibleGroups
-        guard let markerID = caughtUpNotificationID,
-            let markerIndex = groups.firstIndex(where: { $0.mostRecentNotificationID == markerID })
-        else {
-            return AnyView(
-                ForEach(groups) { group in
-                    groupRow(group)
-                        .listRowBackground(palette.background)
-                })
+        let markerID = caughtUpNotificationID
+        let markerIndex = markerID.flatMap { id in
+            groups.firstIndex { $0.mostRecentNotificationID == id }
         }
-
-        var rows: [AnyView] = []
-        for (index, group) in groups.enumerated() {
-            rows.append(
-                AnyView(
-                    groupRow(group)
-                        .listRowBackground(palette.background)
-                ))
-            if index == markerIndex {
-                rows.append(
-                    AnyView(
-                        caughtUpDivider(after: markerID)
-                            .listRowBackground(palette.background)
-                    ))
+        return ForEach(
+            ActivityListRow.rows(groups, dividerAfter: markerIndex, markerID: markerID)
+        ) { row in
+            switch row {
+            case .item(let group):
+                groupRow(group)
+                    .listRowBackground(palette.background)
+            case .caughtUp(let after):
+                caughtUpDivider(after: after)
+                    .listRowBackground(palette.background)
             }
         }
-        return AnyView(
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in row }
-        )
     }
 
     private func flatRow(_ notification: MastodonNotification) -> some View {
@@ -396,10 +371,9 @@ public struct NotificationsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let status = notification.status {
-                        Text(plainPreview(status))
+                        StatusPlainPreview(status: status)
                             .font(.caption)
                             .foregroundStyle(palette.secondaryLabel)
-                            .lineLimit(2)
                     }
                     activityDate(notification.createdAt)
                 }
@@ -585,11 +559,6 @@ public struct NotificationsView: View {
             sample: [notification.account])
     }
 
-    private func plainPreview(_ status: Status) -> String {
-        StatusHTMLParser().plainText(status.displayed.content)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     /// Advances the notifications marker past the divider.
     ///
     /// Async because the local marker lives in an actor: this is the one write
@@ -599,8 +568,10 @@ public struct NotificationsView: View {
         guard caughtUpNotificationID != nil else { return }
         caughtUpNotificationID = notificationID
 
+        // Whether the stored marker actually moved does not matter here: the
+        // server's copy is written either way, and it never moves backwards.
         do {
-            try await session.supportStore.advanceMarker(
+            _ = try await session.supportStore.advanceMarker(
                 accountID: session.id, timeline: "notifications", to: notificationID)
         } catch {}
 

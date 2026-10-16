@@ -19,7 +19,7 @@ import UniformTypeIdentifiers
 @MainActor
 public enum MemoriesWidgetWriter {
     /// How many the largest widget shows; there is no reason to keep more.
-    static let limit = 4
+    nonisolated static let limit = 4
     /// Small enough for a widget's memory budget, sharp at the largest tile.
     nonisolated static let thumbnailPixels: CGFloat = 360
 
@@ -51,7 +51,10 @@ public enum MemoriesWidgetWriter {
             }
         }
 
-        let memories = memories(from: statuses)
+        // Parsing the posts and shrinking their pictures happens off the main
+        // actor: this runs as the app becomes active, the moment the first
+        // screen is being drawn.
+        let memories = await Self.prepareMemories(statuses)
         var images: [String: Data] = [:]
         for status in statuses.map(\.displayed)
         where memories.contains(where: { $0.id == status.id }) {
@@ -71,9 +74,16 @@ public enum MemoriesWidgetWriter {
         }
     }
 
+    @concurrent
+    nonisolated private static func prepareMemories(
+        _ statuses: [Status]
+    ) async -> [MemoriesSnapshot.Memory] {
+        memories(from: statuses)
+    }
+
     /// The newest few, as the widget shows them: the content warning in
     /// place of a post that has one, as the timeline would before it opens.
-    static func memories(from statuses: [Status]) -> [MemoriesSnapshot.Memory] {
+    nonisolated static func memories(from statuses: [Status]) -> [MemoriesSnapshot.Memory] {
         let parser = StatusHTMLParser()
         return statuses.map(\.displayed)
             .sorted { $0.createdAt > $1.createdAt }
@@ -91,13 +101,15 @@ public enum MemoriesWidgetWriter {
 
     /// The first picture, unless the post is behind a warning: a Home Screen
     /// is a more public place than the app.
-    static func pictureURL(of status: Status) -> URL? {
+    nonisolated static func pictureURL(of status: Status) -> URL? {
         guard !status.sensitive, status.spoilerText.isEmpty else { return nil }
         let image = status.mediaAttachments.first { $0.type == .image }
         return image?.previewURL ?? image?.url
     }
 
-    private static func thumbnail(from url: URL) async -> Data? {
+    /// Downloaded and re-encoded off the main actor.
+    @concurrent
+    nonisolated private static func thumbnail(from url: URL) async -> Data? {
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
         guard let fetched = try? await URLSession.shared.data(for: request),
