@@ -30,6 +30,7 @@
 		BBSL030000000000000BB /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
 		BBSL070000000000000BB /* AlohaUI in Frameworks */ = {isa = PBXBuildFile; productRef = AA200700000000000000AA /* AlohaUI */; };
 		BBSZ000000000000000BB /* AlohaShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBSP000000000000000BB /* AlohaShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FFMZ00000000000000FF /* AlohaShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBSP000000000000000BB /* AlohaShareExtension.appex */; platformFilter = macos; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BBWL000000000000000BB /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
 		BBWL030000000000000BB /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
 		BBWL040000000000000BB /* AlohaMedia in Frameworks */ = {isa = PBXBuildFile; productRef = AA200400000000000000AA /* AlohaMedia */; };
@@ -92,6 +93,13 @@
 			remoteGlobalIDString = BBWT000000000000000BB;
 			remoteInfo = AlohaWidgets;
 		};
+		FFMY00000000000000FF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBST000000000000000BB;
+			remoteInfo = AlohaShareExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -123,6 +131,7 @@
 			dstSubfolder = PlugIns;
 			files = (
 				MACWZ0000000000000MA /* AlohaWidgets.appex in Embed Foundation Extensions */,
+				FFMZ00000000000000FF /* AlohaShareExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 		};
@@ -490,6 +499,7 @@
 			);
 			dependencies = (
 				MACWX0000000000000MA /* PBXTargetDependency */,
+				FFMX00000000000000FF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				MACG00000000000000MA /* AlohaSocialMac */,
@@ -680,6 +690,12 @@
 			platformFilter = macos;
 			target = BBWT000000000000000BB /* AlohaWidgets */;
 			targetProxy = MACWY0000000000000MA /* PBXContainerItemProxy */;
+		};
+		FFMX00000000000000FF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = macos;
+			target = BBST000000000000000BB /* AlohaShareExtension */;
+			targetProxy = FFMY00000000000000FF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -924,6 +940,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaShareExtension.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Supporting/AlohaShareExtensionMac.entitlements;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = social.aloha.app.mac.share;
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -938,7 +956,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -951,6 +969,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaShareExtension.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Supporting/AlohaShareExtensionMac.entitlements;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = social.aloha.app.mac.share;
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -965,7 +985,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;

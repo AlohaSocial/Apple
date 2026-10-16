@@ -9,7 +9,8 @@ Every process that reads what the app wrote shares two things:
 | AlohaSocial (iPhone, iPad, Vision, Mac) | `social.aloha.app` | `AlohaSocial.entitlements` | ✓ | ✓ | ✓ (Mac) |
 | AlohaWidgets (iOS) | `social.aloha.app.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | — |
 | AlohaWidgets (Mac) | `social.aloha.app.mac.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | ✓ + network client |
-| AlohaShareExtension | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
+| AlohaShareExtension (iOS) | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
+| AlohaShareExtension (Mac) | `social.aloha.app.mac.share` | `AlohaShareExtensionMac.entitlements` | ✓ | ✓ | ✓ + network client |
 | AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService.entitlements` | ✓ | ✓ | — |
 | AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac.entitlements` | ✓ | ✓ | ✓ + network client, user-selected files |
 

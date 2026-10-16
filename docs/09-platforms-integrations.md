@@ -102,6 +102,15 @@ Target: `AlohaShareExtension`, available on iOS, iPadOS and macOS.
   and tells the person so.
 - Memory budget is tight: the extension must not build the full model container
   with every relationship warm. It uses a dedicated lightweight fetch path.
+- One target builds for both: on the Mac it is `social.aloha.app.mac.share`
+  (an embedded extension's id must start with its app's), embedded in
+  `AlohaSocialMac`, sandboxed with outgoing network, the app group and the
+  Keychain group (`AlohaShareExtensionMac.entitlements`). Only the hosting
+  controller differs; the Mac's share sheet owns its window's toolbar, so the
+  composer draws Cancel and Post itself there (`composerHost`).
+- Shared media goes up in the first type a server stores (JPEG, PNG, HEIC, GIF,
+  WebP; MPEG-4 or QuickTime for video). An image offered only as something
+  else — a Mac's TIFF — is re-encoded as JPEG rather than sent mislabelled.
 
 ## 7. App Intents and Shortcuts
 
