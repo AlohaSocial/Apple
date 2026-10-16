@@ -354,7 +354,9 @@ public final class AppEnvironment {
 
     private func reprobeAPIBase(_ session: AccountSession) async {
         let now = Date()
-        if let last = lastReprobe[session.id], now.timeIntervalSince(last) < 3600 { return }
+        guard ServerProbe.mayReprobe(lastAttempt: lastReprobe[session.id], now: now) else {
+            return
+        }
         lastReprobe[session.id] = now
 
         let probe = ServerProbe(transport: transport)
