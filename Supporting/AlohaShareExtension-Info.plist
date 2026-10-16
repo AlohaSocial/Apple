@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>AlohaAppGroupEnabled</key>
-	<false/>
+	<true/>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>

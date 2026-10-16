@@ -28,6 +28,10 @@ public struct InterestsView: View {
     @State private var errorMessage: String?
     @State private var hiddenIDs: Set<String> = []
     @State private var refreshID = UUID()
+    /// The last post put away with "Show fewer like this", while it can
+    /// still be taken back.
+    @State private var undoable: Status?
+    @State private var undoExpiry: Task<Void, Never>?
 
     private var visibleStatuses: [Status] {
         statuses.filter { !hiddenIDs.contains($0.displayed.id) }
@@ -97,15 +101,22 @@ public struct InterestsView: View {
             }
 
             ForEach(visibleStatuses) { status in
-                StatusRow(
-                    status: status,
-                    policy: session.settings.sensitiveMediaPolicy,
-                    localHost: session.snapshot.instanceHost,
-                    canReact: session.capabilities.emojiReactions,
-                    isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
-                    showsCounts: session.settings.showPopularityCounts,
-                    onAction: onAction
-                )
+                VStack(alignment: .leading, spacing: 0) {
+                    if let interest = status.interest ?? status.displayed.interest {
+                        InterestReasonLine(interest: interest)
+                            .padding(.top, AlohaMetrics.space2)
+                    }
+                    StatusRow(
+                        status: status,
+                        policy: session.settings.sensitiveMediaPolicy,
+                        localHost: session.snapshot.instanceHost,
+                        canReact: session.capabilities.emojiReactions,
+                        isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
+                        showsCounts: session.settings.showPopularityCounts,
+                        onAction: onAction
+                    )
+                }
+                .readingSignal(status, context: .interests, session: session)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
@@ -153,6 +164,9 @@ public struct InterestsView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .refreshable { await refresh() }
+        .safeAreaInset(edge: .bottom) {
+            if undoable != nil { undoBar }
+        }
     }
 
     private var learningOffNotice: some View {
@@ -270,18 +284,115 @@ public struct InterestsView: View {
         }
     }
 
-    /// Hides the row at once; the server call is what makes it stick.
+    /// Hides the row at once; the server call is what makes it stick. Then
+    /// it can be taken back for a few seconds — a long-press is easy to
+    /// misplace, and "fewer like this" teaches the feed something.
     private func showFewer(like status: Status) async {
         let id = status.displayed.id
         guard hiddenIDs.insert(id).inserted else { return }
         do {
             _ = try await session.client.send(Endpoint.interests.fewerLikeThis(id))
+            offerUndo(for: status)
         } catch {
             withAnimation { _ = hiddenIDs.remove(id) }
             await session.handle(error)
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "Your feed preference could not be saved. Please try again.")
+        }
+    }
+
+    private func offerUndo(for status: Status) {
+        undoExpiry?.cancel()
+        withAnimation { undoable = status }
+        undoExpiry = Task {
+            try? await Task.sleep(for: .seconds(6))
+            guard !Task.isCancelled else { return }
+            withAnimation { undoable = nil }
+        }
+    }
+
+    /// `DELETE /api/v1/interests/less/{id}`: the feed forgets the lesson and
+    /// the post comes back where it was.
+    private func undoFewer() async {
+        guard let status = undoable else { return }
+        undoExpiry?.cancel()
+        withAnimation { undoable = nil }
+        let id = status.displayed.id
+        do {
+            _ = try await session.client.send(Endpoint.interests.undoFewerLikeThis(id))
+            withAnimation { _ = hiddenIDs.remove(id) }
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Your feed preference could not be saved. Please try again.")
+        }
+    }
+
+    private var undoBar: some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Text("You'll see fewer posts like that.", comment: "Show fewer confirmation")
+                .font(.footnote)
+            Spacer(minLength: 0)
+            Button {
+                Task { await undoFewer() }
+            } label: {
+                Text("Undo", comment: "Undo show fewer like this")
+                    .font(.footnote.weight(.semibold))
+            }
+        }
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.vertical, AlohaMetrics.space3)
+        .alohaGlassEffect(.regular, in: Capsule())
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.bottom, AlohaMetrics.space2)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+}
+
+/// Why a post is on For you, in a line above it — the server's own reason
+/// (`interest`), so the feed explains itself rather than being a black box.
+struct InterestReasonLine: View {
+    @Environment(\.alohaPalette) private var palette
+
+    let interest: StatusInterest
+
+    private var tags: String {
+        interest.tags.prefix(3).map { "#\($0)" }.formatted(.list(type: .and))
+    }
+
+    var body: some View {
+        Label {
+            reason
+        } icon: {
+            Image(systemName: "sparkle.magnifyingglass")
+        }
+        .font(AlohaType.micro)
+        .foregroundStyle(palette.tertiaryLabel)
+        .lineLimit(1)
+    }
+
+    private var reason: Text {
+        switch interest.reason {
+        case "followed":
+            interest.tags.isEmpty
+                ? Text("Because you follow its hashtags", comment: "For you reason")
+                : Text("Because you follow \(tags)", comment: "For you reason")
+        case "interest":
+            interest.tags.isEmpty
+                ? Text("Because of what you read", comment: "For you reason")
+                : Text("Because you read about \(tags)", comment: "For you reason")
+        case "related":
+            interest.tags.isEmpty
+                ? Text("Close to what you read", comment: "For you reason")
+                : Text("Close to \(tags), which you read", comment: "For you reason")
+        case "popular":
+            Text("Popular here", comment: "For you reason")
+        default:
+            interest.tags.isEmpty
+                ? Text("Picked for you", comment: "For you reason")
+                : Text("Picked for you: \(tags)", comment: "For you reason")
         }
     }
 }
@@ -321,7 +432,7 @@ struct InterestsSettingsView: View {
                         Text("Retry", comment: "Interests retry action")
                     }
                     .font(.footnote.weight(.semibold))
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .disabled(isWorking || isLoadingState)
                 }
                 .foregroundStyle(palette.destructive)
@@ -444,14 +555,14 @@ struct InterestsSettingsView: View {
                             .font(.title2)
                             .frame(width: 44, height: 44)
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                     .disabled(!canAdd || isAdding)
                     .accessibilityLabel(Text("Add interest", comment: "Interests add action"))
                 }
 
                 if !suggestions.isEmpty {
                     ScrollView(.horizontal) {
-                        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                        AlohaGlassContainer(spacing: AlohaMetrics.space2) {
                             HStack(spacing: AlohaMetrics.space2) {
                                 ForEach(suggestions) { tag in
                                     Button {
@@ -462,7 +573,7 @@ struct InterestsSettingsView: View {
                                             .padding(.horizontal, AlohaMetrics.space3)
                                             .frame(minHeight: 32)
                                     }
-                                    .buttonStyle(.glass)
+                                    .alohaGlassButtonStyle()
                                 }
                             }
                         }
@@ -545,7 +656,7 @@ struct InterestsSettingsView: View {
                         .font(.title2)
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.glassProminent)
+                .alohaGlassProminentButtonStyle()
                 .disabled(!isLanguageDraftValid)
                 .accessibilityLabel(Text("Add language", comment: "Interests language add action"))
             }
@@ -815,7 +926,7 @@ struct InterestChips: View {
     let onTap: (InterestTag) -> Void
 
     var body: some View {
-        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+        AlohaGlassContainer(spacing: AlohaMetrics.space2) {
             FlowLayout(spacing: AlohaMetrics.space2) {
                 ForEach(tags) { tag in
                     Button {
@@ -828,7 +939,7 @@ struct InterestChips: View {
                         .padding(.horizontal, AlohaMetrics.space3)
                         .frame(minHeight: 36)
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                     .accessibilityLabel(
                         Text("Add \(tag.tag)", comment: "Interest candidate action"))
                 }

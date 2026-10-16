@@ -439,10 +439,12 @@ public struct VideoWatchView: View {
                     label: Text("Reply", comment: "Status action")
                 ) { onAction(.reply(status)) }
 
-                pill(
-                    symbol: AlohaSymbol.share, title: Text("Share", comment: "Status action"),
-                    label: Text("Share", comment: "Status action")
-                ) { onAction(.share(status)) }
+                StatusShareLink(status: status) {
+                    pillLabel(
+                        symbol: AlohaSymbol.share, title: Text("Share", comment: "Status action"))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Share", comment: "Status action"))
 
                 pill(
                     symbol: target.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
@@ -473,20 +475,26 @@ public struct VideoWatchView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: AlohaMetrics.space1) {
-                Image(systemName: symbol)
-                    .foregroundStyle(isOn ? (tint ?? palette.accent) : palette.label)
-                title
-                    .foregroundStyle(palette.label)
-            }
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, AlohaMetrics.space3)
-            .frame(height: 36)
-            .background(palette.surfaceRaised, in: Capsule())
+            pillLabel(symbol: symbol, title: title, isOn: isOn, tint: tint)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
         .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func pillLabel(
+        symbol: String, title: Text, isOn: Bool = false, tint: Color? = nil
+    ) -> some View {
+        HStack(spacing: AlohaMetrics.space1) {
+            Image(systemName: symbol)
+                .foregroundStyle(isOn ? (tint ?? palette.accent) : palette.label)
+            title
+                .foregroundStyle(palette.label)
+        }
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, AlohaMetrics.space3)
+        .frame(height: 36)
+        .background(palette.surfaceRaised, in: Capsule())
     }
 
     @ViewBuilder

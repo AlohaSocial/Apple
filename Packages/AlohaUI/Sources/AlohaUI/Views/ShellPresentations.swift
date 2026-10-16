@@ -15,6 +15,16 @@ struct ComposerPresentation: Identifiable {
     var replyTo: Status?
     /// A quote post: the composer opens with this post attached.
     var quoting: Status?
+    /// Delete & redraft: the post, and its words from `/source`.
+    var redraft: Redraft?
+
+    struct Redraft {
+        var status: Status
+        var source: StatusSource
+    }
+
+    /// Text the composer opens with: a draft handed off from another device.
+    var draftText = ""
 }
 
 /// The smaller sheets a status or an account can put up: one enum, so the
@@ -72,9 +82,17 @@ struct ShellSheets: ViewModifier {
             }
             .sheet(item: whenSignedIn($composing)) { request in
                 if let session = environment.activeSession {
-                    ComposerView(
-                        session: session, replyTo: request.replyTo, quoting: request.quoting
-                    )
+                    Group {
+                        if let redraft = request.redraft {
+                            ComposerView(
+                                session: session, redrafting: redraft.status,
+                                source: redraft.source)
+                        } else {
+                            ComposerView(
+                                session: session, replyTo: request.replyTo,
+                                quoting: request.quoting, prefilledText: request.draftText)
+                        }
+                    }
                     #if os(iOS)
                         // A composer is a writing surface, not a card: on a
                         // regular-width iPad it opens large, so the alt-text
@@ -116,7 +134,8 @@ struct ShellSheets: ViewModifier {
             .sheet(item: whenSignedIn($editing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(
-                        session: session, editing: request.status, source: request.source)
+                        session: session, editing: request.status, source: request.source
+                    )
                     #if os(macOS)
                         .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 640)
                     #endif

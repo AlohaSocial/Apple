@@ -18,6 +18,8 @@ public enum Route: Codable, Hashable, Sendable {
     case favourites
     case settings
     case drafts
+    /// Posts waiting for their time, which can be moved or cancelled.
+    case scheduledPosts
     case explore
     case lists
     case filters
@@ -64,6 +66,16 @@ public enum Route: Codable, Hashable, Sendable {
     /// Posts quoting a status.
     case quotes(statusID: String)
 
+    // Aloha Social's own.
+    /// The Bluesky feeds and lists the reader keeps.
+    case blueskyFeeds
+    /// One of them, as a timeline.
+    case blueskyFeed(uri: String, name: String)
+    /// The reader's own account on Bluesky.
+    case blueskySettings
+    /// The posts sharing one link — what a trending link opens.
+    case linkTimeline(url: URL, title: String?)
+
     // Surfaces the web app has, or the server serves and nobody drew.
     /// "Your year": Mastodon's `#Wrapstodon`, which the web app has no page for.
     case annualReport
@@ -80,6 +92,18 @@ public enum Route: Codable, Hashable, Sendable {
     case moderationTrends
 }
 
+/// A Route, and the account it has to be opened under when the entry point
+/// named one.
+public struct RouteDestination: Sendable, Hashable {
+    public let accountID: UUID?
+    public let route: Route
+
+    public init(accountID: UUID?, route: Route) {
+        self.accountID = accountID
+        self.route = route
+    }
+}
+
 /// The one place any entry point is parsed. Every scheme, universal link,
 /// Handoff payload, intent and notification produces a `Route` and goes through
 /// here, so they cannot behave differently (docs/09 §10).
@@ -91,10 +115,61 @@ public enum RouteResolver {
     /// it has to arrive as something the shell is watching for.
     public static let composeRequested = Notification.Name("alohasocial.compose.requested")
 
+    /// Posted when `alohasocial://story` is opened — the Control Center
+    /// "New story" control. The story composer is a sheet too.
+    public static let storyComposerRequested = Notification.Name("alohasocial.story.requested")
+
+    /// Something a link asks the shell to present rather than navigate to.
+    public enum Presentation: Equatable, Sendable {
+        case composer
+        case storyComposer
+
+        /// The notification the shell watches for this presentation.
+        public var notification: Notification.Name {
+            switch self {
+            case .composer: RouteResolver.composeRequested
+            case .storyComposer: RouteResolver.storyComposerRequested
+            }
+        }
+    }
+
+    /// The sheet the URL asks for, or nil when it names a destination (or
+    /// nothing at all).
+    public static func presentation(for url: URL) -> Presentation? {
+        guard url.scheme == scheme else { return nil }
+        switch url.host() {
+        case "compose": return .composer
+        case "story": return .storyComposer
+        default: return nil
+        }
+    }
+
     /// Returns the Route the URL names, or nil where the URL asks for
     /// something that is not a destination — the sign-in callback, and the
-    /// compose request.
+    /// compose and story requests.
     public static func route(for url: URL) -> Route? {
+        destination(for: url)?.route
+    }
+
+    /// The Route a URL names, and the account it belongs to when the URL says.
+    ///
+    /// `alohasocial://status/<account>/<id>` and `…/profile/<account>/<id>`
+    /// carry the local account's UUID, because a post id is one server's id:
+    /// opened under another account it is somebody else's post, or nothing.
+    /// The widgets write `0` where they do not know, which is no account.
+    public static func destination(for url: URL) -> RouteDestination? {
+        guard let route = parse(url) else { return nil }
+        let components = url.pathComponents.filter { $0 != "/" }
+        var accountID: UUID?
+        switch url.host() {
+        case "status", "profile":
+            if components.count >= 2 { accountID = UUID(uuidString: components[0]) }
+        default: break
+        }
+        return RouteDestination(accountID: accountID, route: route)
+    }
+
+    private static func parse(_ url: URL) -> Route? {
         guard url.scheme == scheme else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
 
@@ -135,13 +210,14 @@ public enum RouteResolver {
         case "settings": return .settings
         case "explore": return .explore
         case "lists": return .lists
+        case "memories": return .memories
         // "compose" opens the composer rather than any of the Routes: the
         // composer is presented as a sheet from the shell, not pushed onto a
         // navigation stack, so there is no destination to name. Sending the
         // person to Drafts — which is what this used to do — meant a widget
         // button labelled "New post" landed them in a list of things they had
         // not written yet (docs/09 §8).
-        case "compose": return nil
+        case "compose", "story": return nil
         default: return nil
         }
     }

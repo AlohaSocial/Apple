@@ -134,14 +134,27 @@ configuration (account, timeline, list).
 | Unread notifications | `systemSmall`, `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
 | Mentions | `systemMedium`, `systemLarge` |
 | Quick compose | `systemSmall` (deep-links into the composer) |
+| On this day | `systemSmall`, `systemMedium`, `systemLarge` (Aloha Social servers) |
 
 - Timelines are built from the SwiftData store in the app group, never from the
   network inside the widget extension.
+- **Favourite from the widget**: post and mention rows carry a heart that runs
+  an intent in the extension. It reads the token from the shared Keychain
+  group, favourites on the server, and records the tap in the shared defaults
+  (`WidgetFavourites`) so the row redraws filled before the next sync.
+- **On this day**: memories are a server query rather than a cached timeline,
+  so the app writes the day's snapshot — text and one small picture each, none
+  from behind a content warning — into the app group when it becomes active
+  and on background refresh (`MemoriesWidgetWriter`), and the widget reads
+  only that.
 - Reload triggered from the app's background refresh and after any post.
 - Images come from the shared disk cache; a widget never downloads.
 - Lock Screen and StandBy variants use the accessory families with the
   vibrant rendering mode handled explicitly.
-- macOS widgets in Notification Centre and on the desktop.
+- macOS widgets in Notification Centre and on the desktop: the same extension
+  target builds for the Mac (bundle id `social.aloha.app.mac.widgets`, under
+  the Mac app's) and is embedded in `AlohaSocialMac`. The Lock Screen
+  accessory families are iPhone-only and left out there.
 
 ## 9. Live Activities
 

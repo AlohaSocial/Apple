@@ -87,7 +87,7 @@ public struct DeliverySheet: View {
                 Text("Retry", comment: "Delivery retry action")
             }
             .font(.footnote.weight(.semibold))
-            .buttonStyle(.glass)
+            .alohaGlassButtonStyle()
             .disabled(isLoading)
         }
         .padding(.vertical, AlohaMetrics.space2)

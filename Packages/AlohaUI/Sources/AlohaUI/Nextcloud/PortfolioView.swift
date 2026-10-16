@@ -73,7 +73,7 @@ public struct PortfolioView: View {
                         .foregroundStyle(palette.destructive)
                     if loaded == nil {
                         Button("Try again") { Task { await load() } }
-                            .buttonStyle(.glass)
+                            .alohaGlassButtonStyle()
                             .disabled(isLoading)
                     }
                 }
@@ -177,9 +177,12 @@ public struct PortfolioView: View {
                                 .foregroundStyle(palette.secondaryLabel)
                         }
                         if !PortfolioPreview.canSave(settings) {
-                            Text("Choose an album before publishing your portfolio.", comment: "Portfolio validation")
-                                .font(.footnote)
-                                .foregroundStyle(palette.secondaryLabel)
+                            Text(
+                                "Choose an album before publishing your portfolio.",
+                                comment: "Portfolio validation"
+                            )
+                            .font(.footnote)
+                            .foregroundStyle(palette.secondaryLabel)
                         }
                     }
                 } header: {
@@ -217,7 +220,7 @@ public struct PortfolioView: View {
                             Spacer()
                         }
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                     .disabled(isSaving || !hasChanges || !PortfolioPreview.canSave(settings))
                 }
             }
@@ -236,10 +239,13 @@ public struct PortfolioView: View {
                 if let loaded,
                     settings.source != loaded.source || settings.collectionID != loaded.collectionID
                 {
-                    Text("Save your changes to preview photos from the newly selected source.", comment: "Portfolio preview guidance")
-                        .font(.footnote)
-                        .foregroundStyle(palette.secondaryLabel)
-                        .padding()
+                    Text(
+                        "Save your changes to preview photos from the newly selected source.",
+                        comment: "Portfolio preview guidance"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+                    .padding()
                 }
                 PortfolioPageView(page: page, showsAvatarFallback: session.snapshot.avatarURL)
             }

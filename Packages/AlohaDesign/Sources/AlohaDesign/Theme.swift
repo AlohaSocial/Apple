@@ -403,8 +403,14 @@ extension View {
     /// would swallow them (`black`, where surface and ground are both black)
     /// is the one that would break.
     public func alohaGround(_ palette: AlohaPalette) -> some View {
-        scrollContentBackground(.hidden)
-            .background(palette.background)
+        #if os(tvOS)
+            // tvOS has no `scrollContentBackground`: its lists draw no grouped
+            // ground of their own to hide.
+            background(palette.background)
+        #else
+            scrollContentBackground(.hidden)
+                .background(palette.background)
+        #endif
     }
 }
 
@@ -502,6 +508,19 @@ extension View {
     public func alohaRowHighlight() -> some View {
         #if os(visionOS)
             hoverEffect(.highlight)
+        #else
+            self
+        #endif
+    }
+
+    /// The same look-to-highlight for a custom control — a plain-style button
+    /// or a tappable card — drawn in the shape the control actually has
+    /// rather than its glyph's bounding box, which is all a plain button
+    /// would otherwise light up.
+    @ViewBuilder
+    public func alohaHoverTarget(_ shape: some Shape) -> some View {
+        #if os(visionOS)
+            contentShape(.hoverEffect, shape).hoverEffect(.highlight)
         #else
             self
         #endif

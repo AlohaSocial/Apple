@@ -73,7 +73,7 @@ struct GIFPicker: View {
                 }
             }
             .presentationBackground {
-                Color.clear.glassEffect(.regular, in: Rectangle())
+                Color.clear.alohaGlassEffect(.regular, in: Rectangle())
             }
             .searchable(text: $query, prompt: Text("Search pictures", comment: "GIF search prompt"))
             .navigationTitle(Text("Pictures", comment: "GIF picker title"))

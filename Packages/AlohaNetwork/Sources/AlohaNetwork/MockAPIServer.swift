@@ -427,6 +427,12 @@ public actor MockAPIServer: HTTPTransport {
             if configuration == .timelinesUnavailable {
                 return respond(url: url, status: 429, body: #"{"error":"Too many requests"}"#)
             }
+            // Aloha Social's link and Bluesky timelines are not `{timeline}`s.
+            if let answered = socialMock(
+                route: route, url: url, method: method, query: query, body: body)
+            {
+                return answered
+            }
             return try timeline(url: url, route: route, query: query)
 
         // MARK: Extension routes

@@ -16,7 +16,8 @@ struct AccountSettingsPersistenceTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let location = directory.appending(path: "accounts.sqlite")
         let configuration = ModelConfiguration(schema: StoreContainer.schema, url: location)
-        let container = try ModelContainer(for: StoreContainer.schema, configurations: configuration)
+        let container = try ModelContainer(
+            for: StoreContainer.schema, configurations: configuration)
         let writer = AccountStore(modelContainer: container)
         let base = try #require(URL(string: "https://example.test"))
         let account = try await writer.addAccount(

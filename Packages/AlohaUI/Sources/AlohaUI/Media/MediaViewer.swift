@@ -104,6 +104,7 @@ public struct MediaViewer: View {
                 contentMode: .fit,
                 accessibilityText: attachment.description
             )
+            .modifier(ImageDragSource(url: attachment.url))
             .scaleEffect(zoom, anchor: .center)
             .offset(offset)
             .onTapGesture(count: 2) {
@@ -116,42 +117,50 @@ public struct MediaViewer: View {
         }
     }
 
+    /// Real Liquid Glass, tinted down so a white photograph behind it does
+    /// not wash the glyph out — the reason these were a black circle under
+    /// a material before.
+    static let controlGlass = AlohaGlassStyle.regular.tint(.black.opacity(0.25)).interactive()
+
     private var controls: some View {
         VStack {
-            HStack {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.body.weight(.semibold))
-                        .padding(10)
-                        .background(.black.opacity(0.3), in: Circle())
-                        .unifiedGlass(.subtle, in: Circle())
-                }
-                .accessibilityLabel(Text("Close", comment: "Media viewer action"))
-
-                Spacer()
-
-                if attachments.indices.contains(index), attachments[index].hasAltText {
+            // One container, so the three controls sample the picture as one
+            // layer and merge as they should when they come close.
+            AlohaGlassContainer {
+                HStack {
                     Button {
-                        isShowingAltText = true
+                        dismiss()
                     } label: {
-                        Text("ALT", comment: "Alt text button")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .unifiedGlass(.regular, in: Capsule())
-                    }
-                    .accessibilityLabel(Text("Show description", comment: "Media viewer action"))
-                }
-
-                if let url = attachments[safe: index]?.url {
-                    ShareLink(item: url) {
-                        Image(systemName: AlohaSymbol.share)
+                        Image(systemName: "xmark")
                             .font(.body.weight(.semibold))
                             .padding(10)
-                            .background(.black.opacity(0.3), in: Circle())
-                            .unifiedGlass(.subtle, in: Circle())
+                            .alohaGlassEffect(Self.controlGlass, in: Circle())
+                    }
+                    .accessibilityLabel(Text("Close", comment: "Media viewer action"))
+
+                    Spacer()
+
+                    if attachments.indices.contains(index), attachments[index].hasAltText {
+                        Button {
+                            isShowingAltText = true
+                        } label: {
+                            Text("ALT", comment: "Alt text button")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .alohaGlassEffect(Self.controlGlass, in: Capsule())
+                        }
+                        .accessibilityLabel(
+                            Text("Show description", comment: "Media viewer action"))
+                    }
+
+                    if let url = attachments[safe: index]?.url {
+                        ShareLink(item: url) {
+                            Image(systemName: AlohaSymbol.share)
+                                .font(.body.weight(.semibold))
+                                .padding(10)
+                                .alohaGlassEffect(Self.controlGlass, in: Circle())
+                        }
                     }
                 }
             }
@@ -305,7 +314,7 @@ public struct VideoAttachmentPlayer: View {
                     } label: {
                         Text("Try again", comment: "Retry media playback")
                     }
-                    .buttonStyle(.glass)
+                    .alohaGlassButtonStyle()
                 }
                 .foregroundStyle(.primary)
                 .padding(20)
@@ -327,8 +336,7 @@ public struct VideoAttachmentPlayer: View {
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .padding(10)
-                                    .background(.black.opacity(0.3), in: Circle())
-                                    .unifiedGlass(.subtle, in: Circle())
+                                    .alohaGlassEffect(MediaViewer.controlGlass, in: Circle())
                             }
                             .accessibilityLabel(Text("Share video", comment: "Video action"))
                         }
@@ -338,14 +346,26 @@ public struct VideoAttachmentPlayer: View {
 
                     Spacer()
 
-                    HStack {
-                        Spacer()
-                        VideoControlsOverlay(player: player)
-                    }
-                    .padding(AlohaMetrics.space3)
+                    #if !os(visionOS)
+                        HStack {
+                            Spacer()
+                            VideoControlsOverlay(player: player)
+                        }
+                        .padding(AlohaMetrics.space3)
+                    #endif
                 }
             }
         }
+        #if os(visionOS)
+            // Below the window rather than over the picture, where visionOS
+            // puts a player's transport.
+            .ornament(
+                visibility: player != nil && playbackError == nil ? .visible : .hidden,
+                attachmentAnchor: .scene(.bottom), contentAlignment: .top
+            ) {
+                ornamentControls
+            }
+        #endif
         .task(id: "\(sourceIndex):\(retryCount)") { await prepare() }
         .onChange(of: seekRequest) { _, position in
             guard let position else { return }
@@ -356,6 +376,14 @@ public struct VideoAttachmentPlayer: View {
             releasePlayer()
         }
     }
+
+    #if os(visionOS)
+        private var ornamentControls: some View {
+            VideoControlsOverlay(player: player)
+                .padding(AlohaMetrics.space2)
+                .glassBackgroundEffect()
+        }
+    #endif
 
     private func scheduleControlsHide() {
         controlsHideTask?.cancel()
@@ -465,9 +493,14 @@ public struct VideoAttachmentPlayer: View {
 
     private func releasePlayer() {
         stopTicking()
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
-        player = nil
+        guard let player else { return }
+        self.player = nil
+        // A video floating in Picture in Picture outlives the viewer that
+        // started it; it is released when the floating window closes.
+        PictureInPicture.release(player) {
+            player.pause()
+            player.replaceCurrentItem(with: nil)
+        }
     }
 
     // MARK: - Watch positions
@@ -517,6 +550,9 @@ private struct VideoControlsOverlay: View {
 
     var body: some View {
         HStack(spacing: 16) {
+            AirPlayButton()
+                .background(.black.opacity(0.3), in: Circle())
+                .unifiedGlass(.subtle, in: Circle())
             Button {
                 guard let player else { return }
                 if player.rate > 0 { player.pause() } else { player.play() }
@@ -525,8 +561,7 @@ private struct VideoControlsOverlay: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(12)
-                    .background(.black.opacity(0.3), in: Circle())
-                    .unifiedGlass(.subtle, in: Circle())
+                    .alohaGlassEffect(MediaViewer.controlGlass, in: Circle())
             }
             .buttonStyle(.plain)
         }

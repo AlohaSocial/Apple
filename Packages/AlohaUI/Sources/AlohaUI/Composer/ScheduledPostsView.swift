@@ -13,6 +13,7 @@ public struct ScheduledPostsView: View {
 
     private let session: AccountSession
     @State private var scheduled: [ScheduledStatus] = []
+    @State private var rescheduling: ScheduledStatus?
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -23,38 +24,14 @@ public struct ScheduledPostsView: View {
     public var body: some View {
         List {
             ForEach(scheduled) { post in
-                VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
-                    HStack(spacing: AlohaMetrics.space2) {
-                        Image(systemName: "clock")
-                            .foregroundStyle(palette.accent)
-                        Text(
-                            post.scheduledAt,
-                            format: .dateTime.weekday().day().month().hour().minute()
-                        )
-                        .font(.footnote.weight(.medium))
-                        Spacer()
-                        Text(post.scheduledAt, format: .relative(presentation: .named))
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryLabel)
-                    }
-
-                    if let text = post.params.text, !text.isEmpty {
-                        Text(text).font(.subheadline).lineLimit(4)
-                    }
-
-                    if !post.mediaAttachments.isEmpty {
-                        Label {
-                            Text(
-                                "^[\(post.mediaAttachments.count) attachment](inflect: true)",
-                                comment: "Scheduled post attachment count")
-                        } icon: {
-                            Image(systemName: AlohaSymbol.media)
-                        }
-                        .font(.caption)
-                        .foregroundStyle(palette.secondaryLabel)
-                    }
+                Button {
+                    rescheduling = post
+                } label: {
+                    row(post)
                 }
-                .padding(.vertical, AlohaMetrics.space1)
+                .buttonStyle(.plain)
+                .accessibilityHint(
+                    Text("Choose another time to send it", comment: "Scheduled post row hint"))
             }
             .onDelete { offsets in
                 Task { await cancel(at: offsets) }
@@ -77,6 +54,69 @@ public struct ScheduledPostsView: View {
         .navigationTitle(Text("Scheduled", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
+        .sheet(item: $rescheduling) { post in
+            RescheduleSheet(current: post.scheduledAt) { date in
+                Task { await reschedule(post, to: date) }
+            }
+        }
+    }
+
+    private func row(_ post: ScheduledStatus) -> some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            HStack(spacing: AlohaMetrics.space2) {
+                Image(systemName: "clock")
+                    .foregroundStyle(palette.accent)
+                Text(
+                    post.scheduledAt,
+                    format: .dateTime.weekday().day().month().hour().minute()
+                )
+                .font(.footnote.weight(.medium))
+                Spacer()
+                Text(post.scheduledAt, format: .relative(presentation: .named))
+                    .font(.caption)
+                    .foregroundStyle(palette.secondaryLabel)
+            }
+
+            if let text = post.params.text, !text.isEmpty {
+                Text(text).font(.subheadline).lineLimit(4)
+            }
+
+            if !post.mediaAttachments.isEmpty {
+                Label {
+                    Text(
+                        "^[\(post.mediaAttachments.count) attachment](inflect: true)",
+                        comment: "Scheduled post attachment count")
+                } icon: {
+                    Image(systemName: AlohaSymbol.media)
+                }
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+            }
+        }
+        .padding(.vertical, AlohaMetrics.space1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    /// Replaced with what the server answers, so the row shows the time it
+    /// will really go out. A refusal — too soon, most likely — leaves the row
+    /// as it was and says why.
+    private func reschedule(_ post: ScheduledStatus, to date: Date) async {
+        do {
+            let updated = try await session.client.decode(
+                ScheduledStatus.self, from: Endpoint.composing.reschedule(post.id, to: date))
+            if let index = scheduled.firstIndex(where: { $0.id == post.id }) {
+                scheduled[index] = updated
+            }
+            scheduled.sort { $0.scheduledAt < $1.scheduledAt }
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "Couldn't move that post.", comment: "Reschedule failure")
+        }
     }
 
     private func load() async {
@@ -157,6 +197,59 @@ public struct SchedulePicker: View {
                         dismiss()
                     } label: {
                         Text("Schedule", comment: "Schedule action")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Another time for a post already waiting. Not `SchedulePicker`: that one
+/// can also clear the schedule, and for a post the server is holding there is
+/// no "post immediately instead" to fall back to.
+struct RescheduleSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let onChoose: (Date) -> Void
+    @State private var date: Date
+
+    init(current: Date, onChoose: @escaping (Date) -> Void) {
+        self.onChoose = onChoose
+        _date = State(initialValue: max(current, Date().addingTimeInterval(300)))
+    }
+
+    /// The server's own floor, five minutes out (`ScheduledStatusService`).
+    private var earliest: Date { Date().addingTimeInterval(300) }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker(
+                    selection: $date, in: earliest...,
+                    displayedComponents: [.date, .hourAndMinute]
+                ) {
+                    Text("Send at", comment: "Schedule picker label")
+                }
+                #if os(iOS)
+                    .datePickerStyle(.graphical)
+                #endif
+            }
+            .formStyle(.grouped)
+            .navigationTitle(Text("Reschedule", comment: "Reschedule sheet title"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Cancel", comment: "Sheet action")
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        onChoose(max(date, earliest))
+                        dismiss()
+                    } label: {
+                        Text("Save", comment: "Reschedule action")
                     }
                 }
             }

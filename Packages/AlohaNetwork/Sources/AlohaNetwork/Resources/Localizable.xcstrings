@@ -34,6 +34,17 @@
         }
       }
     },
+    "Your account isn't set up yet. Open Aloha Social in a web browser and choose your username." : {
+      "comment" : "HTTP 403, account not set up",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Konto ist noch nicht eingerichtet. Öffne Aloha Social in einem Webbrowser und wähle deinen Benutzernamen."
+          }
+        }
+      }
+    },
     "Your server had a problem (%lld)." : {
       "comment" : "HTTP 5xx, with the status code",
       "localizations" : {

@@ -22,15 +22,18 @@ struct StatusActionButton: View {
     let action: () -> Void
 
     enum Style {
-        /// Scales up and throws sparks. Favourite, bookmark.
+        /// Bounces and throws sparks. Favourite, bookmark.
         case pop
-        /// Turns a full circle. Boost.
+        /// Turns. Boost.
         case spin
         /// Nothing beyond the tint. Reply.
         case plain
     }
 
+    /// Counted rather than toggled, so only turning an action *on* moves
+    /// the glyph — undoing a favourite is not a celebration.
     @State private var burst = 0
+    @State private var spin = 0
 
     var body: some View {
         Button(action: action) {
@@ -42,8 +45,14 @@ struct StatusActionButton: View {
                         // as well as tint (docs/12 §3).
                         .fontWeight(isOn ? .bold : .regular)
                         .symbolVariant(isOn ? .fill : .none)
-                        .scaleEffect(scale)
-                        .rotationEffect(rotation)
+                        // SF Symbols' own motion rather than a hand-made scale
+                        // and spin: the outline-to-fill change is the symbol's
+                        // replace transition, and turning an action on bounces
+                        // or turns the glyph the way the system's own do.
+                        .contentTransition(.symbolEffect(.replace))
+                        .symbolEffect(.bounce.up, options: .nonRepeating, value: burst)
+                        .symbolEffect(.rotate.clockwise, options: .nonRepeating, value: spin)
+                        .symbolEffectsRemoved(reduceMotion)
 
                     if style == .pop, !reduceMotion {
                         SparkBurst(trigger: burst, tint: tint)
@@ -68,22 +77,17 @@ struct StatusActionButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .alohaHoverTarget(Capsule())
         .accessibilityLabel(label)
         .sensoryFeedback(.impact(weight: .light), trigger: isOn) { _, new in new }
         .onChange(of: isOn) { _, new in
-            guard new, style == .pop else { return }
-            burst += 1
+            guard new else { return }
+            switch style {
+            case .pop: burst += 1
+            case .spin: spin += 1
+            case .plain: break
+            }
         }
-    }
-
-    private var scale: Double {
-        guard !reduceMotion, style == .pop else { return 1 }
-        return isOn ? 1.15 : 1
-    }
-
-    private var rotation: Angle {
-        guard !reduceMotion, style == .spin else { return .zero }
-        return .degrees(isOn ? 360 : 0)
     }
 }
 

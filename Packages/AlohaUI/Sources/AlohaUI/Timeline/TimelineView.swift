@@ -5,6 +5,7 @@ import AlohaMedia
 import AlohaModels
 import AlohaStore
 import SwiftUI
+import TipKit
 
 public struct TimelineView: View {
     @Environment(\.alohaPalette) private var palette
@@ -21,6 +22,8 @@ public struct TimelineView: View {
     /// Set once the first page has been scrolled to, so reopening a timeline
     /// does not pull the reader back to the post they had already left behind.
     @State private var didRestorePosition = false
+    /// Where the VoiceOver rotors point: each post registers its row here.
+    @Namespace private var rotorNamespace
 
     public init(
         key: TimelineKey, session: AccountSession,
@@ -53,7 +56,8 @@ public struct TimelineView: View {
                     return nil
                 }.first
             },
-            onAction: onAction
+            onAction: onAction,
+            onRefresh: { await model.refresh() }
         )
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .task { await model.appear() }
@@ -112,6 +116,7 @@ public struct TimelineView: View {
             // own home feed and nowhere else.
             if model.key.mode == .home, model.key.source == .home {
                 HomeTimelineExtras(session: session, onAction: onAction)
+                if !model.rows.isEmpty, hasSwipeActions { swipeTip }
             }
 
             if model.rows.isEmpty {
@@ -153,7 +158,13 @@ public struct TimelineView: View {
                     .listRowBackground(palette.background)
                     .listRowSeparator(.hidden)
                     .id(status.id)
-                    .alohaRowHighlight()
+                    .statusRowInteractions(status, session: session, onAction: onAction)
+                    .accessibilityRotorEntry(id: status.id, in: rotorNamespace)
+                    .readingSignal(
+                        status,
+                        context: InterestSignal.Context(key: model.key),
+                        session: session
+                    )
                     .overlay(alignment: .leading) {
                         if focusedStatusID == status.id {
                             Capsule()
@@ -201,6 +212,52 @@ public struct TimelineView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(palette.background)
+        // A rotor to move post by post, and one to land on the posts that
+        // carry links, without walking every action inside each row
+        // (docs/12 §3).
+        .accessibilityRotor(Text("Posts", comment: "VoiceOver rotor name")) {
+            ForEach(statuses) { status in
+                AccessibilityRotorEntry(
+                    Text(
+                        "\(status.displayed.account.bestDisplayName), \(PostAge.spoken(status.displayed.createdAt))",
+                        comment: "VoiceOver rotor entry for a post: author, then age"),
+                    id: status.id, in: rotorNamespace)
+            }
+        }
+        .accessibilityRotor(Text("Links", comment: "VoiceOver rotor name")) {
+            ForEach(linkEntries) { entry in
+                AccessibilityRotorEntry(
+                    Text(verbatim: entry.label), id: entry.statusID, in: rotorNamespace)
+            }
+        }
+    }
+
+    private var statuses: [Status] {
+        model.rows.compactMap(\.status)
+    }
+
+    /// One entry per link, in reading order, named for where it goes.
+    private var linkEntries: [LinkRotorEntry] {
+        statuses.flatMap { status in
+            (model.webLinks[status.id] ?? []).enumerated().map { index, url in
+                LinkRotorEntry(
+                    id: "\(status.id)-\(index)", statusID: status.id,
+                    label: LinkRotorEntry.label(for: url))
+            }
+        }
+    }
+
+    private var hasSwipeActions: Bool {
+        session.settings.leadingSwipeAction != .none
+            || session.settings.trailingSwipeAction != .none
+    }
+
+    /// Swiping is invisible until somebody is told, so the home feed says it
+    /// once, inline, where the posts are.
+    private var swipeTip: some View {
+        TipView(SwipeActionsTip())
+            .listRowBackground(palette.background)
+            .listRowSeparator(.hidden)
     }
 
     /// A hole between two fetched ranges, never closed silently.
@@ -350,5 +407,20 @@ public struct TimelineView: View {
         return String(
             localized: "Follow a few people and this will fill up.",
             comment: "Empty timeline explanation")
+    }
+}
+
+/// A link the links rotor offers, pointing at the post that carries it.
+struct LinkRotorEntry: Identifiable, Hashable {
+    let id: String
+    let statusID: String
+    let label: String
+
+    /// Host and path, which is what a person needs to choose a link by ear;
+    /// the scheme and query are noise read aloud.
+    static func label(for url: URL) -> String {
+        let host = url.host() ?? url.absoluteString
+        let path = url.path()
+        return path.isEmpty || path == "/" ? host : host + path
     }
 }

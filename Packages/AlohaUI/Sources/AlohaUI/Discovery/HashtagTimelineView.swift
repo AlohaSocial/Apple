@@ -99,7 +99,7 @@ public struct HashtagTimelineView: View {
                             .foregroundStyle(palette.hashtag)
                             .padding(.horizontal, AlohaMetrics.space3)
                             .frame(minHeight: 32)
-                            .glassEffect(.regular, in: Capsule())
+                            .alohaGlassEffect(.regular, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .frame(minHeight: 44)

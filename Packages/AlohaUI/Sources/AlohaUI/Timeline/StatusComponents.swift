@@ -174,6 +174,24 @@ public struct LinkCardView: View {
                 in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
         }
         .buttonStyle(.plain)
+        .modifier(CardLinkDrag(url: card.url))
+    }
+}
+
+/// A link card drags out as the page it links to.
+private struct CardLinkDrag: ViewModifier {
+    let url: URL?
+
+    func body(content: Content) -> some View {
+        #if os(tvOS) || os(watchOS)
+            content
+        #else
+            if let url {
+                content.draggable(url)
+            } else {
+                content
+            }
+        #endif
     }
 }
 
@@ -315,9 +333,68 @@ public struct StatusMenu: View {
     }
 
     public var body: some View {
-        Button {
-            onAction(.share(status))
-        } label: {
+        // The four actions under every post, first and in one row. A swipe
+        // can perform each of them, and nothing a gesture does may exist
+        // only as a gesture (docs/12 §3, Switch Control); a long press opens
+        // this menu too, where these are what people reach for.
+        ControlGroup {
+            Button {
+                onAction(.reply(status))
+            } label: {
+                Label {
+                    Text("Reply", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: AlohaSymbol.reply)
+                }
+            }
+            Button {
+                onAction(.boost(status))
+            } label: {
+                Label {
+                    if displayed.reblogged {
+                        Text("Undo boost", comment: "Status menu item")
+                    } else {
+                        Text("Boost", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(systemName: AlohaSymbol.boost)
+                }
+            }
+            Button {
+                onAction(.favourite(status))
+            } label: {
+                Label {
+                    if displayed.favourited {
+                        Text("Unfavourite", comment: "Status menu item")
+                    } else {
+                        Text("Favourite", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(
+                        systemName: displayed.favourited
+                            ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
+                }
+            }
+            Button {
+                onAction(.bookmark(status))
+            } label: {
+                Label {
+                    if displayed.bookmarked {
+                        Text("Remove bookmark", comment: "Status menu item")
+                    } else {
+                        Text("Bookmark", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(
+                        systemName: displayed.bookmarked
+                            ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark)
+                }
+            }
+        }
+
+        OpenInNewWindowButton(.thread(statusID: displayed.id))
+
+        StatusShareLink(status: status) {
             Label {
                 Text("Share", comment: "Status menu item")
             } icon: {
@@ -405,6 +482,24 @@ public struct StatusMenu: View {
         }
 
         if isOwn { ownSection }
+
+        // The thread's author can put a reply away (`can_hide`), and bring it
+        // back: hidden is collapsed for everybody, never deleted.
+        if displayed.canHide == true {
+            Button {
+                onAction(.hideReply(status))
+            } label: {
+                Label {
+                    if displayed.isHiddenByAuthor {
+                        Text("Show reply again", comment: "Status menu item")
+                    } else {
+                        Text("Hide reply", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(systemName: displayed.isHiddenByAuthor ? "eye" : "eye.slash")
+                }
+            }
+        }
 
         Divider()
 
@@ -526,6 +621,44 @@ public struct StatusMenu: View {
             }
         }
 
+        // Aloha Social's own `reply_policy`, only on its own posts — which is
+        // where the server answers with one.
+        if isNextcloud, displayed.replyPolicy != nil {
+            Menu {
+                ForEach(ReplyPolicy.allCases, id: \.self) { policy in
+                    Button {
+                        onAction(.setReplyPolicy(status, policy))
+                    } label: {
+                        if displayed.replyAudience == policy {
+                            Label {
+                                ReplyPolicyLabel(policy: policy)
+                            } icon: {
+                                Image(systemName: "checkmark")
+                            }
+                        } else {
+                            ReplyPolicyLabel(policy: policy)
+                        }
+                    }
+                }
+            } label: {
+                Label {
+                    Text("Who can reply", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "arrowshape.turn.up.left.2")
+                }
+            }
+        }
+
+        Button {
+            onAction(.redraft(status))
+        } label: {
+            Label {
+                Text("Delete & redraft", comment: "Status menu item")
+            } icon: {
+                Image(systemName: "arrow.uturn.backward.circle")
+            }
+        }
+
         Button(role: .destructive) {
             onAction(.delete(status))
         } label: {
@@ -534,6 +667,24 @@ public struct StatusMenu: View {
             } icon: {
                 Image(systemName: AlohaSymbol.delete)
             }
+        }
+    }
+}
+
+/// A post's link, handed to the system share sheet by SwiftUI itself.
+///
+/// This replaced presenting `UIActivityViewController` on the window's root
+/// view controller, which failed silently whenever a sheet was already up —
+/// the root was busy presenting it — and gave the controller no popover
+/// anchor, which UIKit requires on iPad. `ShareLink` needs neither. A post
+/// without a URL has nothing to share, so nothing is drawn.
+struct StatusShareLink<ShareLabel: View>: View {
+    let status: Status
+    @ViewBuilder let label: () -> ShareLabel
+
+    var body: some View {
+        if let url = status.displayed.url {
+            ShareLink(item: url, label: label)
         }
     }
 }

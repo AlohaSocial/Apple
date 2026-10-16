@@ -232,6 +232,19 @@ public struct SearchView: View {
         .redacted(reason: .placeholder)
     }
 
+    /// `alice.bsky.social` or `bsky.app`: a single word with at least one dot,
+    /// a letter after the last one, and nothing a handle cannot hold.
+    nonisolated static func looksLikeDomainHandle(_ text: String) -> Bool {
+        guard !text.contains(where: \.isWhitespace), !text.contains("/"),
+            !text.hasPrefix("#")
+        else { return false }
+        let labels = text.split(separator: ".", omittingEmptySubsequences: false)
+        guard labels.count >= 2, labels.allSatisfy({ !$0.isEmpty }),
+            let last = labels.last, last.count >= 2, last.allSatisfy(\.isLetter)
+        else { return false }
+        return text.allSatisfy { $0.isLetter || $0.isNumber || $0 == "." || $0 == "-" }
+    }
+
     private func errorStrip(_ message: String) -> some View {
         AlohaErrorStrip(message: message) {
             schedule(query, immediately: true)
@@ -278,8 +291,13 @@ public struct SearchView: View {
         defer { if searchID == id { isSearching = false } }
 
         // A URL or a handle is resolved through the reading account's own
-        // server, so a remote post opens with working action buttons.
-        let looksRemote = trimmed.hasPrefix("http") || trimmed.contains("@")
+        // server, so a remote post opens with working action buttons. On
+        // Aloha Social that includes a bare Bluesky handle, which has dots and
+        // no `@` (`alice.bsky.social`): the server resolves it like any other
+        // (`CacheActorService`), but only when asked to.
+        let looksRemote =
+            trimmed.hasPrefix("http") || trimmed.contains("@")
+            || (session.capabilities.isNextcloudSocial && Self.looksLikeDomainHandle(trimmed))
 
         do {
             let response = try await session.client.decode(

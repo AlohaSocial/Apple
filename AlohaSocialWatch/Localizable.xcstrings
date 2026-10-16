@@ -12,6 +12,39 @@
         }
       }
     },
+    "Boost" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilen"
+          }
+        }
+      }
+    },
+    "Couldn't send the reply" : {
+      "comment" : "Watch reply status",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Antwort konnte nicht gesendet werden"
+          }
+        }
+      }
+    },
+    "Favourite" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favorisieren"
+          }
+        }
+      }
+    },
     "Not paired yet" : {
       "comment" : "Watch, no credentials",
       "localizations" : {
@@ -41,6 +74,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffne Aloha Social auf deinem iPhone, um die Einrichtung abzuschließen."
+          }
+        }
+      }
+    },
+    "Remove favourite" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favorit entfernen"
+          }
+        }
+      }
+    },
+    "Reply" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antworten"
+          }
+        }
+      }
+    },
+    "Reply sent" : {
+      "comment" : "Watch reply status",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort gesendet"
+          }
+        }
+      }
+    },
+    "Undo boost" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilen rückgängig machen"
           }
         }
       }

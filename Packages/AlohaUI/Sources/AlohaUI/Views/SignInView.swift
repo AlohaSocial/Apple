@@ -241,7 +241,9 @@ public struct SignInView: View {
         if instance.registrationsEnabled {
             parts.append(
                 instance.approvalRequired
-                    ? String(localized: "Registrations open, approval required", comment: "Instance detail")
+                    ? String(
+                        localized: "Registrations open, approval required",
+                        comment: "Instance detail")
                     : String(localized: "Registrations open", comment: "Instance detail"))
         } else {
             parts.append(String(localized: "Registrations closed", comment: "Instance detail"))
@@ -275,6 +277,13 @@ public struct SignInView: View {
             Text(failure.message)
                 .font(.footnote)
                 .foregroundStyle(palette.destructive)
+
+            if let setupURL = failure.setupURL {
+                Link(destination: setupURL) {
+                    Text("Open in browser", comment: "Account setup action")
+                }
+                .alohaGlassProminentButtonStyle()
+            }
 
             if !failure.attempted.isEmpty {
                 DisclosureGroup {

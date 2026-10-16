@@ -125,7 +125,7 @@ public struct WelcomeView: View {
                         Text("Continue", comment: "Onboarding sign-in action")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.glassProminent)
+                    .alohaGlassProminentButtonStyle()
                     .controlSize(.large)
                     // Return continues on a hardware keyboard: on the Mac the
                     // introduction is a window, and a primary action without a
@@ -149,7 +149,11 @@ public struct WelcomeView: View {
                 .frame(minHeight: geometry.size.height)
             }
             .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            // Unavailable on visionOS, where there is no keyboard over the
+            // content to dismiss.
+            #if !os(visionOS)
+                .scrollDismissesKeyboard(.interactively)
+            #endif
             .accessibilityIdentifier("welcome-sign-in-content")
         }
     }
@@ -187,7 +191,7 @@ public struct WelcomeView: View {
                     Text("Continue", comment: "Onboarding action")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent)
+                .alohaGlassProminentButtonStyle()
                 .controlSize(.large)
                 // The tour is keyboard-navigable on iPad and Mac: Return
                 // advances, so the introduction never traps keyboard users.
@@ -292,7 +296,7 @@ private struct OnboardingPageView: View {
                             .font(.system(size: 34))
                             .foregroundStyle(palette.accent)
                             .frame(width: 84, height: 84)
-                            .glassEffect(
+                            .alohaGlassEffect(
                                 .regular.tint(palette.accent.opacity(0.12)).interactive(),
                                 in: RoundedRectangle(cornerRadius: 22, style: .continuous)
                             )
@@ -434,7 +438,7 @@ private struct ModeTour: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AlohaMetrics.space3)
-                .glassEffect(
+                .alohaGlassEffect(
                     .regular.interactive(),
                     in: RoundedRectangle(
                         cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)

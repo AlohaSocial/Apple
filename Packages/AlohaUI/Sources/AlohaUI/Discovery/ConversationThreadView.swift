@@ -383,7 +383,7 @@ public struct ConversationThreadView: View {
     }
 
     private var composer: some View {
-        GlassEffectContainer(spacing: AlohaMetrics.space2) {
+        AlohaGlassContainer(spacing: AlohaMetrics.space2) {
             HStack(alignment: .bottom, spacing: AlohaMetrics.space2) {
                 Button {
                     // The full composer, for attachments, polls and a content
@@ -397,7 +397,7 @@ public struct ConversationThreadView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: Circle())
+                .alohaGlassEffect(.regular.interactive(), in: Circle())
                 .disabled(messages.isEmpty)
                 .accessibilityLabel(Text("Attach", comment: "Conversation composer action"))
 
@@ -412,7 +412,7 @@ public struct ConversationThreadView: View {
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
                 .frame(minHeight: 44)
-                .glassEffect(.regular, in: Capsule())
+                .alohaGlassEffect(.regular, in: Capsule())
                 .accessibilityLabel(Text("Message", comment: "Conversation field label"))
                 .onChange(of: draft) { _, _ in
                     // Editing the text means the last failure no longer
@@ -429,7 +429,7 @@ public struct ConversationThreadView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.tint(palette.accent).interactive(), in: Circle())
+                .alohaGlassEffect(.regular.tint(palette.accent).interactive(), in: Circle())
                 .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityLabel(Text("Send", comment: "Conversation composer action"))

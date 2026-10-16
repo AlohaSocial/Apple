@@ -102,6 +102,10 @@ public struct SettingsView: View {
         @Bindable var environment = environment
 
         Form {
+            if let session = environment.activeSession, session.needsAccountSetup {
+                AccountSetupBanner(session: session)
+            }
+
             if shows("Accounts", "account accounts add sign switch remove") {
                 accountsSection
             }
@@ -217,6 +221,19 @@ public struct SettingsView: View {
                         } icon: {
                             Image(systemName: AlohaSymbol.compose)
                         }
+                    }
+                    NavigationLink(value: Route.scheduledPosts) {
+                        Label {
+                            Text("Scheduled posts", comment: "Settings item")
+                        } icon: {
+                            Image(systemName: "clock")
+                        }
+                    }
+                    if let session = environment.activeSession,
+                        session.capabilities.isNextcloudSocial
+                    {
+                        AIContentFilterRow(session: session)
+                        BlueskySettingsRows(session: session)
                     }
                     if environment.activeSession?.capabilities.isNextcloudSocial == true {
                         // A post a moderator holds must never vanish without a
@@ -595,12 +612,55 @@ public struct SettingsView: View {
             ) {
                 Text("Return to where I was", comment: "Settings item")
             }
+
+            swipePicker(
+                Text(
+                    "Swipe right",
+                    comment: "Settings item: the action a swipe from the leading edge performs"),
+                selection: session.settings.leadingSwipeAction
+            ) { value in
+                Task { await session.updateSettings { $0.leadingSwipeAction = value } }
+            }
+            swipePicker(
+                Text(
+                    "Swipe left",
+                    comment: "Settings item: the action a swipe from the trailing edge performs"),
+                selection: session.settings.trailingSwipeAction
+            ) { value in
+                Task { await session.updateSettings { $0.trailingSwipeAction = value } }
+            }
         } header: {
             Text("Home feed", comment: "Settings section")
         } footer: {
             Text(
                 "Off, the new-posts pill disappears and every refresh scrolls to the top instead of holding your place.",
                 comment: "Home feed section explanation")
+        }
+    }
+
+    /// Mail's choice, for posts: which action a swipe from each edge
+    /// performs, or none. In a right-to-left language the edges swap, and
+    /// so does what "right" means here, because the list swaps them too.
+    private func swipePicker(
+        _ title: Text, selection: AccountSettings.SwipeAction,
+        onChange: @escaping @Sendable (AccountSettings.SwipeAction) -> Void
+    ) -> some View {
+        Picker(selection: Binding(get: { selection }, set: onChange)) {
+            ForEach(AccountSettings.SwipeAction.allCases, id: \.self) { action in
+                swipeActionTitle(action).tag(action)
+            }
+        } label: {
+            title
+        }
+    }
+
+    private func swipeActionTitle(_ action: AccountSettings.SwipeAction) -> Text {
+        switch action {
+        case .none: Text("Nothing", comment: "Swipe action setting: the edge does nothing")
+        case .reply: Text("Reply", comment: "Swipe action setting")
+        case .favourite: Text("Favourite", comment: "Swipe action setting")
+        case .boost: Text("Boost", comment: "Swipe action setting")
+        case .bookmark: Text("Bookmark", comment: "Swipe action setting")
         }
     }
 
@@ -655,9 +715,7 @@ public struct SettingsView: View {
                 selection: Binding(
                     get: { session.settings.notificationDeliveryMode },
                     set: { value in
-                        Task {
-                            await session.updateSettings { $0.notificationDeliveryMode = value }
-                        }
+                        updateDelivery(session) { $0.notificationDeliveryMode = value }
                     })
             ) {
                 Text("As they arrive", comment: "Notification delivery mode")
@@ -675,26 +733,28 @@ public struct SettingsView: View {
                             value: Binding(
                                 get: { session.settings.digestTimes[idx] },
                                 set: { value in
-                                    Task {
-                                        await session.updateSettings {
-                                            var times = $0.digestTimes
-                                            times[idx] = max(0, min(23, value))
-                                        }
+                                    // The edited copy has to be written back:
+                                    // it used to be dropped, so the stepper
+                                    // moved and the time never changed.
+                                    updateDelivery(session) { settings in
+                                        guard settings.digestTimes.indices.contains(idx)
+                                        else { return }
+                                        settings.digestTimes[idx] = max(0, min(23, value))
                                     }
                                 }),
                             in: 0...23
                         ) {
-                            Text("Digest \(idx + 1): \(session.settings.digestTimes[idx]):00", comment: "Digest schedule accessibility label")
+                            Text(
+                                "Digest \(idx + 1): \(session.settings.digestTimes[idx]):00",
+                                comment: "Digest schedule accessibility label")
                         }
                     }
 
                     Button {
-                        Task {
-                            await session.updateSettings { settings in
-                                if settings.digestTimes.count < 4 {
-                                    settings.digestTimes.append(
-                                        (settings.digestTimes.last ?? 8) + 2)
-                                }
+                        updateDelivery(session) { settings in
+                            if settings.digestTimes.count < 4 {
+                                settings.digestTimes.append(
+                                    min(23, (settings.digestTimes.last ?? 8) + 2))
                             }
                         }
                     } label: {
@@ -708,11 +768,9 @@ public struct SettingsView: View {
 
                     if session.settings.digestTimes.count > 1 {
                         Button(role: .destructive) {
-                            Task {
-                                await session.updateSettings { settings in
-                                    if settings.digestTimes.count > 1 {
-                                        settings.digestTimes.removeLast()
-                                    }
+                            updateDelivery(session) { settings in
+                                if settings.digestTimes.count > 1 {
+                                    settings.digestTimes.removeLast()
                                 }
                             }
                         } label: {
@@ -742,7 +800,12 @@ public struct SettingsView: View {
                         selection: Binding(
                             get: { session.settings.quietHoursStart ?? 22 },
                             set: { value in
-                                Task { await session.updateSettings { $0.quietHoursStart = value } }
+                                updateDelivery(session) { settings in
+                                    settings.quietHoursStart = value
+                                    // Quiet hours are a start and an end; one
+                                    // without the other is none at all.
+                                    if settings.quietHoursEnd == nil { settings.quietHoursEnd = 7 }
+                                }
                             })
                     ) {
                         ForEach(0..<24) { hour in
@@ -759,7 +822,12 @@ public struct SettingsView: View {
                         selection: Binding(
                             get: { session.settings.quietHoursEnd ?? 7 },
                             set: { value in
-                                Task { await session.updateSettings { $0.quietHoursEnd = value } }
+                                updateDelivery(session) { settings in
+                                    settings.quietHoursEnd = value
+                                    if settings.quietHoursStart == nil {
+                                        settings.quietHoursStart = 22
+                                    }
+                                }
                             })
                     ) {
                         ForEach(0..<24) { hour in
@@ -781,6 +849,17 @@ public struct SettingsView: View {
             Text(
                 "\"As they arrive\" is the default. \"In a digest\" batches notifications at your chosen hours; DMs and mentions from people you follow always break through.",
                 comment: "Notifications section explanation")
+        }
+    }
+
+    /// A notification setting, here and — on Aloha Social — on the server,
+    /// which delivers the Nextcloud notifications by the same schedule.
+    private func updateDelivery(
+        _ session: AccountSession, _ transform: @escaping @Sendable (inout AccountSettings) -> Void
+    ) {
+        Task {
+            await session.updateSettings(transform)
+            await session.pushNotificationDelivery()
         }
     }
 
@@ -877,11 +956,9 @@ extension SettingsView {
                     isOn: Binding(
                         get: { session.settings.showPopularityCounts },
                         set: { value in
-                            Task {
-                                await session.updateSettings {
-                                    $0.showPopularityCounts = value
-                                }
-                            }
+                            // On Aloha Social the switch is the server's too:
+                            // it hides counts by default, for every client.
+                            Task { await session.setShowsCounts(value) }
                         })
                 ) {
                     VStack(alignment: .leading, spacing: 2) {

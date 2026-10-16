@@ -85,10 +85,12 @@ struct StatusActionCoverageTests {
             .vote(pollID: "1", choices: [0]),
             .react(status: status, name: "👍", add: true),
             .report(status), .share(status), .translate(status), .edit(status),
-            .delete(status), .muteConversation(status), .block(account), .mute(account),
+            .delete(status), .redraft(status), .muteConversation(status), .block(account),
+            .mute(account),
             .archive(status), .pin(status), .dislike(status), .quote(status),
             .showDelivery(status), .showEditHistory(status), .quoteControls(status),
             .tagPeople(status), .addToCollection(status), .addToList(account),
+            .setReplyPolicy(status, .followers), .hideReply(status),
         ]
 
         for action in all {

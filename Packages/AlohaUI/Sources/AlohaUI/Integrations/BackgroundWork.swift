@@ -124,4 +124,11 @@ public enum WidgetReloader {
             WidgetCenter.shared.reloadAllTimelines()
         #endif
     }
+
+    /// One widget, after the app wrote what only that one reads.
+    public static func reload(kind: String) {
+        #if canImport(WidgetKit)
+            WidgetCenter.shared.reloadTimelines(ofKind: kind)
+        #endif
+    }
 }

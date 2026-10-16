@@ -31,6 +31,7 @@ public struct StoryComposerSheet: View {
     @State private var text = ""
     @State private var backgroundIndex = 0
     @State private var pickedItem: PhotosPickerItem?
+    @State private var isShowingCamera = false
     @State private var picture: CGImage?
     @State private var movie: URL?
     @State private var movieDuration: Double = 0
@@ -108,6 +109,14 @@ public struct StoryComposerSheet: View {
             .onChange(of: pickedItem) { _, item in
                 Task { await load(item) }
             }
+            #if os(iOS)
+                .fullScreenCover(isPresented: $isShowingCamera) {
+                    CameraCapture { captured in
+                        Task { await use(captured) }
+                    }
+                    .ignoresSafeArea()
+                }
+            #endif
         }
         #if os(macOS)
             .frame(minWidth: 520, minHeight: 640)
@@ -249,8 +258,48 @@ public struct StoryComposerSheet: View {
             }
             .buttonStyle(.plain)
             .disabled(isLoading)
+
+            #if os(iOS)
+                if CameraCapture.isAvailable {
+                    Button {
+                        isShowingCamera = true
+                    } label: {
+                        Label {
+                            Text("Take a photo or video", comment: "Story composer action")
+                        } icon: {
+                            Image(systemName: "camera")
+                        }
+                    }
+                    .alohaGlassButtonStyle()
+                    .disabled(isLoading)
+                }
+            #endif
         }
     }
+
+    #if os(iOS)
+        /// What the camera took, down the same road a picked item takes.
+        private func use(_ captured: CameraCapture.Captured) async {
+            errorMessage = nil
+            switch captured {
+            case .photo(let data):
+                guard let image = Self.decodeImage(data) else {
+                    errorMessage = String(
+                        localized: "That picture couldn't be read.",
+                        comment: "Story composer failure")
+                    return
+                }
+                picture = image
+                movie = nil
+                stickers = []
+            case .movie(let url):
+                movie = url
+                let seconds = (try? await AVURLAsset(url: url).load(.duration).seconds) ?? 0
+                movieDuration = seconds.isFinite ? seconds : 0
+                picture = nil
+            }
+        }
+    #endif
 
     private func pictureEditor(_ picture: CGImage) -> some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space3) {

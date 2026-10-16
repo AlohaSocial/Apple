@@ -65,7 +65,7 @@ public struct TagPeopleSheet: View {
                         .foregroundStyle(palette.destructive)
                         if !hasLoaded {
                             Button("Try again") { Task { await loadExisting() } }
-                                .buttonStyle(.glass)
+                                .alohaGlassButtonStyle()
                                 .disabled(isLoading)
                         }
                     }

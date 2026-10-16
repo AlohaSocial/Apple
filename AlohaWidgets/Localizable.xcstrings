@@ -11,6 +11,28 @@
         }
       }
     },
+    "Favourite" : {
+      "comment" : "Widget intent parameter\nWidget button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favorisieren"
+          }
+        }
+      }
+    },
+    "Favourite a post" : {
+      "comment" : "Widget intent title, not shown in the widget itself",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen Beitrag favorisieren"
+          }
+        }
+      }
+    },
     "Handle" : {
       "localizations" : {
         "de" : {
@@ -43,6 +65,39 @@
         }
       }
     },
+    "New post" : {
+      "comment" : "Control Center control\nQuick compose widget",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Beitrag"
+          }
+        }
+      }
+    },
+    "New story" : {
+      "comment" : "Control Center control",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Story"
+          }
+        }
+      }
+    },
+    "Nothing from this day yet." : {
+      "comment" : "Empty memories widget",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von diesem Tag gibt es noch nichts."
+          }
+        }
+      }
+    },
     "Nothing yet" : {
       "comment" : "Empty widget",
       "localizations" : {
@@ -54,6 +109,83 @@
         }
       }
     },
+    "On this day" : {
+      "comment" : "Widget name\nMemories widget heading",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An diesem Tag"
+          }
+        }
+      }
+    },
+    "Open the composer." : {
+      "comment" : "Control Center control description\nWidget description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Editor für einen neuen Beitrag."
+          }
+        }
+      }
+    },
+    "Open the story composer." : {
+      "comment" : "Control Center control description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Editor für eine neue Story."
+          }
+        }
+      }
+    },
+    "Post" : {
+      "comment" : "Widget intent parameter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitrag"
+          }
+        }
+      }
+    },
+    "Posted" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gepostet"
+          }
+        }
+      }
+    },
+    "Posting…" : {
+      "comment" : "Live Activity title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird gepostet …"
+          }
+        }
+      }
+    },
+    "Ready to post" : {
+      "comment" : "Live Activity title, uploads done and waiting for Post",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereit zum Posten"
+          }
+        }
+      }
+    },
     "Recent posts from your home timeline." : {
       "comment" : "Widget description",
       "localizations" : {
@@ -61,6 +193,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktuelle Beiträge von deiner Startseite."
+          }
+        }
+      }
+    },
+    "Unfavourite" : {
+      "comment" : "Widget button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr favorisieren"
           }
         }
       }
@@ -87,17 +230,6 @@
         }
       }
     },
-    "Upload finished" : {
-      "comment" : "Live Activity title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hochladen abgeschlossen"
-          }
-        }
-      }
-    },
     "Uploading media" : {
       "comment" : "Live Activity title",
       "localizations" : {
@@ -109,12 +241,34 @@
         }
       }
     },
+    "What you posted on this day in earlier years." : {
+      "comment" : "Widget description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was du an diesem Tag in früheren Jahren gepostet hast."
+          }
+        }
+      }
+    },
     "Which account to show." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Welches Konto angezeigt wird."
+          }
+        }
+      }
+    },
+    "Your server is processing the video" : {
+      "comment" : "Live Activity title, while the server transcodes an upload",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server verarbeitet das Video"
           }
         }
       }

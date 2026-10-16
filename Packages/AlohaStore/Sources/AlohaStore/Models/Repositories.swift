@@ -39,7 +39,7 @@ public actor SupportStore {
         ).first?.lastReadID
     }
 
-    static func isNewer(_ candidate: String, than current: String) -> Bool {
+    public static func isNewer(_ candidate: String, than current: String) -> Bool {
         if candidate.count != current.count { return candidate.count > current.count }
         return candidate > current
     }
@@ -159,6 +159,10 @@ public actor SupportStore {
         record.idempotencyKey = snapshot.idempotencyKey
         record.threadIndex = snapshot.threadIndex
         record.threadGroupID = snapshot.threadGroupID
+        record.quotedID = snapshot.quotedID
+        record.quotePolicy = snapshot.quotePolicy
+        record.threadSegments = snapshot.threadSegments
+        record.lastSendError = snapshot.lastSendError
         record.updatedAt = Date()
 
         try modelContext.save()
@@ -167,6 +171,17 @@ public actor SupportStore {
 
     public func deleteDraft(id: UUID) throws {
         try modelContext.delete(model: DraftRecord.self, where: #Predicate { $0.id == id })
+        try modelContext.save()
+    }
+
+    /// Takes a draft off the send queue and says why, so it waits in Drafts
+    /// with everything intact rather than being retried forever: what the
+    /// server refused once it will refuse again (docs/07 §7).
+    public func markSendFailed(id: UUID, message: String) throws {
+        let descriptor = FetchDescriptor<DraftRecord>(predicate: #Predicate { $0.id == id })
+        guard let record = try modelContext.fetch(descriptor).first else { return }
+        record.queuedForSend = false
+        record.lastSendError = message
         try modelContext.save()
     }
 
@@ -253,6 +268,11 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
     public var queuedForSend: Bool
     public var threadIndex: Int
     public var threadGroupID: UUID?
+    public var quotedID: String?
+    public var quotePolicy: String?
+    public var threadSegments: [String]
+    /// Why the send queue gave up on this draft, shown in Drafts.
+    public var lastSendError: String?
     public var updatedAt: Date
 
     public init(
@@ -262,7 +282,8 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
         pollOptions: [String] = [], pollExpiresIn: Int? = nil, pollMultiple: Bool = false,
         scheduledAt: Date? = nil, idempotencyKey: String = UUID().uuidString,
         queuedForSend: Bool = false, threadIndex: Int = 0, threadGroupID: UUID? = nil,
-        updatedAt: Date = Date()
+        quotedID: String? = nil, quotePolicy: String? = nil, threadSegments: [String] = [],
+        lastSendError: String? = nil, updatedAt: Date = Date()
     ) {
         self.id = id
         self.accountID = accountID
@@ -282,6 +303,10 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
         self.queuedForSend = queuedForSend
         self.threadIndex = threadIndex
         self.threadGroupID = threadGroupID
+        self.quotedID = quotedID
+        self.quotePolicy = quotePolicy
+        self.threadSegments = threadSegments
+        self.lastSendError = lastSendError
         self.updatedAt = updatedAt
     }
 
@@ -295,12 +320,17 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
             pollExpiresIn: record.pollExpiresIn, pollMultiple: record.pollMultiple,
             scheduledAt: record.scheduledAt, idempotencyKey: record.idempotencyKey,
             queuedForSend: record.queuedForSend, threadIndex: record.threadIndex,
-            threadGroupID: record.threadGroupID, updatedAt: record.updatedAt)
+            threadGroupID: record.threadGroupID, quotedID: record.quotedID,
+            quotePolicy: record.quotePolicy, threadSegments: record.threadSegments,
+            lastSendError: record.lastSendError, updatedAt: record.updatedAt)
     }
 
+    /// A quote with nothing typed is still a post: the quoted card is the
+    /// content.
     public var isEmpty: Bool {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && uploadedMediaIDs.isEmpty && localMediaPaths.isEmpty && pollOptions.isEmpty
+            && quotedID == nil
     }
 }
 

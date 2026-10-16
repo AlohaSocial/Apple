@@ -2,8 +2,9 @@
 
 import SwiftUI
 
-#if os(macOS) || os(iOS)
-    /// The app's menu bar, shared by every target with a menu bar.
+#if os(macOS) || os(iOS) || os(visionOS)
+    /// The app's menu bar, shared by every target with a menu bar — and the
+    /// keyboard shortcuts of a visionOS window, which has none to show them in.
     ///
     /// The Mac app had its own `MacCommands` and the iPhone/iPad app had a
     /// smaller local copy — two definitions of what "New Post" means, and
@@ -11,61 +12,182 @@ import SwiftUI
     /// the windowing menu bar. One struct, used by both apps, so the menu bar
     /// cannot disagree with itself (docs/09 §10).
     ///
-    /// Everything here goes through the same notifications the deep links use:
-    /// the composer request the quick-compose widget posts, and the route
-    /// notification Handoff posts. A menu item is an entry point like any
-    /// other, so it behaves like the others — including doing nothing graceful
-    /// while signed out, where the shell guards both.
+    /// Each item acts on the window in front, through the focused values the
+    /// shell and the timeline publish (`ShellCommands`, `TimelineCommands`).
+    /// With no window to act on — every window closed on the Mac — the
+    /// app-wide items fall back to the notifications the deep links use, which
+    /// the shell guards while signed out.
     public struct AlohaCommands: Commands {
+        @FocusedValue(\.shellCommands) private var shell
+        @FocusedValue(\.timelineCommands) private var timeline
+        @Environment(\.openWindow) private var openWindow
+
         public init() {}
 
         public var body: some Commands {
+            // Replacing the group takes File > New Window with it, so it is
+            // put back — on ⌥⌘N, the way Mail pairs New Message with New
+            // Viewer Window, because ⌘N is the post.
             CommandGroup(replacing: .newItem) {
                 Button {
-                    NotificationCenter.default.post(
-                        name: RouteResolver.composeRequested, object: nil)
+                    if let shell {
+                        shell.compose()
+                    } else {
+                        NotificationCenter.default.post(
+                            name: RouteResolver.composeRequested, object: nil)
+                    }
                 } label: {
                     Text("New Post", comment: "Menu item")
                 }
                 .keyboardShortcut("n", modifiers: .command)
+
+                Button {
+                    openWindow(id: AlohaWindow.main)
+                } label: {
+                    Text("New Window", comment: "Menu item")
+                }
+                .keyboardShortcut("n", modifiers: [.command, .option])
             }
 
-            CommandMenu("Timeline") {
+            CommandMenu(Text("Go", comment: "Menu title")) {
                 Button {
-                    openRoute(.notifications)
+                    shell?.back()
+                } label: {
+                    Text("Back", comment: "Menu item")
+                }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(shell?.canGoBack != true)
+
+                Divider()
+
+                Button {
+                    open(.timeline(.home()))
+                } label: {
+                    Text("Home", comment: "Menu item")
+                }
+                .keyboardShortcut("h", modifiers: [.command, .shift])
+
+                Button {
+                    open(.notifications)
                 } label: {
                     Text("Notifications", comment: "Menu item")
                 }
                 .keyboardShortcut("1", modifiers: .command)
 
                 Button {
-                    openRoute(.explore)
+                    open(.explore)
                 } label: {
                     Text("Discover", comment: "Menu item")
                 }
                 .keyboardShortcut("2", modifiers: .command)
 
                 Button {
-                    openRoute(.conversations)
+                    open(.conversations)
                 } label: {
                     Text("Messages", comment: "Menu item")
                 }
                 .keyboardShortcut("3", modifiers: .command)
+
+                Button {
+                    open(.search(query: nil))
+                } label: {
+                    Text("Search", comment: "Menu item")
+                }
+                .keyboardShortcut("f", modifiers: .command)
+            }
+
+            CommandMenu(Text("Timeline", comment: "Menu title")) {
+                Button {
+                    timeline?.refresh()
+                } label: {
+                    Text("Refresh", comment: "Menu item")
+                }
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(timeline == nil)
+
+                Divider()
+
+                Button {
+                    timeline?.move(1)
+                } label: {
+                    Text("Next Post", comment: "Menu item")
+                }
+                .timelineKey("j")
+                .disabled(timeline == nil)
+
+                Button {
+                    timeline?.move(-1)
+                } label: {
+                    Text("Previous Post", comment: "Menu item")
+                }
+                .timelineKey("k")
+                .disabled(timeline == nil)
+
+                Divider()
+
+                postAction(.favourite, key: "l") {
+                    Text("Favourite", comment: "Menu item: the post in focus")
+                }
+                postAction(.boost, key: "b") {
+                    Text("Boost", comment: "Menu item: the post in focus")
+                }
+                postAction(.reply, key: "r") {
+                    Text("Reply", comment: "Menu item: the post in focus")
+                }
+                postAction(.open, key: "o") {
+                    Text("Open Post", comment: "Menu item: the post in focus")
+                }
             }
 
             CommandGroup(replacing: .help) {
-                Link(
-                    destination: URL(
-                        string: "https://github.com/AlohaSocial/Apple/discussions")!
-                ) {
-                    Text("Aloha Social on GitHub", comment: "Menu item")
+                if let discussions = URL(string: "https://github.com/AlohaSocial/Apple/discussions")
+                {
+                    Link(destination: discussions) {
+                        Text("Aloha Social on GitHub", comment: "Menu item")
+                    }
                 }
             }
         }
 
-        private func openRoute(_ route: Route) {
-            NotificationCenter.default.post(
-                name: .alohaOpenRoute, object: nil, userInfo: ["route": route])
+        private func postAction(
+            _ action: TimelineCommands.Action, key: KeyEquivalent, label: () -> Text
+        ) -> some View {
+            Button {
+                timeline?.act(action)
+            } label: {
+                label()
+            }
+            .timelineKey(key)
+            .disabled(timeline?.hasFocusedPost != true)
+        }
+
+        private func open(_ route: Route) {
+            if let shell {
+                shell.open(route)
+            } else {
+                NotificationCenter.default.post(
+                    name: .alohaOpenRoute, object: nil, userInfo: ["route": route])
+            }
+        }
+    }
+
+    extension View {
+        /// The timeline's single keys, as the web has them, on the iPad's
+        /// menu bar, where a menu item is how a hardware keyboard reaches a
+        /// list that is not focusable (see `TimelineKeyboardModifier`). Text
+        /// input keeps priority over a modifier-less key command, so typing a
+        /// "j" into the composer is still a "j".
+        ///
+        /// Not on the Mac: there the focused list takes the keys itself, and a
+        /// menu equivalent with no modifier would fire from inside text
+        /// fields.
+        @ViewBuilder
+        fileprivate func timelineKey(_ key: KeyEquivalent) -> some View {
+            #if os(iOS)
+                keyboardShortcut(key, modifiers: [])
+            #else
+                self
+            #endif
         }
     }
 #endif

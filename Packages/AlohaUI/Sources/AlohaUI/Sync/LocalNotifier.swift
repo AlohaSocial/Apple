@@ -60,7 +60,12 @@ public struct LocalNotifier: Sendable {
         showAccountName: Bool
     ) async -> [String] {
         let enabled = session.settings.localNotificationKinds
-        let eligible = notifications.filter { enabled.contains($0.kind.rawValue) }
+        // What the Focus filters out is held, as quiet hours hold it: not
+        // reported as announced, so it comes through once the Focus ends.
+        let focus = FocusFilterState.current
+        let eligible = notifications.filter {
+            enabled.contains($0.kind.rawValue) && focus.allows(kind: $0.kind, accountID: session.id)
+        }
         let authorization = await center.notificationSettings().authorizationStatus
         guard authorization == .authorized || authorization == .provisional else {
             return eligible.map(\.serverID)
@@ -189,6 +194,7 @@ public struct LocalNotifier: Sendable {
         // does not interrupt: it is the day's mail, not a message.
         content.sound = nil
         content.interruptionLevel = .passive
+        content.filterCriteria = session.id.uuidString
         content.userInfo = [
             "accountID": session.id.uuidString,
             "digestCounts": totals,
@@ -260,6 +266,9 @@ public struct LocalNotifier: Sendable {
         content.interruptionLevel =
             notification.kind == NotificationKind.mention ? .active : .passive
         content.threadIdentifier = payload?.statusID ?? notification.serverID
+        // What a Focus filter's predicate matches: a Focus that keeps the app
+        // on one account lets only that account's notifications through.
+        content.filterCriteria = session.id.uuidString
         content.userInfo = [
             "accountID": session.id.uuidString,
             "statusID": payload?.statusID ?? "",

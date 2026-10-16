@@ -13,6 +13,7 @@ import SwiftUI
 /// Media, Videos, Albums and Tagged — all on one scrolling page (docs/05 §5).
 public struct ProfileView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let accountID: String
     private let session: AccountSession
@@ -33,6 +34,9 @@ public struct ProfileView: View {
     @State private var isConfirmingDomainBlock = false
     @State private var isConfirmingRemoveFollower = false
     @State private var playingStoriesFrom: Int?
+    /// A local account's Bluesky handle, which only the server's own account
+    /// route attaches (`/api/v1/account/{username}/info`).
+    @State private var localBluesky: BlueskyAccountReference?
 
     enum Tab: String, CaseIterable, Identifiable {
         case posts, replies, media, videos, albums, tagged
@@ -167,7 +171,7 @@ public struct ProfileView: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .glassEffect(
+                    .alohaGlassEffect(
                         .regular.tint(tab == option ? palette.accent : nil).interactive(),
                         in: Capsule()
                     )
@@ -270,11 +274,14 @@ public struct ProfileView: View {
                                     .accessibilityLabel(
                                         Text("Automated account", comment: "Bot badge"))
                             }
+                            if let verification = account.verification {
+                                verificationBadge(verification)
+                            }
                         }
-                        Text(account.qualifiedHandle(localHost: session.snapshot.instanceHost))
-                            .font(.subheadline)
-                            .foregroundStyle(palette.secondaryLabel)
-                            .textSelection(.enabled)
+                        handleLine(account)
+                        if let bluesky = account.bluesky ?? localBluesky, bluesky.isShowable {
+                            blueskyLine(bluesky)
+                        }
                     }
                     Spacer()
                     if isOwn {
@@ -297,6 +304,18 @@ public struct ProfileView: View {
                     ) { link in onAction(.followLink(link)) }
                 }
 
+                if let supportLink = account.supportLink {
+                    Link(destination: supportLink) {
+                        Label {
+                            Text("Support \(account.bestDisplayName)", comment: "Profile action")
+                        } icon: {
+                            Image(systemName: "heart.circle")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
                 if !account.fields.isEmpty { fieldsTable(account) }
 
                 if let note = relationship?.note, !note.isEmpty { privateNote(note) }
@@ -308,6 +327,67 @@ public struct ProfileView: View {
             .padding(.horizontal, AlohaMetrics.space4)
         }
         .padding(.bottom, AlohaMetrics.space2)
+    }
+
+    /// The handle, and the pronouns beside it — Aloha Social sends them as
+    /// their own field so a client does not have to know which spellings of
+    /// "Pronouns" a profile row might use.
+    private func handleLine(_ account: Account) -> some View {
+        HStack(spacing: AlohaMetrics.space1) {
+            Text(account.qualifiedHandle(localHost: session.snapshot.instanceHost))
+                .textSelection(.enabled)
+            if let pronouns = account.pronouns {
+                Text(verbatim: "·").accessibilityHidden(true)
+                Text(pronouns)
+                    .accessibilityLabel(
+                        Text("Pronouns: \(pronouns)", comment: "Profile pronouns"))
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(palette.secondaryLabel)
+        .lineLimit(1)
+    }
+
+    /// This instance's verification: who it is in the name of, said in the
+    /// label rather than only drawn, because a seal alone says nothing.
+    private func verificationBadge(_ verification: AccountVerification) -> some View {
+        Image(systemName: "checkmark.seal.fill")
+            .font(.caption)
+            .foregroundStyle(palette.accent)
+            .accessibilityLabel(
+                verification.by.isEmpty
+                    ? Text("Verified", comment: "Verified account badge")
+                    : Text(
+                        "Verified by \(verification.by)", comment: "Verified account badge")
+            )
+            .help(
+                verification.by.isEmpty
+                    ? Text("Verified", comment: "Verified account badge")
+                    : Text(
+                        "Verified by \(verification.by)", comment: "Verified account badge"))
+    }
+
+    private func blueskyLine(_ bluesky: BlueskyAccountReference) -> some View {
+        let label = Label {
+            Text(bluesky.displayHandle)
+                .textSelection(.enabled)
+        } icon: {
+            Image(systemName: "antenna.radiowaves.left.and.right")
+        }
+        .font(.caption)
+        .foregroundStyle(palette.secondaryLabel)
+        .lineLimit(1)
+        .accessibilityLabel(
+            Text("On Bluesky as \(bluesky.displayHandle)", comment: "Profile Bluesky handle"))
+
+        return Group {
+            if let url = bluesky.url {
+                Link(destination: url) { label }
+                    .buttonStyle(.plain)
+            } else {
+                label
+            }
+        }
     }
 
     /// The ring is the same signal it is in Photos: an unseen story is bright,
@@ -712,18 +792,28 @@ public struct ProfileView: View {
             Button {
                 Task { await toggleFollow() }
             } label: {
-                if relationship?.following == true {
-                    Text("Following", comment: "Profile action")
-                } else if relationship?.requested == true {
-                    Text("Requested", comment: "Profile action")
-                } else {
-                    Text("Follow", comment: "Profile action")
+                Label {
+                    if relationship?.following == true {
+                        Text("Following", comment: "Profile action")
+                    } else if relationship?.requested == true {
+                        Text("Requested", comment: "Profile action")
+                    } else {
+                        Text("Follow", comment: "Profile action")
+                    }
+                } icon: {
+                    // The glyph says the state as well as the word, and moves
+                    // from one to the next as the symbol's own transition.
+                    Image(systemName: followSymbol)
+                        .contentTransition(.symbolEffect(.replace))
                 }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
+            .animation(reduceMotion ? nil : .snappy, value: followSymbol)
+            .sensoryFeedback(.success, trigger: relationship?.following == true) { _, new in new }
 
             Menu {
+                OpenInNewWindowButton(.profile(accountID: account.id))
                 if relationship?.following == true {
                     // Nextcloud Social enforces this as a predicate of the
                     // timeline query rather than by filtering a page.
@@ -867,6 +957,14 @@ public struct ProfileView: View {
         if session.capabilities.isNextcloudSocial {
             highlights = try? await session.client.decode(
                 ProfileHighlights.self, from: Endpoint.profile.highlights(accountID))
+            // A local account's Bluesky handle is on the server's own account
+            // route only. A remote acct carries a host and has none to give.
+            if let account, account.bluesky == nil, !account.acct.contains("@") {
+                localBluesky =
+                    (try? await session.client.decode(
+                        Account.self,
+                        from: .socialExtras.accountInfo(username: account.username)))?.bluesky
+            }
         }
         if !isOwn {
             familiar =
@@ -888,6 +986,12 @@ public struct ProfileView: View {
                     LossyArray<Collection>.self, from: Endpoint.collections.forAccount(accountID)))?
                 .elements ?? []
         }
+    }
+
+    private var followSymbol: String {
+        if relationship?.following == true { return "checkmark" }
+        if relationship?.requested == true { return "clock" }
+        return "person.badge.plus"
     }
 
     private func toggleFollow() async {

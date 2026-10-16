@@ -230,3 +230,50 @@ struct AddedEndpointTests {
         #expect(Endpoint.timelines.deleteConversation("5").path == "api/v1/conversations/5")
     }
 }
+
+@Suite("Composer form encoding")
+struct ComposerFormTests {
+
+    @Test("Who may quote goes out under the name both servers read")
+    func quoteApprovalPolicy() {
+        var draft = StatusPost(text: "Hi")
+        draft.quotePolicy = "followers"
+        let endpoint = Endpoint.composing.post(draft)
+        #expect(value(endpoint, "quote_approval_policy") == "followers")
+        // The old name was read by nobody; sending it too would only hide a
+        // regression back to it.
+        #expect(value(endpoint, "quote_policy") == nil)
+    }
+
+    @Test("An edit carries media_attributes, each attachment opened by its id")
+    func mediaAttributes() {
+        var draft = StatusPost(text: "Edited", mediaIDs: ["7", "8"])
+        draft.mediaAttributes = [
+            .init(id: "7", description: "A red door", focus: "0.5,-0.25"),
+            .init(id: "8", description: nil),
+        ]
+        let items = formItems(Endpoint.composing.edit("42", draft))
+            .filter { $0.name.hasPrefix("media_attributes") }
+        #expect(
+            items.map(\.name) == [
+                "media_attributes[][id]", "media_attributes[][description]",
+                "media_attributes[][focus]", "media_attributes[][id]",
+            ])
+        #expect(items.map(\.value) == ["7", "A red door", "0.5,-0.25", "8"])
+    }
+
+    @Test("A new post sends no media_attributes")
+    func noAttributesByDefault() {
+        let endpoint = Endpoint.composing.post(StatusPost(text: "Hi", mediaIDs: ["7"]))
+        #expect(!formItems(endpoint).contains { $0.name.hasPrefix("media_attributes") })
+    }
+
+    @Test("Rescheduling is a PUT of the new time to the scheduled post")
+    func reschedule() throws {
+        let date = try #require(DateParsing.parse("2026-11-01T09:30:00.000Z"))
+        let endpoint = Endpoint.composing.reschedule("12", to: date)
+        #expect(endpoint.method == .put)
+        #expect(endpoint.path == "api/v1/scheduled_statuses/12")
+        #expect(value(endpoint, "scheduled_at").flatMap(DateParsing.parse) == date)
+    }
+}

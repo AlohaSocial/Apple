@@ -135,6 +135,13 @@ public struct MediaGrid: View {
         }
         .buttonStyle(.plain)
         .mediaTransitionSource(id: attachment.id, in: mediaTransition)
+        // A still picture drags out as itself; video and covered media do
+        // not, the second because hiding it is the point of the cover.
+        .modifier(
+            ImageDragSource(
+                url: attachment.type == .image && !(shouldCover && !isRevealed)
+                    ? attachment.url : nil)
+        )
         .accessibilityLabel(
             attachment.description.map { Text($0) }
                 ?? Text("Media without a description", comment: "Accessibility label")

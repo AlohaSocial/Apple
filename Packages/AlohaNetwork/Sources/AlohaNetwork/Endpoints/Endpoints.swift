@@ -127,6 +127,15 @@ extension Endpoint {
             case .trending:
                 return Endpoint(
                     path: "api/v1/trends/statuses", query: items, requiresAuthentication: false)
+            case .bluesky(let uri):
+                // `#[NoAdminRequired]` without `#[PublicPage]`: a Nextcloud
+                // session, not the Social token (AtprotoFeedsController). The
+                // route pages by `max_id` only and takes no narrowing.
+                return Endpoint(
+                    path: "api/v1/timelines/bluesky",
+                    query: [URLQueryItem(name: "feed", value: uri)]
+                        + pageItems(limit: limit, anchor: anchor),
+                    authentication: .nextcloudSession)
             default:
                 let segment = source.pathSegment ?? "home"
                 return Endpoint(
@@ -136,7 +145,10 @@ extension Endpoint {
         }
 
         private static func filterItems(_ filters: TimelineFilters) -> [URLQueryItem] {
-            if filters.onlyVideo { return [URLQueryItem(name: "only_video", value: "true")] }
+            if filters.onlyVideo {
+                return [URLQueryItem(name: "only_video", value: "true")]
+                    + .flag("only_short", filters.onlyShort)
+            }
             var items: [URLQueryItem] = []
             items += .flag("only_media", filters.onlyMedia)
             items += .flag("only_news", filters.onlyNews)
@@ -691,6 +703,14 @@ extension Endpoint {
                 body: .multipart(Multipart(parts: parts)))
         }
 
+        /// One attachment. A reopened draft gets its previews back this way —
+        /// a 404 means the server has already swept an upload that was never
+        /// attached — and the upload activity sees whether processing is done:
+        /// Mastodon answers 206 with a null `url` until it is.
+        public static func attachment(_ id: String) -> Endpoint {
+            Endpoint(path: "api/v1/media/\(id)")
+        }
+
         public static func updateDescription(_ id: String, description: String) -> Endpoint {
             Endpoint(
                 method: .put, path: "api/v1/media/\(id)",
@@ -723,6 +743,13 @@ extension Endpoint {
         public static var scheduled: Endpoint { Endpoint(path: "api/v1/scheduled_statuses") }
         public static func deleteScheduled(_ id: String) -> Endpoint {
             Endpoint(method: .delete, path: "api/v1/scheduled_statuses/\(id)")
+        }
+        /// Moves a waiting post to another time. The five-minute floor applies
+        /// again, so a 422 here is the server saying the new time is too soon.
+        public static func reschedule(_ id: String, to date: Date) -> Endpoint {
+            Endpoint(
+                method: .put, path: "api/v1/scheduled_statuses/\(id)",
+                body: .form([URLQueryItem(name: "scheduled_at", value: DateParsing.format(date))]))
         }
     }
 
@@ -822,12 +849,32 @@ public struct StatusPost: Sendable, Hashable {
     /// Generated when the composer opened and regenerated only when content
     /// changes. This is what makes retry-on-timeout safe (docs/07 §5).
     public var idempotencyKey: String
+    /// Descriptions and focal points for attachments already on the post,
+    /// sent with an edit. Once media is attached, `PUT /api/v1/media/{id}` is
+    /// refused ("edit the post with media_attributes to change it"), so this
+    /// is the only way an alt text can be corrected after posting (docs/07 §8).
+    public var mediaAttributes: [MediaAttribute] = []
+
+    public struct MediaAttribute: Sendable, Hashable {
+        public var id: String
+        public var description: String?
+        /// "x,y" in −1…1, the form Mastodon's `focus` takes.
+        public var focus: String?
+
+        public init(id: String, description: String?, focus: String? = nil) {
+            self.id = id
+            self.description = description
+            self.focus = focus
+        }
+    }
 
     // Nextcloud Social extras. All optional; a stock server ignores them.
     /// The post being quoted.
     public var quotedID: String?
     /// Who may quote the new post: `public`, `followers` or `nobody`.
     public var quotePolicy: String?
+    /// Who may reply to the new post (Aloha Social's `reply_policy`).
+    public var replyPolicy: ReplyPolicy?
     /// A place the server already knows.
     public var placeID: String?
     /// A place it does not: name and country make one.
@@ -849,7 +896,7 @@ public struct StatusPost: Sendable, Hashable {
         mediaIDs: [String] = [], pollOptions: [String] = [], pollExpiresIn: Int? = nil,
         pollMultiple: Bool = false, pollHideTotals: Bool = false, scheduledAt: Date? = nil,
         idempotencyKey: String = UUID().uuidString,
-        quotedID: String? = nil, quotePolicy: String? = nil,
+        quotedID: String? = nil, quotePolicy: String? = nil, replyPolicy: ReplyPolicy? = nil,
         placeID: String? = nil, placeName: String? = nil, placeCountry: String? = nil,
         placeLatitude: Double? = nil, placeLongitude: Double? = nil,
         postAs: String? = nil, videoTitle: String? = nil, videoCategory: String? = nil,
@@ -857,6 +904,7 @@ public struct StatusPost: Sendable, Hashable {
     ) {
         self.quotedID = quotedID
         self.quotePolicy = quotePolicy
+        self.replyPolicy = replyPolicy
         self.placeID = placeID
         self.placeName = placeName
         self.placeCountry = placeCountry
@@ -892,6 +940,13 @@ public struct StatusPost: Sendable, Hashable {
         items += .optional("language", language)
         items += .optional("in_reply_to_id", inReplyToID)
         items += .repeated("media_ids", mediaIDs)
+        // Each attachment opens with its id: PHP and Rails both group the
+        // `[]` entries that follow an id into that attachment.
+        for attribute in mediaAttributes {
+            items.append(URLQueryItem(name: "media_attributes[][id]", value: attribute.id))
+            items += .optional("media_attributes[][description]", attribute.description)
+            items += .optional("media_attributes[][focus]", attribute.focus)
+        }
 
         // A poll and media are mutually exclusive, as Mastodon requires.
         if !pollOptions.isEmpty && mediaIDs.isEmpty {
@@ -912,7 +967,11 @@ public struct StatusPost: Sendable, Hashable {
         // knows neither ignores both.
         items += .optional("quoted_id", quotedID)
         items += .optional("quote_id", quotedID)
-        items += .optional("quote_policy", quotePolicy)
+        // The server reads `quote_approval_policy`, Mastodon 4.5's own name
+        // (`Status::import`); `quote_policy`, which this sent before, was
+        // read by nothing and every new post fell back to the default.
+        items += .optional("quote_approval_policy", quotePolicy)
+        items += .optional("reply_policy", replyPolicy?.rawValue)
         if let placeID {
             items.append(URLQueryItem(name: "place_id", value: placeID))
         } else if let placeName, !placeName.isEmpty {

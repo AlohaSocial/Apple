@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import SwiftUI
+import TipKit
 
 /// Keep the feed unobstructed until the person scrolls. A toolbar menu
 /// remains available on empty feeds and for keyboard/accessibility users.
@@ -78,13 +79,18 @@ struct TimelineSourceToggle: View {
     ]
 
     var body: some View {
-        GlassEffectContainer(spacing: 4) {
+        AlohaGlassContainer(spacing: 4) {
             HStack(spacing: 4) {
                 ForEach(Self.options, id: \.source) { option in
                     button(for: option.source, title: Text(option.title))
                 }
             }
         }
+        #if !os(tvOS) && !os(watchOS)
+            // Said the first time the switch appears, which is when there is
+            // something to point at.
+            .popoverTip(TimelineSourceTip(), arrowEdge: .bottom)
+        #endif
         .padding(.bottom, AlohaMetrics.space2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Timeline source", comment: "Accessibility label"))
@@ -93,6 +99,7 @@ struct TimelineSourceToggle: View {
     private func button(for option: TimelineSource, title: Text) -> some View {
         let isSelected = source == option
         return Button {
+            TimelineSourceTip().invalidate(reason: .actionPerformed)
             if reduceMotion {
                 source = option
             } else {
@@ -107,11 +114,11 @@ struct TimelineSourceToggle: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .glassEffect(
+        .alohaGlassEffect(
             .regular.tint(isSelected ? palette.accent : nil).interactive(),
             in: Capsule()
         )
-        .glassEffectID(option, in: indicator)
+        .alohaGlassEffectID(option, in: indicator)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

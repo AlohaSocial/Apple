@@ -48,28 +48,70 @@ struct PostsEntry: WidgetKit.TimelineEntry {
 
 struct WidgetPost: Identifiable, Hashable {
     let id: String
+    /// The local account the post was read with: its link and its heart act
+    /// under that account, whichever one the app has active.
+    let accountID: UUID
     let author: String
     let handle: String
     let text: String
     let createdAt: Date
+    let favourited: Bool
+
+    var linkURL: URL? { WidgetData.statusURL(accountID: accountID, statusID: id) }
 }
 
 /// A mention, as a widget row: who said it, what they said, and the post it
 /// points at so a tap opens the thread rather than the notifications screen.
 struct WidgetMention: Identifiable, Hashable {
     let id: String
+    let accountID: UUID
     let author: String
     let handle: String
     let text: String
     let createdAt: Date
     let statusID: String?
+    let favourited: Bool
 
     /// A row without a status has nowhere to open — a mention whose post has
     /// since been deleted is still worth reading, but the link cannot point at
     /// nothing.
     var linkURL: URL? {
-        guard let statusID else { return nil }
-        return URL(string: "alohasocial://status/0/\(statusID)")
+        statusID.flatMap { WidgetData.statusURL(accountID: accountID, statusID: $0) }
+    }
+}
+
+/// The heart on a row: favourites the post from the widget itself, without
+/// opening the app (`FavouriteFromWidgetIntent`).
+struct FavouriteButton: View {
+    @Environment(\.alohaPalette) private var palette
+
+    let accountID: UUID
+    let statusID: String
+    let favourited: Bool
+
+    var body: some View {
+        Button(
+            intent: FavouriteFromWidgetIntent(
+                accountID: accountID, statusID: statusID, favourite: !favourited)
+        ) {
+            // The app's own heart and amber, with the fill as the shape
+            // change that does not rely on colour (docs/12 §3).
+            Image(systemName: favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
+                .font(.caption)
+                // Hierarchical grey rather than a palette role: the widget's
+                // environment carries the default light palette even on a
+                // dark Home Screen.
+                .foregroundStyle(
+                    favourited ? AnyShapeStyle(palette.favourite) : AnyShapeStyle(.secondary)
+                )
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            favourited
+                ? Text("Unfavourite", comment: "Widget button")
+                : Text("Favourite", comment: "Widget button"))
     }
 }
 
@@ -152,29 +194,39 @@ struct LatestPostsView: View {
     }
 
     private func postRow(_ post: WidgetPost) -> some View {
-        Link(destination: URL(string: "alohasocial://status/0/\(post.id)")!) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text(post.author)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tint)
-                        .lineLimit(1)
-                        .widgetAccentable()
-                    Spacer(minLength: 0)
-                    Text(
-                        post.createdAt,
-                        format: .relative(presentation: .numeric, unitsStyle: .narrow)
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                }
-                Text(post.text)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(family == .systemSmall ? 4 : 2)
+        HStack(alignment: .top, spacing: 2) {
+            if let url = post.linkURL {
+                Link(destination: url) { postText(post) }
+            } else {
+                postText(post)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            FavouriteButton(
+                accountID: post.accountID, statusID: post.id, favourited: post.favourited)
         }
+    }
+
+    private func postText(_ post: WidgetPost) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Text(post.author)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .lineLimit(1)
+                    .widgetAccentable()
+                Spacer(minLength: 0)
+                Text(
+                    post.createdAt,
+                    format: .relative(presentation: .numeric, unitsStyle: .narrow)
+                )
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            }
+            Text(post.text)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(family == .systemSmall ? 4 : 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -220,9 +272,17 @@ struct UnreadWidget: Widget {
         }
         .configurationDisplayName(Text("Unread notifications", comment: "Widget name"))
         .description(Text("How many things happened.", comment: "Widget description"))
-        .supportedFamilies([
-            .systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline,
-        ])
+        .supportedFamilies(Self.families)
+    }
+
+    /// The Lock Screen and StandBy families are the iPhone's; a Mac has
+    /// none of them.
+    private static var families: [WidgetFamily] {
+        #if os(iOS)
+            [.systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline]
+        #else
+            [.systemSmall]
+        #endif
     }
 }
 
@@ -232,19 +292,21 @@ struct UnreadView: View {
 
     var body: some View {
         switch family {
-        case .accessoryInline:
-            Label {
-                Text("^[\(entry.count) notification](inflect: true)", comment: "Widget text")
-            } icon: {
-                Image(systemName: "bell.fill")
-            }
-        case .accessoryCircular:
-            Gauge(value: Double(min(entry.count, 99)), in: 0...99) {
-                Image(systemName: "bell.fill")
-            } currentValueLabel: {
-                Text(entry.count, format: .number)
-            }
-            .gaugeStyle(.accessoryCircular)
+        #if os(iOS)
+            case .accessoryInline:
+                Label {
+                    Text("^[\(entry.count) notification](inflect: true)", comment: "Widget text")
+                } icon: {
+                    Image(systemName: "bell.fill")
+                }
+            case .accessoryCircular:
+                Gauge(value: Double(min(entry.count, 99)), in: 0...99) {
+                    Image(systemName: "bell.fill")
+                } currentValueLabel: {
+                    Text(entry.count, format: .number)
+                }
+                .gaugeStyle(.accessoryCircular)
+        #endif
         default:
             VStack(alignment: .leading, spacing: 2) {
                 Image(systemName: "bell.fill")
@@ -268,7 +330,10 @@ struct AlohaWidgetBundle: WidgetBundle {
         LatestPostsWidget()
         UnreadWidget()
         MentionsWidget()
+        MemoriesWidget()
         QuickComposeWidget()
+        NewPostControl()
+        NewStoryControl()
         #if os(iOS)
             UploadLiveActivity()
         #endif
@@ -346,11 +411,16 @@ struct MentionsView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(entry.mentions.prefix(visibleCount)) { mention in
-                    Group {
+                    HStack(alignment: .top, spacing: 2) {
                         if let url = mention.linkURL {
                             Link(destination: url) { row(mention) }
                         } else {
                             row(mention)
+                        }
+                        if let statusID = mention.statusID {
+                            FavouriteButton(
+                                accountID: mention.accountID, statusID: statusID,
+                                favourited: mention.favourited)
                         }
                     }
                 }
@@ -434,5 +504,62 @@ struct QuickComposeView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+}
+
+// MARK: - Control Center
+
+/// The app's own links, as the system intent that opens them.
+///
+/// `OpenURLIntent` hands the link to the app through the same `onOpenURL` a
+/// tapped widget uses, so a control runs nothing in this extension and needs
+/// no account, store or network — none of which an extension can reach while
+/// the app group is off.
+enum ControlLink {
+    static func intent(_ host: String) -> OpenURLIntent {
+        var components = URLComponents()
+        components.scheme = "alohasocial"
+        components.host = host
+        // A scheme and a bare host always make a URL; the fallback is never
+        // reached and opens nothing rather than crashing.
+        return OpenURLIntent(components.url ?? URL(filePath: "/"))
+    }
+}
+
+/// "New post" in Control Center, on the Lock Screen and on the Action button.
+struct NewPostControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "social.aloha.app.control.newPost") {
+            ControlWidgetButton(action: ControlLink.intent("compose")) {
+                Label {
+                    Text("New post", comment: "Control Center control")
+                } icon: {
+                    Image(systemName: "square.and.pencil")
+                }
+            }
+        }
+        .displayName(LocalizedStringResource("New post", comment: "Control Center control"))
+        .description(
+            LocalizedStringResource(
+                "Open the composer.", comment: "Control Center control description"))
+    }
+}
+
+/// "New story": the story composer, on servers that have stories.
+struct NewStoryControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "social.aloha.app.control.newStory") {
+            ControlWidgetButton(action: ControlLink.intent("story")) {
+                Label {
+                    Text("New story", comment: "Control Center control")
+                } icon: {
+                    Image(systemName: "camera.circle")
+                }
+            }
+        }
+        .displayName(LocalizedStringResource("New story", comment: "Control Center control"))
+        .description(
+            LocalizedStringResource(
+                "Open the story composer.", comment: "Control Center control description"))
     }
 }
