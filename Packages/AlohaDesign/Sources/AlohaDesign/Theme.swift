@@ -403,8 +403,14 @@ extension View {
     /// would swallow them (`black`, where surface and ground are both black)
     /// is the one that would break.
     public func alohaGround(_ palette: AlohaPalette) -> some View {
-        scrollContentBackground(.hidden)
-            .background(palette.background)
+        #if os(tvOS)
+            // tvOS has no `scrollContentBackground`: its lists draw no grouped
+            // ground of their own to hide.
+            background(palette.background)
+        #else
+            scrollContentBackground(.hidden)
+                .background(palette.background)
+        #endif
     }
 }
 
