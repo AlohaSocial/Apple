@@ -20,6 +20,10 @@ public struct SearchView: View {
     @State private var errorMessage: String?
     @State private var searchTask: Task<Void, Never>?
     @State private var searchID = UUID()
+    /// Whether the results on screen asked other servers. Typing never does:
+    /// the server looks elsewhere only when a search is asked for, so a
+    /// keystroke cannot make it fetch from another server.
+    @State private var resultsResolved = false
 
     /// A query carried in from somewhere else — the sidebar's field, a deep
     /// link, a shared URL. `Route.search(query:)` has always carried one; this
@@ -99,6 +103,13 @@ public struct SearchView: View {
 
                 // One character is still typing, not searching: the empty
                 // state waits for a query worth answering.
+                if !isSearching, !resultsResolved, errorMessage == nil,
+                    results.accounts.isEmpty, results.statuses.isEmpty,
+                    isRemoteQuery(query.trimmingCharacters(in: .whitespacesAndNewlines))
+                {
+                    lookUpElsewhereRow
+                }
+
                 if !isSearching, results.isEmpty, errorMessage == nil, query.count >= 2 {
                     ContentUnavailableView {
                         Text("Nothing found", comment: "Empty search")
@@ -129,8 +140,9 @@ public struct SearchView: View {
         .navigationTitle(Text("Search", comment: "Screen title"))
         .onAppear {
             if let initialQuery, !initialQuery.isEmpty, query.isEmpty {
+                // Carried in from a link or the sidebar's field: already asked.
                 query = initialQuery
-                schedule(initialQuery)
+                schedule(initialQuery, immediately: true, resolving: true)
             } else if query.isEmpty {
                 isFieldPresented = true
             }
@@ -139,11 +151,12 @@ public struct SearchView: View {
         .onSubmit(of: .search) {
             remember(query)
             isFieldPresented = false
+            schedule(query, immediately: true, resolving: true)
         }
         // A pull is somebody asking the same question again, so the search on
         // screen re-runs — every other list in the app refreshes on a pull.
         .refreshable {
-            await schedule(query, immediately: true)?.value
+            await schedule(query, immediately: true, resolving: true)?.value
         }
         .task { recents = SearchHistory.load() }
         .onDisappear {
@@ -248,16 +261,50 @@ public struct SearchView: View {
 
     private func errorStrip(_ message: String) -> some View {
         AlohaErrorStrip(message: message) {
-            schedule(query, immediately: true)
+            schedule(query, immediately: true, resolving: resultsResolved)
         }
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }
 
+    /// Offered while typing a handle or a link this server does not hold:
+    /// looking it up elsewhere is a request to another server, so it waits
+    /// for the search to be asked for — the Search key, or this row.
+    private var lookUpElsewhereRow: some View {
+        Button {
+            remember(query)
+            schedule(query, immediately: true, resolving: true)
+        } label: {
+            Label {
+                Text(
+                    "Look up \(query.trimmingCharacters(in: .whitespacesAndNewlines)) on other servers",
+                    comment: "Search action that resolves a remote handle or link")
+            } icon: {
+                Image(systemName: "globe")
+            }
+        }
+        .listRowBackground(palette.background)
+    }
+
+    /// A URL or a handle can name something on another server. On Aloha
+    /// Social that includes a bare Bluesky handle, which has dots and no `@`
+    /// (`alice.bsky.social`): the server resolves it like any other
+    /// (`CacheActorService`), but only when asked to.
+    private func isRemoteQuery(_ trimmed: String) -> Bool {
+        trimmed.hasPrefix("http") || trimmed.dropFirst().contains("@")
+            || (session.capabilities.isNextcloudSocial && Self.looksLikeDomainHandle(trimmed))
+    }
+
     /// Signs up a run of the search on screen. Returns it, so a caller with
     /// something to wait for — the pull-to-refresh gesture — can.
+    ///
+    /// `resolving` is for a search somebody asked for. Aloha Social looks
+    /// other servers up only then (`resolve` on submit, never while typing),
+    /// which Mastodon asks of its clients too.
     @discardableResult
-    private func schedule(_ value: String, immediately: Bool = false) -> Task<Void, Never>? {
+    private func schedule(
+        _ value: String, immediately: Bool = false, resolving: Bool = false
+    ) -> Task<Void, Never>? {
         searchTask?.cancel()
         let id = UUID()
         searchID = id
@@ -265,6 +312,7 @@ public struct SearchView: View {
         guard trimmed.count >= 2 else {
             isSearching = false
             results = SearchResults()
+            resultsResolved = false
             errorMessage = nil
             return nil
         }
@@ -273,16 +321,17 @@ public struct SearchView: View {
         searchTask = Task {
             if !immediately { try? await Task.sleep(for: .milliseconds(300)) }
             guard !Task.isCancelled else { return }
-            await search(trimmed, id: id)
+            await search(trimmed, id: id, resolving: resolving)
         }
         return searchTask
     }
 
-    private func search(_ value: String, id: UUID) async {
+    private func search(_ value: String, id: UUID, resolving: Bool) async {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else {
             isSearching = false
             results = SearchResults()
+            resultsResolved = false
             errorMessage = nil
             return
         }
@@ -291,21 +340,17 @@ public struct SearchView: View {
         // spinner down; a newer one owns it from here.
         defer { if searchID == id { isSearching = false } }
 
-        // A URL or a handle is resolved through the reading account's own
-        // server, so a remote post opens with working action buttons. On
-        // Aloha Social that includes a bare Bluesky handle, which has dots and
-        // no `@` (`alice.bsky.social`): the server resolves it like any other
-        // (`CacheActorService`), but only when asked to.
-        let looksRemote =
-            trimmed.hasPrefix("http") || trimmed.contains("@")
-            || (session.capabilities.isNextcloudSocial && Self.looksLikeDomainHandle(trimmed))
+        // Resolved through the reading account's own server, so a remote post
+        // opens with working action buttons.
+        let resolve = resolving && isRemoteQuery(trimmed)
 
         do {
             let response = try await session.client.decode(
                 SearchResults.self,
-                from: Endpoint.search.search(trimmed, resolve: looksRemote, limit: 20))
+                from: Endpoint.search.search(trimmed, resolve: resolve, limit: 20))
             guard !Task.isCancelled, searchID == id else { return }
             results = response
+            resultsResolved = resolve
             errorMessage = nil
         } catch {
             // Superseded by the next keystroke, not a failure.

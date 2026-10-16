@@ -31,6 +31,18 @@ public struct StarterPacksView: View {
                 errorStrip(errorMessage)
             }
 
+            if session.bluesky.isAvailable {
+                BlueskyStarterPackLinkRow()
+                    .padding(AlohaMetrics.space3)
+                    .unifiedGlass(
+                        .regular,
+                        in: RoundedRectangle(
+                            cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                    )
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .padding(.top, AlohaMetrics.space3)
+            }
+
             LazyVGrid(columns: columns, spacing: AlohaMetrics.space3) {
                 ForEach(packs) { pack in
                     NavigationLink(value: Route.starterPack(slug: pack.slug)) {
@@ -101,9 +113,23 @@ public struct StarterPacksView: View {
                     .multilineTextAlignment(.leading)
             }
             Spacer(minLength: 0)
-            Text("^[\(pack.size) account](inflect: true)", comment: "Starter pack size")
-                .font(AlohaType.meta)
-                .foregroundStyle(palette.tertiaryLabel)
+            if let origin = originLine(pack) {
+                origin
+                    .font(AlohaType.meta)
+                    .foregroundStyle(palette.secondaryLabel)
+                    .lineLimit(1)
+            }
+            HStack(spacing: AlohaMetrics.space1) {
+                Text("^[\(pack.size) account](inflect: true)", comment: "Starter pack size")
+                if let topic = pack.topic {
+                    Text(verbatim: "· #\(topic)")
+                }
+                if let language = pack.language {
+                    Text(verbatim: "· \(language.uppercased())")
+                }
+            }
+            .font(AlohaType.meta)
+            .foregroundStyle(palette.tertiaryLabel)
         }
         .padding(AlohaMetrics.space3)
         .frame(maxWidth: .infinity, minHeight: 140, alignment: .topLeading)
@@ -111,6 +137,26 @@ public struct StarterPacksView: View {
         .unifiedGlass(
             .regular,
             in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+    }
+
+    /// Where a pack read in comes from: a collection somebody published on
+    /// another server, or one of Bluesky's suggested packs. The ones this
+    /// server chose say nothing.
+    private func originLine(_ pack: StarterPack) -> Text? {
+        switch pack.source {
+        case .bluesky:
+            if let curator = pack.curator {
+                return Text("From Bluesky, by \(curator)", comment: "Starter pack origin")
+            }
+            return Text("From Bluesky", comment: "Starter pack origin")
+        case .fediverse, .other:
+            if let curator = pack.curator {
+                return Text("By \(curator)", comment: "Starter pack origin")
+            }
+            return nil
+        case nil:
+            return nil
+        }
     }
 
     private func load() async {

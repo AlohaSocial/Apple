@@ -71,6 +71,10 @@ public enum Route: Codable, Hashable, Sendable {
     case blueskyFeed(uri: String, name: String)
     /// The reader's own account on Bluesky.
     case blueskySettings
+    /// A Bluesky starter pack, by its bsky.app address or `at://` URI.
+    case blueskyStarterPack(address: String)
+    /// Putting one post under a filter by name.
+    case filterPost(statusID: String)
     /// The posts sharing one link — what a trending link opens.
     case linkTimeline(url: URL, title: String?)
 

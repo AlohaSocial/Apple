@@ -30,9 +30,11 @@ public struct StarterPackView: View {
         self.onAction = onAction
     }
 
-    /// Handles the pack names that came back without an account.
+    /// Handles the pack names that came back without an account. The server
+    /// says which, now (`unresolved`); an older one is worked out here.
     private var unresolved: [String] {
         guard let pack else { return [] }
+        if !pack.unresolved.isEmpty { return pack.unresolved }
         let resolved = Set(pack.accounts.map { $0.acct.lowercased() })
         return pack.handles.filter { handle in
             let bare = handle.hasPrefix("@") ? String(handle.dropFirst()) : handle
@@ -49,6 +51,20 @@ public struct StarterPackView: View {
                             Text(pack.description)
                                 .font(.body)
                                 .foregroundStyle(palette.secondaryLabel)
+                        }
+                        // A pack read in from another server says whose it is
+                        // and where it lives.
+                        if let curator = pack.curator {
+                            HStack(spacing: AlohaMetrics.space1) {
+                                Text("Put together by \(curator)", comment: "Starter pack curator")
+                                if let url = pack.url {
+                                    Link(destination: url) {
+                                        Text("See it there", comment: "Starter pack origin link")
+                                    }
+                                }
+                            }
+                            .font(AlohaType.meta)
+                            .foregroundStyle(palette.secondaryLabel)
                         }
                         followAllButton(pack)
                     }
@@ -91,10 +107,10 @@ public struct StarterPackView: View {
                         }
                         .listRowBackground(palette.background)
                     } header: {
-                        Text("Couldn't be reached", comment: "Starter pack section")
+                        Text("Not here yet", comment: "Starter pack section")
                     } footer: {
                         Text(
-                            "Their servers didn't answer this time.",
+                            "Your server is fetching these accounts in the background; they'll be here next time. One whose server doesn't answer stays listed.",
                             comment: "Starter pack unresolved footer")
                     }
                 }

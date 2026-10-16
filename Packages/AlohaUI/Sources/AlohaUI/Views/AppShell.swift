@@ -1199,6 +1199,10 @@ private struct ThemedAppShell: View {
             }
         case .blueskySettings:
             BlueskySettingsView(session: session)
+        case .blueskyStarterPack(let address):
+            BlueskyStarterPackView(address: address, session: session)
+        case .filterPost(let statusID):
+            FilterPostView(statusID: statusID, session: session)
         case .linkTimeline(let url, let title):
             LinkTimelineView(url: url, title: title, session: session) {
                 handle($0, session: session)

@@ -245,6 +245,11 @@ public struct BlueskySettingsView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var hasNoIdentity = false
+    @State private var handleDraft = ""
+    @State private var followFromDraft = ""
+    @State private var isQueueingFollows = false
+    /// Bumped when follows are queued, so the imports below read again.
+    @State private var importsReload = 0
 
     public init(session: AccountSession) {
         self.session = session
@@ -321,6 +326,8 @@ public struct BlueskySettingsView: View {
                         "Switching off signs every Bluesky app out of your account there. Your handle stays yours, and switching on again brings it back as it was.",
                         comment: "Bluesky presence explanation")
                 }
+
+                ownDomainSection(identity)
             } else if hasNoIdentity {
                 Section {
                     Text(
@@ -336,6 +343,10 @@ public struct BlueskySettingsView: View {
                     Text("Bluesky feeds", comment: "Settings item")
                 }
             }
+
+            followFromSection
+            MigrationImportsSection(
+                session: session, kinds: ["bluesky_follows"], reload: importsReload)
         }
         .alohaGround(palette)
         .navigationTitle(Text("Bluesky", comment: "Screen title"))
@@ -343,6 +354,148 @@ public struct BlueskySettingsView: View {
             if isLoading && identity == nil { SkeletonListRow(text: 3) }
         }
         .task { await load() }
+    }
+
+    /// A handle on a domain the reader owns, once the domain names their DID
+    /// — `_atproto` TXT record or `/.well-known/atproto-did`, which the server
+    /// checks — and back to the one this server assigned.
+    private func ownDomainSection(_ identity: BlueskyIdentity) -> some View {
+        Section {
+            if identity.customHandle.isEmpty {
+                HStack(spacing: AlohaMetrics.space2) {
+                    TextField(
+                        String(
+                            localized: "yourname.example.com",
+                            comment: "Bluesky custom handle placeholder"),
+                        text: $handleDraft
+                    )
+                    #if os(iOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
+                    #endif
+                    .autocorrectionDisabled()
+                    Button {
+                        Task { await setHandle() }
+                    } label: {
+                        Text("Use it", comment: "Bluesky custom handle action")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .disabled(isSaving || !handleDraft.contains("."))
+                }
+            } else {
+                LabeledContent {
+                    Text(verbatim: "@\(identity.customHandle)")
+                } label: {
+                    Text("Your own domain", comment: "Bluesky custom handle row")
+                }
+                Button(role: .destructive) {
+                    Task { await clearHandle() }
+                } label: {
+                    Text(
+                        "Go back to @\(identity.assignedHandle)",
+                        comment: "Bluesky custom handle clear action")
+                }
+                .disabled(isSaving)
+            }
+        } header: {
+            Text("A handle on your own domain", comment: "Bluesky settings section")
+        } footer: {
+            Text(
+                "Your domain must name your Bluesky account first: \(identity.did). Your server may ask for your password before it changes.",
+                comment: "Bluesky custom handle explanation")
+        }
+    }
+
+    /// Follows from here everybody a Bluesky account follows — a move's
+    /// first step, or just a way in. Runs in the background; the imports
+    /// below say how far it got.
+    private var followFromSection: some View {
+        Section {
+            HStack(spacing: AlohaMetrics.space2) {
+                TextField(
+                    String(
+                        localized: "handle.bsky.social",
+                        comment: "Bluesky follow-from placeholder"),
+                    text: $followFromDraft
+                )
+                #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+                Button {
+                    Task { await followFrom() }
+                } label: {
+                    if isQueueingFollows {
+                        ProgressView()
+                    } else {
+                        Text("Follow them", comment: "Bluesky follow-from action")
+                            .font(.footnote.weight(.semibold))
+                    }
+                }
+                .disabled(
+                    isQueueingFollows
+                        || followFromDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        } header: {
+            Text("Follow who a Bluesky account follows", comment: "Bluesky settings section")
+        } footer: {
+            Text(
+                "Your old Bluesky account, for instance. Everybody it follows is followed from here, a few at a time.",
+                comment: "Bluesky follow-from explanation")
+        }
+    }
+
+    private func setHandle() async {
+        let handle = handleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+        guard !handle.isEmpty, let current = identity else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            var updated = try await session.client.decode(
+                BlueskyIdentity.self, from: .bluesky.setHandle(handle))
+            if updated.publishBlocks == nil { updated.publishBlocks = current.publishBlocks }
+            identity = updated
+            handleDraft = ""
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func clearHandle() async {
+        guard let current = identity else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            var updated = try await session.client.decode(
+                BlueskyIdentity.self, from: .bluesky.clearHandle)
+            if updated.publishBlocks == nil { updated.publishBlocks = current.publishBlocks }
+            identity = updated
+            errorMessage = nil
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func followFrom() async {
+        let account = followFromDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+        guard !account.isEmpty, !isQueueingFollows else { return }
+        isQueueingFollows = true
+        defer { isQueueingFollows = false }
+        do {
+            _ = try await session.client.decode(
+                MigrationQueued.self, from: .bluesky.followFrom(account))
+            followFromDraft = ""
+            errorMessage = nil
+            importsReload += 1
+        } catch {
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
     private func load() async {

@@ -14,13 +14,14 @@ import UniformTypeIdentifiers
 /// a second server, and wants the whole page.
 public struct MigrationView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.openURL) private var openURL
 
     private let session: AccountSession
 
     /// What the file importer was opened for.
     enum ImportKind: Identifiable, Hashable {
         case archive
-        case list(Endpoint.migration.ListKind)
+        case list(MigrationListKind)
         case posts
         case instagram
         var id: String {
@@ -50,6 +51,27 @@ public struct MigrationView: View {
     @State private var followed: Set<String> = []
     @State private var didLookup = false
     @State private var errorMessage: String?
+    /// Bumped when something is queued, so the imports list reads again.
+    @State private var importsReload = 0
+    /// What a queued upload said, by import kind, until the list has it.
+    @State private var queued: Set<String> = []
+
+    // Moving here
+    @State private var oldHandle = ""
+    @State private var candidate: MoveInCandidate?
+    @State private var bringFollows = true
+    @State private var bringPosts = true
+    @State private var finishStatus: MoveInFinishStatus?
+    @State private var blueskyAfterMove: BlueskyAfterMove = .deactivate
+
+    // Moving away
+    @State private var moveStatus: AccountMoveStatus?
+    /// Moving away is a Nextcloud session route; without the app password it
+    /// cannot be asked, and the screen says how to get one.
+    @State private var canMoveAway = false
+    @State private var moveTarget = ""
+    @State private var moveConfirm = ""
+    @State private var isConfirmingMove = false
 
     public init(session: AccountSession) {
         self.session = session
@@ -71,7 +93,10 @@ public struct MigrationView: View {
 
             exportSection
             importSection
+            MigrationImportsSection(session: session, reload: importsReload)
+            moveHereSection
             moveSection
+            moveAwaySection
             instagramSection
         }
         .formStyle(.grouped)
@@ -92,6 +117,21 @@ public struct MigrationView: View {
             }
         }
         .task { await loadMove() }
+        .task { await loadMoving() }
+        .confirmationDialog(
+            Text("Move this account to \(moveTarget)?", comment: "Move away confirmation title"),
+            isPresented: $isConfirmingMove, titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await moveAway() }
+            } label: {
+                Text("Move my followers", comment: "Move away confirmation action")
+            }
+        } message: {
+            Text(
+                "Your followers are told to follow the new account instead, and this one stops posting. Their servers do the rest; it cannot be pushed back by undoing it.",
+                comment: "Move away confirmation detail")
+        }
     }
 
     private var allowedTypes: [UTType] {
@@ -111,10 +151,10 @@ public struct MigrationView: View {
                 title: Text("Everything, as an archive", comment: "Migration export"),
                 symbol: "shippingbox", endpoint: Endpoint.migration.exportArchive,
                 filename: "social-archive.zip")
-            ForEach(Endpoint.migration.ListKind.allCases, id: \.self) { kind in
+            ForEach(MigrationListKind.allCases) { kind in
                 exportRow(
                     id: "list.\(kind.rawValue)", title: listTitle(kind), symbol: "tablecells",
-                    endpoint: Endpoint.migration.exportList(kind),
+                    endpoint: Endpoint.migration.export(kind),
                     filename: "\(kind.rawValue).csv")
             }
         } header: {
@@ -162,7 +202,7 @@ public struct MigrationView: View {
         }
     }
 
-    private func listTitle(_ kind: Endpoint.migration.ListKind) -> Text {
+    private func listTitle(_ kind: MigrationListKind) -> Text {
         switch kind {
         case .following: Text("People you follow", comment: "Migration list")
         case .followers: Text("People following you", comment: "Migration list")
@@ -205,7 +245,9 @@ public struct MigrationView: View {
                 .archive,
                 title: Text("An archive from here or elsewhere", comment: "Migration import"),
                 symbol: "shippingbox.and.arrow.backward")
-            ForEach(Endpoint.migration.ListKind.importable, id: \.self) { kind in
+            // Followers are other people's decision: they come with the old
+            // server's move, not with a file.
+            ForEach(MigrationListKind.allCases.filter { $0.importPath != nil }) { kind in
                 importRow(.list(kind), title: listTitle(kind), symbol: "tablecells")
             }
             importRow(
@@ -273,7 +315,17 @@ public struct MigrationView: View {
                     .controlSize(.small)
                 }
             }
-            if let report = reports[kind.id] { reportView(report) }
+            if let report = reports[kind.id] {
+                reportView(report)
+            } else if queued.contains(kind.id) {
+                Text(
+                    "Queued — the imports below say how far it has got.",
+                    comment: "Migration import queued note"
+                )
+                .font(AlohaType.meta)
+                .foregroundStyle(palette.secondaryLabel)
+                .padding(.leading, AlohaMetrics.space5)
+            }
         }
     }
 
@@ -317,10 +369,9 @@ public struct MigrationView: View {
         switch kind {
         case .archive: endpoint = .migration.importArchive(data, filename: filename)
         case .list(let list):
-            guard
-                let listImport = Endpoint.migration.importList(list, csv: data, filename: filename)
+            guard let queue = Endpoint.migration.queueImport(list, csv: data, filename: filename)
             else { return }
-            endpoint = listImport
+            endpoint = queue
         case .posts:
             endpoint = .migration.importPosts(
                 data, filename: filename, fetchMedia: shouldFetchMedia)
@@ -334,8 +385,7 @@ public struct MigrationView: View {
                 didLookup = false
                 if !handles.handles.isEmpty, !(await findPeople()) { return }
             } else {
-                reports[kind.id] = try await session.client.decode(
-                    MigrationReport.self, from: endpoint)
+                recordAnswer(try await session.client.send(endpoint).data, for: kind)
             }
             errorMessage = nil
         } catch {
@@ -343,6 +393,21 @@ public struct MigrationView: View {
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "The import could not be completed. Please try again.")
+        }
+    }
+
+    /// A list or posts import is queued now and answers `{"import": …}`; an
+    /// older server answers what it did at once. Either is shown.
+    private func recordAnswer(_ data: Data, for kind: ImportKind) {
+        if let answer = try? AlohaJSON.decoder.decode(MigrationQueued.self, from: data),
+            answer.job != nil
+        {
+            reports[kind.id] = nil
+            queued.insert(kind.id)
+            importsReload += 1
+        } else if let report = try? AlohaJSON.decoder.decode(MigrationReport.self, from: data) {
+            queued.remove(kind.id)
+            reports[kind.id] = report
         }
     }
 
@@ -507,6 +572,379 @@ public struct MigrationView: View {
             errorMessage =
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "The alias could not be removed. Please try again.")
+        }
+    }
+
+    // MARK: - Moving here
+
+    /// Moving here from nothing but the old account's handle: it is read off
+    /// its own server first, so the person sees who they are about to copy;
+    /// then the alias is set and following and posts are queued. When the
+    /// old server is Aloha Social too, the last step — telling it to move —
+    /// can be started from here.
+    private var moveHereSection: some View {
+        Section {
+            HStack(spacing: AlohaMetrics.space2) {
+                TextField(
+                    String(localized: "old@server.example", comment: "Move here handle field"),
+                    text: $oldHandle
+                )
+                #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+                .onSubmit { Task { await inspect() } }
+                Button {
+                    Task { await inspect() }
+                } label: {
+                    if busy.contains("inspect") {
+                        ProgressView()
+                    } else {
+                        Text("Look it up", comment: "Move here action")
+                            .font(.footnote.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(busy.contains("inspect") || !oldHandle.contains("@"))
+            }
+
+            if let candidate {
+                candidateCard(candidate)
+                Toggle(isOn: $bringFollows) {
+                    Text("Follow who it follows", comment: "Move here switch")
+                }
+                .disabled(!candidate.following.readable)
+                Toggle(isOn: $bringPosts) {
+                    Text("Bring its public posts over", comment: "Move here switch")
+                }
+                .disabled(!candidate.posts.readable)
+                Button {
+                    Task { await moveIn(candidate) }
+                } label: {
+                    if busy.contains("move-in") {
+                        ProgressView()
+                    } else {
+                        Text("Move here from \(candidate.acct)", comment: "Move here action")
+                    }
+                }
+                .disabled(busy.contains("move-in"))
+
+                if candidate.finishable {
+                    Picker(selection: $blueskyAfterMove) {
+                        Text("Switch it off", comment: "Bluesky after a move")
+                            .tag(BlueskyAfterMove.deactivate)
+                        Text("Move it here too", comment: "Bluesky after a move")
+                            .tag(BlueskyAfterMove.move)
+                        Text("Leave it as it is", comment: "Bluesky after a move")
+                            .tag(BlueskyAfterMove.keep)
+                    } label: {
+                        Text("The old account's Bluesky", comment: "Bluesky after a move picker")
+                    }
+                    Button {
+                        Task { await finishMoveIn(candidate) }
+                    } label: {
+                        Text(
+                            "Tell \(candidate.acct) to move its followers",
+                            comment: "Move here finish action")
+                    }
+                    .disabled(busy.contains("finish"))
+                }
+            }
+
+            if let finishStatus, finishStatus.status != .none {
+                finishStatusRow(finishStatus)
+            }
+        } header: {
+            Text("Move here from another account", comment: "Migration section")
+        } footer: {
+            Text(
+                "Follows and posts are copied a few at a time; the imports above say how far it got. The followers themselves come when the old server is told to move.",
+                comment: "Move here explanation")
+        }
+    }
+
+    private func candidateCard(_ candidate: MoveInCandidate) -> some View {
+        HStack(alignment: .top, spacing: AlohaMetrics.space3) {
+            RemoteImage(url: candidate.avatar) {
+                Circle().fill(Monogram.colour(for: candidate.acct, lightness: 0.46))
+            }
+            .frame(width: 44, height: 44)
+            .clipShape(Circle())
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(candidate.name).font(AlohaType.name)
+                Text(verbatim: "@\(candidate.acct)")
+                    .font(AlohaType.meta)
+                    .foregroundStyle(palette.tertiaryLabel)
+                readability(
+                    candidate.following,
+                    Text(
+                        "^[\(candidate.following.total) account](inflect: true) followed",
+                        comment: "Move here following count"))
+                readability(
+                    candidate.posts,
+                    Text(
+                        "^[\(candidate.posts.total) post](inflect: true)",
+                        comment: "Move here posts count"))
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// A list the old server keeps hidden answers a count and nothing more;
+    /// the export file is the way then, and the screen says so.
+    private func readability(_ collection: MoveInCandidate.Collection, _ count: Text) -> some View {
+        HStack(spacing: AlohaMetrics.space1) {
+            count
+            if !collection.readable {
+                Text(
+                    "· hidden there; use its export file",
+                    comment: "Move here list not readable")
+            }
+        }
+        .font(AlohaType.meta)
+        .foregroundStyle(collection.readable ? palette.secondaryLabel : palette.tertiaryLabel)
+    }
+
+    private func finishStatusRow(_ status: MoveInFinishStatus) -> some View {
+        Label {
+            switch status.status {
+            case .pending:
+                Text(
+                    "Waiting for \(status.acct) to confirm the move.",
+                    comment: "Move here finish pending")
+            case .done:
+                Text(
+                    "\(status.acct) has moved its followers here.",
+                    comment: "Move here finish done")
+            case .failed:
+                Text(
+                    status.error.isEmpty
+                        ? String(
+                            localized: "The move did not finish.",
+                            comment: "Move here finish failed")
+                        : status.error)
+            case .none, .unknown:
+                EmptyView()
+            }
+        } icon: {
+            Image(systemName: status.status == .failed ? AlohaSymbol.warning : "arrow.right.circle")
+        }
+        .font(.footnote)
+        .foregroundStyle(status.status == .failed ? palette.destructive : palette.secondaryLabel)
+    }
+
+    // MARK: - Moving away
+
+    private var moveAwaySection: some View {
+        Section {
+            if let moveStatus, moveStatus.hasMoved {
+                Label {
+                    Text(
+                        "This account has moved to \(moveStatus.target?.acct ?? moveStatus.movedTo ?? "").",
+                        comment: "Move away done")
+                } icon: {
+                    Image(systemName: "arrow.right.circle.fill")
+                }
+                Button(role: .destructive) {
+                    Task { await undoMove() }
+                } label: {
+                    Text("Undo the move", comment: "Move away undo action")
+                }
+                .disabled(busy.contains("move-away"))
+            } else if !canMoveAway {
+                Text(
+                    "Moving away needs your Nextcloud account connected in Settings, because your server asks for it before anything this final.",
+                    comment: "Move away needs Nextcloud connection"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+            } else if let next = moveStatus?.canMoveAt, next > Date() {
+                Text(
+                    "This account moved recently. It can move again \(next.formatted(.relative(presentation: .named))).",
+                    comment: "Move away cool-down"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+            } else {
+                TextField(
+                    String(localized: "new@server.example", comment: "Move away target field"),
+                    text: $moveTarget
+                )
+                #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+                TextField(
+                    String(
+                        localized: "Type \(ownHandle) to confirm",
+                        comment: "Move away confirm field"),
+                    text: $moveConfirm
+                )
+                #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+                Picker(selection: $blueskyAfterMove) {
+                    Text("Switch it off", comment: "Bluesky after a move")
+                        .tag(BlueskyAfterMove.deactivate)
+                    Text("Move it too", comment: "Bluesky after a move")
+                        .tag(BlueskyAfterMove.move)
+                    Text("Leave it as it is", comment: "Bluesky after a move")
+                        .tag(BlueskyAfterMove.keep)
+                } label: {
+                    Text("Your Bluesky account", comment: "Bluesky after a move picker")
+                }
+                Button(role: .destructive) {
+                    isConfirmingMove = true
+                } label: {
+                    if busy.contains("move-away") {
+                        ProgressView()
+                    } else {
+                        Text("Move away…", comment: "Move away action")
+                    }
+                }
+                .disabled(
+                    busy.contains("move-away") || !moveTarget.contains("@")
+                        || moveConfirm.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        } header: {
+            Text("Move away from here", comment: "Migration section")
+        } footer: {
+            Text(
+                "The new account has to name this one as an alias first. Your followers are moved; your posts stay here, and so does your copy.",
+                comment: "Move away explanation")
+        }
+    }
+
+    /// This account as the server checks the confirmation against:
+    /// `user@host`, without the leading `@`.
+    private var ownHandle: String {
+        String(session.snapshot.qualifiedHandle.drop(while: { $0 == "@" }))
+    }
+
+    private func loadMoving() async {
+        canMoveAway = await session.client.hasNextcloudAuthorization
+        if canMoveAway {
+            moveStatus = try? await session.client.decode(
+                AccountMoveStatus.self, from: Endpoint.migration.moveStatus)
+        }
+        finishStatus = try? await session.client.decode(
+            MoveInFinishStatus.self, from: Endpoint.migration.moveInFinishStatus)
+    }
+
+    private func inspect() async {
+        let handle = oldHandle.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+        guard handle.contains("@"), busy.insert("inspect").inserted else { return }
+        defer { busy.remove("inspect") }
+        errorMessage = nil
+        do {
+            let found = try await session.client.decode(
+                MoveInInspection.self, from: Endpoint.migration.inspectMoveIn(handle: handle)
+            ).account
+            candidate = found
+            bringFollows = found.following.readable
+            bringPosts = found.posts.readable
+        } catch {
+            candidate = nil
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "That account could not be looked up.",
+                    comment: "Move here inspect failure")
+        }
+    }
+
+    private func moveIn(_ candidate: MoveInCandidate) async {
+        guard busy.insert("move-in").inserted else { return }
+        defer { busy.remove("move-in") }
+        errorMessage = nil
+        do {
+            _ = try await session.client.decode(
+                MigrationQueued.self,
+                from: Endpoint.migration.moveIn(
+                    handle: candidate.acct, follows: bringFollows, posts: bringPosts,
+                    fetchMedia: fetchMedia))
+            importsReload += 1
+            // The alias is set at once; the list above shows it now.
+            await loadMove()
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The move could not be started.",
+                    comment: "Move here failure")
+        }
+    }
+
+    /// The old server is asked to register this one, and the person consents
+    /// there in the browser; the outcome is read back here afterwards.
+    private func finishMoveIn(_ candidate: MoveInCandidate) async {
+        guard busy.insert("finish").inserted else { return }
+        defer { busy.remove("finish") }
+        errorMessage = nil
+        do {
+            let start = try await session.client.decode(
+                MoveInFinishStart.self,
+                from: Endpoint.migration.finishMoveIn(
+                    handle: candidate.acct, bluesky: blueskyAfterMove))
+            if let url = start.authorizeURL,
+                ["https", "http"].contains(url.scheme?.lowercased() ?? "")
+            {
+                openURL(url)
+            }
+            finishStatus = try? await session.client.decode(
+                MoveInFinishStatus.self, from: Endpoint.migration.moveInFinishStatus)
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The old server could not be asked to move.",
+                    comment: "Move here finish failure")
+        }
+    }
+
+    private func moveAway() async {
+        let target = moveTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+        guard target.contains("@"), busy.insert("move-away").inserted else { return }
+        defer { busy.remove("move-away") }
+        errorMessage = nil
+        do {
+            moveStatus = try await session.client.decode(
+                AccountMoveStatus.self,
+                from: Endpoint.migration.moveAway(
+                    to: target, confirm: moveConfirm.trimmingCharacters(in: .whitespaces),
+                    bluesky: blueskyAfterMove))
+            moveTarget = ""
+            moveConfirm = ""
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The account could not be moved.", comment: "Move away failure")
+        }
+    }
+
+    private func undoMove() async {
+        guard busy.insert("move-away").inserted else { return }
+        defer { busy.remove("move-away") }
+        errorMessage = nil
+        do {
+            moveStatus = try await session.client.decode(
+                AccountMoveStatus.self, from: Endpoint.migration.undoMove)
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "The move could not be undone.", comment: "Move away undo failure")
         }
     }
 

@@ -126,6 +126,10 @@ extension Endpoint {
                 accountItems += .flag("exclude_replies", !includeReplies)
                 accountItems += .flag("only_media", onlyMedia)
                 return Endpoint(path: "api/v1/accounts/\(id)/statuses", query: accountItems)
+            case .profile(let id, let filter):
+                return Endpoint(
+                    path: "api/v1/accounts/\(id)/statuses",
+                    query: pageItems(limit: limit, anchor: anchor) + profileItems(filter))
             case .trending:
                 return Endpoint(
                     path: "api/v1/trends/statuses", query: items, requiresAuthentication: false)
@@ -144,6 +148,20 @@ extension Endpoint {
                     path: "api/v1/timelines/\(segment)/", query: items,
                     requiresAuthentication: source.requiresViewer)
             }
+        }
+
+        /// `exclude_replies`, `exclude_reblogs`, `only_media` and `tagged` are
+        /// Mastodon's own; `media_type` and `only_short` are Aloha Social's,
+        /// and a server that does not know them reads `only_media` alone.
+        static func profileItems(_ filter: ProfilePostFilter) -> [URLQueryItem] {
+            var items: [URLQueryItem] = []
+            items += .flag("exclude_replies", !filter.includeReplies)
+            items += .flag("exclude_reblogs", !filter.includeBoosts)
+            items += .flag("only_media", filter.onlyMedia)
+            items += .optional("media_type", filter.mediaKind?.rawValue)
+            items += .flag("only_short", filter.onlyShort)
+            items += .optional("tagged", filter.tagged)
+            return items
         }
 
         private static func filterItems(_ filters: TimelineFilters) -> [URLQueryItem] {

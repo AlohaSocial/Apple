@@ -120,6 +120,28 @@
         }
       }
     },
+    "%@ from people on your own server." : {
+      "comment" : "Statistics engagement sources, share from this server",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ von Leuten auf deinem eigenen Server."
+          }
+        }
+      }
+    },
+    "%@ has moved its followers here." : {
+      "comment" : "Move here finish done",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat seine Follower hierher umgezogen."
+          }
+        }
+      }
+    },
     "%@ isn't a Nextcloud, so there's nothing to connect." : {
       "comment" : "Nextcloud connect unsupported",
       "localizations" : {
@@ -388,6 +410,17 @@
         }
       }
     },
+    "%@. ^[%lld favourite](inflect: true), ^[%lld boost](inflect: true), ^[%lld reply](inflect: true), ^[%lld quote](inflect: true)." : {
+      "comment" : "Statistics best post, read aloud",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. ^[%lld Favorit](inflect: true), ^[%lld mal geteilt](inflect: true), ^[%lld Antwort](inflect: true), ^[%lld Zitat](inflect: true)."
+          }
+        }
+      }
+    },
     "%@: %@" : {
       "comment" : "Accessibility label for a short",
       "localizations" : {
@@ -489,6 +522,17 @@
     },
     "%lld notifications" : {
       "comment" : "Digest summary title"
+    },
+    "%lld of %lld done, %lld skipped, %lld failed" : {
+      "comment" : "Migration import progress counts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld von %lld erledigt, %lld übersprungen, %lld fehlgeschlagen"
+          }
+        }
+      }
     },
     "%lld percent across, %lld percent down" : {
       "comment" : "Focal point position",
@@ -729,6 +773,17 @@
         }
       }
     },
+    "A filter that covers this post hides it or warns about it wherever the filter applies, whatever its words." : {
+      "comment" : "Filter this post explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Filter, der diesen Beitrag erfasst, blendet ihn überall dort aus oder warnt davor, wo der Filter gilt – unabhängig von seinen Wörtern."
+          }
+        }
+      }
+    },
     "A grid of pictures" : {
       "comment" : "Mode detail",
       "localizations" : {
@@ -747,6 +802,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ein Raster aus Quadraten"
+          }
+        }
+      }
+    },
+    "A handle on your own domain" : {
+      "comment" : "Bluesky settings section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Handle auf deiner eigenen Domain"
           }
         }
       }
@@ -806,6 +872,17 @@
         }
       }
     },
+    "A new filter" : {
+      "comment" : "Filter this post section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein neuer Filter"
+          }
+        }
+      }
+    },
     "A new place is just a name and a country. Nothing is looked up on a map." : {
       "comment" : "Place picker footer",
       "localizations" : {
@@ -860,6 +937,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ein entfernter Server behält seine Liste eventuell für sich; die Zahl oben ist das, was er angibt."
+          }
+        }
+      }
+    },
+    "A reply to a post you made from a file in your Nextcloud is added to that file as a comment as well." : {
+      "comment" : "Files comments switch explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Antwort auf einen Beitrag, den du aus einer Datei in deiner Nextcloud gemacht hast, wird auch als Kommentar an diese Datei angehängt."
           }
         }
       }
@@ -2490,6 +2578,17 @@
         }
       }
     },
+    "Bring its public posts over" : {
+      "comment" : "Move here switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seine öffentlichen Beiträge herholen"
+          }
+        }
+      }
+    },
     "Bring my YouTube subscriptions" : {
       "comment" : "Takeout import disclosure",
       "localizations" : {
@@ -2541,6 +2640,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Von %@"
+          }
+        }
+      }
+    },
+    "By %@ · @%@" : {
+      "comment" : "Bluesky starter pack creator",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von %@ · @%@"
           }
         }
       }
@@ -3119,6 +3229,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Bild konnte nicht angehängt werden."
+          }
+        }
+      }
+    },
+    "Couldn't be followed" : {
+      "comment" : "Starter pack member state",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht gefolgt werden"
           }
         }
       }
@@ -4464,6 +4585,17 @@
         }
       }
     },
+    "Failed" : {
+      "comment" : "Migration import status",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehlgeschlagen"
+          }
+        }
+      }
+    },
     "Failing" : {
       "comment" : "Delivery state",
       "localizations" : {
@@ -4707,6 +4839,28 @@
         }
       }
     },
+    "Filter this post" : {
+      "comment" : "Screen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Beitrag filtern"
+          }
+        }
+      }
+    },
+    "Filter this post…" : {
+      "comment" : "Status menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Beitrag filtern …"
+          }
+        }
+      }
+    },
     "Filtered notifications" : {
       "comment" : "Filtered notifications section\nScreen title\nSettings item",
       "localizations" : {
@@ -4853,6 +5007,17 @@
         }
       }
     },
+    "Follow ^[%lld account](inflect: true)" : {
+      "comment" : "Starter pack follow all action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Konto](inflect: true) folgen"
+          }
+        }
+      }
+    },
     "Follow a feed" : {
       "comment" : "Subscriptions section",
       "localizations" : {
@@ -4937,6 +5102,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folge jemandem, der Videos veröffentlicht."
+          }
+        }
+      }
+    },
+    "Follow them" : {
+      "comment" : "Bluesky follow-from action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihnen folgen"
+          }
+        }
+      }
+    },
+    "Follow who a Bluesky account follows" : {
+      "comment" : "Bluesky settings section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denen folgen, denen ein Bluesky-Konto folgt"
+          }
+        }
+      }
+    },
+    "Follow who it follows" : {
+      "comment" : "Move here switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denen folgen, denen es folgt"
           }
         }
       }
@@ -5057,6 +5255,17 @@
         }
       }
     },
+    "Following who a Bluesky account follows" : {
+      "comment" : "Migration import kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen, wem ein Bluesky-Konto folgt"
+          }
+        }
+      }
+    },
     "Follows" : {
       "comment" : "Notification filter",
       "localizations" : {
@@ -5064,6 +5273,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue Follower"
+          }
+        }
+      }
+    },
+    "Follows and posts are copied a few at a time; the imports above say how far it got. The followers themselves come when the old server is told to move." : {
+      "comment" : "Move here explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gefolgte Konten und Beiträge werden nach und nach kopiert; die Importe oben zeigen, wie weit es ist. Die Follower selbst kommen, wenn der alte Server den Umzug ausführt."
           }
         }
       }
@@ -5167,6 +5387,28 @@
         }
       }
     },
+    "From Bluesky" : {
+      "comment" : "Starter pack origin",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von Bluesky"
+          }
+        }
+      }
+    },
+    "From Bluesky, by %@" : {
+      "comment" : "Starter pack origin",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von Bluesky, von %@"
+          }
+        }
+      }
+    },
     "Generated summary" : {
       "comment" : "Summary label",
       "localizations" : {
@@ -5240,6 +5482,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zurück"
+          }
+        }
+      }
+    },
+    "Go back to @%@" : {
+      "comment" : "Bluesky custom handle clear action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurück zu @%@"
           }
         }
       }
@@ -5423,6 +5676,17 @@
         }
       }
     },
+    "Hide it" : {
+      "comment" : "Filter action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausblenden"
+          }
+        }
+      }
+    },
     "Hide it completely" : {
       "comment" : "Filter action choice",
       "localizations" : {
@@ -5548,6 +5812,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bild ohne Beschreibung"
+          }
+        }
+      }
+    },
+    "Imports" : {
+      "comment" : "Migration section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importe"
           }
         }
       }
@@ -5696,6 +5971,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ausschließen"
+          }
+        }
+      }
+    },
+    "Keep its ^[%lld feed](inflect: true) too" : {
+      "comment" : "Bluesky starter pack keep feeds switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch seine ^[%lld Feed](inflect: true) behalten"
           }
         }
       }
@@ -5899,6 +6185,17 @@
         }
       }
     },
+    "Leave it as it is" : {
+      "comment" : "Bluesky after a move",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So lassen"
+          }
+        }
+      }
+    },
     "Lemon" : {
       "comment" : "Card background",
       "localizations" : {
@@ -6014,6 +6311,17 @@
     },
     "Limited accounts" : {
       "comment" : "Policy row"
+    },
+    "Link to a Bluesky starter pack" : {
+      "comment" : "Bluesky starter pack link field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link zu einem Bluesky-Starterpaket"
+          }
+        }
+      }
     },
     "Links" : {
       "comment" : "Trends filter",
@@ -6197,6 +6505,28 @@
         }
       }
     },
+    "Look it up" : {
+      "comment" : "Move here action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nachschlagen"
+          }
+        }
+      }
+    },
+    "Look up %@ on other servers" : {
+      "comment" : "Search action that resolves a remote handle or link",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ auf anderen Servern nachschlagen"
+          }
+        }
+      }
+    },
     "Looked at it" : {
       "comment" : "Trend decision",
       "localizations" : {
@@ -6248,6 +6578,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mit KI erstellt"
+          }
+        }
+      }
+    },
+    "Make the filter and add this post" : {
+      "comment" : "Filter this post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter anlegen und diesen Beitrag hinzufügen"
           }
         }
       }
@@ -6521,6 +6862,116 @@
         }
       }
     },
+    "Move away from here" : {
+      "comment" : "Migration section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von hier wegziehen"
+          }
+        }
+      }
+    },
+    "Move away…" : {
+      "comment" : "Move away action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wegziehen …"
+          }
+        }
+      }
+    },
+    "Move here from %@" : {
+      "comment" : "Move here action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von %@ hierher umziehen"
+          }
+        }
+      }
+    },
+    "Move here from another account" : {
+      "comment" : "Migration section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von einem anderen Konto hierher umziehen"
+          }
+        }
+      }
+    },
+    "Move it here too" : {
+      "comment" : "Bluesky after a move",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch hierher umziehen"
+          }
+        }
+      }
+    },
+    "Move it too" : {
+      "comment" : "Bluesky after a move",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch umziehen"
+          }
+        }
+      }
+    },
+    "Move my followers" : {
+      "comment" : "Move away confirmation action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Follower umziehen"
+          }
+        }
+      }
+    },
+    "Move this account to %@?" : {
+      "comment" : "Move away confirmation title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto nach %@ umziehen?"
+          }
+        }
+      }
+    },
+    "Moving away needs your Nextcloud account connected in Settings, because your server asks for it before anything this final." : {
+      "comment" : "Move away needs Nextcloud connection",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für einen Umzug von hier muss dein Nextcloud-Konto in den Einstellungen verbunden sein, weil dein Server es vor etwas so Endgültigem verlangt."
+          }
+        }
+      }
+    },
+    "Moving here" : {
+      "comment" : "Migration import kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umzug hierher"
+          }
+        }
+      }
+    },
     "Moving here from another server?" : {
       "comment" : "Migration move heading",
       "localizations" : {
@@ -6716,6 +7167,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name"
+          }
+        }
+      }
+    },
+    "Name of the filter" : {
+      "comment" : "Filter this post field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name des Filters"
           }
         }
       }
@@ -7481,6 +7943,17 @@
         }
       }
     },
+    "Not everyone could be followed. Please try again." : {
+      "comment" : "Bluesky starter pack follow failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht allen konnte gefolgt werden. Bitte versuche es noch einmal."
+          }
+        }
+      }
+    },
     "Not following anyone" : {
       "comment" : "Empty following",
       "localizations" : {
@@ -7488,6 +7961,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folgt niemandem"
+          }
+        }
+      }
+    },
+    "Not here yet" : {
+      "comment" : "Starter pack section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht hier"
           }
         }
       }
@@ -8192,6 +8676,17 @@
         }
       }
     },
+    "Open #%@ everywhere" : {
+      "comment" : "Featured tag menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "#%@ überall öffnen"
+          }
+        }
+      }
+    },
     "Open Aloha Shorts" : {
       "comment" : "Title of the intent to open the app's Shorts feed.",
       "isCommentAutoGenerated" : true,
@@ -8581,6 +9076,17 @@
     },
     "People you don't follow" : {
       "comment" : "Policy row"
+    },
+    "People you feature" : {
+      "comment" : "Profile section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leute, die du empfiehlst"
+          }
+        }
+      }
     },
     "People you follow" : {
       "comment" : "Migration list\nWho can reply\nWho may message you",
@@ -9115,6 +9621,17 @@
         }
       }
     },
+    "Posts also on %@" : {
+      "comment" : "Statistics tile: posts that also went out on a network",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beiträge auch auf %@"
+          }
+        }
+      }
+    },
     "Posts by month" : {
       "comment" : "Statistics section",
       "localizations" : {
@@ -9468,6 +9985,17 @@
         }
       }
     },
+    "Put together by %@" : {
+      "comment" : "Starter pack curator",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zusammengestellt von %@"
+          }
+        }
+      }
+    },
     "Quality" : {
       "comment" : "Video quality picker",
       "localizations" : {
@@ -9475,6 +10003,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Qualität"
+          }
+        }
+      }
+    },
+    "Queued — the imports below say how far it has got." : {
+      "comment" : "Migration import queued note",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In der Warteschlange – die Importe unten zeigen, wie weit es ist."
           }
         }
       }
@@ -9708,6 +10247,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktualisieren"
+          }
+        }
+      }
+    },
+    "Refresh results" : {
+      "comment" : "Poll action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ergebnis aktualisieren"
           }
         }
       }
@@ -9954,6 +10504,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Antworten"
+          }
+        }
+      }
+    },
+    "Replies as comments in Files" : {
+      "comment" : "Settings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antworten als Kommentare in Dateien"
           }
         }
       }
@@ -10316,6 +10877,17 @@
         }
       }
     },
+    "Running" : {
+      "comment" : "Migration import status",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft"
+          }
+        }
+      }
+    },
     "Save" : {
       "comment" : "Account note action\nAlbum action\nMigration export action\nPortfolio action\nProfile editing action\nReschedule action\nSheet action\nWatch page bookmark pill",
       "localizations" : {
@@ -10531,6 +11103,17 @@
         }
       }
     },
+    "See it there" : {
+      "comment" : "Starter pack origin link",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dort ansehen"
+          }
+        }
+      }
+    },
     "See your profile on Bluesky" : {
       "comment" : "Bluesky identity action",
       "localizations" : {
@@ -10725,6 +11308,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server"
+          }
+        }
+      }
+    },
+    "Servers delivered to" : {
+      "comment" : "Statistics tile",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server, an die zugestellt wurde"
           }
         }
       }
@@ -11058,6 +11652,17 @@
         }
       }
     },
+    "Showing posts tagged %@. Show all posts" : {
+      "comment" : "Profile hashtag filter chip",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beiträge mit %@ werden gezeigt. Alle Beiträge zeigen"
+          }
+        }
+      }
+    },
     "Shown for" : {
       "comment" : "Story duration picker",
       "localizations" : {
@@ -11065,6 +11670,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Angezeigt für"
+          }
+        }
+      }
+    },
+    "Shows or hides the posts this account boosted." : {
+      "comment" : "Profile boosts switch hint",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt oder verbirgt die Beiträge, die dieses Konto geteilt hat."
+          }
+        }
+      }
+    },
+    "Shows this account's posts with the hashtag." : {
+      "comment" : "Featured tag chip hint",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt die Beiträge dieses Kontos mit dem Hashtag."
           }
         }
       }
@@ -11638,6 +12265,17 @@
         }
       }
     },
+    "Suggested on Bluesky" : {
+      "comment" : "Discover section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Bluesky vorgeschlagen"
+          }
+        }
+      }
+    },
     "Summarise thread" : {
       "comment" : "Thread action",
       "localizations" : {
@@ -11773,6 +12411,17 @@
     "Switch account" : {
       "comment" : "Account switcher action"
     },
+    "Switch it off" : {
+      "comment" : "Bluesky after a move",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abschalten"
+          }
+        }
+      }
+    },
     "Switching off signs every Bluesky app out of your account there. Your handle stays yours, and switching on again brings it back as it was." : {
       "comment" : "Bluesky presence explanation",
       "localizations" : {
@@ -11885,6 +12534,17 @@
         }
       }
     },
+    "Tell %@ to move its followers" : {
+      "comment" : "Move here finish action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ bitten, seine Follower umzuziehen"
+          }
+        }
+      }
+    },
     "Text" : {
       "comment" : "Story kind",
       "localizations" : {
@@ -11918,11 +12578,33 @@
         }
       }
     },
+    "That account could not be looked up." : {
+      "comment" : "Move here inspect failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto konnte nicht nachgeschlagen werden."
+          }
+        }
+      }
+    },
     "That account could not be unblocked. Try again." : {
       "comment" : "Unblock failure"
     },
     "That account could not be unmuted. Try again." : {
       "comment" : "Unmute failure"
+    },
+    "That account couldn't be found from here." : {
+      "comment" : "Bluesky suggestion lookup found nobody",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto konnte von hier aus nicht gefunden werden."
+          }
+        }
+      }
     },
     "That address couldn't be understood." : {
       "comment" : "Sign-in discovery failure",
@@ -12216,6 +12898,17 @@
     },
     "The account action could not be completed. Please try again." : {},
     "The account could not be followed. Please try again." : {},
+    "The account could not be moved." : {
+      "comment" : "Move away failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Konto konnte nicht umgezogen werden."
+          }
+        }
+      }
+    },
     "The alias could not be added. Please try again." : {},
     "The alias could not be removed. Please try again." : {},
     "The archive holds your profile, posts, pictures and videos, and the lists below. It never holds your private key." : {
@@ -12287,7 +12980,29 @@
     "The draft could not be deleted. Please try again." : {},
     "The export could not be prepared. Please try again." : {},
     "The featured hashtag could not be removed. Please try again." : {},
+    "The filter could not be changed. Please try again." : {
+      "comment" : "Filter this post failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Filter konnte nicht geändert werden. Bitte versuche es noch einmal."
+          }
+        }
+      }
+    },
     "The filter could not be deleted. Please try again." : {},
+    "The filter could not be made. Please try again." : {
+      "comment" : "Filter this post create failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Filter konnte nicht angelegt werden. Bitte versuche es noch einmal."
+          }
+        }
+      }
+    },
     "The handle is held for a while so nobody else can take it the moment you let it go. A new account under a different handle can be made straight away." : {
       "comment" : "Delete account handle retention",
       "localizations" : {
@@ -12314,6 +13029,39 @@
     "The import could not be completed. Please try again." : {},
     "The list could not be created. Your text has been kept; please try again." : {},
     "The list could not be deleted. Please try again." : {},
+    "The move could not be started." : {
+      "comment" : "Move here failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Umzug konnte nicht gestartet werden."
+          }
+        }
+      }
+    },
+    "The move could not be undone." : {
+      "comment" : "Move away undo failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Umzug konnte nicht rückgängig gemacht werden."
+          }
+        }
+      }
+    },
+    "The move did not finish." : {
+      "comment" : "Move here finish failed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Umzug wurde nicht abgeschlossen."
+          }
+        }
+      }
+    },
     "The mute did not go through. Their posts will still appear." : {
       "comment" : "Mute failure",
       "localizations" : {
@@ -12321,6 +13069,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Stummschalten hat nicht geklappt. Ihre Beiträge erscheinen weiterhin."
+          }
+        }
+      }
+    },
+    "The new account has to name this one as an alias first. Your followers are moved; your posts stay here, and so does your copy." : {
+      "comment" : "Move away explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das neue Konto muss dieses zuerst als Alias nennen. Deine Follower ziehen mit um; deine Beiträge bleiben hier, und deine Kopie auch."
+          }
+        }
+      }
+    },
+    "The old account's Bluesky" : {
+      "comment" : "Bluesky after a move picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Bluesky des alten Kontos"
+          }
+        }
+      }
+    },
+    "The old server could not be asked to move." : {
+      "comment" : "Move here finish failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der alte Server konnte nicht um den Umzug gebeten werden."
           }
         }
       }
@@ -12407,6 +13188,17 @@
     },
     "The six feeds: Home, Photos, Video, Shorts, News and Audio." : {
       "comment" : "Mode tour"
+    },
+    "The starter pack could not be opened." : {
+      "comment" : "Bluesky starter pack load failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Starterpaket konnte nicht geöffnet werden."
+          }
+        }
+      }
     },
     "The title is what you see where a post was folded away, so make it something you will recognise." : {
       "comment" : "Filter title explanation",
@@ -12505,6 +13297,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Person kann dir nicht folgen oder deine Beiträge sehen, und du siehst ihre nicht."
+          }
+        }
+      }
+    },
+    "This account has moved to %@." : {
+      "comment" : "Move away done",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto ist nach %@ umgezogen."
+          }
+        }
+      }
+    },
+    "This account moved recently. It can move again %@." : {
+      "comment" : "Move away cool-down",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto ist kürzlich umgezogen. Es kann %@ wieder umziehen."
           }
         }
       }
@@ -12785,6 +13599,17 @@
         }
       }
     },
+    "Trending on Bluesky" : {
+      "comment" : "Discover section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Trend auf Bluesky"
+          }
+        }
+      }
+    },
     "Trends could not be loaded. Pull down to try again." : {
       "comment" : "Discover trends load failure"
     },
@@ -12817,6 +13642,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Type %@ to confirm" : {
+      "comment" : "Move away confirm field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Bestätigen %@ eingeben"
           }
         }
       }
@@ -12894,6 +13730,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Teilen rückgängig machen"
+          }
+        }
+      }
+    },
+    "Undo the move" : {
+      "comment" : "Move away undo action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umzug rückgängig machen"
           }
         }
       }
@@ -13114,6 +13961,17 @@
     },
     "Use" : {
       "comment" : "Video trim action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwenden"
+          }
+        }
+      }
+    },
+    "Use it" : {
+      "comment" : "Bluesky custom handle action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13345,6 +14203,17 @@
         }
       }
     },
+    "Waiting for %@ to confirm the move." : {
+      "comment" : "Move here finish pending",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte darauf, dass %@ den Umzug bestätigt."
+          }
+        }
+      }
+    },
     "Waiting for you to approve it…" : {
       "comment" : "Nextcloud connect waiting",
       "localizations" : {
@@ -13411,6 +14280,17 @@
         }
       }
     },
+    "Warn me" : {
+      "comment" : "Filter action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warnen"
+          }
+        }
+      }
+    },
     "Week" : {
       "comment" : "Chart axis",
       "localizations" : {
@@ -13435,6 +14315,17 @@
     },
     "Welcome to Aloha Social" : {
       "comment" : "Onboarding title"
+    },
+    "What did best" : {
+      "comment" : "Statistics section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was am besten ankam"
+          }
+        }
+      }
     },
     "What happens" : {
       "comment" : "Delete account section",
@@ -13568,6 +14459,17 @@
         }
       }
     },
+    "When it appears" : {
+      "comment" : "Filter action picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn er erscheint"
+          }
+        }
+      }
+    },
     "When it matches" : {
       "comment" : "Filter field",
       "localizations" : {
@@ -13611,6 +14513,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wo er gilt"
+          }
+        }
+      }
+    },
+    "Where the answers came from" : {
+      "comment" : "Statistics section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woher die Reaktionen kamen"
           }
         }
       }
@@ -14077,6 +14990,17 @@
         }
       }
     },
+    "You follow everyone in it" : {
+      "comment" : "Starter pack all followed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du folgst schon allen darin"
+          }
+        }
+      }
+    },
     "You follow no feeds yet." : {
       "comment" : "Empty subscriptions",
       "localizations" : {
@@ -14176,6 +15100,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Du: %@"
+          }
+        }
+      }
+    },
+    "Your Bluesky account" : {
+      "comment" : "Bluesky after a move picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Bluesky-Konto"
           }
         }
       }
@@ -14313,6 +15248,17 @@
         }
       }
     },
+    "Your domain must name your Bluesky account first: %@. Your server may ask for your password before it changes." : {
+      "comment" : "Bluesky custom handle explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Domain muss zuerst dein Bluesky-Konto nennen: %@. Dein Server fragt eventuell nach deinem Passwort, bevor er es ändert."
+          }
+        }
+      }
+    },
     "Your feed preference could not be saved. Please try again." : {
       "localizations" : {
         "de" : {
@@ -14345,6 +15291,17 @@
         }
       }
     },
+    "Your filters could not be loaded." : {
+      "comment" : "Filter this post load failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Filter konnten nicht geladen werden."
+          }
+        }
+      }
+    },
     "Your first video makes one. Or make one now and post into it." : {
       "comment" : "Empty channels detail",
       "localizations" : {
@@ -14363,6 +15320,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Follower"
+          }
+        }
+      }
+    },
+    "Your followers are told to follow the new account instead, and this one stops posting. Their servers do the rest; it cannot be pushed back by undoing it." : {
+      "comment" : "Move away confirmation detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Follower werden gebeten, stattdessen dem neuen Konto zu folgen, und dieses Konto veröffentlicht nichts mehr. Den Rest erledigen ihre Server; Rückgängigmachen holt sie nicht zurück."
+          }
+        }
+      }
+    },
+    "Your followers' servers" : {
+      "comment" : "Statistics section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Server deiner Follower"
           }
         }
       }
@@ -14413,6 +15392,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Notiz: %@. Bearbeiten"
+          }
+        }
+      }
+    },
+    "Your old Bluesky account, for instance. Everybody it follows is followed from here, a few at a time." : {
+      "comment" : "Bluesky follow-from explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Beispiel dein altes Bluesky-Konto. Allen, denen es folgt, wird von hier aus gefolgt, immer ein paar auf einmal."
+          }
+        }
+      }
+    },
+    "Your own domain" : {
+      "comment" : "Bluesky custom handle row",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine eigene Domain"
           }
         }
       }
@@ -14517,6 +15518,17 @@
         }
       }
     },
+    "Your server is fetching these accounts in the background; they'll be here next time. One whose server doesn't answer stays listed." : {
+      "comment" : "Starter pack unresolved footer",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server holt diese Konten im Hintergrund; beim nächsten Mal sind sie da. Ein Konto, dessen Server nicht antwortet, bleibt aufgeführt."
+          }
+        }
+      }
+    },
     "Your server learns which hashtags you read and builds this feed from them. Read a little, or add some interests in Settings." : {
       "comment" : "Empty interests feed explanation",
       "localizations" : {
@@ -14605,6 +15617,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "^[%lld Konto](inflect: true)"
+          }
+        }
+      }
+    },
+    "^[%lld account](inflect: true) followed" : {
+      "comment" : "Move here following count",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Konto](inflect: true) gefolgt"
           }
         }
       }
@@ -14824,6 +15847,28 @@
         }
       }
     },
+    "^[%lld person](inflect: true) followed you from a Bluesky starter pack." : {
+      "comment" : "Statistics starter pack joins",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Person](inflect: true) folgt dir über ein Bluesky-Starterpaket."
+          }
+        }
+      }
+    },
+    "^[%lld person](inflect: true) joined Bluesky with it" : {
+      "comment" : "Bluesky starter pack joined count",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Person](inflect: true) ist damit Bluesky beigetreten"
+          }
+        }
+      }
+    },
     "^[%lld person](inflect: true) the people you follow also follow" : {
       "comment" : "Constellation accessibility label",
       "localizations" : {
@@ -14978,6 +16023,17 @@
         }
       }
     },
+    "^[%lld word](inflect: true), ^[%lld post](inflect: true)" : {
+      "comment" : "Filter this post row detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld Wort](inflect: true), ^[%lld Beitrag](inflect: true)"
+          }
+        }
+      }
+    },
     "^[%lld year](inflect: true) ago" : {
       "comment" : "Memory age",
       "localizations" : {
@@ -15122,6 +16178,17 @@
         }
       }
     },
+    "handle.bsky.social" : {
+      "comment" : "Bluesky follow-from placeholder",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "handle.bsky.social"
+          }
+        }
+      }
+    },
     "hashtag" : {
       "comment" : "Featured tag field placeholder",
       "localizations" : {
@@ -15190,6 +16257,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mehr"
+          }
+        }
+      }
+    },
+    "new@server.example" : {
+      "comment" : "Move away target field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "neu@server.example"
           }
         }
       }
@@ -15382,6 +16460,28 @@
     },
     "warning" : {
       "comment" : "Digest summary kind"
+    },
+    "yourname.example.com" : {
+      "comment" : "Bluesky custom handle placeholder",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deinname.example.com"
+          }
+        }
+      }
+    },
+    "· hidden there; use its export file" : {
+      "comment" : "Move here list not readable",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· dort verborgen; nutze seine Exportdatei"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

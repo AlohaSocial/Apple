@@ -37,6 +37,14 @@ public struct ProfileView: View {
     /// A local account's Bluesky handle, which only the server's own account
     /// route attaches (`/api/v1/account/{username}/info`).
     @State private var localBluesky: BlueskyAccountReference?
+    /// Whether the Posts tab carries the account's boosts too. On by default,
+    /// as Mastodon shows a profile; off asks the server (`exclude_reblogs`)
+    /// rather than thinning out a page that has already arrived.
+    @State private var showsBoosts = true
+    /// A featured hashtag picked to narrow the Posts tab (`tagged`).
+    @State private var taggedFilter: String?
+    /// The accounts the reader features on their own profile.
+    @State private var endorsed: [Account] = []
 
     enum Tab: String, CaseIterable, Identifiable {
         case posts, replies, media, videos, albums, tagged
@@ -143,6 +151,7 @@ public struct ProfileView: View {
                 header(account)
 
                 if !featuredTags.isEmpty { featuredTagChips }
+                if isOwn && !endorsed.isEmpty { endorsedStrip }
                 if let highlights, highlights.available { highlightsStrip(highlights) }
                 if !pinned.isEmpty && tab == .posts { pinnedStrip }
 
@@ -200,35 +209,109 @@ public struct ProfileView: View {
     private func tabContent(_ account: Account) -> some View {
         switch tab {
         case .posts:
-            ProfileStatusList(
-                key: TimelineKey(
-                    mode: .home,
-                    source: .account(id: accountID, includeReplies: false, onlyMedia: false)),
-                session: session, onAction: onAction)
+            postsFilterBar
+            statusList(
+                .home,
+                ProfilePostFilter(includeBoosts: showsBoosts, tagged: taggedFilter))
         case .replies:
-            ProfileStatusList(
-                key: TimelineKey(
-                    mode: .home,
-                    source: .account(id: accountID, includeReplies: true, onlyMedia: false)),
-                session: session, onAction: onAction)
+            statusList(.home, ProfilePostFilter(includeReplies: true))
         case .media:
-            ProfileStatusList(
-                key: TimelineKey(
-                    mode: .photos,
-                    source: .account(id: accountID, includeReplies: false, onlyMedia: true)),
-                session: session, onAction: onAction)
+            // `media_type` keeps the pictures to this tab and the videos to the
+            // next; a server without it reads `only_media` and shows both.
+            statusList(.photos, ProfilePostFilter(mediaKind: .image))
         case .videos:
-            ProfileStatusList(
-                key: TimelineKey(
-                    mode: .video,
-                    source: .account(id: accountID, includeReplies: false, onlyMedia: true)),
-                session: session, onAction: onAction)
+            statusList(.video, ProfilePostFilter(mediaKind: .video))
         case .albums:
             albumsGrid
         case .tagged:
             TaggedGrid(accountID: accountID, session: session, onAction: onAction)
                 .padding(.top, AlohaMetrics.space2)
         }
+    }
+
+    /// One tab's posts. Keyed on the narrowing, so changing it starts a fresh
+    /// list rather than mixing pages asked for under two different filters.
+    private func statusList(_ mode: FeedMode, _ filter: ProfilePostFilter) -> some View {
+        let key = TimelineKey(mode: mode, source: .profile(id: accountID, filter: filter))
+        return ProfileStatusList(key: key, session: session, onAction: onAction)
+            .id(key.storageKey)
+    }
+
+    /// What narrows the Posts tab: a picked featured hashtag, and whether
+    /// boosts are shown.
+    private var postsFilterBar: some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            if let taggedFilter {
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { self.taggedFilter = nil }
+                } label: {
+                    HStack(spacing: AlohaMetrics.space1) {
+                        Text(verbatim: "#\(taggedFilter)")
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(palette.secondaryLabel)
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(palette.hashtag)
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .frame(minHeight: 32)
+                    .background(palette.hashtag.opacity(0.12), in: Capsule())
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    Text(
+                        "Showing posts tagged \(taggedFilter). Show all posts",
+                        comment: "Profile hashtag filter chip"))
+            }
+            Spacer(minLength: 0)
+            Toggle(isOn: $showsBoosts) {
+                Text("Boosts", comment: "Profile posts filter switch")
+                    .font(.footnote)
+            }
+            .toggleStyle(.button)
+            .controlSize(.small)
+            .disabled(taggedFilter != nil)
+            .accessibilityHint(
+                Text(
+                    "Shows or hides the posts this account boosted.",
+                    comment: "Profile boosts switch hint"))
+        }
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.vertical, AlohaMetrics.space1)
+    }
+
+    /// The people the reader features on their profile, Mastodon's
+    /// endorsements: the ones they would point a stranger to.
+    private var endorsedStrip: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Text("People you feature", comment: "Profile section")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(palette.secondaryLabel)
+                .padding(.horizontal, AlohaMetrics.space4)
+            ScrollView(.horizontal) {
+                HStack(spacing: AlohaMetrics.space3) {
+                    ForEach(endorsed) { person in
+                        Button {
+                            onAction(.openProfile(person))
+                        } label: {
+                            VStack(spacing: AlohaMetrics.space1) {
+                                AvatarView(account: person, size: 48)
+                                Text(person.bestDisplayName)
+                                    .font(AlohaType.micro)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: 72)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text(person.bestDisplayName))
+                    }
+                }
+                .padding(.horizontal, AlohaMetrics.space4)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .padding(.vertical, AlohaMetrics.space2)
     }
 
     // MARK: - Header
@@ -588,24 +671,54 @@ public struct ProfileView: View {
         ScrollView(.horizontal) {
             HStack(spacing: AlohaMetrics.space2) {
                 ForEach(featuredTags) { tag in
-                    NavigationLink(value: Route.hashtag(tag.name)) {
+                    let isPicked = taggedFilter?.lowercased() == tag.name.lowercased()
+                    // What a featured hashtag is for: this account's posts
+                    // with it, as Mastodon's own profile page shows them. The
+                    // hashtag's timeline everywhere is one long press away.
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            taggedFilter = isPicked ? nil : tag.name
+                            tab = .posts
+                        }
+                    } label: {
                         HStack(spacing: 4) {
                             Text(verbatim: "#\(tag.name)")
                                 .font(.footnote.weight(.semibold))
                             if tag.statusesCount > 0 {
                                 Text(tag.statusesCount, format: .number.notation(.compactName))
                                     .font(AlohaType.micro)
-                                    .foregroundStyle(palette.secondaryLabel)
+                                    .foregroundStyle(
+                                        isPicked ? palette.onAccent : palette.secondaryLabel)
                             }
                         }
-                        .foregroundStyle(palette.hashtag)
+                        .foregroundStyle(isPicked ? palette.onAccent : palette.hashtag)
                         .padding(.horizontal, AlohaMetrics.space3)
                         .frame(minHeight: 32)
-                        .background(palette.hashtag.opacity(0.12), in: Capsule())
+                        .background(
+                            isPicked ? palette.hashtag : palette.hashtag.opacity(0.12),
+                            in: Capsule()
+                        )
+                        .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        NavigationLink(value: Route.hashtag(tag.name)) {
+                            Label {
+                                Text("Open #\(tag.name) everywhere", comment: "Featured tag menu")
+                            } icon: {
+                                Image(systemName: "number")
+                            }
+                        }
+                    }
                     .accessibilityLabel(
-                        Text("Featured hashtag \(tag.name)", comment: "Featured tag chip"))
+                        Text("Featured hashtag \(tag.name)", comment: "Featured tag chip")
+                    )
+                    .accessibilityHint(
+                        Text(
+                            "Shows this account's posts with the hashtag.",
+                            comment: "Featured tag chip hint")
+                    )
+                    .accessibilityAddTraits(isPicked ? [.isButton, .isSelected] : .isButton)
                 }
             }
             .padding(.horizontal, AlohaMetrics.space4)
@@ -975,7 +1088,12 @@ public struct ProfileView: View {
                         from: .socialExtras.accountInfo(username: account.username)))?.bluesky
             }
         }
-        if !isOwn {
+        if isOwn {
+            endorsed =
+                (try? await session.client.decode(
+                    LossyArray<Account>.self, from: Endpoint.profile.endorsements()))?.elements
+                ?? []
+        } else {
             familiar =
                 (try? await session.client.decode(
                     LossyArray<FamiliarFollowers>.self,

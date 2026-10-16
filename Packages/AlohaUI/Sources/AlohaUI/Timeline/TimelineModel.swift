@@ -587,7 +587,7 @@ public final class TimelineModel {
         switch key.source {
         case .home, .list: .home
         case .local, .federated, .hashtag, .trending: .public
-        case .account: .account
+        case .account, .profile: .account
         default: .home
         }
     }
