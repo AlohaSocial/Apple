@@ -56,6 +56,14 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
             self.value = value
             self.verifiedAt = verifiedAt
         }
+
+        // The wire's `verified_at`. Without this the synthesised key was
+        // `verifiedAt`, which no server sends, so no profile link was ever
+        // shown as verified.
+        enum CodingKeys: String, CodingKey {
+            case name, value
+            case verifiedAt = "verified_at"
+        }
     }
 
     public struct Source: Codable, Sendable, Hashable {
