@@ -83,6 +83,21 @@ public actor SupportStore {
         ).first?.position
     }
 
+    /// Everything this account has watched, as the fraction each video has
+    /// got through. Read for the progress bar on a card: the shelf above it
+    /// comes from the server, but a card should not need a round trip to
+    /// admit it was already started.
+    public func watchFractions(accountID: UUID) throws -> [String: Double] {
+        let records = try modelContext.fetch(
+            FetchDescriptor<WatchPositionRecord>(
+                predicate: #Predicate { $0.accountID == accountID }))
+        var fractions: [String: Double] = [:]
+        for record in records where record.duration > 0 {
+            fractions[record.statusServerID] = min(max(record.position / record.duration, 0), 1)
+        }
+        return fractions
+    }
+
     // MARK: - Filters
 
     public func replaceFilters(_ filters: [Filter], accountID: UUID) throws {

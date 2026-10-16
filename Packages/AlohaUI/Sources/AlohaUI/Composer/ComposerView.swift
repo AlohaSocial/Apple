@@ -14,6 +14,8 @@ public struct ComposerView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
     @State private var didSend = false
+    @State private var showsCardOptions = false
+    @State private var isShowingPollEditor = false
 
     @State private var model: ComposerModel
     @State private var pickedItems: [PhotosPickerItem] = []
@@ -82,7 +84,9 @@ public struct ComposerView: View {
                 editor
 
                 if !model.pendingGames.isEmpty { gamesHint }
-                if model.canBeCard { cardRow }
+                if model.canBeCard && (showsCardOptions || model.cardBackgroundID != nil) {
+                    cardRow
+                }
 
                 if let place = model.place { placeChip(place) }
                 if model.isNextcloud && model.hasVideoAttachment { videoMetaFields }
@@ -94,19 +98,20 @@ public struct ComposerView: View {
                 if let scheduledAt = model.scheduledAt { scheduleBanner(scheduledAt) }
                 if !model.attachments.isEmpty { mediaStrip }
                 if !model.threadSegments.isEmpty { threadEditor }
-                if model.hasPoll { pollEditor }
+                if model.hasPoll {
+                    Button {
+                        isShowingPollEditor = true
+                    } label: {
+                        Label("Edit poll", systemImage: AlohaSymbol.poll)
+                    }
+                    .buttonStyle(.glass)
+                    .padding(AlohaMetrics.space2)
+                }
 
-                Divider()
                 toolbar
             }
             .background(palette.background)
             .sensoryFeedback(.success, trigger: didSend)
-            // A translucent bar over an arbitrary screen has arbitrary
-            // contrast; the composer's own chrome is opaque.
-            #if os(iOS)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarBackground(palette.surface, for: .navigationBar)
-            #endif
             .navigationTitle(model.title)
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -127,19 +132,12 @@ public struct ComposerView: View {
                         if model.isPosting {
                             ProgressView()
                         } else {
-                            // Filled rather than glass: the send button is the
-                            // one control on this screen that must always read.
                             Text("Post", comment: "Composer action")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(palette.onAccent)
-                                .padding(.horizontal, AlohaMetrics.space3)
-                                .padding(.vertical, AlohaMetrics.space1 + 2)
-                                .background(
-                                    palette.accent.opacity(model.canPost ? 1 : 0.4),
-                                    in: Capsule())
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassProminent)
+                    .tint(palette.accent)
                     .disabled(!model.canPost)
                     .keyboardShortcut(.return, modifiers: .command)
                 }
@@ -171,6 +169,28 @@ public struct ComposerView: View {
             )
             .onChange(of: pickedItems) { _, items in
                 Task { await ingest(items) }
+            }
+            .sheet(isPresented: $isShowingPollEditor) {
+                NavigationStack {
+                    ScrollView { pollEditor }
+                        .navigationTitle("Poll")
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { isShowingPollEditor = false }
+                            }
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Remove poll", role: .destructive) {
+                                    model.pollOptions = []
+                                    isShowingPollEditor = false
+                                }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationBackground {
+                    Color.clear.glassEffect(.regular, in: Rectangle())
+                }
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isShowingSchedule) {
                 SchedulePicker(scheduledAt: $model.scheduledAt)
@@ -463,9 +483,72 @@ public struct ComposerView: View {
     private var mediaStrip: some View {
         ScrollView(.horizontal) {
             HStack(spacing: AlohaMetrics.space2) {
+                // Describing four pictures one sheet at a time is four round
+                // trips through the same editor (docs/10 §5); one button does
+                // the lot, sequentially, and says where it is.
+                if model.imagesAwaitingDescription > 0,
+                    environment.intelligence.availability.isAvailable
+                {
+                    if model.isDescribingAll {
+                        VStack(spacing: AlohaMetrics.space2) {
+                            ProgressView(value: progress)
+                                .progressViewStyle(.linear)
+                                .frame(width: 96)
+                            Text(
+                                "^[\(model.describedCount) of \(model.describeAllTotal)](inflect: false)",
+                                comment: "Alt text batch progress"
+                            )
+                            .font(.caption2.monospacedDigit())
+                            Button(role: .cancel) {
+                                model.cancelDescribeAll()
+                            } label: {
+                                Text("Stop", comment: "Alt text batch cancel")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(palette.secondaryLabel)
+                        }
+                        .frame(width: 96, height: 96)
+                        .background(
+                            palette.surfaceRaised,
+                            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall)
+                        )
+                        .accessibilityLabel(
+                            Text(
+                                "Describing images: \(model.describedCount) of \(model.describeAllTotal) done",
+                                comment: "Alt text batch progress"))
+                    } else {
+                        Button {
+                            Task { await model.describeAllImages(environment: environment) }
+                        } label: {
+                            VStack(spacing: AlohaMetrics.space1) {
+                                Image(systemName: "text.badge.star")
+                                    .font(.title3)
+                                Text("Describe all", comment: "Alt text batch action")
+                                    .font(.caption2.weight(.semibold))
+                                Text(
+                                    "^[\(model.imagesAwaitingDescription) image](inflect: true)",
+                                    comment: "Alt text batch count"
+                                )
+                                .font(.caption2.monospacedDigit())
+                            }
+                            .foregroundStyle(palette.accent)
+                            .frame(width: 96, height: 96)
+                            .background(
+                                palette.surfaceRaised,
+                                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            Text(
+                                "Describe all \(model.imagesAwaitingDescription) images",
+                                comment: "Alt text batch action"))
+                    }
+                }
+
                 ForEach(model.attachments) { attachment in
                     ZStack(alignment: .bottomTrailing) {
-                        RemoteImage(url: attachment.previewURL ?? attachment.url)
+                        RemoteImage(url: attachment.displayImageURL)
                             .frame(width: 96, height: 96)
                             .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
 
@@ -549,6 +632,25 @@ public struct ComposerView: View {
         }
         .frame(height: 112)
         .scrollIndicators(.hidden)
+        .overlay(alignment: .bottom) {
+            // A failure in the batch is reported in place — one bad image does
+            // not undo the ones that succeeded, and it should not be surfaced
+            // as a modal the person has to dismiss to see their remaining work.
+            if let describeAllError = model.describeAllError, !model.isDescribingAll {
+                Text(describeAllError)
+                    .font(.caption2)
+                    .foregroundStyle(palette.destructive)
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .padding(.vertical, AlohaMetrics.space1)
+                    .background(.regularMaterial, in: Capsule())
+            }
+        }
+    }
+
+    /// The batch run's progress, for the strip's progress bar.
+    private var progress: Double {
+        guard model.describeAllTotal > 0 else { return 0 }
+        return Double(model.describedCount) / Double(model.describeAllTotal)
     }
 
     /// What `/dice`, `/flip` and `/pick` will do when this goes out. A hint
@@ -631,15 +733,46 @@ public struct ComposerView: View {
     }
 
     private var pollEditor: some View {
-        VStack(spacing: AlohaMetrics.space2) {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+            Text(
+                "Add at least two choices. People can vote after you publish the post.",
+                comment: "Poll editor guidance"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
             ForEach(model.pollOptions.indices, id: \.self) { index in
-                TextField(
-                    text: $model.pollOptions[index],
-                    prompt: Text("Choice \(index + 1)", comment: "Poll option placeholder")
-                ) {
-                    Text("Choice", comment: "Poll option label")
+                HStack {
+                    TextField(
+                        text: Binding(
+                            get: {
+                                model.pollOptions.indices.contains(index)
+                                    ? model.pollOptions[index] : ""
+                            },
+                            set: { value in
+                                guard model.pollOptions.indices.contains(index) else { return }
+                                model.pollOptions[index] = value
+                            }),
+                        prompt: Text("Choice \(index + 1)", comment: "Poll option placeholder")
+                    ) {
+                        Text("Choice", comment: "Poll option label")
+                    }
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, AlohaMetrics.space3)
+                    .frame(minHeight: 44)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                    Button(role: .destructive) {
+                        guard model.pollOptions.count > 2,
+                            model.pollOptions.indices.contains(index)
+                        else { return }
+                        model.pollOptions.remove(at: index)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.glass)
+                    .disabled(model.pollOptions.count <= 2)
+                    .accessibilityLabel(Text("Remove choice", comment: "Poll editor action"))
                 }
-                .textFieldStyle(.roundedBorder)
             }
 
             HStack {
@@ -649,28 +782,26 @@ public struct ComposerView: View {
                     Text("Add choice", comment: "Poll action")
                 }
                 .disabled(model.pollOptions.count >= model.limits.maxPollOptions)
+                .buttonStyle(.glass)
 
                 Spacer()
-
-                Toggle(isOn: $model.pollMultiple) {
-                    Text("Multiple choice", comment: "Poll option")
-                }
-                .toggleStyle(.switch)
-                .labelsHidden()
-                Text("Multiple", comment: "Poll option short label").font(.caption)
             }
             .font(.footnote)
+            Toggle(isOn: $model.pollMultiple) {
+                Text("Multiple choice", comment: "Poll option")
+            }
+            .toggleStyle(.switch)
         }
         .padding(AlohaMetrics.space3)
-        .background(palette.surfaceRaised)
     }
 
     private var toolbar: some View {
         HStack(spacing: AlohaMetrics.space3) {
             ScrollView(.horizontal) {
-                HStack(spacing: AlohaMetrics.space4) {
+                HStack(spacing: 8) {
                     toolbarButtons
                 }
+                .buttonStyle(ComposerToolStyle())
                 .padding(.vertical, 2)
             }
             .scrollIndicators(.hidden)
@@ -689,11 +820,22 @@ public struct ComposerView: View {
         .font(.title3)
         .padding(.horizontal, AlohaMetrics.space4)
         .padding(.vertical, AlohaMetrics.space3)
-        .background(palette.surface)
     }
 
     @ViewBuilder
     private var toolbarButtons: some View {
+        if model.canBeCard {
+            Button {
+                showsCardOptions.toggle()
+            } label: {
+                Image(systemName: "rectangle.on.rectangle")
+            }
+            .accessibilityLabel(Text("Post it as a card", comment: "Composer card section"))
+            .accessibilityValue(
+                showsCardOptions
+                    ? Text("Expanded", comment: "Accessibility state")
+                    : Text("Collapsed", comment: "Accessibility state"))
+        }
         Button {
             model.isShowingMediaPicker = true
         } label: {
@@ -703,7 +845,8 @@ public struct ComposerView: View {
         .accessibilityLabel(Text("Add media", comment: "Composer action"))
 
         Button {
-            model.togglePoll()
+            if !model.hasPoll { model.togglePoll() }
+            isShowingPollEditor = true
         } label: {
             Image(systemName: AlohaSymbol.poll)
         }
@@ -933,7 +1076,15 @@ public struct ComposerView: View {
                         .foregroundStyle(palette.tertiaryLabel)
                         .padding(.top, 6)
                     TextField(
-                        text: $model.threadSegments[index],
+                        text: Binding(
+                            get: {
+                                model.threadSegments.indices.contains(index)
+                                    ? model.threadSegments[index] : ""
+                            },
+                            set: { value in
+                                guard model.threadSegments.indices.contains(index) else { return }
+                                model.threadSegments[index] = value
+                            }),
                         prompt: Text("Continue the thread…", comment: "Thread segment placeholder"),
                         axis: .vertical
                     ) {
@@ -987,6 +1138,18 @@ public struct ComposerView: View {
             await model.saveDraftIfNeeded()
             dismiss()
         }
+    }
+}
+
+private struct ComposerToolStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 18, weight: .medium))
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
+            .glassEffect(.regular.interactive(), in: Circle())
+            .opacity(!isEnabled ? 0.4 : (configuration.isPressed ? 0.65 : 1))
     }
 }
 

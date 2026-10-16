@@ -20,6 +20,7 @@ import SwiftUI
 /// screen should work against Mastodon too.
 public struct AnnualReportView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -28,6 +29,7 @@ public struct AnnualReportView: View {
     @State private var selectedYear: Int?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -47,7 +49,19 @@ public struct AnnualReportView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
                 if let errorMessage {
-                    Text(errorMessage).font(.footnote).foregroundStyle(palette.destructive)
+                    VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                        Label(errorMessage, systemImage: AlohaSymbol.warning)
+                            .font(.footnote)
+                            .foregroundStyle(palette.destructive)
+                        Button {
+                            Task { await load() }
+                        } label: {
+                            Text("Retry", comment: "Annual report retry action")
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .buttonStyle(.glass)
+                        .disabled(isLoading)
+                    }
                 }
 
                 if reports.count > 1 { yearPicker }
@@ -57,7 +71,7 @@ public struct AnnualReportView: View {
                     monthlyChart(report)
                     hashtags(report)
                     bestPosts(report)
-                } else if !isLoading {
+                } else if !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("No year to look back on yet", comment: "Annual report empty")
                     } description: {
@@ -80,7 +94,16 @@ public struct AnnualReportView: View {
 
     // MARK: - Sections
 
+    @ViewBuilder
     private var yearPicker: some View {
+        if reports.count <= 4 && !dynamicTypeSize.isAccessibilitySize {
+            yearSelection.pickerStyle(.segmented).labelsHidden()
+        } else {
+            yearSelection.pickerStyle(.menu)
+        }
+    }
+
+    private var yearSelection: some View {
         Picker(selection: Binding(get: { report?.year ?? 0 }, set: { selectedYear = $0 })) {
             ForEach(reports) { report in
                 Text(verbatim: String(report.year)).tag(report.year)
@@ -88,25 +111,31 @@ public struct AnnualReportView: View {
         } label: {
             Text("Year", comment: "Annual report year picker")
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
     }
 
     private func headline(_ report: AnnualReport) -> some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
             Text(verbatim: String(report.year))
-                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .foregroundStyle(palette.accent)
 
             Text(Self.archetypeLine(report.data.archetype))
                 .font(AlohaType.section)
                 .foregroundStyle(palette.label)
 
-            HStack(spacing: AlohaMetrics.space5) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space3
+            ) {
                 figure(report.data.totalStatuses, Text("Posts", comment: "Annual report figure"))
-                figure(
-                    report.data.totalFollowers,
-                    Text("New followers", comment: "Annual report figure"))
+                // A year in review is one's own activity; the follower
+                // figures are not, and a reader who turned "Show numbers"
+                // off does not want to be compared (docs/05 §4).
+                if session.settings.showPopularityCounts {
+                    figure(
+                        report.data.totalFollowers,
+                        Text("New followers", comment: "Annual report figure"))
+                }
                 if let busiest = report.data.busiestMonth {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(Self.monthName(busiest.month))
@@ -150,8 +179,11 @@ public struct AnnualReportView: View {
                 }
                 .frame(height: 180)
                 .chartYAxis { AxisMarks(position: .leading) }
+                .accessibilityLabel(Text("Month by month", comment: "Annual report section"))
 
-                if months.contains(where: { $0.followers > 0 }) {
+                if session.settings.showPopularityCounts,
+                    months.contains(where: { $0.followers > 0 })
+                {
                     Text("Who arrived", comment: "Annual report section").font(AlohaType.section)
                     Chart {
                         ForEach(months) { month in
@@ -169,6 +201,7 @@ public struct AnnualReportView: View {
                     }
                     .frame(height: 140)
                     .chartYAxis { AxisMarks(position: .leading) }
+                    .accessibilityLabel(Text("Who arrived", comment: "Annual report section"))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -282,21 +315,38 @@ public struct AnnualReportView: View {
     // MARK: - Data
 
     private func load() async {
-        defer { isLoading = false }
+        let request = UUID()
+        loadID = request
+        isLoading = true
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         // The server answers instantly and changes nothing; Mastodon needs it.
         _ = try? await session.client.send(
             Endpoint.annualReports.generate(Self.lastCompleteYear))
+        guard !Task.isCancelled, loadID == request else { return }
         do {
-            wrapped = try await session.client.decode(
+            let response = try await session.client.decode(
                 WrappedAnnualReports.self, from: Endpoint.annualReports.all)
+            guard !Task.isCancelled, loadID == request else { return }
+            wrapped = response
+            if let selectedYear,
+                !response.annualReports.contains(where: { $0.year == selectedYear })
+            {
+                self.selectedYear = nil
+            }
             errorMessage = nil
         } catch APIError.notFound {
+            guard !Task.isCancelled, loadID == request else { return }
             // A server without the feature is not a broken screen.
             wrapped = WrappedAnnualReports()
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Your annual report could not be loaded. Please try again.")
         }
     }
 

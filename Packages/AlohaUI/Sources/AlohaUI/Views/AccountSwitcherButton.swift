@@ -78,7 +78,11 @@ import SwiftUI
                     }
                 }
             } label: {
+                // The mark is 30pt; the target around it is the 44pt Apple
+                // asks for, so the tap does not need aim.
                 AvatarView(account: session.snapshot.asAccount, size: 30)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton)
             .accessibilityLabel(

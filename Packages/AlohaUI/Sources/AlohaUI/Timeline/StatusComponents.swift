@@ -394,7 +394,11 @@ public struct StatusMenu: View {
             onAction(.muteConversation(status))
         } label: {
             Label {
-                Text("Mute conversation", comment: "Status menu item")
+                Text(
+                    status.displayed.muted
+                        ? "Unmute conversation"
+                        : "Mute conversation",
+                    comment: "Status menu item")
             } icon: {
                 Image(systemName: AlohaSymbol.mute)
             }

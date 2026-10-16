@@ -72,7 +72,9 @@ struct GIFPicker: View {
                     ProgressView().padding(.top, AlohaMetrics.space5)
                 }
             }
-            .background(palette.background)
+            .presentationBackground {
+                Color.clear.glassEffect(.regular, in: Rectangle())
+            }
             .searchable(text: $query, prompt: Text("Search pictures", comment: "GIF search prompt"))
             .navigationTitle(Text("Pictures", comment: "GIF picker title"))
             #if os(iOS)

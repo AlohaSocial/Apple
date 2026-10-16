@@ -12,6 +12,7 @@ import SwiftUI
 /// tap away for browsing; the toggle is remembered.
 public struct PhotosModeView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.mediaTransition) private var mediaTransition
 
     private let session: AccountSession
@@ -19,11 +20,14 @@ public struct PhotosModeView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var model: TimelineModel
-    @AppStorage("aloha.photosLayout") private var layout: Layout = .feed
+    // Grid is the default, per docs/06 §5: a 3-column square grid is what a
+    // photo mode opens on, and the feed is the slower, deliberate reading of
+    // the same posts. Remembered per device.
+    @AppStorage("aloha.photosLayout") private var layout: Layout = .grid
     @State private var stories: [Story] = []
     @State private var playingStoriesFrom: Int?
 
-    enum Layout: String {
+    enum Layout: String, CaseIterable {
         case grid, feed
     }
 
@@ -47,17 +51,14 @@ public struct PhotosModeView: View {
             }
         }
         .background(palette.background)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Picker(selection: $layout) {
-                    Image(systemName: "rectangle.grid.1x2").tag(Layout.feed)
-                    Image(systemName: "square.grid.3x3").tag(Layout.grid)
-                } label: {
-                    Text("Layout", comment: "Photos layout picker")
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-            }
+        // The display format sits over the content rather than in the toolbar:
+        // a toolbar item is four taps from the pictures and competes with the
+        // title for the only slot there, while the one control this screen has
+        // belongs where the thumb already is.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            formatBar
+                .padding(.vertical, AlohaMetrics.space2)
+                .background(palette.background.opacity(0.85))
         }
         .task {
             await model.appear()
@@ -73,6 +74,68 @@ public struct PhotosModeView: View {
                 set: { playingStoriesFrom = $0?.index })
         ) { start in
             StoryPlayer(stories: stories, startIndex: start.index, session: session)
+        }
+    }
+
+    /// The display format, as a two-state glass switcher rather than a plain
+    /// segmented control: an accent pill slides behind the chosen one, and each
+    /// state carries its own label, so "which layout am I on" never depends on
+    /// telling two icons apart.
+    private var formatBar: some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            Spacer(minLength: 0)
+
+            HStack(spacing: 0) {
+                ForEach(PhotosModeView.Layout.allCases, id: \.rawValue) { option in
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            layout = option
+                        }
+                    } label: {
+                        Label {
+                            Text(title(for: option))
+                        } icon: {
+                            Image(systemName: symbolName(for: option))
+                        }
+                        .labelStyle(.iconOnly)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(
+                            layout == option ? palette.onAccent : palette.secondaryLabel
+                        )
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .padding(.vertical, AlohaMetrics.space2)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .background {
+                            if layout == option {
+                                Capsule().fill(palette.accent)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(title(for: option)))
+                    .accessibilityAddTraits(layout == option ? .isSelected : [])
+                }
+            }
+            .unifiedGlass(.regular, in: Capsule())
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, AlohaMetrics.space3)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Layout", comment: "Photos layout picker"))
+    }
+
+    private func title(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: String(localized: "Feed", comment: "Photos layout")
+        case .grid: String(localized: "Grid", comment: "Photos layout")
+        }
+    }
+
+    private func symbolName(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: "rectangle.grid.1x2"
+        case .grid: "square.grid.3x3"
         }
     }
 
@@ -97,6 +160,7 @@ public struct PhotosModeView: View {
                         status: status,
                         policy: session.settings.sensitiveMediaPolicy,
                         localHost: session.snapshot.instanceHost,
+                        showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
                     .onAppear {
@@ -115,13 +179,22 @@ public struct PhotosModeView: View {
 
     static let gutter: Double = 1.5
 
+    /// How many columns the grid takes. A photo grid is the one surface that
+    /// wants more width, not less: three square columns across a Mac window
+    /// leaves two thirds of it empty, so a regular-width shell gets six and a
+    /// phone its three.
+    private var columnCount: Int {
+        horizontalSizeClass == .regular ? 6 : 3
+    }
+
     private var grid: some View {
         ScrollView {
             if session.capabilities.stories { storyCarousel }
 
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.flexible(), spacing: Self.gutter), count: 3),
+                    repeating: GridItem(.flexible(), spacing: Self.gutter),
+                    count: columnCount),
                 spacing: Self.gutter
             ) {
                 ForEach(statuses) { status in
@@ -151,7 +224,7 @@ public struct PhotosModeView: View {
         } label: {
             ZStack(alignment: .topTrailing) {
                 RemoteImage(
-                    url: first?.previewURL ?? first?.url,
+                    url: first?.displayImageURL,
                     blurhash: first?.blurhash,
                     accessibilityText: first?.description
                 )
@@ -305,6 +378,7 @@ public struct PhotoPostCard: View {
     private let status: Status
     private let policy: SensitiveMediaPolicy
     private let localHost: String?
+    private let showsCounts: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var page = 0
@@ -314,11 +388,13 @@ public struct PhotoPostCard: View {
 
     public init(
         status: Status, policy: SensitiveMediaPolicy, localHost: String?,
+        showsCounts: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
         self.policy = policy
         self.localHost = localHost
+        self.showsCounts = showsCounts
         self.onAction = onAction
     }
 
@@ -473,7 +549,7 @@ public struct PhotoPostCard: View {
     private func picture(_ attachment: MediaAttachment) -> some View {
         ZStack(alignment: .topTrailing) {
             RemoteImage(
-                url: attachment.previewURL ?? attachment.url,
+                url: attachment.displayImageURL,
                 blurhash: attachment.blurhash,
                 contentMode: .fill,
                 accessibilityText: attachment.description)
@@ -585,7 +661,7 @@ public struct PhotoPostCard: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-            if displayed.favouritesCount > 0 {
+            if showsCounts, displayed.favouritesCount > 0 {
                 Text(
                     "^[\(displayed.favouritesCount) favourite](inflect: true)",
                     comment: "Photo post like count"
@@ -621,7 +697,9 @@ public struct PhotoPostCard: View {
                     onAction(.open(status))
                 } label: {
                     Text(
-                        "View all ^[\(displayed.repliesCount) reply](inflect: true)",
+                        showsCounts
+                            ? "View all ^[\(displayed.repliesCount) reply](inflect: true)"
+                            : "View all replies",
                         comment: "Photo post reply count link"
                     )
                     .font(.subheadline)
@@ -786,8 +864,10 @@ public struct StoryPlayer: View {
     @ViewBuilder
     private func media(_ story: Story) -> some View {
         if story.type.isPlayable, let url = story.url {
-            StoryVideoSurface(url: url, isPaused: isPaused)
-                .ignoresSafeArea()
+            StoryVideoSurface(
+                url: url, preview: story.previewURL, isPaused: isPaused, session: session
+            )
+            .ignoresSafeArea()
         } else {
             RemoteImage(url: story.url, contentMode: .fit)
                 .ignoresSafeArea()
@@ -950,7 +1030,7 @@ public struct StoryPlayer: View {
                 listSheet = .viewers(story)
             } label: {
                 Label {
-                    if let views = story.viewCount {
+                    if let views = story.viewCount, session.settings.showPopularityCounts {
                         Text("Seen by \(views)", comment: "Story viewers button")
                     } else {
                         Text("Seen by", comment: "Story viewers button")
@@ -1061,29 +1141,57 @@ public struct StoryPlayer: View {
 /// A video story: plays on appear, pauses while held, no controls.
 struct StoryVideoSurface: View {
     let url: URL
+    let preview: URL?
     let isPaused: Bool
+    let session: AccountSession
 
     @State private var player: AVPlayer?
+    @State private var isReady = false
+    @State private var watcher: Task<Void, Never>?
 
     var body: some View {
-        Group {
-            if let player {
+        ZStack {
+            if let player, isReady {
                 PlayerSurface(player: player, showsControls: false)
             } else {
-                Color.black
+                // The story's own still, held until there is a frame behind
+                // it. A black rectangle in this window is the thing people
+                // read as "the video is broken".
+                // Never hand the video bytes to the image loader when the
+                // server omitted a poster frame.
+                RemoteImage(url: preview, contentMode: .fit)
             }
         }
         .task(id: url) {
-            let newPlayer = AVPlayer(url: url)
-            player = newPlayer
-            newPlayer.play()
+            player = nil
+            isReady = false
+            watcher?.cancel()
+            watcher = nil
+            let headers = await session.client.mediaRequestHeaders(for: url)
+            switch await PlaybackReadiness.open(url: url, headers: headers) {
+            case .playable(let newPlayer, let item, let ready):
+                player = newPlayer
+                isReady = ready
+                if !isPaused { newPlayer.play() }
+                watcher = Task { @MainActor in
+                    for await status in PlaybackReadiness.statuses(item) {
+                        guard !Task.isCancelled else { return }
+                        if status == .readyToPlay { isReady = true }
+                    }
+                }
+            case .rejected(let reason):
+                PlaybackLog.logger.error("story rung rejected: \(reason, privacy: .public)")
+            }
         }
         .onChange(of: isPaused) { _, paused in
             if paused { player?.pause() } else { player?.play() }
         }
         .onDisappear {
+            watcher?.cancel()
+            watcher = nil
             player?.pause()
             player = nil
+            isReady = false
         }
     }
 }

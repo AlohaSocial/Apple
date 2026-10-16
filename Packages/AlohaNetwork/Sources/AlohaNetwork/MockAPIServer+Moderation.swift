@@ -53,16 +53,18 @@ extension MockAPIServer {
         case ("api/v1/instance/activity", "GET"):
             // Strings, as the real route sends them.
             let monday = Int(Date().timeIntervalSince1970 / 604_800) * 604_800
-            return respond(
-                url: url, status: 200,
-                json: (0..<12).map { week in
-                    [
-                        "week": String(monday - week * 604_800),
-                        "statuses": String(max(0, 40 - week * 3)),
-                        "logins": "0",
-                        "registrations": "0",
-                    ]
-                })
+            // The rows are built first and typed: one untyped dictionary
+            // literal per week through a map is past what the type-checker
+            // will swallow in one expression (CI found this the hard way).
+            let weeks: [[String: Any]] = (0..<12).map { week in
+                [
+                    "week": String(monday - week * 604_800),
+                    "statuses": String(max(0, 40 - week * 3)),
+                    "logins": "0",
+                    "registrations": "0",
+                ]
+            }
+            return respond(url: url, status: 200, json: weeks)
 
         case ("api/v1/instance/domain_blocks", "GET"):
             return respond(

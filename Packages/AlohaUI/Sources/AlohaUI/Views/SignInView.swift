@@ -16,7 +16,12 @@ public struct SignInView: View {
     @State private var typed = ""
     @FocusState private var isFieldFocused: Bool
 
-    public init() {}
+    /// Opens with an address already in the field — the one the person typed
+    /// on the introduction's last page, rather than asking them to type it
+    /// twice.
+    public init(serverAddress: String = "") {
+        _typed = State(initialValue: serverAddress)
+    }
 
     public var body: some View {
         NavigationStack {
@@ -37,7 +42,11 @@ public struct SignInView: View {
                 }
             }
             .formStyle(.grouped)
+            .alohaGround(palette)
             .navigationTitle(Text("Add account", comment: "Sign-in screen title"))
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -56,6 +65,21 @@ public struct SignInView: View {
 
     private var entrySection: some View {
         Section {
+            // The app's own lockup above the field it belongs to: the screen
+            // the person lands on after the introduction should look like the
+            // app the introduction just showed them, not a bare form. It lives
+            // inside this section's builder, because a view builder is what
+            // this is — a second `Section` here would be a second expression
+            // in a function whose result is one view.
+            VStack(spacing: AlohaMetrics.space2) {
+                AlohaLogoMark(size: 56)
+                AlohaWordmark()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, AlohaMetrics.space2)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("Aloha Social", comment: "App name"))
+
             TextField(
                 text: $typed,
                 prompt: Text(verbatim: "cloud.example.com")
@@ -82,7 +106,7 @@ public struct SignInView: View {
                 Text(
                     "Aloha Social works with Nextcloud Social, Mastodon, and any server that speaks the Mastodon API.",
                     comment: "Sign-in explanation")
-                Link(destination: URL(string: "https://github.com/nextcloud/social")!) {
+                Link(destination: URL(string: "https://github.com/AlohaSocial/social")!) {
                     Text("What is Nextcloud Social?", comment: "Sign-in link")
                 }
             }

@@ -2,6 +2,7 @@
 
 import AVFoundation
 import AlohaDesign
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import ImageIO
@@ -20,6 +21,7 @@ public struct StoryComposerSheet: View {
 
     private let session: AccountSession
     private let onPosted: () -> Void
+    private let preparer = MediaPreparer()
 
     enum Kind: Hashable {
         case media, text
@@ -500,13 +502,13 @@ public struct StoryComposerSheet: View {
                         jpeg, filename: "story.jpg", mimeType: "image/jpeg")
                     mediaID = attachment.id
                 } else if let movie {
-                    let data = try Data(contentsOf: movie)
-                    let type = UTType(filenameExtension: movie.pathExtension) ?? .quickTimeMovie
+                    let prepared = try await prepareStoryVideo(at: movie)
                     let attachment = try await upload(
-                        data, filename: "story.\(movie.pathExtension)",
-                        mimeType: type.preferredMIMEType ?? "video/quicktime")
+                        prepared.data, filename: prepared.filename,
+                        mimeType: prepared.mimeType)
                     mediaID = attachment.id
-                    storyDuration = Int(movieDuration.rounded(.up))
+                    storyDuration = Int(
+                        min(max(movieDuration, 3), 30).rounded(.up))
                 } else {
                     return
                 }
@@ -522,9 +524,56 @@ public struct StoryComposerSheet: View {
         } catch {
             await session.handle(error)
             errorMessage =
-                (error as? APIError)?.errorDescription
+                (error as? StoryComposerError)?.errorDescription
+                ?? (error as? APIError)?.errorDescription
                 ?? String(
                     localized: "That story couldn't be shared.", comment: "Story composer failure")
+        }
+    }
+
+    /// A story video, in whatever container the server will actually take.
+    ///
+    /// The picker hands back whatever the camera recorded — usually QuickTime,
+    /// which a server configured for MP4 refuses with a 422 after the bytes
+    /// have already been sent. Asking first turns that into a local decision:
+    /// the file goes out as-is when it fits, through the exporter when it does
+    /// not, and never at all when it is over the ceiling.
+    private func prepareStoryVideo(at url: URL) async throws -> MediaPreparer.Prepared {
+        let mimeType = preparer.mimeType(for: url)
+        let size =
+            ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int)
+            ?? 0
+
+        switch UploadPreflight.check(
+            fileSize: size, mimeType: mimeType, limits: session.capabilities.limits)
+        {
+        case .ready:
+            let data = try Data(contentsOf: url)
+            return MediaPreparer.Prepared(
+                data: data, filename: url.lastPathComponent, mimeType: mimeType)
+
+        case .needsTranscode:
+            // Stories stop at 30 seconds, so the export may as well be where
+            // the clip gets cut rather than leaving it for the server to
+            // disagree about later.
+            let trim: ClosedRange<Double>? = movieDuration > 30 ? 0.0...30.0 : nil
+            return try await preparer.prepareVideo(at: url, trim: trim, quality: .high)
+
+        case .tooLarge(let size, let limit, _):
+            throw StoryComposerError.message(
+                UploadPreflight.explanation(
+                    for: .tooLarge(
+                        size: size, limit: limit, isVideo: true))
+                    ?? String(
+                        localized: "That story couldn't be shared.",
+                        comment: "Story composer failure"))
+
+        case .unsupported(let mimeType):
+            throw StoryComposerError.message(
+                UploadPreflight.explanation(for: .unsupported(mimeType: mimeType))
+                    ?? String(
+                        localized: "That story couldn't be shared.",
+                        comment: "Story composer failure"))
         }
     }
 
@@ -573,8 +622,16 @@ public struct StoryComposerSheet: View {
     }
 }
 
-enum StoryComposerError: Error {
+enum StoryComposerError: Error, LocalizedError {
     case rendering
+    case message(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .rendering: nil
+        case .message(let text): text
+        }
+    }
 }
 
 /// Something laid over a picture: an emoji or a few words, at a point

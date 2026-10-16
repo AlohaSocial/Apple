@@ -19,6 +19,8 @@ public struct HeldPostsView: View {
     @State private var isLoading = true
     @State private var withdrawing: HeldPost?
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var pendingWithdrawal: String?
 
     public init(session: AccountSession) {
         self.session = session
@@ -27,16 +29,14 @@ public struct HeldPostsView: View {
     public var body: some View {
         List {
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(palette.destructive)
+                errorRow(errorMessage)
             }
 
             ForEach(held) { post in
                 row(post)
             }
 
-            if held.isEmpty && !isLoading {
+            if held.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("Nothing of yours is waiting.", comment: "Empty held posts")
                 } description: {
@@ -44,9 +44,21 @@ public struct HeldPostsView: View {
                         "When a moderator has to look at a post before it goes out, it waits here until they do.",
                         comment: "Held posts explanation")
                 }
+                .listRowSeparator(.hidden)
+                .listRowBackground(palette.background)
             }
         }
         .listStyle(.plain)
+        .alohaGround(palette)
+        .overlay {
+            if isLoading && held.isEmpty {
+                // A first page arriving is a list in progress, not a blank
+                // screen with a spinner floating over it.
+                SkeletonListRow(text: 4)
+                    .listRowBackground(palette.background)
+                    .listRowSeparator(.hidden)
+            }
+        }
         .navigationTitle(Text("Waiting to be looked at", comment: "Screen title"))
         .task { await load() }
         .refreshable { await load() }
@@ -85,15 +97,19 @@ public struct HeldPostsView: View {
                     .foregroundStyle(palette.tertiaryLabel)
                 }
                 Spacer()
-                Button {
+                Button(role: .destructive) {
                     withdrawing = post
                 } label: {
-                    Text("Withdraw", comment: "Held post action")
-                        .font(.footnote.weight(.medium))
-                        .frame(minHeight: 44)
+                    if pendingWithdrawal == post.id {
+                        ProgressView()
+                    } else {
+                        Text("Withdraw", comment: "Held post action")
+                            .font(.footnote.weight(.medium))
+                            .frame(minHeight: 44)
+                    }
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(palette.destructive)
+                .buttonStyle(.glass)
+                .disabled(isLoading || pendingWithdrawal != nil)
             }
 
             if let reason = post.reason, !reason.isEmpty {
@@ -124,33 +140,68 @@ public struct HeldPostsView: View {
             }
         }
         .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private func errorRow(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Label(message, systemImage: AlohaSymbol.warning)
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
+            Button {
+                Task { await load() }
+            } label: {
+                Text("Retry", comment: "Held posts retry action")
+            }
+            .font(.footnote.weight(.semibold))
+            .buttonStyle(.glass)
+            .disabled(isLoading || pendingWithdrawal != nil)
+        }
+        .padding(.vertical, AlohaMetrics.space2)
+        .listRowBackground(palette.background)
     }
 
     private func load() async {
+        guard pendingWithdrawal == nil else { return }
+        let request = UUID()
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
             let page = try await session.client.decode(
                 HeldPostsPage.self, from: Endpoint.review.held)
+            guard !Task.isCancelled, loadID == request else { return }
             held = page.held.sorted {
                 ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast)
             }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Pending posts could not be loaded. Please try again.")
         }
     }
 
     private func withdraw(_ post: HeldPost) async {
-        let previous = held
-        held.removeAll { $0.id == post.id }
+        guard pendingWithdrawal == nil, held.contains(where: { $0.id == post.id }) else { return }
+        pendingWithdrawal = post.id
+        loadID = UUID()
+        isLoading = false
+        errorMessage = nil
+        defer { pendingWithdrawal = nil }
         do {
             _ = try await session.client.send(Endpoint.review.withdraw(post.id))
+            held.removeAll { $0.id == post.id }
         } catch {
-            held = previous
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "The post could not be withdrawn. Please try again.")
         }
     }
 }

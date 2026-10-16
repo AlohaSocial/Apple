@@ -22,6 +22,16 @@ public struct AppShell: View {
     @State private var selectedSource: TimelineSource = .home
     @State private var path: [Route] = []
     @State private var isPresentingSignIn = false
+    /// The address typed on the introduction, for the sign-in screen to open
+    /// with — or empty when the person chose "skip" and will type it there.
+    @State private var signInAddress = ""
+    /// The terms sheet, shown after the introduction rather than before it.
+    /// The first thing a person should see is what the app is; the rules
+    /// belong after that, once they care (docs/09 §4).
+    @State private var isShowingTerms = false
+    /// Which feeds the person wants, chosen once after the first sign-in.
+    /// Nil once the choice has been made.
+    @State private var chosenModes: Set<FeedMode>?
     @State private var composing: ComposerPresentation?
     @Namespace private var mediaTransition
     @State private var isCelebrating = false
@@ -76,6 +86,7 @@ public struct AppShell: View {
             .modifier(
                 ShellSheets(
                     isPresentingSignIn: $isPresentingSignIn,
+                    signInAddress: $signInAddress,
                     composing: $composing,
                     reportTarget: $reportTarget,
                     editing: $editing,
@@ -94,30 +105,135 @@ public struct AppShell: View {
                 environment.sync.setForeground(phase == .active)
             }
             .onOpenURL { url in handle(url) }
+            .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) {
+                _ in
+                // The compose deep link — from the quick-compose widget, or a
+                // Shortcut — reached here because the composer is a sheet the
+                // shell owns, not a navigation destination.
+                guard environment.activeSession != nil else { return }
+                composing = ComposerPresentation()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
                 if let route = note.userInfo?["route"] as? Route { open(route) }
             }
     }
 
+    /// What a person sees, in the order it is fair to ask it of them:
+    ///
+    /// 1. the introduction — what this app is, and where to sign in;
+    /// 2. only then the terms, which nobody can agree to before they know
+    ///    what they are agreeing inside;
+    /// 3. the feeds they want, once there is a server whose answer to that
+    ///    question is knowable;
+    /// 4. the app.
+    ///
+    /// This used to lead with the terms, so the first screen a person ever
+    /// saw was a page of dense rules — which is why the introduction behind
+    /// it read as if it were not there.
     @ViewBuilder
     private var root: some View {
         if environment.isLoading {
-            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if !hasAcceptedTerms {
-            TermsGate(
-                onAccept: { hasAcceptedTerms = true },
-                onDecline: { hasAcceptedTerms = false })
+            // Not a bare spinner: the app is saying what it is while it
+            // loads, which is the only thing it can honestly say yet.
+            VStack(spacing: AlohaMetrics.space4) {
+                AlohaLogoMark(size: 96)
+                Text("Aloha Social", comment: "App name")
+                    .font(AlohaType.title.weight(.bold))
+                    .fontDesign(.rounded)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.background)
         } else if let session = environment.activeSession {
+            promptForModesIfNeeded(session)
             shell(session)
                 // Switching accounts has to change view identity: every
                 // timeline holds its model in `@State`, and without this the
                 // previous account's posts stay on screen and its client keeps
                 // serving the actions (docs/03 §6).
                 .id(session.id)
+                .sheet(
+                    item: Binding(
+                        get: { self.chosenModes.map { ModeSelection($0) } },
+                        set: { newValue in
+                            guard let newValue else { return }
+                            self.chosenModes = nil
+                            Self.recordChosenModes(newValue.modes)
+                        })
+                ) { selection in
+                    NavigationStack {
+                        ModeSelectionView(
+                            selected: Binding(
+                                get: { selection.modes },
+                                set: { newValue in self.chosenModes = newValue }),
+                            capabilities: session.capabilities,
+                            onContinue: { self.chosenModes = nil }
+                        )
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button {
+                                    guard let modes = self.chosenModes else { return }
+                                    Self.recordChosenModes(modes)
+                                    self.chosenModes = nil
+                                } label: {
+                                    Text("Continue", comment: "Settings action")
+                                        .font(.body.weight(.semibold))
+                                }
+                                .disabled(
+                                    self.chosenModes == nil || self.chosenModes?.isEmpty == true)
+                            }
+                        }
+                    }
+                }
+        } else if !hasAcceptedTerms {
+            introduction(offeringTerms: true)
         } else {
-            WelcomeView { isPresentingSignIn = true }
+            introduction(offeringTerms: false)
         }
+    }
+
+    /// Offers the mode choice once, after the first sign-in — the one point at
+    /// which the server's answer to "which feeds exist" is knowable. Without
+    /// this `ModeSelectionView` was dead code that never appeared.
+    private func promptForModesIfNeeded(_ session: AccountSession) {
+        guard chosenModes == nil else { return }
+        guard UserDefaults.standard.stringArray(forKey: Self.chosenModesKey) == nil else {
+            return
+        }
+        chosenModes = Set(session.visibleModes)
+    }
+
+    /// The introduction, and — for a first launch only — the terms behind it.
+    private func introduction(offeringTerms: Bool) -> some View {
+        WelcomeView { address in
+            signInAddress = address ?? ""
+            if offeringTerms {
+                isShowingTerms = true
+            } else {
+                isPresentingSignIn = true
+            }
+        }
+        .sheet(isPresented: $isShowingTerms) {
+            TermsGate(
+                onAccept: {
+                    isShowingTerms = false
+                    isPresentingSignIn = true
+                },
+                onDecline: { isShowingTerms = false })
+        }
+    }
+
+    /// The feeds chosen once, so `chosenModes` can hold a value.
+    private struct ModeSelection: Hashable, Identifiable {
+        let modes: Set<FeedMode>
+        var id: Set<FeedMode> { modes }
+    }
+
+    private static let chosenModesKey = "aloha.chosenModes"
+
+    private static func recordChosenModes(_ modes: Set<FeedMode>) {
+        UserDefaults.standard.set(
+            modes.map(\.rawValue).sorted(), forKey: chosenModesKey)
     }
 
     private func start() async {
@@ -199,11 +315,14 @@ public struct AppShell: View {
                                 }
                         }
                     } label: {
-                        Label {
-                            Text(modeTitle(mode))
-                        } icon: {
-                            Image(systemName: mode.symbolName)
-                        }
+                        // The filled spelling while selected, the outline
+                        // otherwise — Apple's own apps switch weight rather
+                        // than colour to say "this is the tab you are on".
+                        Image(
+                            systemName: selectedTab == .mode(mode)
+                                ? mode.selectedSymbolName : mode.symbolName
+                        )
+                        Text(modeTitle(mode))
                     }
                 }
 
@@ -219,18 +338,49 @@ public struct AppShell: View {
                         }
                     }
                 } label: {
-                    Label {
-                        Text("Messages", comment: "Tab title")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.envelope)
-                    }
+                    Image(
+                        systemName: selectedTab == .messages
+                            ? "envelope.fill" : AlohaSymbol.envelope
+                    )
+                    Text("Messages", comment: "Tab title")
                 }
             }
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
             }
+            // The one way to write something: a button beside the tab bar, not
+            // a toolbar icon and not a floating circle. A toolbar puts it four
+            // taps from the content and a floating button duplicates the tab
+            // bar's thumb zone — the accessory slot is where Apple puts the
+            // primary action of a tab app.
+            .tabViewBottomAccessory {
+                composeAccessory
+            }
         }
     #endif
+
+    /// New post in the tab bar's accessory slot: labelled, always on screen,
+    /// out of the way of the thumb.
+    @available(iOS 18.0, tvOS 18.0, visionOS 2.0, *)
+    private var composeAccessory: some View {
+        Button {
+            composing = ComposerPresentation()
+        } label: {
+            Label {
+                Text("New post", comment: "Compose accessory")
+            } icon: {
+                Image(systemName: AlohaSymbol.compose)
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.glassProminent)
+        .keyboardShortcut("n", modifiers: .command)
+        .accessibilityLabel(Text("New post", comment: "Compose button"))
+        // No tint: the accent the app already wears is the one this button
+        // takes. Re-deriving it here from the theme created a second source
+        // of truth that ignored the server's colour and the colour scheme.
+    }
 
     // MARK: - iPad, Mac, Vision
 
@@ -255,6 +405,17 @@ public struct AppShell: View {
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
         }
+        // A sidebar the width of its content, not the default narrow sliver:
+        // "Direct messages" and "Subscriptions" are two-line labels at the
+        // default, and this is the navigation for a reading app on a big
+        // screen.
+        .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
+        #if os(macOS)
+            // The Mac's own convention: the content leads and the sidebar is
+            // the affordance beside it. On iPad the balanced split is the one
+            // Apple uses, and it is the default there.
+            .navigationSplitViewStyle(.prominentDetail)
+        #endif
         .onChange(of: sidebarItem) { _, item in
             // A new root; whatever was pushed belonged to the old one.
             path = []
@@ -275,24 +436,6 @@ public struct AppShell: View {
             }
         }
     }
-
-    /// Sits in the tab bar's accessory slot rather than floating over it.
-    private var composeButton: some View {
-        Button {
-            composing = ComposerPresentation()
-        } label: {
-            Image(systemName: AlohaSymbol.compose)
-                .font(.title3.weight(.semibold))
-                .frame(width: 56, height: 56)
-        }
-        .buttonStyle(.borderedProminent)
-        .clipShape(Circle())
-        .padding(.trailing, AlohaMetrics.space4)
-        .padding(.bottom, AlohaMetrics.space4)
-        .accessibilityLabel(Text("New post", comment: "Compose button"))
-    }
-
-    // MARK: - Content
 
     @ViewBuilder
     private func modeRoot(_ mode: FeedMode, session: AccountSession) -> some View {
@@ -326,7 +469,11 @@ public struct AppShell: View {
                 AudioModeView(session: session, source: selectedSource) {
                     handle($0, session: session)
                 }
-                .navigationTitle(modeTitle(mode)),
+                .navigationTitle(modeTitle(mode))
+                // On a regular-width shell a timeline is a reading column:
+                // full window width runs a post's text to 1,200pt, which is
+                // unreadable. Mail and Reader constrain theirs; so does this.
+                .readerColumn,
                 session: session)
 
         case .news:
@@ -334,7 +481,8 @@ public struct AppShell: View {
                 NewsModeView(session: session, source: selectedSource) {
                     handle($0, session: session)
                 }
-                .navigationTitle(modeTitle(mode)),
+                .navigationTitle(modeTitle(mode))
+                .readerColumn,
                 session: session)
 
         case .home:
@@ -346,6 +494,7 @@ public struct AppShell: View {
                 // The home mode is whichever of the three you are reading, so
                 // the title says which rather than always "My Feed".
                 .navigationTitle(sourceTitle)
+                .readerColumn
                 .onAppear { environment.sync.noteTimelineVisible(for: session.id) },
                 session: session)
         }
@@ -368,9 +517,7 @@ public struct AppShell: View {
             // old model, and the timeline never changed. This is why the
             // source picker has never worked, in either of its forms.
             .id(selectedSource)
-            .safeAreaInset(edge: .bottom) {
-                TimelineSourceToggle(source: $selectedSource)
-            }
+            .modifier(ScrollRevealedTimelineSource(source: $selectedSource))
             #if os(iOS)
                 .toolbar {
                     // Only on the phone: the split shell carries both of these
@@ -409,8 +556,10 @@ public struct AppShell: View {
         switch route {
         case .thread(let statusID):
             ThreadView(statusID: statusID, session: session) { handle($0, session: session) }
+                .readerColumn
         case .profile(let accountID):
             ProfileView(accountID: accountID, session: session) { handle($0, session: session) }
+                .readerColumn
         case .hashtag(let name):
             HashtagTimelineView(name: name, session: session) { handle($0, session: session) }
         case .bookmarks:
@@ -425,12 +574,15 @@ public struct AppShell: View {
             .navigationTitle(Text("Liked posts", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
+                .readerColumn
         case .settings:
             SettingsView(onAddAccount: { isPresentingSignIn = true })
         case .explore:
             ExploreView(session: session) { handle($0, session: session) }
+                .readerColumn
         case .search(let query):
             SearchView(session: session, initialQuery: query) { handle($0, session: session) }
+                .readerColumn
         case .lists:
             ListsView(session: session)
         case .filters:
@@ -452,6 +604,8 @@ public struct AppShell: View {
             DraftsView(session: session)
         case .notificationRequests:
             NotificationRequestsView(session: session)
+        case .notificationPolicy:
+            NotificationPolicyView(session: session)
         case .followRequests:
             FollowRequestsView(session: session) { handle($0, session: session) }
         case .handle(let acct):
@@ -647,6 +801,16 @@ public struct AppShell: View {
         // a navigation destination.
         if WebAuthenticator.shared.deliver(url) { return }
 
+        // The composer is presented, not pushed (docs/09 §8): a link asking for
+        // it is a request to open the sheet, which is what the quick-compose
+        // widget's button now does.
+        if url.scheme == RouteResolver.scheme,
+            url.host() == "compose"
+        {
+            NotificationCenter.default.post(name: RouteResolver.composeRequested, object: nil)
+            return
+        }
+
         guard let route = RouteResolver.route(for: url) else { return }
         if case .timeline(let key) = route {
             selectedMode = key.mode
@@ -710,6 +874,33 @@ struct MediaPresentation: Identifiable, Hashable {
 }
 
 extension View {
+    /// A timeline on a regular-width shell is a reading column.
+    ///
+    /// Full window width runs a post's text to twelve hundred point, which is
+    /// unreadable — the eye cannot find the start of the next line. Mail and
+    /// Reader constrain their columns on the Mac, and so does this: a 680-point
+    /// column, centred, with the rest of the window quiet around it. On a phone
+    /// the tab shell already fills the screen and the constraint would only
+    /// add margins, so it does nothing there.
+    @ViewBuilder
+    var readerColumn: some View {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                self
+            } else {
+                column
+            }
+        #else
+            column
+        #endif
+    }
+
+    private var column: some View {
+        self
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+    }
+
     /// `fullScreenCover` does not exist on macOS; a sheet is the right
     /// equivalent there.
     @ViewBuilder
@@ -717,7 +908,11 @@ extension View {
         item: Binding<Item?>, @ViewBuilder content: @escaping (Item) -> Content
     ) -> some View {
         #if os(macOS)
-            sheet(item: item, content: content)
+            // A sheet, and macOS would run two sheets without it: a window
+            // behind a sheet must be resizable to look like a normal window
+            // at all, and the media viewer is full-screen on every other
+            // platform, so it takes the window here.
+            self.sheet(item: item, content: content)
         #else
             fullScreenCover(item: item, content: content)
         #endif

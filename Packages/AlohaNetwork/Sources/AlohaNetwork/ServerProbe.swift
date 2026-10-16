@@ -33,8 +33,13 @@ public struct ServerProbe: Sendable {
     /// Accepts `cloud.example.com`, `https://cloud.example.com/`,
     /// `cloud.example.com/nextcloud` and `@alice@cloud.example.com`.
     public struct ServerAddress: Sendable, Hashable {
+        public var scheme: String
         public var host: String
         public var pathHint: String?
+        /// The port as typed. `https://cloud.example` leaves it nil; a private
+        /// network server is very often `http://192.168.1.20:8080`, and
+        /// dropping the port silently rewrites the address to port 80.
+        public var port: Int?
 
         public init?(typed raw: String) {
             var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -57,23 +62,50 @@ public struct ServerProbe: Sendable {
                 host.contains(".") || host == "localhost"
             else { return nil }
 
-            // ATS is left at its defaults and no exception is shipped, so an
-            // instance without HTTPS cannot be added (docs/11 §3).
-            if let scheme = components.scheme, scheme != "https", host != "localhost" {
+            guard let scheme = components.scheme?.lowercased(),
+                scheme == "http" || scheme == "https"
+            else {
                 return nil
             }
 
+            if let port = components.port, !(1...65535).contains(port) { return nil }
+
+            self.scheme = scheme
             self.host = host
+            self.port = components.port
             let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             self.pathHint = path.isEmpty ? nil : path
         }
 
-        public init(host: String, pathHint: String? = nil) {
+        public init(
+            scheme: String = "https", host: String, pathHint: String? = nil, port: Int? = nil
+        ) {
+            self.scheme = scheme
             self.host = host
             self.pathHint = pathHint
+            self.port = port
         }
 
-        var origin: String { "https://\(host)" }
+        /// The address an already signed-in account is reached at, rebuilt
+        /// from its stored API base.
+        ///
+        /// `instanceHost` is only ever a bare host — handles and `acct`
+        /// strings are built from it — so the scheme and a port exist solely
+        /// in the API base. Anything that re-derives an origin (a re-probe,
+        /// a NodeInfo fetch) must read them from there rather than assume
+        /// https, or a private-network http account can no longer be found.
+        public init(apiBase: URL) {
+            self.init(
+                scheme: apiBase.scheme?.lowercased() ?? "https",
+                host: (apiBase.host() ?? "").lowercased(),
+                pathHint: nil,
+                port: apiBase.port)
+        }
+
+        public var origin: String {
+            if let port { return "\(scheme)://\(host):\(port)" }
+            return "\(scheme)://\(host)"
+        }
     }
 
     // MARK: - Candidates

@@ -23,6 +23,7 @@ public struct PortfolioView: View {
     @State private var didSave = false
     @State private var errorMessage: String?
     @State private var section: Section = .settings
+    @State private var previewID = UUID()
 
     enum Section: String, CaseIterable, Identifiable {
         case settings, preview
@@ -70,151 +71,176 @@ public struct PortfolioView: View {
                     Text(errorMessage)
                         .font(.footnote)
                         .foregroundStyle(palette.destructive)
-                }
-            }
-
-            SwiftUI.Section {
-                Toggle(isOn: $settings.active) {
-                    Text("Publish my portfolio", comment: "Portfolio switch")
-                }
-                if settings.active, let url = loaded?.url ?? settings.url {
-                    HStack {
-                        Link(destination: url) {
-                            Text(url.absoluteString)
-                                .font(AlohaType.meta)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                        Spacer()
-                        ShareLink(item: url) {
-                            Image(systemName: AlohaSymbol.share)
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel(Text("Share the address", comment: "Portfolio action"))
+                    if loaded == nil {
+                        Button("Try again") { Task { await load() } }
+                            .buttonStyle(.glass)
+                            .disabled(isLoading)
                     }
                 }
-            } footer: {
-                Text(
-                    "A draft is private. Once published, anybody with the address can see the page without signing in.",
-                    comment: "Portfolio publish explanation")
             }
 
-            SwiftUI.Section {
-                TextField(
-                    session.snapshot.bestDisplayName, text: $settings.title
-                )
-                .onChange(of: settings.title) { _, value in
-                    if value.count > 128 { settings.title = String(value.prefix(128)) }
-                }
-                TextField(
-                    String(
-                        localized: "A sentence about the work",
-                        comment: "Portfolio intro placeholder"),
-                    text: $settings.intro, axis: .vertical
-                )
-                .lineLimit(3...6)
-                .onChange(of: settings.intro) { _, value in
-                    if value.count > 500 { settings.intro = String(value.prefix(500)) }
-                }
-            } header: {
-                Text("Title and introduction", comment: "Portfolio section")
-            }
-
-            SwiftUI.Section {
-                Picker(selection: $settings.layout) {
-                    Text("A grid of squares", comment: "Portfolio layout").tag(
-                        PortfolioSettings.Layout.grid)
-                    Text("One at a time, at its own shape", comment: "Portfolio layout")
-                        .tag(PortfolioSettings.Layout.rows)
-                } label: {
-                    Text("Layout", comment: "Portfolio field")
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } header: {
-                Text("Layout", comment: "Portfolio section")
-            }
-
-            SwiftUI.Section {
-                Picker(selection: $settings.source) {
-                    Text("My most recent public photos", comment: "Portfolio source")
-                        .tag(PortfolioSettings.Source.recent)
-                    Text("One of my albums", comment: "Portfolio source")
-                        .tag(PortfolioSettings.Source.collection)
-                } label: {
-                    Text("Pictures", comment: "Portfolio field")
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-
-                if settings.source == .collection {
-                    Picker(
-                        selection: Binding(
-                            get: { settings.collectionID ?? "" },
-                            set: { settings.collectionID = $0.isEmpty ? nil : $0 })
-                    ) {
-                        Text("Choose an album", comment: "Portfolio collection placeholder").tag("")
-                        ForEach(collections) { collection in
-                            Text(collection.title).tag(collection.id)
+            Group {
+                SwiftUI.Section {
+                    Toggle(isOn: $settings.active) {
+                        Text("Publish my portfolio", comment: "Portfolio switch")
+                    }
+                    if loaded?.active == true, let url = loaded?.url {
+                        HStack {
+                            Link(destination: url) {
+                                Text(url.absoluteString)
+                                    .font(AlohaType.meta)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            Spacer()
+                            ShareLink(item: url) {
+                                Image(systemName: AlohaSymbol.share)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(
+                                Text("Share the address", comment: "Portfolio action"))
                         }
+                    }
+                } footer: {
+                    Text(
+                        "A draft is private. Once published, anybody with the address can see the page without signing in.",
+                        comment: "Portfolio publish explanation")
+                }
+
+                SwiftUI.Section {
+                    TextField(
+                        session.snapshot.bestDisplayName, text: $settings.title
+                    )
+                    .onChange(of: settings.title) { _, value in
+                        if value.count > 128 { settings.title = String(value.prefix(128)) }
+                    }
+                    TextField(
+                        String(
+                            localized: "A sentence about the work",
+                            comment: "Portfolio intro placeholder"),
+                        text: $settings.intro, axis: .vertical
+                    )
+                    .lineLimit(3...6)
+                    .onChange(of: settings.intro) { _, value in
+                        if value.count > 500 { settings.intro = String(value.prefix(500)) }
+                    }
+                } header: {
+                    Text("Title and introduction", comment: "Portfolio section")
+                }
+
+                SwiftUI.Section {
+                    Picker(selection: $settings.layout) {
+                        Text("A grid of squares", comment: "Portfolio layout").tag(
+                            PortfolioSettings.Layout.grid)
+                        Text("One at a time, at its own shape", comment: "Portfolio layout")
+                            .tag(PortfolioSettings.Layout.rows)
                     } label: {
-                        Text("Album", comment: "Portfolio field")
+                        Text("Layout", comment: "Portfolio field")
                     }
-                    if collections.isEmpty {
-                        Text("You have no albums yet.", comment: "Portfolio no collections")
-                            .font(.footnote)
-                            .foregroundStyle(palette.secondaryLabel)
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                } header: {
+                    Text("Layout", comment: "Portfolio section")
+                }
+
+                SwiftUI.Section {
+                    Picker(selection: $settings.source) {
+                        Text("My most recent public photos", comment: "Portfolio source")
+                            .tag(PortfolioSettings.Source.recent)
+                        Text("One of my albums", comment: "Portfolio source")
+                            .tag(PortfolioSettings.Source.collection)
+                    } label: {
+                        Text("Pictures", comment: "Portfolio field")
                     }
-                }
-            } header: {
-                Text("Pictures", comment: "Portfolio section")
-            }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
 
-            SwiftUI.Section {
-                Toggle(isOn: $settings.showCaptions) {
-                    Text("Show captions", comment: "Portfolio switch")
-                }
-                Toggle(isOn: $settings.showPlaces) {
-                    Text("Show where each picture was taken", comment: "Portfolio switch")
-                }
-                Toggle(isOn: $settings.showDates) {
-                    Text("Show the year", comment: "Portfolio switch")
-                }
-                Toggle(isOn: $settings.showAvatar) {
-                    Text("Show my picture at the top", comment: "Portfolio switch")
-                }
-            } header: {
-                Text("On the page", comment: "Portfolio section")
-            }
-
-            SwiftUI.Section {
-                Button {
-                    Task { await save() }
-                } label: {
-                    HStack {
-                        Spacer()
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Save", comment: "Portfolio action")
+                    if settings.source == .collection {
+                        Picker(
+                            selection: Binding(
+                                get: { settings.collectionID ?? "" },
+                                set: { settings.collectionID = $0.isEmpty ? nil : $0 })
+                        ) {
+                            Text("Choose an album", comment: "Portfolio collection placeholder")
+                                .tag("")
+                            ForEach(collections) { collection in
+                                Text(collection.title).tag(collection.id)
+                            }
+                        } label: {
+                            Text("Album", comment: "Portfolio field")
                         }
-                        Spacer()
+                        if collections.isEmpty {
+                            Text("You have no albums yet.", comment: "Portfolio no collections")
+                                .font(.footnote)
+                                .foregroundStyle(palette.secondaryLabel)
+                        }
+                        if !PortfolioPreview.canSave(settings) {
+                            Text("Choose an album before publishing your portfolio.")
+                                .font(.footnote)
+                                .foregroundStyle(palette.secondaryLabel)
+                        }
                     }
+                } header: {
+                    Text("Pictures", comment: "Portfolio section")
                 }
-                .disabled(isSaving || !hasChanges)
+
+                SwiftUI.Section {
+                    Toggle(isOn: $settings.showCaptions) {
+                        Text("Show captions", comment: "Portfolio switch")
+                    }
+                    Toggle(isOn: $settings.showPlaces) {
+                        Text("Show where each picture was taken", comment: "Portfolio switch")
+                    }
+                    Toggle(isOn: $settings.showDates) {
+                        Text("Show the year", comment: "Portfolio switch")
+                    }
+                    Toggle(isOn: $settings.showAvatar) {
+                        Text("Show my picture at the top", comment: "Portfolio switch")
+                    }
+                } header: {
+                    Text("On the page", comment: "Portfolio section")
+                }
+
+                SwiftUI.Section {
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isSaving {
+                                ProgressView()
+                            } else {
+                                Text("Save", comment: "Portfolio action")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.glassProminent)
+                    .disabled(isSaving || !hasChanges || !PortfolioPreview.canSave(settings))
+                }
             }
+            .disabled(isLoading || isSaving || loaded == nil)
         }
         .formStyle(.grouped)
+        .alohaGround(palette)
     }
 
     // MARK: - Preview
 
     @ViewBuilder
     private var previewPage: some View {
-        if let page = preview ?? draftPage {
+        if let page = hasChanges ? draftPage : (preview ?? draftPage) {
             ScrollView {
+                if let loaded,
+                    settings.source != loaded.source || settings.collectionID != loaded.collectionID
+                {
+                    Text("Save your changes to preview photos from the newly selected source.")
+                        .font(.footnote)
+                        .foregroundStyle(palette.secondaryLabel)
+                        .padding()
+                }
                 PortfolioPageView(page: page, showsAvatarFallback: session.snapshot.avatarURL)
             }
             .refreshable { await loadPreview() }
@@ -234,6 +260,11 @@ public struct PortfolioView: View {
     /// The page as the settings describe it, from the pictures the server
     /// sent along with them — so a draft can be looked at before publishing.
     private var draftPage: PortfolioPage? {
+        if let preview {
+            return PortfolioPreview.applying(
+                settings, to: preview,
+                fallbackTitle: session.snapshot.bestDisplayName)
+        }
         let source = loaded ?? settings
         guard !source.posts.isEmpty else { return nil }
         return PortfolioPage(
@@ -255,12 +286,16 @@ public struct PortfolioView: View {
         do {
             let own = try await session.client.decode(
                 PortfolioSettings.self, from: Endpoint.portfolio.own)
+            guard !Task.isCancelled else { return }
             settings = own
             loaded = own
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Portfolio settings could not be loaded. Please try again.")
         }
         // Albums are optional: no albums, no picker, no error.
         collections =
@@ -271,16 +306,25 @@ public struct PortfolioView: View {
     }
 
     private func loadPreview() async {
+        let request = UUID()
+        previewID = request
         guard loaded?.active == true else {
             preview = nil
             return
         }
-        preview = try? await session.client.decode(
+        let response = try? await session.client.decode(
             PortfolioPage.self, from: Endpoint.portfolio.page(handle: session.snapshot.handle))
+        guard !Task.isCancelled, previewID == request else { return }
+        preview = response
     }
 
     private func save() async {
+        guard !isSaving, !isLoading, loaded != nil, hasChanges,
+            PortfolioPreview.canSave(settings)
+        else { return }
         isSaving = true
+        previewID = UUID()
+        errorMessage = nil
         defer { isSaving = false }
         do {
             let saved = try await session.client.decode(
@@ -292,7 +336,9 @@ public struct PortfolioView: View {
             await loadPreview()
         } catch {
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Your portfolio could not be saved. Please try again.")
         }
     }
 }
@@ -313,6 +359,7 @@ struct PortfolioPageView: View {
                     RemoteImage(url: avatar)
                         .frame(width: 88, height: 88)
                         .clipShape(Circle())
+                        .accessibilityHidden(true)
                 }
                 Text(page.title)
                     .font(AlohaType.display)
@@ -343,7 +390,7 @@ struct PortfolioPageView: View {
                     ForEach(pictures) { post in
                         if let picture = post.picture {
                             RemoteImage(
-                                url: picture.previewURL ?? picture.url, blurhash: picture.blurhash,
+                                url: picture.displayImageURL, blurhash: picture.blurhash,
                                 accessibilityText: picture.description
                             )
                             .aspectRatio(1, contentMode: .fill)

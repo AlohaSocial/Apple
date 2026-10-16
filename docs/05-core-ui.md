@@ -243,10 +243,21 @@ exist undocumented.
   `for_not_followers`, `for_new_accounts`, `for_private_mentions`,
   `for_limited_accounts`), each `accept` / `filter` / `drop`. Note that on
   Nextcloud Social **`drop` behaves as `filter`** — the UI says so in a footnote
-  rather than pretending otherwise.
+  rather than pretending otherwise. The policy screen is reachable from both
+  Settings → Notifications and the Notifications screen; when there are
+  pending filtered requests, their count is shown next to the policy link.
 - **Requests inbox** (`/api/v1/notifications/requests`): one row per held
   sender with their count and latest post, with Accept / Dismiss, and bulk
   accept/dismiss for a screenful. Unknown senders must be easy to clear.
+- **Conversation mute** — on mention and reply notifications, a context menu
+  action and a push-notification action to mute (or unmute) the conversation.
+  The post menu reads "Unmute conversation" when the conversation is already
+  muted.
+- **"Show numbers" switch** (Settings → Notifications) — hides reply/boost/
+  favourite counts on posts, follower/following/post counts on profiles, the
+  "and N others" tail of grouped notifications, story view counts, and the
+  follower figures in the year-in-review. Poll results, unread counts and
+  character limits stay.
 
 ## 7. Search and Explore
 

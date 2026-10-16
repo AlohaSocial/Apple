@@ -18,6 +18,13 @@ public struct RemoteImage<Placeholder: View>: View {
 
     @State private var image: CGImage?
     @State private var blurred: CGImage?
+    @State private var loadedURL: URL?
+
+    private struct LoadKey: Hashable {
+        let url: URL?
+        let width: Int
+        let height: Int
+    }
 
     /// `placeholder` is what shows when there is neither an image nor a
     /// blurhash — an avatar's monogram, say, rather than an empty grey circle.
@@ -35,6 +42,10 @@ public struct RemoteImage<Placeholder: View>: View {
 
     public var body: some View {
         GeometryReader { proxy in
+            let key = LoadKey(
+                url: url,
+                width: Int(proxy.size.width.rounded(.up)),
+                height: Int(proxy.size.height.rounded(.up)))
             ZStack {
                 if blurred == nil && image == nil {
                     if Placeholder.self == EmptyView.self {
@@ -59,7 +70,10 @@ public struct RemoteImage<Placeholder: View>: View {
             // belongs in the middle of the space it was given.
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
-            .task(id: url) {
+            // GeometryReader can initially report 0×0. Including the measured
+            // size in the identity retries automatically after layout instead
+            // of leaving the placeholder on screen forever.
+            .task(id: key) {
                 await load(size: proxy.size)
             }
         }
@@ -74,11 +88,19 @@ public struct RemoteImage<Placeholder: View>: View {
     }
 
     private func load(size: CGSize) async {
+        if loadedURL != url {
+            image = nil
+            blurred = nil
+            loadedURL = url
+        }
         if let blurhash, blurred == nil {
             blurred = BlurHash.decode(blurhash, size: CGSize(width: 24, height: 24))
         }
         guard let url, size.width > 0, size.height > 0 else { return }
         let loaded = await ImageLoader.shared.image(for: url, targetSize: size)
+        // A reused row may already represent a different URL by the time
+        // the shared request finishes. Never replace its image with that result.
+        guard !Task.isCancelled, loadedURL == url else { return }
         withAnimation(.easeOut(duration: 0.18)) { image = loaded }
     }
 }
@@ -110,7 +132,9 @@ public struct AvatarView: View {
     public var body: some View {
         let dimension = size ?? metrics.avatarSize
         RemoteImage(
-            url: account.avatar, accessibilityText: nil,
+            // The static variant is smaller and avoids downloading an entire
+            // animated avatar just to display its first frame.
+            url: account.preferredAvatarURL, accessibilityText: nil,
             placeholder: { MonogramView(account: account, size: dimension) }
         )
         .frame(width: dimension, height: dimension)

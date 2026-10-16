@@ -47,8 +47,12 @@ enum ShellSheet: Identifiable {
 struct ShellSheets: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.mediaTransition) private var mediaTransition
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @Binding var isPresentingSignIn: Bool
+    /// What the introduction's last page had in its field, handed to the
+    /// sign-in screen so the address is typed once.
+    @Binding var signInAddress: String
     @Binding var composing: ComposerPresentation?
     @Binding var reportTarget: ReportTarget?
     @Binding var editing: EditRequest?
@@ -57,14 +61,25 @@ struct ShellSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $isPresentingSignIn) { SignInView() }
-            .sheet(item: $composing) { request in
+            .sheet(isPresented: $isPresentingSignIn) {
+                SignInView(serverAddress: signInAddress)
+            }
+            .sheet(item: whenSignedIn($composing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(
-                        session: session, replyTo: request.replyTo, quoting: request.quoting)
+                        session: session, replyTo: request.replyTo, quoting: request.quoting
+                    )
+                    #if os(iOS)
+                        // A composer is a writing surface, not a card: on a
+                        // regular-width iPad it opens large, so the alt-text
+                        // strip and the visibility picker are not a scroll
+                        // inside a half-height sheet.
+                        .presentationDetents(
+                            horizontalSizeClass == .regular ? [.large] : [.medium, .large])
+                    #endif
                 }
             }
-            .sheet(item: $sheet) { sheet in
+            .sheet(item: whenSignedIn($sheet)) { sheet in
                 if let session = environment.activeSession {
                     switch sheet {
                     case .delivery(let status):
@@ -82,12 +97,12 @@ struct ShellSheets: ViewModifier {
                     }
                 }
             }
-            .sheet(item: $reportTarget) { target in
+            .sheet(item: whenSignedIn($reportTarget)) { target in
                 if let session = environment.activeSession {
                     ReportView(session: session, account: target.account, status: target.status)
                 }
             }
-            .sheet(item: $editing) { request in
+            .sheet(item: whenSignedIn($editing)) { request in
                 if let session = environment.activeSession {
                     ComposerView(
                         session: session, editing: request.status, source: request.source)
@@ -100,7 +115,11 @@ struct ShellSheets: ViewModifier {
                     statusID: presentation.statusID,
                     apiBase: environment.activeSession?.capabilities.apiBase
                         ?? URL(string: "https://invalid.invalid/")!,
-                    autoplay: environment.activeSession?.settings.autoplayVideo ?? true
+                    // The "Autoplay video" setting is the person's choice,
+                    // not the tap's: an explicitly opened viewer must not
+                    // override it either.
+                    autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
+                    session: environment.activeSession
                 )
                 // The photograph grows out of the cell that was tapped and
                 // shrinks back into it, rather than cutting.
@@ -109,6 +128,19 @@ struct ShellSheets: ViewModifier {
                         ?? presentation.statusID,
                     in: mediaTransition)
             }
+    }
+
+    /// A sheet builds its content from the active session, so with none there
+    /// is nothing to show: the item reads back as `nil` and no sheet goes up
+    /// at all, rather than one whose closure draws an empty body.
+    private func whenSignedIn<Item: Identifiable>(_ binding: Binding<Item?>) -> Binding<Item?> {
+        // Read while the modifier's body is being evaluated, not when the
+        // binding fires: an environment read from a stored closure can be a
+        // view update behind.
+        let hasSession = environment.activeSession != nil
+        return Binding(
+            get: { hasSession ? binding.wrappedValue : nil },
+            set: { newValue in binding.wrappedValue = hasSession ? newValue : nil })
     }
 }
 

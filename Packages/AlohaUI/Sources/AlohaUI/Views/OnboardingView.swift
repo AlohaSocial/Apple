@@ -86,7 +86,9 @@ public struct TermsGate: View {
                         Text("Agree and continue", comment: "Terms action")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.alohaProminent)
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.large)
+                    .tint(palette.accent)
 
                     Button(role: .cancel, action: onDecline) {
                         Text("Not now", comment: "Terms action")

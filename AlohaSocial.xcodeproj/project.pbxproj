@@ -86,6 +86,7 @@
 		BBSP000000000000000BB /* AlohaShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBWP000000000000000BB /* AlohaWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCKP00000000000000CC /* AlohaSocialWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		MACP00000000000000MA /* AlohaSocialMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CCVP00000000000000CC /* AlohaSocialTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDNP00000000000000DD /* AlohaNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEUP00000000000000EE /* AlohaSocialUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlohaSocialUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -110,6 +111,11 @@
 		CCKG00000000000000CC /* AlohaSocialWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AlohaSocialWatch;
+			sourceTree = "<group>";
+		};
+		MACG00000000000000MA /* AlohaSocialMac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AlohaSocialMac;
 			sourceTree = "<group>";
 		};
 		CCVG00000000000000CC /* AlohaSocialTV */ = {
@@ -167,6 +173,13 @@
 				CCKL020000000000000CC /* AlohaNetwork in Frameworks */,
 			);
 		};
+		MACF00000000000000MA /* PBXFrameworksBuildPhase */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CCVF00000000000000CC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
@@ -220,6 +233,7 @@
 			children = (
 				56A4A912306020030052D930 /* AlohaSocial.app */,
 				CCKP00000000000000CC /* AlohaSocialWatch.app */,
+			MACP00000000000000MA /* AlohaSocialMac.app */,
 				CCVP00000000000000CC /* AlohaSocialTV.app */,
 				BBWP000000000000000BB /* AlohaWidgets.appex */,
 				BBSP000000000000000BB /* AlohaShareExtension.appex */,
@@ -334,6 +348,34 @@
 			productReference = CCKP00000000000000CC /* AlohaSocialWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		MACT00000000000000MA /* AlohaSocialWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = MACC00000000000000MA /* Build configuration list for PBXNativeTarget "AlohaSocialWatch" */;
+			buildPhases = (
+				MACS00000000000000MA /* Sources */,
+				MACF00000000000000MA /* Frameworks */,
+				MACR00000000000000MA /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				MACG00000000000000MA /* AlohaSocialWatch */,
+			);
+			name = AlohaSocialMac;
+			packageProductDependencies = (
+				AA200000000000000000AA /* AlohaModels */,
+				AA200100000000000000AA /* AlohaHTML */,
+				AA200200000000000000AA /* AlohaNetwork */,
+				AA200300000000000000AA /* AlohaStore */,
+				AA200400000000000000AA /* AlohaMedia */,
+				AA200500000000000000AA /* AlohaIntelligence */,
+				AA200600000000000000AA /* AlohaDesign */,
+				AA200700000000000000AA /* AlohaUI */,
+			);
+			productName = AlohaSocialMac;
+			productReference = MACP00000000000000MA /* AlohaSocialWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		CCVT00000000000000CC /* AlohaSocialTV */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CCVC00000000000000CC /* Build configuration list for PBXNativeTarget "AlohaSocialTV" */;
@@ -445,6 +487,7 @@
 			targets = (
 				56A4A911306020030052D930 /* AlohaSocial */,
 				CCKT00000000000000CC /* AlohaSocialWatch */,
+				MACT00000000000000MA /* AlohaSocialMac */,
 				CCVT00000000000000CC /* AlohaSocialTV */,
 				BBWT000000000000000BB /* AlohaWidgets */,
 				BBST000000000000000BB /* AlohaShareExtension */,
@@ -474,6 +517,13 @@
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
+		};
+		MACR00000000000000MA /* PBXResourcesBuildPhase */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CCVR00000000000000CC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -507,6 +557,13 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
+		};
+		MACS00000000000000MA /* PBXSourcesBuildPhase */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CCVS00000000000000CC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -878,6 +935,30 @@
 			};
 			name = Release;
 		};
+		MACD00000000000000MA /* Debug configuration for PBXNativeTarget "AlohaSocialMac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialMac-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+			};
+			name = Debug;
+		};
 		CCKD00000000000000CC /* Debug configuration for PBXNativeTarget "AlohaSocialWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -885,6 +966,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.watch;
@@ -900,6 +982,31 @@
 			};
 			name = Debug;
 		};
+		MACX00000000000000MA /* Release configuration for PBXNativeTarget "AlohaSocialMac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialMac-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Release;
+		};
 		CCKE00000000000000CC /* Release configuration for PBXNativeTarget "AlohaSocialWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -907,6 +1014,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.watch;
@@ -929,6 +1037,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.tv;
@@ -951,6 +1060,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nextcloud.alohasocial.tv;
@@ -1094,6 +1204,14 @@
 			buildConfigurations = (
 				CCKD00000000000000CC /* Debug configuration for PBXNativeTarget "AlohaSocialWatch" */,
 				CCKE00000000000000CC /* Release configuration for PBXNativeTarget "AlohaSocialWatch" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		MACC00000000000000MA /* Build configuration list for PBXNativeTarget "AlohaSocialWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				MACD00000000000000MA /* Debug configuration for PBXNativeTarget "AlohaSocialWatch" */,
+				MACX00000000000000MA /* Release configuration for PBXNativeTarget "AlohaSocialWatch" */,
 			);
 			defaultConfigurationName = Release;
 		};

@@ -20,6 +20,8 @@ public struct StatisticsView: View {
     @State private var exportURL: URL?
     @State private var isExporting = false
     @State private var errorMessage: String?
+    @State private var loadID = UUID()
+    @State private var loadedDays: Int?
 
     private static let windows: [(days: Int, title: LocalizedStringResource)] = [
         (30, LocalizedStringResource("30 days", comment: "Statistics window")),
@@ -35,15 +37,13 @@ public struct StatisticsView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
-                windowPicker
-
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
                         .foregroundStyle(palette.destructive)
                 }
 
-                if let statistics {
+                if let statistics, loadedDays == days {
                     hero(statistics)
                     engagement(statistics)
                     postsByMonth(statistics)
@@ -61,7 +61,7 @@ public struct StatisticsView: View {
                     )
                     partners(statistics)
                     media(statistics)
-                } else if !isLoading {
+                } else if !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("Nothing to count yet", comment: "Statistics empty")
                     } description: {
@@ -70,6 +70,15 @@ public struct StatisticsView: View {
                 }
             }
             .padding(AlohaMetrics.space4)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            GlassEffectContainer(spacing: AlohaMetrics.space2) {
+                windowPicker
+                    .padding(.horizontal, AlohaMetrics.space4)
+                    .padding(.vertical, AlohaMetrics.space2)
+                    .glassEffect(
+                        .regular, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
+            }
         }
         .background(palette.background)
         .navigationTitle(Text("Statistics", comment: "Screen title"))
@@ -85,6 +94,7 @@ public struct StatisticsView: View {
                             Image(systemName: AlohaSymbol.refresh)
                         }
                     }
+                    .disabled(isLoading)
                     Button {
                         Task { await export() }
                     } label: {
@@ -94,7 +104,7 @@ public struct StatisticsView: View {
                             Image(systemName: AlohaSymbol.share)
                         }
                     }
-                    .disabled(isExporting)
+                    .disabled(isExporting || isLoading)
                 } label: {
                     Image(systemName: AlohaSymbol.more)
                 }
@@ -102,7 +112,12 @@ public struct StatisticsView: View {
             }
         }
         .overlay {
-            if isLoading && statistics == nil { ProgressView() }
+            if isLoading && (statistics == nil || loadedDays != days) {
+                // The shape of the page arriving: a hero block and a grid of
+                // tiles. A spinner over a blank screen reads as broken, where
+                // the shape of the answer reads as working.
+                statisticsSkeleton
+            }
         }
         .sheet(item: Binding(get: { exportURL.map(ExportFile.init) }, set: { exportURL = $0?.url }))
         { file in
@@ -123,6 +138,7 @@ public struct StatisticsView: View {
             Text("Window", comment: "Statistics window picker")
         }
         .pickerStyle(.segmented)
+        .disabled(isExporting)
         .labelsHidden()
     }
 
@@ -139,17 +155,19 @@ public struct StatisticsView: View {
                     .foregroundStyle(palette.tertiaryLabel)
                 }
             }
-            HStack(spacing: AlohaMetrics.space4) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)],
+                alignment: .leading, spacing: AlohaMetrics.space3
+            ) {
                 stat(
-                    Int(
-                        statistics.posts["total"] ?? statistics.posts["count"]
-                            ?? Double(statistics.window?.counted ?? 0)),
+                    statistics.posts["total"] ?? statistics.posts["count"]
+                        ?? Double(statistics.window?.counted ?? 0),
                     Text("Posts", comment: "Statistics stat"))
                 stat(
-                    statistics.account?.followers ?? 0,
+                    Double(statistics.account?.followers ?? 0),
                     Text("Followers", comment: "Statistics stat"))
                 stat(
-                    statistics.account?.following ?? 0,
+                    Double(statistics.account?.following ?? 0),
                     Text("Following", comment: "Statistics stat"))
             }
             if let window = statistics.window, window.capped {
@@ -281,6 +299,8 @@ public struct StatisticsView: View {
                     ])
                     .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.caption2) } }
                     .frame(height: 170)
+                    .accessibilityLabel(
+                        Text("Posts, replies and boosts", comment: "Statistics section"))
                 }
                 .card(palette)
             }
@@ -298,14 +318,14 @@ public struct StatisticsView: View {
                     HStack {
                         visibilityTitle(row.key)
                         Spacer()
-                        Text(Int(row.value), format: .number)
+                        Text(verbatim: StatisticsNumbers.count(row.value))
                             .fontWeight(.semibold)
                         Text(
                             (total > 0 ? row.value / total : 0),
                             format: .percent.precision(.fractionLength(0))
                         )
                         .foregroundStyle(palette.tertiaryLabel)
-                        .frame(width: 44, alignment: .trailing)
+                        .frame(minWidth: 44, alignment: .trailing)
                     }
                     .font(.footnote)
                 }
@@ -429,11 +449,57 @@ public struct StatisticsView: View {
 
     // MARK: - Pieces
 
-    private func stat(_ value: Int, _ label: Text) -> some View {
+    /// The shape of the page arriving: a hero block, then the tiles' grid.
+    private var statisticsSkeleton: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+            heroSkeleton
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), spacing: AlohaMetrics.space3)],
+                spacing: AlohaMetrics.space3
+            ) {
+                ForEach(0..<6, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+                        .fill(palette.surfaceRaised)
+                        .frame(height: 64)
+                }
+            }
+        }
+        .padding(AlohaMetrics.space4)
+        .accessibilityLabel(Text("Loading statistics", comment: "Statistics loading"))
+    }
+
+    private var heroSkeleton: some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Circle()
+                .fill(palette.surfaceRaised)
+                .frame(width: 48, height: 48)
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 140, height: 14)
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(palette.surfaceRaised)
+                    .frame(width: 96, height: 10)
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: AlohaMetrics.space3) {
+                ForEach(0..<3, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(palette.surfaceRaised)
+                        .frame(width: 56, height: 20)
+                }
+            }
+        }
+    }
+
+    private func stat(_ value: Double, _ label: Text) -> some View {
         HStack(spacing: 4) {
-            Text(value, format: .number.notation(.compactName))
+            Text(verbatim: StatisticsNumbers.count(value, compact: true))
                 .fontWeight(.semibold)
                 .fontDesign(.rounded)
+                // Tabular digits, so a row of hero numbers aligns instead of
+                // jittering as the values change.
+                .monospacedDigit()
             label.foregroundStyle(palette.secondaryLabel)
         }
         .font(.footnote)
@@ -451,11 +517,15 @@ public struct StatisticsView: View {
                 } else if fraction {
                     Text(value, format: .number.precision(.fractionLength(1)))
                 } else {
-                    Text(Int(value), format: .number.notation(.compactName))
+                    Text(verbatim: StatisticsNumbers.count(value, compact: true))
                 }
             }
             .font(.title3.weight(.bold))
             .fontDesign(.rounded)
+            // Tabular digits across the whole grid: without it the columns of
+            // numbers are ragged and a two-digit and a five-digit count sit on
+            // different baselines.
+            .monospacedDigit()
             label
                 .font(AlohaType.meta)
                 .foregroundStyle(palette.secondaryLabel)
@@ -490,34 +560,56 @@ public struct StatisticsView: View {
     // MARK: - Data
 
     private func load(fresh: Bool = false) async {
+        let request = UUID()
+        let requestedDays = days
+        loadID = request
         isLoading = true
-        defer { isLoading = false }
+        errorMessage = nil
+        defer { if loadID == request { isLoading = false } }
         do {
-            statistics = try await session.client.decode(
-                AccountStatistics.self, from: Endpoint.statistics.overview(days: days, fresh: fresh)
+            let response = try await session.client.decode(
+                AccountStatistics.self,
+                from: Endpoint.statistics.overview(days: requestedDays, fresh: fresh)
             )
+            guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
+            statistics = response
+            loadedDays = requestedDays
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Statistics could not be loaded. Please try again.")
         }
     }
 
     private func export() async {
+        guard !isExporting else { return }
+        let requestedDays = days
         isExporting = true
+        errorMessage = nil
         defer { isExporting = false }
         do {
-            let response = try await session.client.send(Endpoint.statistics.export(days: days))
-            let url = FileManager.default.temporaryDirectory
-                .appending(
-                    path:
-                        "social-statistics-\(Date.now.formatted(.iso8601.year().month().day())).csv"
-                )
+            let response = try await session.client.send(
+                Endpoint.statistics.export(days: requestedDays))
+            guard !Task.isCancelled else { return }
+            let directory = FileManager.default.temporaryDirectory
+                .appending(path: "aloha-statistics-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true)
+            let url = directory.appending(
+                path:
+                    "social-statistics-\(Date.now.formatted(.iso8601.year().month().day())).csv")
             try response.data.write(to: url, options: .atomic)
             exportURL = url
         } catch {
+            guard !Task.isCancelled else { return }
             await session.handle(error)
-            errorMessage = (error as? APIError)?.errorDescription
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Statistics could not be exported. Please try again.")
         }
     }
 }
@@ -537,6 +629,7 @@ private struct ExportShareSheet: View {
         VStack(spacing: AlohaMetrics.space4) {
             Image(systemName: "tablecells")
                 .font(.largeTitle)
+                .accessibilityHidden(true)
             Text(url.lastPathComponent)
                 .font(AlohaType.name)
             ShareLink(item: url) {
@@ -546,12 +639,13 @@ private struct ExportShareSheet: View {
                     Image(systemName: AlohaSymbol.share)
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             Button {
                 dismiss()
             } label: {
                 Text("Done", comment: "Sheet action")
             }
+            .buttonStyle(.glass)
         }
         .padding(AlohaMetrics.space6)
         .presentationDetents([.medium])
@@ -565,6 +659,12 @@ extension View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 palette.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+            )
+            // A hairline so a card reads as a layer over the scroll rather
+            // than as a slightly different colour.
+            .overlay(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                    .strokeBorder(palette.separator.opacity(0.5), lineWidth: 0.5))
     }
 }

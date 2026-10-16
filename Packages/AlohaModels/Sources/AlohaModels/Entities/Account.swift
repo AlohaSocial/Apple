@@ -149,6 +149,14 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
 }
 
 extension Account {
+    /// Prefer the non-animated representation for small UI chrome. Some
+    /// servers publish an animated `avatar` whose first frame ImageIO cannot
+    /// decode cheaply, while `avatar_static` is intended for exactly this use.
+    public var preferredAvatarURL: URL? { avatarStatic ?? avatar }
+
+    /// Headers follow the same convention as avatars.
+    public var preferredHeaderURL: URL? { headerStatic ?? header }
+
     /// What a person reads. Never empty — falls back through the handle.
     public var bestDisplayName: String {
         displayName.isEmpty ? (username.isEmpty ? acct : username) : displayName

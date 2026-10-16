@@ -63,7 +63,13 @@ public struct NextcloudFileBrowser: View {
                 }
             }
             .listStyle(.plain)
-            .overlay { if isLoading && entries.isEmpty { ProgressView() } }
+            .overlay {
+                if isLoading && entries.isEmpty {
+                    // The shape of the directory arriving: rows of files, not
+                    // a spinner over an empty list.
+                    SkeletonListRow(text: 6)
+                }
+            }
             .navigationTitle(title)
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

@@ -6,7 +6,7 @@ watchOS 27 / tvOS 27 and nothing older.
 
 Aloha Social speaks the Mastodon client API, so it works with Mastodon,
 GoToSocial, Akkoma and anything else that serves that protocol. Its primary
-target is [Nextcloud Social](https://github.com/nextcloud/social), and it goes
+target is [Nextcloud Social](https://github.com/AlohaSocial/social), and it goes
 further there: photo, video, short-video, news and story experiences built on
 the extensions that server publishes alongside the Mastodon surface.
 
@@ -32,6 +32,50 @@ exercised against `MockAPIServer`, which was written from the same
 specification — so it agrees with this client by construction. The open
 questions in [docs/14 §3](docs/14-open-questions.md) are the ones a running
 instance has to answer before 1.0.
+
+## Recent additions (PR #6)
+
+This follow-up PR (draft) adds the following features and fixes on top of the
+base PR (#1):
+
+- **Video privacy fix**: Federated videos whose `url` still points at the
+  origin server are never handed to the player; the proxied playlist route is
+  used instead (docs/06 §3).
+- **Timeline race fix**: A confirmed like/boost can no longer be reverted by a
+  stale page fetch; confirmations are timestamped and take precedence over the
+  page's older copy.
+- **Private-network server support**: Typed `http://192.168.x.x:8080` addresses
+  keep their port and scheme through sign-in, re-probe, NodeInfo, and "open in
+  browser" links. ATS blanket exception documented (docs/11 §5).
+- **Notification policy screen**: Five `for_*` pickers (Accept/Filter/Drop)
+  with a link to the filtered-notifications inbox; reachable from Settings
+  and the Notifications screen.
+- **Conversation mute**: "Mute conversation" / "Unmute conversation" in the
+  post menu, in the in-app notification row context menu, and as a push
+  notification action for mentions and replies.
+- **"Show numbers" switch**: Hides reply/boost/favourite counts on posts,
+  follower/post counts on profiles, "and N others" in grouped notifications,
+  story view counts, and year-in-review follower figures.
+- **"You're caught up" divider**: Home timeline and Notifications show a
+  divider at the server-side marker; scrolling past it advances the marker
+  (docs/08 §7).
+- **Notification digests**: Per-account delivery mode "As they arrive" /
+  "In a digest" (1–4 hours); quiet hours UI; DMs and mentions from followed
+  accounts always break through; LocalNotifier schedules at digest times
+  with `UNCalendarNotificationTrigger`.
+- **Repository links corrected**: All self-references now point at
+  `AlohaSocial/Apple` and `AlohaSocial/social`; OAuth website and User-Agent
+  updated.
+- **ATS exception on tvOS/watchOS**: Dedicated Info.plist files with the
+  blanket exception so the new HTTP private-network sign-in works on all
+  platforms.
+- **App Group safe defaults**: Disabled by default; keychain sharing gated
+  independently; personal-dev signing no longer claims a container it
+  cannot have.
+- **OAuth origin comparison hardened**: Case-insensitive, default-port-aware,
+  discarded endpoints logged.
+- **OAuth/http scheme persistence**: Re-probe, NodeInfo, Nextcloud connect,
+  and "open in browser" all read the scheme/port from the stored API base.
 
 ## Building
 

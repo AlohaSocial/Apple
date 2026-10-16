@@ -217,7 +217,8 @@ public final class AppEnvironment {
             return
         }
 
-        let nodeInfo = await probe.fetchNodeInfo(origin: "https://\(session.snapshot.instanceHost)")
+        let nodeInfo = await probe.fetchNodeInfo(
+            origin: session.capabilities.apiBase.originString)
         let detector = CapabilityDetector(transport: transport)
         let token = try? credentials.token(for: session.id)
         let capabilities = await detector.detect(
@@ -235,8 +236,12 @@ public final class AppEnvironment {
         lastReprobe[session.id] = now
 
         let probe = ServerProbe(transport: transport)
-        guard let address = ServerProbe.ServerAddress(typed: session.snapshot.instanceHost),
-            let outcome = try? await probe.discover(address)
+        // The address is rebuilt from the stored API base rather than from the
+        // bare host: only the API base carries the scheme and the port, and a
+        // private-network http account must be found again over http.
+        let address = ServerProbe.ServerAddress(
+            apiBase: session.capabilities.apiBase)
+        guard let outcome = try? await probe.discover(address)
         else { return }
 
         guard outcome.apiBase != session.capabilities.apiBase else { return }

@@ -78,8 +78,10 @@ platforms where it suffices), with:
      HLS playlist that proxies every segment back through the Nextcloud.
      **Never point the player at the origin host**: Nextcloud's CSP forbids it,
      and it would announce every viewer to a server they did not choose.
-  3. `attachment.url` — the plain file. `GET /media/{uuid}` honours `Range` and
-     always sends `Accept-Ranges: bytes`, so seeking works.
+  3. `attachment.url` — the plain file (`GET /media/{uuid}` honours `Range`
+     and always sends `Accept-Ranges: bytes`, so seeking works). **For a
+     federated video this is only used when the URL is on the instance
+     itself** (the signed-in instance); otherwise the proxy playlist is used.
 - **Fallback is mandatory**: a 404 on the master playlist means no ladder
   exists, and the correct response is to play `url`. A ladder that fails to load
   mid-stream falls back to `url` at the current position.
