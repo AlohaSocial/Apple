@@ -122,7 +122,6 @@
     },
     "%@ from people on your own server." : {
       "comment" : "Statistics engagement sources, share from this server",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -134,7 +133,6 @@
     },
     "%@ has moved its followers here." : {
       "comment" : "Move here finish done",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -348,7 +346,6 @@
     },
     "%@. ^[%lld favourite](inflect: true), ^[%lld boost](inflect: true), ^[%lld reply](inflect: true), ^[%lld quote](inflect: true)." : {
       "comment" : "Statistics best post, read aloud",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -380,7 +377,6 @@
     },
     "%lld of %lld done, %lld skipped, %lld failed" : {
       "comment" : "Migration import progress counts",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -631,7 +627,6 @@
     },
     "A filter that covers this post hides it or warns about it wherever the filter applies, whatever its words." : {
       "comment" : "Filter this post explanation",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -665,7 +660,6 @@
     },
     "A handle on your own domain" : {
       "comment" : "Bluesky settings section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -732,7 +726,6 @@
     },
     "A new filter" : {
       "comment" : "Filter this post section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -802,7 +795,6 @@
     },
     "A reply to a post you made from a file in your Nextcloud is added to that file as a comment as well." : {
       "comment" : "Files comments switch explanation",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2396,7 +2388,6 @@
     },
     "Bring its public posts over" : {
       "comment" : "Move here switch",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2463,7 +2454,6 @@
     },
     "By %@ · @%@" : {
       "comment" : "Bluesky starter pack creator",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3053,7 +3043,6 @@
     },
     "Couldn't be followed" : {
       "comment" : "Starter pack member state",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4374,7 +4363,6 @@
     },
     "Failed" : {
       "comment" : "Migration import status",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4610,7 +4598,6 @@
     },
     "Filter this post" : {
       "comment" : "Screen title",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4622,7 +4609,6 @@
     },
     "Filter this post…" : {
       "comment" : "Status menu item",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4769,7 +4755,6 @@
     },
     "Follow ^[%lld account](inflect: true)" : {
       "comment" : "Starter pack follow all action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4869,7 +4854,6 @@
     },
     "Follow them" : {
       "comment" : "Bluesky follow-from action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4881,7 +4865,6 @@
     },
     "Follow who a Bluesky account follows" : {
       "comment" : "Bluesky settings section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4893,7 +4876,6 @@
     },
     "Follow who it follows" : {
       "comment" : "Move here switch",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5021,7 +5003,6 @@
     },
     "Following who a Bluesky account follows" : {
       "comment" : "Migration import kind",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5044,7 +5025,6 @@
     },
     "Follows and posts are copied a few at a time; the imports above say how far it got. The followers themselves come when the old server is told to move." : {
       "comment" : "Move here explanation",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5155,7 +5135,6 @@
     },
     "From Bluesky" : {
       "comment" : "Starter pack origin",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5167,7 +5146,6 @@
     },
     "From Bluesky, by %@" : {
       "comment" : "Starter pack origin",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5256,7 +5234,6 @@
     },
     "Go back to @%@" : {
       "comment" : "Bluesky custom handle clear action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5447,7 +5424,6 @@
     },
     "Hide it" : {
       "comment" : "Filter action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5588,7 +5564,6 @@
     },
     "Imports" : {
       "comment" : "Migration section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5748,7 +5723,6 @@
     },
     "Keep its ^[%lld feed](inflect: true) too" : {
       "comment" : "Bluesky starter pack keep feeds switch",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5959,7 +5933,6 @@
     },
     "Leave it as it is" : {
       "comment" : "Bluesky after a move",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6087,7 +6060,6 @@
     },
     "Link to a Bluesky starter pack" : {
       "comment" : "Bluesky starter pack link field",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6281,7 +6253,6 @@
     },
     "Look it up" : {
       "comment" : "Move here action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6293,7 +6264,6 @@
     },
     "Look up %@ on other servers" : {
       "comment" : "Search action that resolves a remote handle or link",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6360,7 +6330,6 @@
     },
     "Make the filter and add this post" : {
       "comment" : "Filter this post action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6641,7 +6610,6 @@
     },
     "Move away from here" : {
       "comment" : "Migration section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6653,7 +6621,6 @@
     },
     "Move away…" : {
       "comment" : "Move away action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6665,7 +6632,6 @@
     },
     "Move here from %@" : {
       "comment" : "Move here action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6677,7 +6643,6 @@
     },
     "Move here from another account" : {
       "comment" : "Migration section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6689,7 +6654,6 @@
     },
     "Move it here too" : {
       "comment" : "Bluesky after a move",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6701,7 +6665,6 @@
     },
     "Move it too" : {
       "comment" : "Bluesky after a move",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6713,7 +6676,6 @@
     },
     "Move my followers" : {
       "comment" : "Move away confirmation action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6725,7 +6687,6 @@
     },
     "Move this account to %@?" : {
       "comment" : "Move away confirmation title",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6737,7 +6698,6 @@
     },
     "Moving away needs your Nextcloud account connected in Settings, because your server asks for it before anything this final." : {
       "comment" : "Move away needs Nextcloud connection",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6749,7 +6709,6 @@
     },
     "Moving here" : {
       "comment" : "Migration import kind",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6960,7 +6919,6 @@
     },
     "Name of the filter" : {
       "comment" : "Filter this post field",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7703,7 +7661,6 @@
     },
     "Not everyone could be followed. Please try again." : {
       "comment" : "Bluesky starter pack follow failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7726,7 +7683,6 @@
     },
     "Not here yet" : {
       "comment" : "Starter pack section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8438,7 +8394,6 @@
     },
     "Open #%@ everywhere" : {
       "comment" : "Featured tag menu",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8829,7 +8784,6 @@
     },
     "People you feature" : {
       "comment" : "Profile section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9366,7 +9320,6 @@
     },
     "Posts also on %@" : {
       "comment" : "Statistics tile: posts that also went out on a network",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9723,7 +9676,6 @@
     },
     "Put together by %@" : {
       "comment" : "Starter pack curator",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9746,7 +9698,6 @@
     },
     "Queued — the imports below say how far it has got." : {
       "comment" : "Migration import queued note",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9991,7 +9942,6 @@
     },
     "Refresh results" : {
       "comment" : "Poll action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10239,7 +10189,6 @@
     },
     "Replies as comments in Files" : {
       "comment" : "Settings item",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10609,7 +10558,6 @@
     },
     "Running" : {
       "comment" : "Migration import status",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10836,7 +10784,6 @@
     },
     "See it there" : {
       "comment" : "Starter pack origin link",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11046,7 +10993,6 @@
     },
     "Servers delivered to" : {
       "comment" : "Statistics tile",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11365,7 +11311,6 @@
     },
     "Showing posts tagged %@. Show all posts" : {
       "comment" : "Profile hashtag filter chip",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11388,7 +11333,6 @@
     },
     "Shows or hides the posts this account boosted." : {
       "comment" : "Profile boosts switch hint",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11400,7 +11344,6 @@
     },
     "Shows this account's posts with the hashtag." : {
       "comment" : "Featured tag chip hint",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11981,7 +11924,6 @@
     },
     "Suggested on Bluesky" : {
       "comment" : "Discover section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12139,7 +12081,6 @@
     },
     "Switch it off" : {
       "comment" : "Bluesky after a move",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12252,7 +12193,6 @@
     },
     "Tell %@ to move its followers" : {
       "comment" : "Move here finish action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12297,7 +12237,6 @@
     },
     "That account could not be looked up." : {
       "comment" : "Move here inspect failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12315,7 +12254,6 @@
     },
     "That account couldn't be found from here." : {
       "comment" : "Bluesky suggestion lookup found nobody",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12597,7 +12535,6 @@
     "The account could not be followed. Please try again." : {},
     "The account could not be moved." : {
       "comment" : "Move away failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12669,7 +12606,6 @@
     "The featured hashtag could not be removed. Please try again." : {},
     "The filter could not be changed. Please try again." : {
       "comment" : "Filter this post failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12682,7 +12618,6 @@
     "The filter could not be deleted. Please try again." : {},
     "The filter could not be made. Please try again." : {
       "comment" : "Filter this post create failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12720,7 +12655,6 @@
     "The list could not be deleted. Please try again." : {},
     "The move could not be started." : {
       "comment" : "Move here failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12732,7 +12666,6 @@
     },
     "The move could not be undone." : {
       "comment" : "Move away undo failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12744,7 +12677,6 @@
     },
     "The move did not finish." : {
       "comment" : "Move here finish failed",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12756,7 +12688,6 @@
     },
     "The new account has to name this one as an alias first. Your followers are moved; your posts stay here, and so does your copy." : {
       "comment" : "Move away explanation",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12768,7 +12699,6 @@
     },
     "The old account's Bluesky" : {
       "comment" : "Bluesky after a move picker",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12780,7 +12710,6 @@
     },
     "The old server could not be asked to move." : {
       "comment" : "Move here finish failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12864,7 +12793,6 @@
     },
     "The starter pack could not be opened." : {
       "comment" : "Bluesky starter pack load failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12977,7 +12905,6 @@
     },
     "This account has moved to %@." : {
       "comment" : "Move away done",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12989,7 +12916,6 @@
     },
     "This account moved recently. It can move again %@." : {
       "comment" : "Move away cool-down",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13266,7 +13192,6 @@
     },
     "Trending on Bluesky" : {
       "comment" : "Discover section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13314,7 +13239,6 @@
     },
     "Type %@ to confirm" : {
       "comment" : "Move away confirm field",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13403,7 +13327,6 @@
     },
     "Undo the move" : {
       "comment" : "Move away undo action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13640,7 +13563,6 @@
     },
     "Use it" : {
       "comment" : "Bluesky custom handle action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13874,7 +13796,6 @@
     },
     "Waiting for %@ to confirm the move." : {
       "comment" : "Move here finish pending",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13952,7 +13873,6 @@
     },
     "Warn me" : {
       "comment" : "Filter action",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13989,7 +13909,6 @@
     },
     "What did best" : {
       "comment" : "Statistics section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14133,7 +14052,6 @@
     },
     "When it appears" : {
       "comment" : "Filter action picker",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14192,7 +14110,6 @@
     },
     "Where the answers came from" : {
       "comment" : "Statistics section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14666,7 +14583,6 @@
     },
     "You follow everyone in it" : {
       "comment" : "Starter pack all followed",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14781,7 +14697,6 @@
     },
     "Your Bluesky account" : {
       "comment" : "Bluesky after a move picker",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14926,7 +14841,6 @@
     },
     "Your domain must name your Bluesky account first: %@. Your server may ask for your password before it changes." : {
       "comment" : "Bluesky custom handle explanation",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14970,7 +14884,6 @@
     },
     "Your filters could not be loaded." : {
       "comment" : "Filter this post load failure",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15004,7 +14917,6 @@
     },
     "Your followers are told to follow the new account instead, and this one stops posting. Their servers do the rest; it cannot be pushed back by undoing it." : {
       "comment" : "Move away confirmation detail",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15016,7 +14928,6 @@
     },
     "Your followers' servers" : {
       "comment" : "Statistics section",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15078,7 +14989,6 @@
     },
     "Your old Bluesky account, for instance. Everybody it follows is followed from here, a few at a time." : {
       "comment" : "Bluesky follow-from explanation",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15090,7 +15000,6 @@
     },
     "Your own domain" : {
       "comment" : "Bluesky custom handle row",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15202,7 +15111,6 @@
     },
     "Your server is fetching these accounts in the background; they'll be here next time. One whose server doesn't answer stays listed." : {
       "comment" : "Starter pack unresolved footer",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15306,7 +15214,6 @@
     },
     "^[%lld account](inflect: true) followed" : {
       "comment" : "Move here following count",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15533,7 +15440,6 @@
     },
     "^[%lld person](inflect: true) followed you from a Bluesky starter pack." : {
       "comment" : "Statistics starter pack joins",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15545,7 +15451,6 @@
     },
     "^[%lld person](inflect: true) joined Bluesky with it" : {
       "comment" : "Bluesky starter pack joined count",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15711,7 +15616,6 @@
     },
     "^[%lld word](inflect: true), ^[%lld post](inflect: true)" : {
       "comment" : "Filter this post row detail",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15790,7 +15694,6 @@
     },
     "handle.bsky.social" : {
       "comment" : "Bluesky follow-from placeholder",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15841,7 +15744,6 @@
     },
     "new@server.example" : {
       "comment" : "Move away target field",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15921,7 +15823,6 @@
     },
     "yourname.example.com" : {
       "comment" : "Bluesky custom handle placeholder",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15933,7 +15834,6 @@
     },
     "· hidden there; use its export file" : {
       "comment" : "Move here list not readable",
-      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
