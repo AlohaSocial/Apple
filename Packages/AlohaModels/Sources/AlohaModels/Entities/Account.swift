@@ -103,19 +103,21 @@ public struct Account: Codable, Sendable, Identifiable, Hashable {
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         _url = try c.decode(LenientURL.self, forKey: .url)
         _uri = try c.decode(LenientURL.self, forKey: .uri)
-        let avatar = try c.decode(LenientURL.self, forKey: .avatar)
+        // Pictures are loaded in-app, so never over cleartext to a public
+        // host (`securedForLoading`, docs/11 §5).
+        let avatar = try c.decode(LenientURL.self, forKey: .avatar).securedForLoading()
         _avatar = avatar
-        _avatarStatic = try c.decode(LenientURL.self, forKey: .avatarStatic)
+        _avatarStatic = try c.decode(LenientURL.self, forKey: .avatarStatic).securedForLoading()
         // Nextcloud fills a missing header with the avatar image
         // (`Person::exportAsLocal`), which draws the face again, stretched, as
         // a banner. The same picture in both places is no header at all.
-        let header = try c.decode(LenientURL.self, forKey: .header)
+        let header = try c.decode(LenientURL.self, forKey: .header).securedForLoading()
         if header.wrappedValue != nil, header.wrappedValue == avatar.wrappedValue {
             _header = .init(wrappedValue: nil)
             _headerStatic = .init(wrappedValue: nil)
         } else {
             _header = header
-            _headerStatic = try c.decode(LenientURL.self, forKey: .headerStatic)
+            _headerStatic = try c.decode(LenientURL.self, forKey: .headerStatic).securedForLoading()
         }
         _locked = try c.decode(LenientBool.self, forKey: .locked)
         _bot = try c.decode(LenientBool.self, forKey: .bot)

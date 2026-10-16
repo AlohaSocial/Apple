@@ -9,7 +9,7 @@
 	     watch app (self-hosted servers on plain-http private addresses). -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSExtension</key>

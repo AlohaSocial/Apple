@@ -8,7 +8,7 @@
 	     private-network addresses (see Supporting/AlohaSocialTV-Info.plist). -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSExtension</key>

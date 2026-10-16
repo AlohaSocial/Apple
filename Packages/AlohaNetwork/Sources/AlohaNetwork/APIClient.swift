@@ -104,7 +104,7 @@ public actor APIClient {
     // MARK: - Machinery
 
     private func perform(_ endpoint: Endpoint, followingURL: URL?) async throws -> RawResponse {
-        guard let url = followingURL ?? endpoint.url(base: apiBase) else {
+        guard let url = followingURL.map(upgradedCursor) ?? endpoint.url(base: apiBase) else {
             throw APIError.invalidResponse
         }
         if endpoint.requiresAuthentication, followingURL == nil {
@@ -117,8 +117,18 @@ public actor APIClient {
             }
         }
 
+        // A credential goes to this account's own origin and nowhere else. A
+        // `Link` header is the server's to write, and following one to another
+        // host with the token attached would hand that host the account; such
+        // a cursor is refused rather than followed without it, since a page
+        // from somewhere else has no business in this account's timeline.
+        guard url.isSameOrigin(as: apiBase) else {
+            logger.error("refused a request to another origin than the account's")
+            throw APIError.invalidResponse
+        }
+
         let host = url.host() ?? apiBase.host() ?? ""
-        await rateLimiter.acquire(host: host)
+        try await rateLimiter.acquire(host: host)
 
         var request = URLRequest(url: url)
         request.httpMethod =
@@ -169,17 +179,27 @@ public actor APIClient {
         )
     }
 
+    /// A server behind a TLS-terminating proxy can write its `Link` cursors
+    /// as `http://` on its own https host. That is the same server, so the
+    /// cursor is followed over https rather than refused or downgraded.
+    private func upgradedCursor(_ url: URL) -> URL {
+        guard url.scheme?.lowercased() == "http", apiBase.scheme?.lowercased() == "https",
+            url.host()?.lowercased() == apiBase.host()?.lowercased(),
+            url.port == nil || url.port == 80,
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return url }
+        components.scheme = "https"
+        components.port = apiBase.port
+        return components.url ?? url
+    }
+
     private func applyBody(_ body: Endpoint.Body?, to request: inout URLRequest) {
         switch body {
         case .none, .empty:
             return
         case .form(let items):
-            var components = URLComponents()
-            components.queryItems = items.filter { $0.value != nil }
-            request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
-            request.setValue(
-                "application/x-www-form-urlencoded; charset=utf-8",
-                forHTTPHeaderField: "Content-Type")
+            request.httpBody = FormEncoding.body(items)
+            request.setValue(FormEncoding.contentType, forHTTPHeaderField: "Content-Type")
         case .json(let data):
             request.httpBody = data
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

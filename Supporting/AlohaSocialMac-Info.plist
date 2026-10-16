@@ -27,7 +27,7 @@
 	     reached from. See Supporting/Info.plist and docs/11 §5. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<!-- Handoff: the Mac accepts only the activity types it declares, so
