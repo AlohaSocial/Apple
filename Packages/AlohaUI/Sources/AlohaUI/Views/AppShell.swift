@@ -580,12 +580,25 @@ private struct ThemedAppShell: View {
     }
 
     private var shellCommands: ShellCommands? {
-        guard environment.activeSession != nil else { return nil }
+        guard let session = environment.activeSession else { return nil }
         return ShellCommands(
             compose: { composing = ComposerPresentation() },
             open: { open($0) },
             back: { goBack() },
-            canGoBack: canGoBack)
+            canGoBack: canGoBack,
+            places: ShellPlace.sidebarOrder(
+                modes: session.visibleModes, includesActivities: hasActivitiesRow,
+                modeTitle: modeTitle))
+    }
+
+    /// Whether Activities is one of the top places — a row on iPad, a tab on
+    /// a phone with room for it. The Mac sidebar reaches it from the menu.
+    private var hasActivitiesRow: Bool {
+        #if os(iOS)
+            usesSidebar || showsNotificationsTab
+        #else
+            false
+        #endif
     }
 
     // MARK: - iPhone

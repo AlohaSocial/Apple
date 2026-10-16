@@ -15,48 +15,15 @@ public struct SettingsView: View {
     /// Eight sections in one scroll is a lot to read through for one switch.
     @State private var settingsQuery = ""
 
-    /// Section titles and the words somebody might actually type looking for
-    /// them — "dark" should find Appearance, not nothing.
-    private static let searchTerms: [(title: String, keywords: String)] = [
-        ("Accounts", "account accounts add sign switch remove sign out log out"),
-        (
-            "Feeds",
-            "feeds modes home photos video shorts news audio screens timelines"
-        ),
-        (
-            "Your account",
-            "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
-        ),
-        ("Appearance", "appearance theme density serif icon dark light text"),
-        ("Nextcloud", "nextcloud files push notification server connect"),
-        ("Media", "media autoplay video sensitive blur mute loop data"),
-        ("Posting", "posting compose composer visibility language alt draft"),
-        ("Intelligence", "intelligence ai writing rewrite summary on-device apple"),
-        ("Storage", "storage cache cached media clear disk"),
-        (
-            "Content",
-            "content filter filters language translate translation mute block drafts held review waiting moderator memories recap looking back on this day"
-        ),
-        ("Sound & touch", "sound touch haptics vibrate vibration audio chime tick senses silent"),
-        ("Moderation", "moderation moderator reports admin administrator suspend silence trends"),
-        (
-            "Delete account",
-            "delete account erase remove deactivate close"
-        ),
-        (
-            "About",
-            "about licence license version source code developer contact server peers activity federation keyboard shortcuts year wrapped"
-        ),
-    ]
-
-    private func shows(_ title: String, _ keywords: String) -> Bool {
-        guard !settingsQuery.isEmpty else { return true }
-        let needle = settingsQuery.lowercased()
-        return title.lowercased().contains(needle) || keywords.contains(needle)
+    /// Whether the search finds `section` — its title or the words somebody
+    /// might type looking for it, in their own language ("dark" finds
+    /// Appearance, and so does "dunkel"). See `SettingsSection`.
+    private func shows(_ section: SettingsSection) -> Bool {
+        section.matches(settingsQuery)
     }
 
     private var hasAnyMatch: Bool {
-        Self.searchTerms.contains { shows($0.title, $0.keywords) }
+        SettingsSection.allCases.contains(where: shows)
     }
 
     /// The host comes from the server, so the string is not ours to trust: a
@@ -106,48 +73,39 @@ public struct SettingsView: View {
                 AccountSetupBanner(session: session)
             }
 
-            if shows("Accounts", "account accounts add sign switch remove") {
+            if shows(.accounts) {
                 accountsSection
             }
 
-            if shows(
-                "Appearance",
-                "appearance theme density serif icon counts numbers text size compact")
-            {
+            if shows(.appearance) {
                 appearanceSection
             }
 
             if let session = environment.activeSession {
-                if shows(
-                    "Your account",
-                    "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens"
-                ) {
+                if shows(.yourAccount) {
                     yourAccountSection(session)
                 }
-                if shows(
-                    "Feeds",
-                    "feeds modes home photos video shorts news audio screens timelines"
-                ) {
+                if shows(.feeds) {
                     feedsSection(session)
                 }
-                if shows("Timeline", "timeline feed boosts replies pill position restore numbers") {
+                if shows(.timeline) {
                     timelineSection(session)
                 }
-                if shows("Nextcloud", "nextcloud files push notification server connect") {
+                if shows(.nextcloud) {
                     nextcloudSection(session)
                 }
-                if shows("Media", "media autoplay video sensitive blur mute loop data") {
+                if shows(.media) {
                     mediaSection(session)
                 }
-                if shows("Notifications", "notifications push digest quiet hours delivery sounds") {
+                if shows(.notifications) {
                     notificationsSection(session)
                 }
-                if shows("Posting", "posting compose composer visibility language alt draft") {
+                if shows(.posting) {
                     composerSection(session)
                 }
             }
 
-            if shows("Intelligence", "intelligence ai writing rewrite summary on-device apple") {
+            if shows(.intelligence) {
                 intelligenceSection
             }
 
@@ -155,7 +113,7 @@ public struct SettingsView: View {
                 ContentUnavailableView.search(text: settingsQuery)
             }
 
-            if shows("Storage", "storage cache cached media clear disk") {
+            if shows(.storage) {
                 Section {
                     LabeledContent {
                         Text(cacheSize.formatted(.byteCount(style: .file)))
@@ -176,10 +134,7 @@ public struct SettingsView: View {
                 }
             }
 
-            if shows(
-                "Content",
-                "content filter filters language translate translation mute block drafts held review waiting moderator memories recap looking back on this day"
-            ) {
+            if shows(.content) {
                 Section {
                     NavigationLink(value: Route.filters) {
                         Label {
@@ -258,24 +213,19 @@ public struct SettingsView: View {
                 }
             }
 
-            if shows(
-                "Sound & touch",
-                "sound touch haptics vibrate vibration audio chime tick senses silent")
-            {
+            if shows(.soundAndTouch) {
                 sensesSection
             }
 
             if let session = environment.activeSession,
                 session.capabilities.isNextcloudSocial,
-                shows(
-                    "Moderation",
-                    "moderation moderator reports admin administrator suspend silence trends")
+                shows(.moderation)
             {
                 moderationSection(session)
             }
 
             if let session = environment.activeSession,
-                shows("Delete account", "delete account erase remove deactivate close"),
+                shows(.deleteAccount),
                 session.capabilities.isNextcloudSocial || serverDestination(session) != nil
             {
                 Section {
@@ -305,7 +255,7 @@ public struct SettingsView: View {
                 }
             }
 
-            if shows("About", "about licence license version source code developer contact") {
+            if shows(.about) {
                 Section {
                     LabeledContent {
                         Text(verbatim: "1.0")

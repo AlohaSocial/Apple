@@ -495,8 +495,11 @@ public struct SidebarView: View {
     @State private var searchText = ""
     /// How many conversations are unread, for the badge on "Direct messages".
     /// The messages list writes it to the app group so this and the widgets
-    /// read the same number (docs/05 §5).
-    @State private var unreadConversations = 0
+    /// read the same number (docs/05 §5). Observed, not read once on appear:
+    /// a sidebar is on screen for hours, and a count read at launch was the
+    /// count the badge kept.
+    @AppStorage(AppGroup.unreadConversationsKey, store: AppGroup.defaults)
+    private var unreadConversations = 0
 
     private let onAddAccount: () -> Void
     private let onSwitchAccount: (UUID) -> Void
@@ -582,9 +585,6 @@ public struct SidebarView: View {
         }
 
         .listStyle(.sidebar)
-        .onAppear {
-            unreadConversations = AppGroup.defaults.integer(forKey: AppGroup.unreadConversationsKey)
-        }
         .searchable(
             text: $searchText, placement: .sidebar,
             prompt: Text("Search", comment: "Sidebar search field")

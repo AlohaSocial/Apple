@@ -4407,7 +4407,15 @@
       }
     },
     "Feeds" : {
-      "comment" : "Settings section"
+      "comment" : "Settings section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feeds"
+          }
+        }
+      }
     },
     "Fetch the pictures and videos too" : {
       "comment" : "Migration switch",
@@ -6638,7 +6646,15 @@
       }
     },
     "Next photo" : {
-      "comment" : "Photo carousel action"
+      "comment" : "Photo carousel action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes Foto"
+          }
+        }
+      }
     },
     "Next post" : {
       "comment" : "Keyboard shortcut",
@@ -8365,7 +8381,15 @@
       }
     },
     "Photo layout" : {
-      "comment" : "Photos layout menu"
+      "comment" : "Photos layout menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foto-Layout"
+          }
+        }
+      }
     },
     "Photos" : {
       "comment" : "Feed mode\nMode title",
@@ -8968,7 +8992,15 @@
       }
     },
     "Previous photo" : {
-      "comment" : "Photo carousel action"
+      "comment" : "Photo carousel action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorheriges Foto"
+          }
+        }
+      }
     },
     "Previous post" : {
       "comment" : "Keyboard shortcut",
@@ -10463,6 +10495,17 @@
         }
       }
     },
+    "Settings…" : {
+      "comment" : "Account menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen …"
+          }
+        }
+      }
+    },
     "Share" : {
       "comment" : "Shorts action\nStatus action\nStatus menu item\nStory composer action",
       "localizations" : {
@@ -11430,17 +11473,6 @@
     "Switch account" : {
       "comment" : "Account switcher action"
     },
-    "Switch between the people you follow, your server, and everyone it knows." : {
-      "comment" : "Tip detail: the timeline source switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wechsle zwischen den Leuten, denen du folgst, deinem Server und allen, die er kennt."
-          }
-        }
-      }
-    },
     "Switching off signs every Bluesky app out of your account there. Your handle stays yours, and switching on again brings it back as it was." : {
       "comment" : "Bluesky presence explanation",
       "localizations" : {
@@ -11527,6 +11559,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Übernommen"
+          }
+        }
+      }
+    },
+    "Tap the title to switch between the people you follow, your server, and everyone it knows." : {
+      "comment" : "Tip detail: the timeline source menu in the screen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe auf den Titel, um zwischen den Leuten, denen du folgst, deinem Server und allen, die er kennt, zu wechseln."
           }
         }
       }
@@ -14580,6 +14623,28 @@
         }
       }
     },
+    "about licence license version source code developer contact server peers activity federation keyboard shortcuts year wrapped" : {
+      "comment" : "Settings search keywords for the About section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "über info lizenz version quellcode entwickler kontakt server peers aktivität föderation tastatur kurzbefehle jahresrückblick"
+          }
+        }
+      }
+    },
+    "account accounts add sign switch remove sign out log out" : {
+      "comment" : "Settings search keywords for the Accounts section: words, separated by spaces, that people would type to find it. Translate into the words people in your language use; they do not have to match the English one for one.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "konto konten account hinzufügen anmelden wechseln entfernen abmelden ausloggen"
+          }
+        }
+      }
+    },
     "alice@cloud.example, bob" : {
       "comment" : "Tag people field placeholder",
       "localizations" : {
@@ -14587,6 +14652,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "alice@cloud.example, bob"
+          }
+        }
+      }
+    },
+    "appearance theme dark light density serif icon counts numbers text size compact" : {
+      "comment" : "Settings search keywords for the Appearance section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "darstellung design thema dunkel hell dark light dichte serifen symbol icon zahlen zähler text schriftgröße kompakt"
           }
         }
       }
@@ -14619,8 +14695,41 @@
     "cloud.example.com" : {
       "comment" : "Server address placeholder"
     },
+    "content filter filters language translate translation mute block drafts scheduled held review waiting moderator memories recap looking back on this day" : {
+      "comment" : "Settings search keywords for the Content section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inhalt filter filtern sprache übersetzen übersetzung stummschalten blockieren entwürfe geplant zurückgehalten prüfung wartend moderation erinnerungen rückblick an diesem tag"
+          }
+        }
+      }
+    },
+    "delete account erase remove deactivate close" : {
+      "comment" : "Settings search keywords for the Delete account section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "konto löschen account entfernen deaktivieren schließen"
+          }
+        }
+      }
+    },
     "favourite" : {
       "comment" : "Digest summary kind"
+    },
+    "feeds modes home photos video shorts news audio screens timelines" : {
+      "comment" : "Settings search keywords for the Feeds section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "feeds modi start home fotos video videos shorts nachrichten news audio bildschirme zeitleisten"
+          }
+        }
+      }
     },
     "follow" : {
       "comment" : "Digest summary kind"
@@ -14661,8 +14770,41 @@
     "iPhone, iPad, Mac, Apple Watch and Apple TV" : {
       "comment" : "Onboarding devices"
     },
+    "intelligence ai writing rewrite summary on-device apple" : {
+      "comment" : "Settings search keywords for the Intelligence section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "intelligenz ki ai schreiben umschreiben zusammenfassung auf dem gerät apple"
+          }
+        }
+      }
+    },
+    "media autoplay video sensitive blur mute loop data" : {
+      "comment" : "Settings search keywords for the Media section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "medien automatisch abspielen autoplay video heikel sensibel unscharf stumm schleife daten"
+          }
+        }
+      }
+    },
     "mention" : {
       "comment" : "Digest summary kind"
+    },
+    "moderation moderator reports admin administrator suspend silence trends" : {
+      "comment" : "Settings search keywords for the Moderation section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "moderation moderator meldungen admin administrator sperren stummschalten trends"
+          }
+        }
+      }
     },
     "more" : {
       "comment" : "Expand a truncated caption",
@@ -14671,6 +14813,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mehr"
+          }
+        }
+      }
+    },
+    "nextcloud files push notification server connect" : {
+      "comment" : "Settings search keywords for the Nextcloud section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nextcloud dateien push mitteilung benachrichtigung server verbinden"
+          }
+        }
+      }
+    },
+    "notifications push digest quiet hours delivery sounds" : {
+      "comment" : "Settings search keywords for the Notifications section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "benachrichtigungen mitteilungen push zusammenfassung ruhezeiten zustellung töne"
           }
         }
       }
@@ -14700,6 +14864,28 @@
     "poll" : {
       "comment" : "Digest summary kind"
     },
+    "posting compose composer visibility language alt draft" : {
+      "comment" : "Settings search keywords for the Posting section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "veröffentlichen schreiben verfassen sichtbarkeit sprache alt bildbeschreibung entwurf"
+          }
+        }
+      }
+    },
+    "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens" : {
+      "comment" : "Settings search keywords for the Your account section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "profil bearbeiten name bio avatar profilbild titelbild felder hervorgehobene hashtags portfolio kanäle umzug migration export import umziehen alias autorisierte apps token"
+          }
+        }
+      }
+    },
     "reply" : {
       "comment" : "Digest summary kind"
     },
@@ -14714,6 +14900,28 @@
     },
     "sign-up" : {
       "comment" : "Digest summary kind"
+    },
+    "sound touch haptics vibrate vibration audio chime tick senses silent" : {
+      "comment" : "Settings search keywords for the Sound & touch section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ton töne haptik vibrieren vibration audio klang klick sinne lautlos"
+          }
+        }
+      }
+    },
+    "storage cache cached media clear disk" : {
+      "comment" : "Settings search keywords for the Storage section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "speicher cache zwischenspeicher medien leeren löschen festplatte"
+          }
+        }
+      }
     },
     "tails" : {
       "comment" : "Coin flip result",
@@ -14733,6 +14941,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "die eingegebene Adresse"
+          }
+        }
+      }
+    },
+    "timeline feed boosts replies pill position restore numbers swipe" : {
+      "comment" : "Settings search keywords for the Timeline section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zeitleiste timeline feed boosts geteilt antworten hinweis position wiederherstellen zahlen wischen swipe"
           }
         }
       }
