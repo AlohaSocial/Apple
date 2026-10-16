@@ -151,7 +151,10 @@ configuration (account, timeline, list).
 - Images come from the shared disk cache; a widget never downloads.
 - Lock Screen and StandBy variants use the accessory families with the
   vibrant rendering mode handled explicitly.
-- macOS widgets in Notification Centre and on the desktop.
+- macOS widgets in Notification Centre and on the desktop: the same extension
+  target builds for the Mac (bundle id `social.aloha.app.mac.widgets`, under
+  the Mac app's) and is embedded in `AlohaSocialMac`. The Lock Screen
+  accessory families are iPhone-only and left out there.
 
 ## 9. Live Activities
 

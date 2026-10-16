@@ -272,9 +272,17 @@ struct UnreadWidget: Widget {
         }
         .configurationDisplayName(Text("Unread notifications", comment: "Widget name"))
         .description(Text("How many things happened.", comment: "Widget description"))
-        .supportedFamilies([
-            .systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline,
-        ])
+        .supportedFamilies(Self.families)
+    }
+
+    /// The Lock Screen and StandBy families are the iPhone's; a Mac has
+    /// none of them.
+    private static var families: [WidgetFamily] {
+        #if os(iOS)
+            [.systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline]
+        #else
+            [.systemSmall]
+        #endif
     }
 }
 
@@ -284,19 +292,21 @@ struct UnreadView: View {
 
     var body: some View {
         switch family {
-        case .accessoryInline:
-            Label {
-                Text("^[\(entry.count) notification](inflect: true)", comment: "Widget text")
-            } icon: {
-                Image(systemName: "bell.fill")
-            }
-        case .accessoryCircular:
-            Gauge(value: Double(min(entry.count, 99)), in: 0...99) {
-                Image(systemName: "bell.fill")
-            } currentValueLabel: {
-                Text(entry.count, format: .number)
-            }
-            .gaugeStyle(.accessoryCircular)
+        #if os(iOS)
+            case .accessoryInline:
+                Label {
+                    Text("^[\(entry.count) notification](inflect: true)", comment: "Widget text")
+                } icon: {
+                    Image(systemName: "bell.fill")
+                }
+            case .accessoryCircular:
+                Gauge(value: Double(min(entry.count, 99)), in: 0...99) {
+                    Image(systemName: "bell.fill")
+                } currentValueLabel: {
+                    Text(entry.count, format: .number)
+                }
+                .gaugeStyle(.accessoryCircular)
+        #endif
         default:
             VStack(alignment: .leading, spacing: 2) {
                 Image(systemName: "bell.fill")

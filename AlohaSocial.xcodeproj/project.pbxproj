@@ -34,6 +34,7 @@
 		BBWL030000000000000BB /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
 		BBWL040000000000000BB /* AlohaMedia in Frameworks */ = {isa = PBXBuildFile; productRef = AA200400000000000000AA /* AlohaMedia */; };
 		BBWL060000000000000BB /* AlohaDesign in Frameworks */ = {isa = PBXBuildFile; productRef = AA200600000000000000AA /* AlohaDesign */; };
+		MACWZ0000000000000MA /* AlohaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBWP000000000000000BB /* AlohaWidgets.appex */; platformFilter = macos; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BBWZ000000000000000BB /* AlohaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBWP000000000000000BB /* AlohaWidgets.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CCKL000000000000000CC /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
 		CCKL020000000000000CC /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
@@ -84,6 +85,13 @@
 			remoteGlobalIDString = CCKT00000000000000CC;
 			remoteInfo = AlohaSocialWatch;
 		};
+		MACWY0000000000000MA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBWT000000000000000BB;
+			remoteInfo = AlohaWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -108,6 +116,15 @@
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
+		};
+		MACEMBED0000000000000MA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				MACWZ0000000000000MA /* AlohaWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -467,8 +484,12 @@
 				MACS00000000000000MA /* Sources */,
 				MACF00000000000000MA /* Frameworks */,
 				MACR00000000000000MA /* Resources */,
+				MACEMBED0000000000000MA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
+			);
+			dependencies = (
+				MACWX0000000000000MA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				MACG00000000000000MA /* AlohaSocialMac */,
@@ -653,6 +674,12 @@
 			platformFilter = ios;
 			target = CCKT00000000000000CC /* AlohaSocialWatch */;
 			targetProxy = CCKY00000000000000CC /* PBXContainerItemProxy */;
+		};
+		MACWX0000000000000MA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = macos;
+			target = BBWT000000000000000BB /* AlohaWidgets */;
+			targetProxy = MACWY0000000000000MA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -951,6 +978,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWidgets.entitlements;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = social.aloha.app.mac.widgets;
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -965,7 +993,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -978,6 +1006,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWidgets.entitlements;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = social.aloha.app.mac.widgets;
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -992,7 +1021,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
