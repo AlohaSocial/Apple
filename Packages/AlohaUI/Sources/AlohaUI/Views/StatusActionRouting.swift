@@ -24,7 +24,7 @@ public enum StatusActionRouting {
             .addToCollection, .addToList:
             .shell
         case .boost, .favourite, .bookmark, .muteConversation, .vote, .react,
-            .archive, .pin, .dislike:
+            .archive, .pin, .dislike, .setReplyPolicy, .hideReply:
             .actions
         }
     }

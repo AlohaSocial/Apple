@@ -406,6 +406,24 @@ public struct StatusMenu: View {
 
         if isOwn { ownSection }
 
+        // The thread's author can put a reply away (`can_hide`), and bring it
+        // back: hidden is collapsed for everybody, never deleted.
+        if displayed.canHide == true {
+            Button {
+                onAction(.hideReply(status))
+            } label: {
+                Label {
+                    if displayed.isHiddenByAuthor {
+                        Text("Show reply again", comment: "Status menu item")
+                    } else {
+                        Text("Hide reply", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(systemName: displayed.isHiddenByAuthor ? "eye" : "eye.slash")
+                }
+            }
+        }
+
         Divider()
 
         // Report, block and mute are never more than two taps away, on every
@@ -522,6 +540,34 @@ public struct StatusMenu: View {
                     Text("Who may quote this", comment: "Status menu item")
                 } icon: {
                     Image(systemName: "quote.closing")
+                }
+            }
+        }
+
+        // Aloha Social's own `reply_policy`, only on its own posts — which is
+        // where the server answers with one.
+        if isNextcloud, displayed.replyPolicy != nil {
+            Menu {
+                ForEach(ReplyPolicy.allCases, id: \.self) { policy in
+                    Button {
+                        onAction(.setReplyPolicy(status, policy))
+                    } label: {
+                        if displayed.replyAudience == policy {
+                            Label {
+                                ReplyPolicyLabel(policy: policy)
+                            } icon: {
+                                Image(systemName: "checkmark")
+                            }
+                        } else {
+                            ReplyPolicyLabel(policy: policy)
+                        }
+                    }
+                }
+            } label: {
+                Label {
+                    Text("Who can reply", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "arrowshape.turn.up.left.2")
                 }
             }
         }

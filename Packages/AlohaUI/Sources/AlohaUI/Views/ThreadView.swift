@@ -17,6 +17,8 @@ public struct ThreadView: View {
     @State private var descendants: [Status] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// Hidden replies the reader chose to look at anyway, this visit.
+    @State private var revealedHidden: Set<String> = []
 
     public init(
         statusID: String, session: AccountSession,
@@ -40,8 +42,14 @@ public struct ThreadView: View {
                 }
 
                 ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
-                    row(status, isFocused: false)
-                        .padding(.leading, indent(for: status))
+                    Group {
+                        if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
+                            hiddenReplyRow(status)
+                        } else {
+                            row(status, isFocused: false)
+                        }
+                    }
+                    .padding(.leading, indent(for: status))
                 }
 
                 if isLoading {
@@ -64,7 +72,49 @@ public struct ThreadView: View {
                 if !ancestors.isEmpty { proxy.scrollTo("focused", anchor: .top) }
             }
             .refreshable { await load() }
+            .onReceive(
+                NotificationCenter.default.publisher(for: StatusActions.replyVisibilityChanged)
+            ) { note in
+                guard let reply = note.object as? Status,
+                    let index = descendants.firstIndex(where: { $0.id == reply.id })
+                else { return }
+                descendants[index] = reply
+                if reply.isHiddenByAuthor { revealedHidden.remove(reply.id) }
+            }
         }
+    }
+
+    /// A reply the thread's author put away (Aloha Social's `hide_reply`):
+    /// collapsed, still there, one tap from being read. Hiding is the
+    /// author's choice about their own conversation, not a verdict on the
+    /// reply, so it is never removed outright.
+    private func hiddenReplyRow(_ status: Status) -> some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Image(systemName: "eye.slash")
+                .foregroundStyle(palette.tertiaryLabel)
+            Text("Reply hidden by the author", comment: "Collapsed hidden reply in a thread")
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+            Spacer(minLength: 0)
+            Button {
+                withAnimation { _ = revealedHidden.insert(status.id) }
+            } label: {
+                Text("Show", comment: "Reveal a hidden reply")
+            }
+            .font(.footnote)
+            if status.canHide == true {
+                Button {
+                    onAction(.hideReply(status))
+                } label: {
+                    Text("Unhide", comment: "Show a hidden reply to everybody again")
+                }
+                .font(.footnote)
+            }
+        }
+        .padding(.vertical, AlohaMetrics.space3)
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+        .listRowBackground(palette.background)
+        .accessibilityElement(children: .combine)
     }
 
     private func row(_ status: Status, isFocused: Bool) -> some View {

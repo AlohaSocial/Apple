@@ -244,8 +244,23 @@ public struct StatusRow: View {
                     .accessibilityLabel(Text("Edited", comment: "Edited badge"))
             }
 
+            // A label the post carries about itself — by a hashtag, or by a
+            // picture whose metadata said so (`ai_generated`). A quiet mark,
+            // never a warning: it is not a judgement of the post.
+            if isAIGenerated {
+                Image(systemName: "wand.and.sparkles")
+                    .font(.caption2)
+                    .foregroundStyle(palette.tertiaryLabel)
+                    .accessibilityLabel(Text("Made with AI", comment: "AI-generated badge"))
+                    .help(Text("Made with AI", comment: "AI-generated badge"))
+            }
+
             visibilityBadge
         }
+    }
+
+    private var isAIGenerated: Bool {
+        displayed.aiGenerated || displayed.mediaAttachments.contains(where: \.aiGenerated)
     }
 
     @ViewBuilder
@@ -387,6 +402,31 @@ public struct StatusRow: View {
                     label: Text(
                         "^[\(displayed.dislikesCount) dislike](inflect: true) elsewhere",
                         comment: "Read-only dislike count on a federated video"))
+            }
+
+            // Mastodon 4.5's quote count. A link rather than a number: the
+            // posts quoting this one are a list worth opening.
+            if showsCounts, let quotes = displayed.quotesCount, quotes > 0 {
+                NavigationLink(value: Route.quotes(statusID: displayed.id)) {
+                    StatusMetric(
+                        symbol: "quote.bubble",
+                        count: quotes,
+                        label: Text(
+                            "^[\(quotes) quote](inflect: true)",
+                            comment: "Quote count on a post, opens the quotes"))
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Who read it: only the author's own posts carry a value, and only
+            // the author is shown it.
+            if showsCounts, isOwn, let views = displayed.viewCount, views > 0 {
+                StatusMetric(
+                    symbol: "eye",
+                    count: views,
+                    label: Text(
+                        "^[\(views) view](inflect: true)",
+                        comment: "View count on your own post"))
             }
 
             Spacer(minLength: 0)
@@ -646,4 +686,8 @@ public enum StatusRowAction: Sendable {
     case tagPeople(Status)
     case addToCollection(Status)
     case addToList(Account)
+    /// Who may reply to a post of the reader's own (Aloha Social).
+    case setReplyPolicy(Status, ReplyPolicy)
+    /// Hide, or show again, a reply to one of the reader's own posts.
+    case hideReply(Status)
 }
