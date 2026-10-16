@@ -16,6 +16,7 @@ public struct MediaViewer: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(\.mediaTransition) private var mediaTransition
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
     private let attachments: [MediaAttachment]
     private let statusID: String
@@ -27,9 +28,14 @@ public struct MediaViewer: View {
     @State private var zoom: CGFloat = 1
     @State private var committedZoom: CGFloat = 1
     @State private var offset: CGSize = .zero
+    /// Where a pan started from: the offset the last one left.
+    @State private var committedOffset: CGSize = .zero
+    @State private var pageSize: CGSize = .zero
     @State private var dragOffset: CGSize = .zero
     @State private var isShowingAltText = false
-    @State private var isDragging = false
+    /// A tap on the picture puts the controls, the status bar and the home
+    /// indicator away, so the photograph has the whole screen — and back.
+    @State private var isChromeHidden = false
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -57,15 +63,38 @@ public struct MediaViewer: View {
                 }
             }
             #if os(iOS)
-                .tabViewStyle(.page(indexDisplayMode: attachments.count > 1 ? .automatic : .never))
+                .tabViewStyle(
+                    .page(
+                        indexDisplayMode: attachments.count > 1 && !chromeHidden
+                            ? .automatic : .never))
             #endif
+            .onGeometryChange(for: CGSize.self) {
+                $0.size
+            } action: {
+                pageSize = $0
+            }
 
             controls
+                .opacity(chromeHidden ? 0 : 1)
+                .allowsHitTesting(!chromeHidden)
         }
+        .animation(.easeInOut(duration: 0.2), value: chromeHidden)
         .offset(dragOffset)
-        .gesture(dismissGesture)
-        .gesture(zoomGesture)
+        // The zoom transition already lets a swipe shrink the picture back
+        // into its cell, following the finger. A second, home-made swipe on
+        // top fought it, and fought the video's own scrubber; it is kept only
+        // where there is no transition to do the job.
+        .gesture(dismissGesture, including: allowsSwipeToDismiss ? .all : .subviews)
+        .gesture(zoomGesture, including: isShowingPhoto ? .all : .subviews)
+        // While zoomed, a drag moves the picture; it must not also start
+        // closing the viewer underneath it.
+        .interactiveDismissDisabled(zoom > 1)
+        #if os(iOS)
+            .statusBarHidden(chromeHidden)
+            .persistentSystemOverlays(chromeHidden ? .hidden : .automatic)
+        #endif
         .sheet(isPresented: $isShowingAltText) { altTextSheet }
+        .accessibilityAction(.escape) { dismiss() }
         .onKeyPress(.escape) {
             dismiss()
             return .handled
@@ -79,11 +108,11 @@ public struct MediaViewer: View {
             return .handled
         }
         .onChange(of: index) { _, _ in
-            // Reset zoom/offset when swiping to next media
+            // The next picture starts whole, wherever the last was left.
             withAnimation(.spring(duration: 0.25)) {
                 zoom = 1
                 committedZoom = 1
-                offset = .zero
+                resetOffset()
             }
         }
         #if os(macOS)
@@ -109,12 +138,49 @@ public struct MediaViewer: View {
             .offset(offset)
             .onTapGesture(count: 2) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    zoom = zoom > 1 ? 1 : 2.5
+                    zoom = zoom > 1 ? 1 : MediaZoom.doubleTap
                     committedZoom = zoom
-                    if zoom == 1 { offset = .zero }
+                    if zoom == 1 { resetOffset() }
                 }
             }
+            .onTapGesture {
+                isChromeHidden.toggle()
+            }
+            // Only while zoomed: at full view a horizontal drag belongs to
+            // the pager, which moves to the next picture.
+            .gesture(panGesture(for: attachment), including: zoom > 1 ? .all : .subviews)
         }
+    }
+
+    /// The controls stay for VoiceOver: hiding them would leave nothing to
+    /// close the viewer with.
+    private var chromeHidden: Bool { isChromeHidden && !isVoiceOverOn }
+
+    private var isShowingPhoto: Bool {
+        attachments[safe: index].map { !$0.type.isPlayable } ?? false
+    }
+
+    /// The custom swipe down, where the system's is not there: no zoom
+    /// transition (opened from somewhere without a source cell) and not the
+    /// Mac, where a window does not close by being dragged.
+    private var allowsSwipeToDismiss: Bool {
+        #if os(macOS)
+            false
+        #else
+            mediaTransition == nil && isShowingPhoto && zoom <= 1
+        #endif
+    }
+
+    private func resetOffset() {
+        offset = .zero
+        committedOffset = .zero
+    }
+
+    private func clamped(_ proposed: CGSize, for attachment: MediaAttachment?) -> CGSize {
+        MediaZoom.clampedOffset(
+            proposed, zoom: zoom,
+            content: MediaZoom.fittedSize(aspect: attachment?.aspectRatio, in: pageSize),
+            container: pageSize)
     }
 
     /// Real Liquid Glass, tinted down so a white photograph behind it does
@@ -203,11 +269,9 @@ public struct MediaViewer: View {
         DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .onChanged { value in
                 guard zoom <= 1 else { return }
-                isDragging = true
                 dragOffset = CGSize(width: 0, height: value.translation.height)
             }
             .onEnded { value in
-                isDragging = false
                 if abs(value.translation.height) > 140
                     || (value.predictedEndTranslation.height > 200)
                 {
@@ -223,14 +287,35 @@ public struct MediaViewer: View {
     private var zoomGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                let newZoom = min(5, max(1, committedZoom * value.magnification))
-                zoom = newZoom
+                zoom = min(MediaZoom.maximum, max(1, committedZoom * value.magnification))
             }
             .onEnded { _ in
                 committedZoom = zoom
-                if zoom <= 1 {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { offset = .zero }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    if zoom <= 1 {
+                        resetOffset()
+                    } else {
+                        // Pinching out can leave the picture past its own
+                        // edge; it settles back inside.
+                        offset = clamped(offset, for: attachments[safe: index])
+                        committedOffset = offset
+                    }
                 }
+            }
+    }
+
+    /// Moves a zoomed picture under the finger, as far as its edges.
+    private func panGesture(for attachment: MediaAttachment) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                offset = clamped(
+                    CGSize(
+                        width: committedOffset.width + value.translation.width,
+                        height: committedOffset.height + value.translation.height),
+                    for: attachment)
+            }
+            .onEnded { _ in
+                committedOffset = offset
             }
     }
 }

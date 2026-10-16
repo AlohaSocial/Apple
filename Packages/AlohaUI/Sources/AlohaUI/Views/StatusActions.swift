@@ -184,38 +184,91 @@ public enum StatusActions {
         }
     }
 
-    public static func delete(_ status: Status, session: AccountSession) async {
+    /// Deletes a post, and says so when the server would not. The row only
+    /// leaves the cache once the server has agreed, so a refusal leaves
+    /// nothing to put back — but it must be heard: a post the person believes
+    /// gone while it is still public is the worst way this can fail.
+    ///
+    /// - Returns: nil when deleted, otherwise what to tell the person.
+    @discardableResult
+    public static func delete(_ status: Status, session: AccountSession) async -> String? {
         do {
             _ = try await session.client.send(Endpoint.statuses.delete(status.displayed.id))
-            try await session.timelineStore.deleteStatus(
-                accountID: session.id, serverID: status.displayed.id)
         } catch {
             await session.handle(error)
+            return failureMessage(
+                error,
+                fallback: String(
+                    localized: "The post could not be deleted. It is still up.",
+                    comment: "Delete failure"))
         }
+        // The server has deleted it; a cache that could not be written is
+        // repaired by the next refresh and is not the person's problem.
+        try? await session.timelineStore.deleteStatus(
+            accountID: session.id, serverID: status.displayed.id)
+        return nil
     }
 
     /// Blocking and muting both take effect locally at once — a person who has
     /// just blocked somebody should not keep seeing them while a refresh
     /// happens (docs/11 §1.3).
+    ///
+    /// - Returns: nil when it took effect, otherwise what to tell the person.
+    ///   A block that failed without a word leaves somebody able to reach a
+    ///   person who believes they no longer can, so a failure is always said.
+    @discardableResult
     public static func moderate(
         _ request: ModerationRequest, session: AccountSession
-    ) async {
-        let endpoint: Endpoint
-        switch request.kind {
-        case .block:
-            endpoint = Endpoint.accounts.simpleAction(request.account.id, "block")
-        case .mute:
-            endpoint = Endpoint.accounts.mute(
-                request.account.id, notifications: true, duration: nil)
-        }
+    ) async -> String? {
+        await moderate(request.kind, account: request.account.id, session: session)
+    }
 
+    /// The same, for a block or mute that does not come from a confirmation
+    /// — the "also block" after a report.
+    @discardableResult
+    static func moderate(
+        _ kind: ModerationRequest.Kind, account accountID: String, session: AccountSession
+    ) async -> String? {
         do {
-            _ = try await session.client.decode(Relationship.self, from: endpoint)
-            try await session.timelineStore.removeEverything(
-                fromAccount: request.account.id, accountID: session.id)
+            _ = try await session.client.decode(
+                Relationship.self, from: moderationEndpoint(kind, account: accountID))
         } catch {
             await session.handle(error)
+            return failureMessage(error, fallback: moderationFailure(kind))
         }
+        try? await session.timelineStore.removeEverything(
+            fromAccount: accountID, accountID: session.id)
+        return nil
+    }
+
+    static func moderationEndpoint(_ kind: ModerationRequest.Kind, account: String) -> Endpoint {
+        switch kind {
+        case .block:
+            Endpoint.accounts.simpleAction(account, "block")
+        case .mute:
+            Endpoint.accounts.mute(account, notifications: true, duration: nil)
+        }
+    }
+
+    static func moderationFailure(_ kind: ModerationRequest.Kind) -> String {
+        switch kind {
+        case .block:
+            String(
+                localized: "The block did not go through. They can still see and reach you.",
+                comment: "Block failure")
+        case .mute:
+            String(
+                localized: "The mute did not go through. Their posts will still appear.",
+                comment: "Mute failure")
+        }
+    }
+
+    /// Ours first, so the person knows what did not happen, then the server's
+    /// own words where it gave some.
+    static func failureMessage(_ error: any Error, fallback: String) -> String {
+        guard let description = (error as? APIError)?.errorDescription, !description.isEmpty
+        else { return fallback }
+        return "\(fallback) \(description)"
     }
 
     /// Emoji reactions are a Nextcloud Social, Misskey and Pleroma extension;

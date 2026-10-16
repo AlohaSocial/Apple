@@ -83,9 +83,6 @@ struct EmojiPicker: View {
                     .padding(.vertical, AlohaMetrics.space3)
                 }
             }
-            .presentationBackground {
-                Color.clear.alohaGlassEffect(.regular, in: Rectangle())
-            }
             .searchable(text: $query, prompt: Text("Search emoji", comment: "Emoji search prompt"))
             .navigationTitle(Text("Custom emoji", comment: "Screen title"))
             #if os(iOS)
