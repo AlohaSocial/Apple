@@ -417,7 +417,7 @@ public struct PhotoPostCard: View {
                         Button {
                             page = max(0, page - 1)
                         } label: {
-                            Image(systemName: "chevron.left")
+                            Image(systemName: "chevron.backward")
                             .frame(width: 44, height: 44)
                         }
                         .disabled(page == 0)
@@ -427,7 +427,7 @@ public struct PhotoPostCard: View {
                         Button {
                             page = min(attachments.count - 1, page + 1)
                         } label: {
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                             .frame(width: 44, height: 44)
                         }
                         .disabled(page >= attachments.count - 1)
@@ -709,7 +709,7 @@ public struct PhotoPostCard: View {
             if showsCounts, displayed.favouritesCount > 0 {
                 Text(
                     "^[\(displayed.favouritesCount) favourite](inflect: true)",
-                    comment: "Photo post like count"
+                    comment: "Photo post favourite count"
                 )
                 .font(.subheadline.weight(.semibold))
             }

@@ -79,6 +79,7 @@ struct StatusActionButton: View {
         .buttonStyle(.plain)
         .alohaHoverTarget(Capsule())
         .accessibilityLabel(label)
+        .alohaLargeContentViewer(symbol: symbol, label: label)
         .sensoryFeedback(.impact(weight: .light), trigger: isOn) { _, new in new }
         .onChange(of: isOn) { _, new in
             guard new else { return }
@@ -118,6 +119,27 @@ struct StatusMetric: View {
         .frame(minWidth: 52, minHeight: 32, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
+        .alohaLargeContentViewer(symbol: symbol, label: label)
+    }
+}
+
+extension View {
+    /// The Large Content Viewer: at the accessibility text sizes, a long press
+    /// on a small fixed-size control shows it large in the middle of the
+    /// screen. The action row's glyphs do not grow with text — that is what
+    /// keeps the row on one line — so this is how they stay readable.
+    func alohaLargeContentViewer(symbol: String, label: Text) -> some View {
+        #if os(iOS) || os(visionOS)
+            accessibilityShowsLargeContentViewer {
+                Label {
+                    label
+                } icon: {
+                    Image(systemName: symbol)
+                }
+            }
+        #else
+            self
+        #endif
     }
 }
 

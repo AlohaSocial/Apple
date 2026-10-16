@@ -212,7 +212,7 @@ public struct WelcomeView: View {
                             Label {
                                 Text("Back", comment: "Onboarding action")
                             } icon: {
-                                Image(systemName: "chevron.left")
+                                Image(systemName: "chevron.backward")
                             }
                         }
                         .buttonStyle(.borderless)
@@ -245,7 +245,7 @@ public struct WelcomeView: View {
                     Label {
                         Text("Back", comment: "Onboarding action")
                     } icon: {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.backward")
                     }
                 }
                 .buttonStyle(.borderless)

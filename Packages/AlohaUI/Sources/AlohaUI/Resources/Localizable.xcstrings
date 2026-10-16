@@ -727,7 +727,7 @@
         }
       }
     },
-    "A soft tick when you like something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting." : {
+    "A soft tick when you favourite something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting." : {
       "comment" : "Senses explanation",
       "localizations" : {
         "de" : {
@@ -4262,6 +4262,28 @@
         }
       }
     },
+    "Favourite the post in focus" : {
+      "comment" : "Keyboard shortcut",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählten Beitrag favorisieren"
+          }
+        }
+      }
+    },
+    "Favourited most" : {
+      "comment" : "Annual report best post",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Am meisten favorisiert"
+          }
+        }
+      }
+    },
     "Favourites" : {
       "comment" : "Notification filter\nStatistics tile",
       "localizations" : {
@@ -5725,28 +5747,6 @@
         }
       }
     },
-    "Like the post in focus" : {
-      "comment" : "Keyboard shortcut",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausgewählten Beitrag favorisieren"
-          }
-        }
-      }
-    },
-    "Liked most" : {
-      "comment" : "Annual report best post",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Am meisten favorisiert"
-          }
-        }
-      }
-    },
     "Liked posts" : {
       "comment" : "Screen title",
       "localizations" : {
@@ -6223,6 +6223,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Monat für Monat"
+          }
+        }
+      }
+    },
+    "More" : {
+      "comment" : "Voice Control name for the post's More actions menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr"
           }
         }
       }
@@ -14292,7 +14303,7 @@
       }
     },
     "^[%lld favourite](inflect: true)" : {
-      "comment" : "Photo post like count\nVideo byline count\nWatch page count",
+      "comment" : "Photo post favourite count\nVideo byline count\nWatch page count",
       "localizations" : {
         "de" : {
           "stringUnit" : {

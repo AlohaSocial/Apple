@@ -214,7 +214,6 @@ extension EnvironmentValues {
 /// change is one number rather than a sweep through every view.
 public struct AlohaMetrics: Sendable, Hashable {
     public var density: Density
-    public var textSizeOffset: Int
     public var lineSpacing: Double
     public var useSerifBody: Bool
     public var avatarShape: AvatarShape
@@ -242,12 +241,13 @@ public struct AlohaMetrics: Sendable, Hashable {
         case circle, roundedSquare
     }
 
+    /// There is no text-size setting of the app's own: Dynamic Type is the
+    /// one control for that, and everything here scales with it.
     public init(
-        density: Density = .comfortable, textSizeOffset: Int = 0, lineSpacing: Double = 2,
+        density: Density = .comfortable, lineSpacing: Double = 2,
         useSerifBody: Bool = false, avatarShape: AvatarShape = .circle
     ) {
         self.density = density
-        self.textSizeOffset = textSizeOffset
         self.lineSpacing = lineSpacing
         self.useSerifBody = useSerifBody
         self.avatarShape = avatarShape

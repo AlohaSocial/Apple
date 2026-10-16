@@ -138,7 +138,10 @@ Non-negotiable, on every screen, verified before a feature is called done.
 - **RTL**: layout uses leading/trailing throughout, never left/right. Directional
   SF Symbols use the `.mirrored` variants. Tested with the RTL pseudolanguage.
 - Pseudolocalisation (`en-XA`, `ar-XB`) run in CI screenshots to catch truncation
-  and hardcoded direction.
+  and hardcoded direction. `PseudolocalisationTourTests` in the UI tours does
+  it with the system's own switches (double-length, accented and bracketed
+  strings; forced right-to-left), so the `ui` job's screenshot artefact carries
+  those screens alongside the English ones.
 
 ## 5. Design system checks
 

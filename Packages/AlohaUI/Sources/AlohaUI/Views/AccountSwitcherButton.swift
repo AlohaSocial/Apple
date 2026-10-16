@@ -54,7 +54,7 @@ struct AccountMenuButton: View {
                 if !usesCompactMenu {
                     item(
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests)
-                    item("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
+                    item("Favourites", symbol: AlohaSymbol.favourite, route: .favourites)
                     item("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
                     if session.capabilities.isNextcloudSocial {
                         item("Archived posts", symbol: "archivebox", route: .archived)

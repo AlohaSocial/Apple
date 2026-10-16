@@ -114,7 +114,7 @@ public struct NextcloudFileBrowser: View {
             Label {
                 Text("Back", comment: "Nextcloud browser action")
             } icon: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.backward")
             }
         }
         .buttonStyle(.plain)
@@ -150,7 +150,7 @@ public struct NextcloudFileBrowser: View {
                 Spacer(minLength: 0)
 
                 if entry.isDirectory {
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.caption)
                         .foregroundStyle(palette.tertiaryLabel)
                 }

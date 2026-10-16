@@ -64,5 +64,31 @@ import XCTest
                 app.swipeDown(velocity: .fast)
             }
         }
+
+        /// The measurement above has no pass mark. This one does: a long, fast
+        /// scroll has to reach the second page — which means prefetching older
+        /// posts kept up — within a bounded number of swipes and a bounded
+        /// time. A timeline that stalls, hitches into a hang or stops paging
+        /// fails here rather than in somebody's hand.
+        func testLongScrollReachesTheSecondPage() {
+            let app = launch([])
+            XCTAssertTrue(app.labelled("Test post number 1").waitForExistence(timeout: 20))
+
+            // The mock serves forty posts, twenty to a page: number 35 only
+            // exists once the second page has been fetched and drawn.
+            let deep = app.labelled("Test post number 35")
+            let start = Date()
+            var swipes = 0
+            while !deep.exists && swipes < 30 {
+                app.swipeUp(velocity: .fast)
+                swipes += 1
+            }
+            let elapsed = Date().timeIntervalSince(start)
+
+            XCTAssertTrue(deep.waitForExistence(timeout: 5), "The older page never arrived")
+            XCTAssertLessThan(swipes, 30, "Thirty swipes did not reach post 35")
+            XCTAssertLessThan(elapsed, 60, "Scrolling two pages took \(Int(elapsed)) s")
+            shoot("67-long-scroll")
+        }
     }
 #endif
