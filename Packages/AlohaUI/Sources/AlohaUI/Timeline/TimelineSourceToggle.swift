@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import SwiftUI
+import TipKit
 
 /// Keep the feed unobstructed until the person scrolls. A toolbar menu
 /// remains available on empty feeds and for keyboard/accessibility users.
@@ -85,6 +86,11 @@ struct TimelineSourceToggle: View {
                 }
             }
         }
+        #if !os(tvOS) && !os(watchOS)
+            // Said the first time the switch appears, which is when there is
+            // something to point at.
+            .popoverTip(TimelineSourceTip(), arrowEdge: .bottom)
+        #endif
         .padding(.bottom, AlohaMetrics.space2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Timeline source", comment: "Accessibility label"))
@@ -93,6 +99,7 @@ struct TimelineSourceToggle: View {
     private func button(for option: TimelineSource, title: Text) -> some View {
         let isSelected = source == option
         return Button {
+            TimelineSourceTip().invalidate(reason: .actionPerformed)
             if reduceMotion {
                 source = option
             } else {

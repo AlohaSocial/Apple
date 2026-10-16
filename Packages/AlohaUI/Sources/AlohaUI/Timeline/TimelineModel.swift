@@ -44,6 +44,10 @@ public final class TimelineModel {
     /// Whether the marker has been advanced this session (to avoid
     /// re-syncing on every appearance of the same row).
     @ObservationIgnored private var markerAdvancedThisSession = false
+    /// The web links in each post, by row id, for the VoiceOver links rotor
+    /// (docs/12 §3). Filled as pages arrive, from the parse the rich-text
+    /// cache does anyway, because the view cannot parse inside its body.
+    public private(set) var webLinks: [String: [URL]] = [:]
 
     private let logger = Logger(subsystem: "social.aloha.app", category: "timeline")
 
@@ -65,19 +69,52 @@ public final class TimelineModel {
         }
     }
 
-    /// Loads the local marker for the home timeline. If found, the marker
-    /// ID is stored so a divider can be inserted below that post.
+    /// Loads the home marker: the local one first, so the divider is there
+    /// at once, then the server's, which is how another device's reading
+    /// reaches this one. The marker was written to the server but only ever
+    /// read back locally, so cross-device sync went one way (docs/08 §7).
     private func loadCaughtUpMarker() async {
+        var local: String?
         do {
-            let markerID = try await session.supportStore.marker(
+            local = try await session.supportStore.marker(
                 accountID: session.id, timeline: "home")
-            if let markerID, !markerID.isEmpty {
-                caughtUpMarkerID = markerID
-            }
         } catch {
             logger.debug(
                 "could not load home marker: \(String(describing: error), privacy: .public)")
         }
+        if let local, !local.isEmpty { applyCaughtUpMarker(local) }
+
+        let server = try? await session.client.decode(
+            MarkerSet.self, from: Endpoint.markers.read
+        ).home?.lastReadID
+        guard let newest = Self.newestMarker(local: local, server: server), newest != local
+        else { return }
+        _ = try? await session.supportStore.advanceMarker(
+            accountID: session.id, timeline: "home", to: newest)
+        applyCaughtUpMarker(newest)
+    }
+
+    /// The marker that is further along. Neither copy may move the other
+    /// backwards — the same rule the store and the server keep.
+    nonisolated static func newestMarker(local: String?, server: String?) -> String? {
+        let local = local.flatMap { $0.isEmpty ? nil : $0 }
+        let server = server.flatMap { $0.isEmpty ? nil : $0 }
+        switch (local, server) {
+        case (nil, nil): return nil
+        case (let only?, nil), (nil, let only?): return only
+        case (let local?, let server?):
+            return SupportStore.isNewer(server, than: local) ? server : local
+        }
+    }
+
+    /// Moves the divider to a new marker rather than adding a second one.
+    private func applyCaughtUpMarker(_ id: String) {
+        caughtUpMarkerID = id
+        rows.removeAll { row in
+            if case .caughtUpDivider = row { return true }
+            return false
+        }
+        ensureCaughtUpDivider()
     }
 
     /// Advances the caught-up marker to the given post ID, both locally
@@ -93,7 +130,7 @@ public final class TimelineModel {
         caughtUpMarkerID = statusID
         // Local store.
         do {
-            try await session.supportStore.advanceMarker(
+            _ = try await session.supportStore.advanceMarker(
                 accountID: session.id, timeline: "home", to: statusID)
         } catch {
             logger.debug(
@@ -172,6 +209,8 @@ public final class TimelineModel {
             filters = (try? await session.supportStore.activeFilters(accountID: session.id)) ?? []
             rows = applyFilters(to: cached)
             ensureCaughtUpDivider()
+            let statuses = cached.compactMap(\.status)
+            Task { await indexLinks(statuses) }
         } catch {
             logger.error("cache read failed: \(String(describing: error), privacy: .public)")
         }
@@ -289,7 +328,8 @@ public final class TimelineModel {
             // Painting the rows is the user-visible critical path. Parsing
             // rich text and promoting optional capabilities can finish just
             // behind it without holding the whole first screen hostage.
-            Task { await Self.warmRichText(harvest.statuses) }
+            let statuses = harvest.statuses
+            Task { await indexLinks(statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
@@ -365,7 +405,8 @@ public final class TimelineModel {
             ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
             hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
-            Task { await Self.warmRichText(harvest.statuses) }
+            let statuses = harvest.statuses
+            Task { await indexLinks(statuses) }
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
@@ -452,10 +493,17 @@ public final class TimelineModel {
     /// `RichTextView` falls back to plain text for one frame when a parse is
     /// not yet cached; warming the whole page here means that path is only ever
     /// taken for content that arrived some other way.
-    private static func warmRichText(_ statuses: [Status]) async {
+    ///
+    /// The same pass records each post's web links for the links rotor, so
+    /// that index costs no second parse.
+    private func indexLinks(_ statuses: [Status]) async {
+        var found: [String: [URL]] = [:]
         for status in statuses {
-            _ = await RichTextCache.shared.richText(for: status)
+            let links = await RichTextCache.shared.richText(for: status).webLinks
+            if !links.isEmpty { found[status.id] = links }
         }
+        guard !found.isEmpty else { return }
+        webLinks.merge(found) { _, new in new }
     }
 
     // MARK: - Prefetching

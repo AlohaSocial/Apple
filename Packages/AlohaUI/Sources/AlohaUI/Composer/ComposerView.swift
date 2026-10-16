@@ -112,6 +112,20 @@ public struct ComposerView: View {
             }
             .background(palette.background)
             .sensoryFeedback(.success, trigger: didSend)
+            #if !os(tvOS) && !os(watchOS)
+                // A picture dragged in from Photos, Files or another app is
+                // an attachment, the same as one picked.
+                .dropDestination(for: DroppedImage.self) { images, _ in
+                    Task {
+                        for image in images {
+                            await model.uploader.add(
+                                data: image.data, filename: image.filename,
+                                mimeType: image.mimeType)
+                        }
+                    }
+                    return !images.isEmpty
+                }
+            #endif
             .navigationTitle(model.title)
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

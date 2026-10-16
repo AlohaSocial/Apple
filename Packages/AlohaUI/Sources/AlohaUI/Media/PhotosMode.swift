@@ -6,6 +6,7 @@ import AlohaHTML
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
+import TipKit
 
 /// The photo app people already know: a stories rail, then one post after
 /// another — header, picture, action row, likes, caption. A square grid is a
@@ -124,6 +125,11 @@ public struct PhotosModeView: View {
                 if session.capabilities.stories {
                     storyCarousel
                     Divider()
+                }
+
+                if !statuses.isEmpty {
+                    TipView(PhotosDoubleTapTip())
+                        .padding(AlohaMetrics.space3)
                 }
 
                 ForEach(statuses) { status in
@@ -614,6 +620,7 @@ public struct PhotoPostCard: View {
     }
 
     private func heart() {
+        PhotosDoubleTapTip().invalidate(reason: .actionPerformed)
         guard !isCovered, !displayed.favourited else { return }
         onAction(.favourite(status))
         withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5)) {
@@ -646,10 +653,11 @@ public struct PhotoPostCard: View {
                 label: Text("Boost", comment: "Status action")
             ) { onAction(.boost(status)) }
 
-            actionButton(
-                symbol: "paperplane", tint: palette.label,
-                label: Text("Share", comment: "Status action")
-            ) { onAction(.share(status)) }
+            StatusShareLink(status: status) {
+                actionLabel(symbol: "paperplane", tint: palette.label)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Share", comment: "Status action"))
 
             Spacer(minLength: 0)
 
@@ -670,14 +678,18 @@ public struct PhotoPostCard: View {
         symbol: String, tint: Color, label: Text, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.title3.weight(.medium))
-                .foregroundStyle(tint)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
+            actionLabel(symbol: symbol, tint: tint)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+
+    private func actionLabel(symbol: String, tint: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.title3.weight(.medium))
+            .foregroundStyle(tint)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
     }
 
     // MARK: Details

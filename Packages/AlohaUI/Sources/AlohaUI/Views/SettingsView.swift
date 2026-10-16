@@ -595,12 +595,51 @@ public struct SettingsView: View {
             ) {
                 Text("Return to where I was", comment: "Settings item")
             }
+
+            swipePicker(
+                Text("Swipe right", comment: "Settings item: the action a swipe from the leading edge performs"),
+                selection: session.settings.leadingSwipeAction
+            ) { value in
+                Task { await session.updateSettings { $0.leadingSwipeAction = value } }
+            }
+            swipePicker(
+                Text("Swipe left", comment: "Settings item: the action a swipe from the trailing edge performs"),
+                selection: session.settings.trailingSwipeAction
+            ) { value in
+                Task { await session.updateSettings { $0.trailingSwipeAction = value } }
+            }
         } header: {
             Text("Home feed", comment: "Settings section")
         } footer: {
             Text(
                 "Off, the new-posts pill disappears and every refresh scrolls to the top instead of holding your place.",
                 comment: "Home feed section explanation")
+        }
+    }
+
+    /// Mail's choice, for posts: which action a swipe from each edge
+    /// performs, or none. In a right-to-left language the edges swap, and
+    /// so does what "right" means here, because the list swaps them too.
+    private func swipePicker(
+        _ title: Text, selection: AccountSettings.SwipeAction,
+        onChange: @escaping @Sendable (AccountSettings.SwipeAction) -> Void
+    ) -> some View {
+        Picker(selection: Binding(get: { selection }, set: onChange)) {
+            ForEach(AccountSettings.SwipeAction.allCases, id: \.self) { action in
+                swipeActionTitle(action).tag(action)
+            }
+        } label: {
+            title
+        }
+    }
+
+    private func swipeActionTitle(_ action: AccountSettings.SwipeAction) -> Text {
+        switch action {
+        case .none: Text("Nothing", comment: "Swipe action setting: the edge does nothing")
+        case .reply: Text("Reply", comment: "Swipe action setting")
+        case .favourite: Text("Favourite", comment: "Swipe action setting")
+        case .boost: Text("Boost", comment: "Swipe action setting")
+        case .bookmark: Text("Bookmark", comment: "Swipe action setting")
         }
     }
 
