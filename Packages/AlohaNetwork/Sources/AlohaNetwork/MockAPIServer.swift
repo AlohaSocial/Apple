@@ -209,6 +209,12 @@ public actor MockAPIServer: HTTPTransport {
     ) throws -> (Data, HTTPURLResponse) {
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
 
+        if let answered = serverFeaturesMock(
+            route: route, url: url, method: method, query: query, body: body)
+        {
+            return answered
+        }
+
         switch route {
         // MARK: Posting
 
