@@ -831,6 +831,8 @@ private struct ThemedAppShell: View {
             VideoWatchView(statusID: statusID, session: session) { handle($0, session: session) }
         case .drafts:
             DraftsView(session: session)
+        case .scheduledPosts:
+            ScheduledPostsView(session: session)
         case .notificationRequests:
             NotificationRequestsView(session: session)
         case .notificationPolicy:
