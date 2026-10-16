@@ -99,11 +99,13 @@ public struct NotificationsView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
-        .safeAreaInset(edge: .top, spacing: 0) {
+        // A bar, not an opaque inset: the system's scroll-edge effect keeps
+        // the chips legible over the rows passing under them, the way a
+        // toolbar does, instead of a slab of ground colour cutting the list.
+        .safeAreaBar(edge: .top, spacing: 0) {
             filterChips
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
-                .background(palette.background)
         }
         .overlay {
             if isLoading && groups.isEmpty && flat.isEmpty {
