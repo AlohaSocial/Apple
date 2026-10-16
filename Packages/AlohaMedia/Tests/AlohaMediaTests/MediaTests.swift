@@ -256,6 +256,7 @@ struct UploadPreflightTests {
 }
 
 @Suite("Upload progress")
+@MainActor
 struct UploadProgressTests {
 
     @Test("Overall progress is the mean of the parts")

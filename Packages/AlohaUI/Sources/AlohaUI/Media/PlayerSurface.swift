@@ -188,7 +188,9 @@ enum PlaybackReadiness {
     ) async -> PlaybackOutcome {
         await withTaskGroup(of: PlaybackOutcome.self) { group in
             group.addTask {
-                for await status in PlaybackReadiness.statuses(item) {
+                // The stream is made on the main actor, where the item's
+                // status is read; only its values cross into this task.
+                for await status in await PlaybackReadiness.statuses(item) {
                     switch status {
                     case .readyToPlay: return .ready
                     case .failed: return .failed

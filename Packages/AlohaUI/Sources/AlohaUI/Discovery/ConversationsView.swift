@@ -44,7 +44,7 @@ public struct ConversationsView: View {
 
     private static let pageSize = 40
 
-    enum Filter: Hashable, CaseIterable {
+    nonisolated enum Filter: Hashable, CaseIterable {
         case all, unread
 
         var title: String {

@@ -9,7 +9,7 @@ import SwiftUI
 /// Semantic colour roles. View code names a role, never a colour — which is
 /// what makes light, dark and the two increased-contrast variants one change
 /// rather than four (docs/05 §2).
-public struct AlohaPalette: Sendable, Hashable {
+public nonisolated struct AlohaPalette: Sendable, Hashable {
     public var background: Color
     /// The same colour as numbers. `Color` cannot be read back portably, and
     /// the server-accent contrast guard has to measure against the ground it
@@ -67,7 +67,7 @@ public struct AlohaPalette: Sendable, Hashable {
     }
 }
 
-public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
+public nonisolated enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
     case system
     case warmLight
     case warmDark
@@ -252,7 +252,7 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
     /// against the view's own appearance — a sheet in dark mode gets the
     /// elevated ground, Increase Contrast the stronger separator — which a
     /// fixed palette never could.
-    enum SystemColours {
+    nonisolated enum SystemColours {
         #if os(macOS)
             static let background = Color(nsColor: .textBackgroundColor)
             static let surface = Color(nsColor: .secondarySystemFill)
@@ -282,7 +282,7 @@ extension EnvironmentValues {
 
 /// Spacing, radii and density. All multiples of a 4-point rhythm so a density
 /// change is one number rather than a sweep through every view.
-public struct AlohaMetrics: Sendable, Hashable {
+public nonisolated struct AlohaMetrics: Sendable, Hashable {
     public var density: Density
     public var lineSpacing: Double
     public var useSerifBody: Bool
@@ -370,7 +370,7 @@ public struct AlohaThemeModifier: ViewModifier {
 
     /// What the server said about its colour, as hex. Nothing is chosen here:
     /// the app wears the colour of the Nextcloud it is signed in to.
-    public struct ServerTheme: Sendable, Hashable {
+    public nonisolated struct ServerTheme: Sendable, Hashable {
         /// Legible on a light background.
         public var brightHex: String?
         /// Legible on a dark background.
@@ -413,7 +413,7 @@ public struct AlohaThemeModifier: ViewModifier {
     }
 }
 
-extension AlohaThemeModifier.ServerTheme {
+nonisolated extension AlohaThemeModifier.ServerTheme {
     /// The server's colour made legible against `ground`, or `nil` where it
     /// cannot be — the one rule every process applies, so the widgets, the
     /// watch and the TV wear the same colour the app does.
@@ -512,7 +512,7 @@ extension View {
 /// the three levels a blur can sit at. Naming them keeps the same level in
 /// every place instead of a material chosen by whichever view got there
 /// first.
-public enum AlohaGlass: Sendable {
+public nonisolated enum AlohaGlass: Sendable {
     /// A card, a row, a control sitting on content.
     case regular
     /// A sheet or a toolbar over the screen: the strongest layer.

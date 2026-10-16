@@ -15,7 +15,7 @@ import SwiftUI
 /// servers that publish only `color`, for the ones whose variants still miss,
 /// and for the app's own background, which is not the one Nextcloud computed
 /// against (docs/05 §2).
-public enum ServerAccent {
+public nonisolated enum ServerAccent {
     /// WCAG AA for body text. The accent carries counts and timestamps at
     /// caption size, so the lower large-text threshold does not apply.
     public static let minimumContrast: Double = 4.5

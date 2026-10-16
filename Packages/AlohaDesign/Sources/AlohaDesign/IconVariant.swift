@@ -12,7 +12,7 @@ import SwiftUI
 ///
 /// Each name matches an icon set in the asset catalogue, so renaming a case
 /// renames an asset.
-public enum AlohaIconVariant: String, CaseIterable, Sendable, Codable, Identifiable {
+public nonisolated enum AlohaIconVariant: String, CaseIterable, Sendable, Codable, Identifiable {
     case aloha
     case ocean
     case forest

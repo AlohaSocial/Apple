@@ -9,6 +9,7 @@ import Testing
 /// were still going up, and said "finished" while the server was still
 /// transcoding. These pin what each moment of a batch reads as.
 @Suite("Upload activity phases")
+@MainActor
 struct UploadActivityStateTests {
     private typealias State = UploadActivityAttributes.ContentState
 

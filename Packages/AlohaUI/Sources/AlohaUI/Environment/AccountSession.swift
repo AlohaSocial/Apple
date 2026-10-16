@@ -7,12 +7,16 @@ import AlohaStore
 import Foundation
 import OSLog
 import Observation
-import Synchronization
 
 /// One signed-in account's live services. Created and torn down with the
 /// account — a signed-out account leaves no live object and no cached bytes.
+///
+/// On the main actor, where SwiftUI reads it: its snapshot and flags change
+/// only there, so a view never sees one half-written. The network and store
+/// work it starts runs on their own actors.
+@MainActor
 @Observable
-public final class AccountSession: Identifiable, @unchecked Sendable {
+public final class AccountSession: Identifiable {
     public let id: UUID
     public private(set) var snapshot: AccountStore.Snapshot
     public let client: APIClient
@@ -162,8 +166,8 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
     }
 
     /// The check in flight, shared: ten screens failing at once ask once.
-    /// Behind a lock because the failures arrive from wherever they happened.
-    private let tokenCheck = Mutex<Task<Bool, Never>?>(nil)
+    /// No lock: the session is on the main actor, and so is every caller.
+    private var tokenCheck: Task<Bool, Never>?
 
     /// Whether `verify_credentials` itself says the token is no good.
     ///
@@ -171,10 +175,12 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
     /// about the token, and treating any failure as "signed out" is how a
     /// person on a train is asked to sign in again.
     private func isTokenRefused() async -> Bool {
-        let client = client
-        let check = tokenCheck.withLock { slot in
-            if let running = slot { return running }
-            let started = Task<Bool, Never> {
+        let check: Task<Bool, Never>
+        if let running = tokenCheck {
+            check = running
+        } else {
+            let client = client
+            check = Task {
                 do {
                     _ = try await client.decode(
                         Account.self, from: Endpoint.session.verifyCredentials)
@@ -185,13 +191,10 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
                     return false
                 }
             }
-            slot = started
-            return started
+            tokenCheck = check
         }
         let refused = await check.value
-        tokenCheck.withLock { slot in
-            if slot == check { slot = nil }
-        }
+        if tokenCheck == check { tokenCheck = nil }
         return refused
     }
 

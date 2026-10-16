@@ -7,6 +7,10 @@ import Foundation
 /// Actions that reach the server. Optimistic where the answer is predictable,
 /// reconciled against what comes back, reverted with an explanation on failure
 /// (docs/08 §8).
+///
+/// On the main actor: every action updates the session and the visible
+/// rows, which SwiftUI reads there.
+@MainActor
 public enum StatusActions {
 
     // MARK: - Nextcloud Social extras

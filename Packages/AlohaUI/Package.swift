@@ -4,7 +4,10 @@
 import PackageDescription
 
 let settings: [SwiftSetting] = [
-    .swiftLanguageMode(.v6)
+    .swiftLanguageMode(.v6),
+    // docs/12 §1: view code is main-actor code, and anything that is not
+    // says so explicitly.
+    .defaultIsolation(MainActor.self),
 ]
 
 let package = Package(
