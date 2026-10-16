@@ -57,6 +57,8 @@ private struct ThemedAppShell: View {
     @State private var deleting: Status?
     @State private var confirming: ModerationRequest?
     @State private var sheet: ShellSheet?
+    /// The Focus filter last applied, so it is applied once per change.
+    @State private var appliedFocus = FocusFilterState.none
     @Environment(\.scenePhase) private var scenePhase
 
     init() {}
@@ -114,6 +116,10 @@ private struct ThemedAppShell: View {
                 // front rather than launching it, so `start()` never sees
                 // what it left behind; this does.
                 if phase == .active, let pending = IntentNavigation.take() { open(pending) }
+                if phase == .active { applyFocusFilter() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.focusChanged)) {
+                _ in applyFocusFilter()
             }
             .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.routeRequested)) {
                 _ in
@@ -318,6 +324,21 @@ private struct ThemedAppShell: View {
         if shouldAsk { _ = await environment.notifier.requestAuthorisation() }
         // An intent that opened the app left its destination behind.
         if let pending = IntentNavigation.take() { open(pending) }
+    }
+
+    /// Applies the Focus filter once per change: the account it keeps the app
+    /// on, and the feed it opens to. Applied on every activation it would
+    /// pull the reader back to that feed each time they came back.
+    private func applyFocusFilter() {
+        let focus = FocusFilterState.current
+        guard focus != appliedFocus else { return }
+        appliedFocus = focus
+        if let accountID = focus.accountID { environment.setActiveAccount(accountID) }
+        // Only a feed this account actually shows: a Focus set up for a mode
+        // the server has no surface for would leave a tab that is not there.
+        if let mode = focus.mode, environment.activeSession?.visibleModes.contains(mode) == true {
+            open(.timeline(TimelineKey(mode: mode, source: .home)))
+        }
     }
 
     func open(_ route: Route) {
