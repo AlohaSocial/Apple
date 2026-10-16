@@ -25,9 +25,12 @@ struct AlohaSocialWatchApp: App {
 
 struct WatchRootView: View {
     @Environment(WatchLink.self) private var link
+    @Environment(\.scenePhase) private var scenePhase
+    /// Where a tapped complication asked to go.
+    @State private var path: [WatchComplicationLink] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if link.credentials == nil {
                     ContentUnavailableView {
@@ -42,9 +45,100 @@ struct WatchRootView: View {
                 }
             }
             .navigationTitle(Text("Aloha", comment: "Watch app title"))
+            .navigationDestination(for: WatchComplicationLink.self) { destination in
+                switch destination {
+                case .mentions: WatchMentionsView()
+                case .status(let id): WatchStatusLoader(statusID: id)
+                }
+            }
         }
         .serverTint(link.serverTheme)
         .task { link.activate() }
+        .onOpenURL { url in
+            guard let destination = WatchComplicationLink(url: url) else { return }
+            path = [destination]
+        }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            guard phase == .active else { return }
+            Task { await link.refreshComplications() }
+        }
+    }
+}
+
+/// The newest mentions, which is what the mentions complication opens.
+struct WatchMentionsView: View {
+    @Environment(WatchLink.self) private var link
+    @State private var mentions: [MastodonNotification] = []
+    @State private var isLoading = true
+
+    var body: some View {
+        List {
+            ForEach(mentions) { mention in
+                if let status = mention.status {
+                    NavigationLink {
+                        WatchStatusView(status: status)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(mention.account.bestDisplayName)
+                                .font(.caption2.weight(.semibold))
+                                .lineLimit(1)
+                            Text(WatchText.body(of: status))
+                                .font(.caption2)
+                                .lineLimit(3)
+                        }
+                    }
+                }
+            }
+            if mentions.isEmpty && !isLoading {
+                Text("No mentions yet", comment: "Watch, empty mentions list").font(.caption2)
+            }
+        }
+        .navigationTitle(Text("Mentions", comment: "Watch mentions screen title"))
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        guard let client = link.client else { return }
+        let page = try? await client.decode(
+            LossyArray<MastodonNotification>.self,
+            from: Endpoint.notifications.flat(limit: 20, types: ["mention"]))
+        mentions = page?.elements.filter { $0.type == .mention } ?? []
+    }
+}
+
+/// One post by id: a complication row carries the id, not the post.
+struct WatchStatusLoader: View {
+    @Environment(WatchLink.self) private var link
+    let statusID: String
+    @State private var status: Status?
+    @State private var failed = false
+
+    var body: some View {
+        Group {
+            if let status {
+                WatchStatusView(status: status)
+            } else if failed {
+                Text("Couldn't load this post", comment: "Watch, post failed to load")
+                    .font(.caption2)
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            guard let client = link.client else {
+                failed = true
+                return
+            }
+            do {
+                status = try await client.decode(
+                    Status.self, from: Endpoint.statuses.status(statusID))
+            } catch {
+                failed = true
+            }
+        }
     }
 }
 
