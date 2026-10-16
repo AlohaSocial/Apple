@@ -187,14 +187,28 @@ enum IntentContext {
     }
 }
 
-/// An intent that opens the app hands its destination through here.
+/// An intent that opens the app hands its destination through here, and so
+/// does a tapped notification.
+///
+/// The route is stored, then announced: a running shell takes it at once, and
+/// one that is still launching takes it when it starts. Taking it consumes it,
+/// so the two paths cannot open the same screen twice.
 public enum IntentNavigation {
     private static let key = AppGroup.pendingRouteKey
 
+    /// Posted when a route has been left for the shell to take.
+    public static let routeRequested = Notification.Name("aloha.routeRequested")
+
     @MainActor
     public static func request(_ route: Route) async {
+        enqueue(route)
+    }
+
+    @MainActor
+    public static func enqueue(_ route: Route) {
         guard let data = try? JSONEncoder().encode(route) else { return }
         AppGroup.defaults.set(data, forKey: key)
+        NotificationCenter.default.post(name: routeRequested, object: nil)
     }
 
     @MainActor

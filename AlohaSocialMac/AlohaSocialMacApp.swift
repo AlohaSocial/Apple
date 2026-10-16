@@ -7,6 +7,7 @@ import AppKit
 import Foundation
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 /// The Mac client.
 ///
@@ -20,7 +21,14 @@ import SwiftUI
 struct AlohaSocialMacApp: App {
     /// Exactly one container, built once and reused: a second one against the
     /// same store file leaves the app running with no window (docs/04 §5).
-    @State private var environment = AlohaSocialMacApp.makeEnvironment()
+    ///
+    /// Static, so the app delegate reaches the same instance when a
+    /// notification is clicked before any window exists.
+    static let environment = AlohaSocialMacApp.makeEnvironment()
+
+    @State private var environment = AlohaSocialMacApp.environment
+
+    @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
 
     /// `-AlohaMockServer` boots into a populated timeline against the mock
     /// server, skipping OAuth. DEBUG only.
@@ -45,9 +53,7 @@ struct AlohaSocialMacApp: App {
                     BackgroundWork.scheduleRefresh()
                     BackgroundWork.scheduleMaintenance()
                 }
-                .onContinueUserActivity(Continuity.viewingStatus) { activity in resume(activity) }
-                .onContinueUserActivity(Continuity.viewingProfile) { activity in resume(activity) }
-                .onContinueUserActivity(Continuity.viewingTimeline) { activity in resume(activity) }
+                .modifier(ContinuityReceiver(environment: environment))
         }
         .modelContainer(environment.container)
         .commands { AlohaCommands() }
@@ -131,13 +137,30 @@ struct AlohaSocialMacApp: App {
 // definition for the Mac app and the iPad windowing menu bar, rather than
 // two that can disagree (docs/09 §10).
 
-extension AlohaSocialMacApp {
-    /// Every entry point — scheme, universal link, Handoff, intent,
-    /// notification — produces a `Route` through `RouteResolver`, so none of
-    /// them can behave differently (docs/09 §10).
-    private func resume(_ activity: NSUserActivity) {
-        guard let route = Continuity.route(from: activity) else { return }
-        NotificationCenter.default.post(
-            name: .alohaOpenRoute, object: nil, userInfo: ["route": route])
+/// The Mac's notification delegate.
+///
+/// The shell raises the same local notifications here as on iOS and registers
+/// the same actions, but without a delegate a click only brought the app
+/// forward and Reply, Favourite and Boost did nothing. What each one does is
+/// `NotificationResponder`'s, shared with the iOS app delegate.
+final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        await NotificationResponder.respond(
+            NotificationReply(response: response), environment: AlohaSocialMacApp.environment)
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        NotificationResponder.presentationOptions(
+            forCategory: notification.request.content.categoryIdentifier)
     }
 }

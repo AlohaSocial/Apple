@@ -11,5 +11,15 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- Handoff: the Mac accepts only the activity types it declares, so
+	     without these a post being read on the iPhone could not continue
+	     here. The same list as Supporting/Info.plist. -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>social.aloha.app.viewingTimeline</string>
+		<string>social.aloha.app.viewingStatus</string>
+		<string>social.aloha.app.viewingProfile</string>
+		<string>social.aloha.app.composing</string>
+	</array>
 </dict>
 </plist>

@@ -285,6 +285,18 @@ public struct ComposerView: View {
                 }
             }
             .onAppear { isEditorFocused = true }
+            // Handoff carries a new post's text to the other device. A reply,
+            // a quote or an edit is not offered: the post it belongs to does
+            // not travel with it, and without it the text would land as a new
+            // top-level post.
+            .userActivity(
+                Continuity.composing,
+                isActive: model.replyTo == nil && model.quoting == nil
+                    && model.editingStatus == nil && !model.text.isEmpty
+            ) { activity in
+                Continuity.configureComposing(
+                    activity, draft: model.text, account: AccountIdentity(session: model.session))
+            }
         }
     }
 
@@ -1192,6 +1204,9 @@ public struct ComposerView: View {
     }
 
     private func close() {
+        // Nothing is in progress once the composer is closed unposted, so an
+        // upload's Live Activity does not linger on the Lock Screen.
+        UploadActivityController.shared.cancel()
         Task {
             await model.saveDraftIfNeeded()
             dismiss()

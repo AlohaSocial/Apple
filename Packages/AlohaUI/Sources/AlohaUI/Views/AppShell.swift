@@ -110,15 +110,26 @@ private struct ThemedAppShell: View {
                 // A socket closes on background immediately; BGAppRefreshTask
                 // takes over from there (docs/08 §6).
                 environment.sync.setForeground(phase == .active)
+                // An intent with `openAppWhenRun` brings a running app to the
+                // front rather than launching it, so `start()` never sees
+                // what it left behind; this does.
+                if phase == .active, let pending = IntentNavigation.take() { open(pending) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.routeRequested)) {
+                _ in
+                // A tapped notification, or an intent run in this process.
+                if let pending = IntentNavigation.take() { open(pending) }
             }
             .onOpenURL { url in handle(url) }
             .onReceive(NotificationCenter.default.publisher(for: RouteResolver.composeRequested)) {
-                _ in
-                // The compose deep link — from the quick-compose widget, or a
-                // Shortcut — reached here because the composer is a sheet the
-                // shell owns, not a navigation destination.
+                note in
+                // The compose deep link — from the quick-compose widget, a
+                // Shortcut, or a draft handed off from another device —
+                // reached here because the composer is a sheet the shell owns,
+                // not a navigation destination.
                 guard environment.activeSession != nil else { return }
-                composing = ComposerPresentation()
+                composing = ComposerPresentation(
+                    draftText: note.userInfo?["draft"] as? String ?? "")
             }
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
@@ -285,7 +296,7 @@ private struct ThemedAppShell: View {
     }
 
     private func start() async {
-        await environment.load()
+        await environment.loadIfNeeded()
         #if DEBUG
             if MockMode.isEnabled {
                 await MockMode.seedIfNeeded(environment)
@@ -768,6 +779,7 @@ private struct ThemedAppShell: View {
 
     private func destination(_ route: Route, session: AccountSession) -> some View {
         AnyView(destinationContent(route, session: session))
+            .modifier(ContinuityAdvertiser(route: route, session: session))
             .toolbar {
                 if usesSidebar { composeToolbar }
                 #if os(iOS)
@@ -1048,7 +1060,11 @@ private struct ThemedAppShell: View {
             return
         }
 
-        guard let route = RouteResolver.route(for: url) else { return }
+        guard let destination = RouteResolver.destination(for: url) else { return }
+        // A Spotlight result or a widget row names its account; the post id
+        // in it means nothing under another one.
+        if let accountID = destination.accountID { environment.setActiveAccount(accountID) }
+        let route = destination.route
         if case .timeline(let key) = route {
             selectedMode = key.mode
             selectedSource = key.source

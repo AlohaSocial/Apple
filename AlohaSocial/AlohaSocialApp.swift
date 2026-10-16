@@ -16,7 +16,13 @@ struct AlohaSocialApp: App {
     /// `StoreContainer` rebuilds the store from scratch rather than trapping
     /// when it cannot be opened: the cache is disposable, and accounts, drafts
     /// and settings do not live in it (docs/04 §5).
-    @State private var environment = AlohaSocialApp.makeEnvironment()
+    ///
+    /// Static, so the app delegate reaches the same instance at launch — before
+    /// any scene exists, which is where a notification action answered from
+    /// the lock screen arrives.
+    static let environment = AlohaSocialApp.makeEnvironment()
+
+    @State private var environment = AlohaSocialApp.environment
 
     /// `-AlohaMockServer` boots into a populated timeline against the mock
     /// server, skipping OAuth. DEBUG only; the argument does nothing in Release.
@@ -41,22 +47,11 @@ struct AlohaSocialApp: App {
             AppShell()
                 .environment(environment)
                 .task {
-                    #if canImport(UIKit)
-                        AppDelegate.environment = environment
-                    #endif
-                    BackgroundWork.register(environment: environment)
+                    // Registration happens once, at launch, in `AppDelegate`.
                     BackgroundWork.scheduleRefresh()
                     BackgroundWork.scheduleMaintenance()
                 }
-                .onContinueUserActivity(Continuity.viewingStatus) { activity in
-                    resume(activity)
-                }
-                .onContinueUserActivity(Continuity.viewingProfile) { activity in
-                    resume(activity)
-                }
-                .onContinueUserActivity(Continuity.viewingTimeline) { activity in
-                    resume(activity)
-                }
+                .modifier(ContinuityReceiver(environment: environment))
         }
         .modelContainer(environment.container)
         // On every platform with a menu bar: the Mac's own, and the iPad's
@@ -67,16 +62,3 @@ struct AlohaSocialApp: App {
         #endif
     }
 }
-
-extension AlohaSocialApp {
-    /// Every entry point — scheme, universal link, Handoff, intent,
-    /// notification — produces a `Route` and goes through `RouteResolver`, so
-    /// none of them can behave differently (docs/09 §10).
-    private func resume(_ activity: NSUserActivity) {
-        guard let route = Continuity.route(from: activity) else { return }
-        NotificationCenter.default.post(
-            name: .alohaOpenRoute, object: nil, userInfo: ["route": route])
-    }
-}
-
-
