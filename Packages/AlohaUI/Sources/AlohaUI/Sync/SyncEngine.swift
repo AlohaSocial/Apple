@@ -202,8 +202,13 @@ public final class SyncEngine {
     private func fetchAndAnnounceNotifications(_ session: AccountSession) async {
         do {
             let arrivals = try await NotificationSync.fetch(session: session)
-            let fresh = try await session.supportStore.storeNotifications(
+            let arrived = try await session.supportStore.storeNotifications(
                 arrivals, accountID: session.id)
+            // What quiet hours or a Focus held back on an earlier poll is
+            // offered again with what just arrived, for the last twelve hours.
+            let fresh = try await session.supportStore.pendingAnnouncements(
+                arrived: arrived, accountID: session.id,
+                since: Date().addingTimeInterval(-12 * 3600))
             guard !fresh.isEmpty else { return }
 
             // Web Push, where a server has it, delivers the alert itself —

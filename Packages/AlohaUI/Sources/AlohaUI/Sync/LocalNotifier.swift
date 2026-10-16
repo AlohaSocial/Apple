@@ -60,6 +60,12 @@ public struct LocalNotifier: Sendable {
         showAccountName: Bool
     ) async -> [String] {
         let enabled = session.settings.localNotificationKinds
+        // A kind the person switched off is a decision, not a hold: it is
+        // reported as handled, so it never waits in the queue a poll offers
+        // again (SupportStore.pendingAnnouncements), crowding out what is
+        // only held back by quiet hours or a Focus.
+        let switchedOff = notifications.filter { !enabled.contains($0.kind.rawValue) }
+            .map(\.serverID)
         // What the Focus filters out is held, as quiet hours hold it: not
         // reported as announced, so it comes through once the Focus ends.
         let focus = FocusFilterState.current
@@ -68,7 +74,7 @@ public struct LocalNotifier: Sendable {
         }
         let authorization = await center.notificationSettings().authorizationStatus
         guard authorization == .authorized || authorization == .provisional else {
-            return eligible.map(\.serverID)
+            return eligible.map(\.serverID) + switchedOff
         }
         var announced: [String] = []
 
@@ -116,7 +122,7 @@ public struct LocalNotifier: Sendable {
                 )
             }
             announced.append(contentsOf: held.map { $0.serverID })
-            return announced
+            return announced + switchedOff
         }
 
         for notification in announcements {
@@ -135,7 +141,7 @@ public struct LocalNotifier: Sendable {
                 )
             }
         }
-        return announced
+        return announced + switchedOff
     }
 
     /// One request for everything held since the last digest.

@@ -284,6 +284,26 @@ public actor SupportStore {
                 sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
         ).map(StoredNotification.init)
     }
+
+    /// What a poll offers the notifier: what just arrived, and what an
+    /// earlier poll held back.
+    ///
+    /// Quiet hours and a Focus leave a notification unannounced rather than
+    /// dropping it. Offering only what is new, as polls did, meant a mention
+    /// that came in at 23:00 was never raised at all: by the morning it was
+    /// no longer new. Held ones older than `since` stay unraised, because a
+    /// banner about yesterday is noise, and at most `limit` are offered, so a
+    /// long quiet night does not end in a burst — the rest wait for the next
+    /// poll.
+    public func pendingAnnouncements(
+        arrived fresh: [StoredNotification], accountID: UUID, since: Date, limit: Int = 20
+    ) throws -> [StoredNotification] {
+        let arrivedIDs = Set(fresh.map(\.serverID))
+        let held = try unannouncedNotifications(accountID: accountID).filter {
+            $0.createdAt >= since && !arrivedIDs.contains($0.serverID)
+        }
+        return Array((fresh + held).sorted { $0.createdAt > $1.createdAt }.prefix(limit))
+    }
 }
 
 public struct DraftSnapshot: Sendable, Hashable, Identifiable {
