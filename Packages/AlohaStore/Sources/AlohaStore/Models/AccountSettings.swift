@@ -30,6 +30,17 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     /// On by default, because a number is sometimes information — but
     /// comparing oneself is the most consistent harm social media does.
     public var showPopularityCounts: Bool
+    /// What a swipe across a post does, from each edge — Mail's model, where
+    /// the person decides rather than the app. `.none` turns an edge off.
+    public var leadingSwipeAction: SwipeAction
+    public var trailingSwipeAction: SwipeAction
+
+    /// One action a swipe can perform on a post. Each is also a button under
+    /// the post and an item in its menu, so no action is gesture-only
+    /// (docs/12 §3, Switch Control).
+    public enum SwipeAction: String, Codable, Sendable, Hashable, CaseIterable {
+        case none, reply, favourite, boost, bookmark
+    }
 
     // Modes
     public var enabledModes: [FeedMode]
@@ -82,6 +93,8 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         restoreTimelinePosition: Bool = true,
         showNewPostsPill: Bool = true,
         showPopularityCounts: Bool = true,
+        leadingSwipeAction: SwipeAction = .reply,
+        trailingSwipeAction: SwipeAction = .favourite,
         enabledModes: [FeedMode] = FeedMode.defaultEnabled,
         localNotificationKinds: Set<String> = Set(
             [
@@ -109,6 +122,8 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         self.restoreTimelinePosition = restoreTimelinePosition
         self.showNewPostsPill = showNewPostsPill
         self.showPopularityCounts = showPopularityCounts
+        self.leadingSwipeAction = leadingSwipeAction
+        self.trailingSwipeAction = trailingSwipeAction
         self.enabledModes = enabledModes
         self.localNotificationKinds = localNotificationKinds
         self.pollFrequency = pollFrequency
@@ -116,6 +131,52 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         self.quietHoursEnd = quietHoursEnd
         self.notificationDeliveryMode = notificationDeliveryMode
         self.digestTimes = digestTimes
+    }
+
+    /// Field by field, each one falling back to its default.
+    ///
+    /// The settings are one encoded blob, and a blob that fails to decode
+    /// is replaced by `AccountSettings()` (`AccountRecord.settings`). The
+    /// synthesised decoder fails on any missing key, so every field this
+    /// type ever gained reset *all* of a person's settings on the update
+    /// that added it. A key that is absent, or that holds a case this build
+    /// does not know, now costs only that one setting.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = AccountSettings()
+        func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
+            (try? container.decodeIfPresent(T.self, forKey: key)) ?? fallback
+        }
+        self.init(
+            defaultVisibility: value(.defaultVisibility, defaults.defaultVisibility),
+            defaultLanguage: value(.defaultLanguage, defaults.defaultLanguage),
+            defaultSensitive: value(.defaultSensitive, defaults.defaultSensitive),
+            alwaysShowContentWarningField: value(
+                .alwaysShowContentWarningField, defaults.alwaysShowContentWarningField),
+            warnAboutMissingAltText: value(
+                .warnAboutMissingAltText, defaults.warnAboutMissingAltText),
+            appendThreadNumbering: value(.appendThreadNumbering, defaults.appendThreadNumbering),
+            sensitiveMediaPolicy: value(.sensitiveMediaPolicy, defaults.sensitiveMediaPolicy),
+            autoplayVideo: value(.autoplayVideo, defaults.autoplayVideo),
+            loopShorts: value(.loopShorts, defaults.loopShorts),
+            startMuted: value(.startMuted, defaults.startMuted),
+            showBoosts: value(.showBoosts, defaults.showBoosts),
+            showReplies: value(.showReplies, defaults.showReplies),
+            restoreTimelinePosition: value(
+                .restoreTimelinePosition, defaults.restoreTimelinePosition),
+            showNewPostsPill: value(.showNewPostsPill, defaults.showNewPostsPill),
+            showPopularityCounts: value(.showPopularityCounts, defaults.showPopularityCounts),
+            leadingSwipeAction: value(.leadingSwipeAction, defaults.leadingSwipeAction),
+            trailingSwipeAction: value(.trailingSwipeAction, defaults.trailingSwipeAction),
+            enabledModes: value(.enabledModes, defaults.enabledModes),
+            localNotificationKinds: value(
+                .localNotificationKinds, defaults.localNotificationKinds),
+            pollFrequency: value(.pollFrequency, defaults.pollFrequency),
+            quietHoursStart: value(.quietHoursStart, defaults.quietHoursStart),
+            quietHoursEnd: value(.quietHoursEnd, defaults.quietHoursEnd),
+            notificationDeliveryMode: value(
+                .notificationDeliveryMode, defaults.notificationDeliveryMode),
+            digestTimes: value(.digestTimes, defaults.digestTimes))
     }
 
     /// Adopts what the server says this account's own defaults are. A client
