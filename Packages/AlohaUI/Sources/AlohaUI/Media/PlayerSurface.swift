@@ -114,11 +114,13 @@ enum PlaybackReadiness {
             options: headers.isEmpty ? nil : ["AVURLAssetHTTPHeaderFieldsKey": headers])
         let item = AVPlayerItem(asset: asset)
         let player = AVPlayer(playerItem: item)
-        player.allowsExternalPlayback = true
         #if os(iOS)
+            player.allowsExternalPlayback = true
             // With the screen mirrored to a TV, send the video itself rather
             // than a picture of the phone showing it.
             player.usesExternalPlaybackWhileExternalScreenIsActive = true
+        #elseif os(macOS) || os(tvOS)
+            player.allowsExternalPlayback = true
         #endif
 
         // Active playback must not wait for a readiness deadline before it

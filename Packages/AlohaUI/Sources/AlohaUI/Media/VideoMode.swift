@@ -344,6 +344,7 @@ public struct VideoCard: View {
             .padding(.horizontal, isEdgeToEdge ? AlohaMetrics.space3 : 0)
         }
         .contentShape(Rectangle())
+        .alohaHoverTarget(RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
         .onTapGesture { onAction(.watch(status)) }
     }
 

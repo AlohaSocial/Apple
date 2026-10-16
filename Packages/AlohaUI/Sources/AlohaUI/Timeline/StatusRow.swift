@@ -135,6 +135,9 @@ public struct StatusRow: View {
         }
         .opacity(emphasis == .quiet ? 0.92 : 1)
         .contentShape(Rectangle())
+        // Here rather than in each list, so every list of posts — thread,
+        // search, profile, notifications — lights up on visionOS alike.
+        .alohaRowHighlight()
         .onTapGesture { onAction(.open(status)) }
         // The whole row reads as one element; the actions are custom actions
         // rather than six separate stops (docs/12 §3).

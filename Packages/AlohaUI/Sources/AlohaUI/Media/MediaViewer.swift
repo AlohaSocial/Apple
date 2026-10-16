@@ -338,14 +338,26 @@ public struct VideoAttachmentPlayer: View {
 
                     Spacer()
 
-                    HStack {
-                        Spacer()
-                        VideoControlsOverlay(player: player)
-                    }
-                    .padding(AlohaMetrics.space3)
+                    #if !os(visionOS)
+                        HStack {
+                            Spacer()
+                            VideoControlsOverlay(player: player)
+                        }
+                        .padding(AlohaMetrics.space3)
+                    #endif
                 }
             }
         }
+        #if os(visionOS)
+            // Below the window rather than over the picture, where visionOS
+            // puts a player's transport.
+            .ornament(
+                visibility: player != nil && playbackError == nil ? .visible : .hidden,
+                attachmentAnchor: .scene(.bottom), contentAlignment: .top
+            ) {
+                ornamentControls
+            }
+        #endif
         .task(id: "\(sourceIndex):\(retryCount)") { await prepare() }
         .onChange(of: seekRequest) { _, position in
             guard let position else { return }
@@ -356,6 +368,14 @@ public struct VideoAttachmentPlayer: View {
             releasePlayer()
         }
     }
+
+    #if os(visionOS)
+        private var ornamentControls: some View {
+            VideoControlsOverlay(player: player)
+                .padding(AlohaMetrics.space2)
+                .glassBackgroundEffect()
+        }
+    #endif
 
     private func scheduleControlsHide() {
         controlsHideTask?.cancel()

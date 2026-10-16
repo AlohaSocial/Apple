@@ -6183,6 +6183,17 @@
         }
       }
     },
+    "Next short" : {
+      "comment" : "Shorts action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes Short"
+          }
+        }
+      }
+    },
     "Nextcloud" : {
       "comment" : "Settings section",
       "localizations" : {
@@ -7512,7 +7523,7 @@
       }
     },
     "Pause" : {
-      "comment" : "Audio action",
+      "comment" : "Audio action\nShorts action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7823,7 +7834,7 @@
       }
     },
     "Play" : {
-      "comment" : "Audio action",
+      "comment" : "Audio action\nShorts action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8234,6 +8245,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vorheriger Beitrag"
+          }
+        }
+      }
+    },
+    "Previous short" : {
+      "comment" : "Shorts action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorheriges Short"
           }
         }
       }

@@ -2,8 +2,9 @@
 
 import SwiftUI
 
-#if os(macOS) || os(iOS)
-    /// The app's menu bar, shared by every target with a menu bar.
+#if os(macOS) || os(iOS) || os(visionOS)
+    /// The app's menu bar, shared by every target with a menu bar — and the
+    /// keyboard shortcuts of a visionOS window, which has none to show them in.
     ///
     /// The Mac app had its own `MacCommands` and the iPhone/iPad app had a
     /// smaller local copy — two definitions of what "New Post" means, and

@@ -226,6 +226,7 @@ public struct AudioModeView: View {
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
+        .alohaRowHighlight()
         .onTapGesture { onAction(.open(status)) }
     }
 

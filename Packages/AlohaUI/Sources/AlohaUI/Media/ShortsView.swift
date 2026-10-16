@@ -113,6 +113,17 @@ public struct ShortsView: View {
             .ignoresSafeArea()
         }
         .background { Color.black.ignoresSafeArea() }
+        #if os(visionOS)
+            // Paging by swipe and pausing by holding are a phone's gestures;
+            // in a window you look at, the transport sits below it, where
+            // visionOS puts a player's controls.
+            .ornament(
+                visibility: shorts.isEmpty ? .hidden : .visible,
+                attachmentAnchor: .scene(.bottom), contentAlignment: .top
+            ) {
+                transport
+            }
+        #endif
         .task { await start() }
         .onChange(of: feed) { _, newFeed in
             model = TimelineModel(
@@ -201,6 +212,77 @@ public struct ShortsView: View {
         .padding(.horizontal, AlohaMetrics.space2)
         .padding(.top, AlohaMetrics.space1)
     }
+
+    #if os(visionOS)
+        private var transport: some View {
+            HStack(spacing: AlohaMetrics.space3) {
+                Button {
+                    step(by: -1)
+                } label: {
+                    Label {
+                        Text("Previous short", comment: "Shorts action")
+                    } icon: {
+                        Image(systemName: "chevron.up")
+                    }
+                }
+                .disabled(position(offsetBy: -1) == nil)
+
+                Button {
+                    isPaused.toggle()
+                } label: {
+                    Label {
+                        isPaused
+                            ? Text("Play", comment: "Shorts action")
+                            : Text("Pause", comment: "Shorts action")
+                    } icon: {
+                        Image(systemName: isPaused ? AlohaSymbol.play : "pause.fill")
+                    }
+                }
+
+                Button {
+                    isMuted.toggle()
+                } label: {
+                    Label {
+                        isMuted
+                            ? Text("Unmute", comment: "Shorts action")
+                            : Text("Mute", comment: "Shorts action")
+                    } icon: {
+                        Image(systemName: isMuted ? AlohaSymbol.mute : AlohaSymbol.unmute)
+                    }
+                }
+
+                Button {
+                    step(by: 1)
+                } label: {
+                    Label {
+                        Text("Next short", comment: "Shorts action")
+                    } icon: {
+                        Image(systemName: "chevron.down")
+                    }
+                }
+                .disabled(position(offsetBy: 1) == nil)
+            }
+            .labelStyle(.iconOnly)
+            .padding(AlohaMetrics.space3)
+            .glassBackgroundEffect()
+        }
+
+        private func position(offsetBy step: Int) -> String? {
+            guard let currentID, let index = shorts.firstIndex(where: { $0.id == currentID })
+            else { return nil }
+            let next = index + step
+            return shorts.indices.contains(next) ? shorts[next].id : nil
+        }
+
+        private func step(by step: Int) {
+            guard let target = position(offsetBy: step) else { return }
+            if reduceMotion {
+                currentID = target
+            } else {
+                withAnimation(.snappy) { currentID = target }
+            }
+        }
+    #endif
 
     private var progressBar: some View {
         GeometryReader { proxy in
@@ -597,8 +679,10 @@ struct ShortPlayer: View {
             if isCurrent && !isCovered && !isReady {
                 if playbackFailed {
                     VStack(spacing: AlohaMetrics.space2) {
-                        Text("This video could not be played.", comment: "Short video playback error")
-                            .font(.callout)
+                        Text(
+                            "This video could not be played.", comment: "Short video playback error"
+                        )
+                        .font(.callout)
                         Button("Try again") {
                             sourceIndex = 0
                             retryCount += 1
