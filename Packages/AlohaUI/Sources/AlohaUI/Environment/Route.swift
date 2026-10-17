@@ -37,8 +37,6 @@ public enum Route: Codable, Hashable, Sendable {
     // Nextcloud Social surfaces the web app has and this app did not.
     /// "My interests": the hashtag feed the server learns, and its settings.
     case interests
-    /// Feeds outside the fediverse (RSS, YouTube) the server reads for you.
-    case subscriptions
     /// "On this day" memories and the weekly recap, with their settings.
     case memories
     /// Your own posts a moderator has not yet looked at.
@@ -73,6 +71,10 @@ public enum Route: Codable, Hashable, Sendable {
     case blueskyFeed(uri: String, name: String)
     /// The reader's own account on Bluesky.
     case blueskySettings
+    /// A Bluesky starter pack, by its bsky.app address or `at://` URI.
+    case blueskyStarterPack(address: String)
+    /// Putting one post under a filter by name.
+    case filterPost(statusID: String)
     /// The posts sharing one link — what a trending link opens.
     case linkTimeline(url: URL, title: String?)
 

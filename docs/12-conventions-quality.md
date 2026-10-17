@@ -2,12 +2,31 @@
 
 ## 1. Swift conventions
 
-- Swift 6 language mode, strict concurrency **complete**, warnings as errors in
-  CI for **every** target and package, not a chosen four: the isolation warnings
-  that matter turned up in the view layer and the extensions, which the narrower
-  rule would have kept letting through.
-- Default actor isolation `MainActor` (`SWIFT_DEFAULT_ACTOR_ISOLATION`), so view
-  code needs no annotation and anything off the main actor says so explicitly.
+- Swift 6 language mode, strict concurrency **complete**, warnings as errors for
+  **every** target and package, not a chosen four: the isolation warnings that
+  matter turned up in the view layer and the extensions, which the narrower rule
+  would have kept letting through. The app targets inherit
+  `SWIFT_TREAT_WARNINGS_AS_ERRORS` from the project; the packages declare
+  `.treatAllWarnings(as: .error)`, which SwiftPM applies when the package is
+  built on its own (`swift test`). Inside an Xcode build a package is a
+  dependency and its setting does not apply, so the CI build jobs have to pass
+  `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` to `xcodebuild` as well — that is what
+  catches a warning in a platform-only path of a package, such as visionOS.
+- Default actor isolation `MainActor` where the code is view code: every app
+  target (`SWIFT_DEFAULT_ACTOR_ISOLATION`) and the two UI packages, AlohaUI and
+  AlohaDesign (`.defaultIsolation(MainActor.self)`). View code then needs no
+  annotation, and anything that must run anywhere — design tokens, palettes,
+  pure value helpers — says `nonisolated`.
+  - The data, networking and store packages (AlohaModels, AlohaHTML,
+    AlohaNetwork, AlohaStore, AlohaMedia, AlohaIntelligence) stay nonisolated by
+    default. Their shared state already lives in actors — `APIClient`,
+    `ImageLoader`, `RichTextCache`, the SwiftData model actors — and a
+    main-actor default would pull decoding and parsing onto the main thread.
+    The few types in them that SwiftUI reads, such as `UploadProgress`, are
+    `@MainActor` explicitly.
+  - The notification service and Top Shelf extensions also stay nonisolated:
+    the system calls their entry points on its own threads, where a main-actor
+    default would trap.
 - `@Observable`, not `ObservableObject`. No Combine.
 - `async`/`await` throughout. No completion handlers, no `DispatchQueue`.
 - Value types by default; `final class` only for SwiftData models, actors, and
@@ -138,7 +157,10 @@ Non-negotiable, on every screen, verified before a feature is called done.
 - **RTL**: layout uses leading/trailing throughout, never left/right. Directional
   SF Symbols use the `.mirrored` variants. Tested with the RTL pseudolanguage.
 - Pseudolocalisation (`en-XA`, `ar-XB`) run in CI screenshots to catch truncation
-  and hardcoded direction.
+  and hardcoded direction. `PseudolocalisationTourTests` in the UI tours does
+  it with the system's own switches (double-length, accented and bracketed
+  strings; forced right-to-left), so the `ui` job's screenshot artefact carries
+  those screens alongside the English ones.
 
 ## 5. Design system checks
 
@@ -161,9 +183,17 @@ GitHub Actions, on every push and pull request.
 | `test` | Every package with a `Tests` directory, on macOS. Discovered by walking `Packages/*/`, so a new package cannot be quietly left untested — a hand-written list had already lost `AlohaDesign` and `AlohaIntelligence`. |
 | `test-simulator` | The same suites on the iOS simulator, where the `#if os(iOS)` paths are the ones that run. |
 | `ui` | The screen tours and the accessibility audit on the iOS simulator, with the screenshots kept as an artefact. |
-| `accessibility` | The localisation gate and the design-token suite. |
+| `localisation` + `design-tokens` | The accessibility gate, as two jobs so each names its own failure: every user-facing string has a translator comment, and the design-token suite (§5) passes. |
 | `lint` | `swift-format --strict` with `.swift-format` at the repository root. |
 | `licence` | Asserts the SPDX header on every source file and that no SPM dependency has been added. |
+
+**Skips are not passes.** A job that cannot do its work on the runner image —
+an Xcode that cannot open the objectVersion 110 project, no iPhone simulator,
+a host without `FoundationModels.framework` — fails, unless the repository
+variable `ALLOW_SKIP` is `true`, in which case it passes with a warning naming
+what did not run. The variable exists for the weeks the hosted images lag the
+Xcode the project needs; it is cleared again once they catch up, so that a
+green tick means the work was done rather than that it was skipped politely.
 
 There is **no app unit-test target**: the app target is a shell around the
 packages, and every piece of logic lives in one of them. "The app's unit tests"

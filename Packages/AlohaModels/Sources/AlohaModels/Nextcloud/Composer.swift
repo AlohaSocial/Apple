@@ -15,10 +15,14 @@ public struct Place: Codable, Sendable, Hashable, Identifiable {
     public var latitude: Double?
     public var longitude: Double?
 
+    /// Pixelfed's shape, which the server exports (`Place::jsonSerialize`):
+    /// the longitude is `long`, and every value is a string. `lon` is read
+    /// too, for what an older build stored.
     enum CodingKeys: String, CodingKey {
         case id, name, country
         case latitude = "lat"
-        case longitude = "lon"
+        case longitude = "long"
+        case legacyLongitude = "lon"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -26,18 +30,18 @@ public struct Place: Codable, Sendable, Hashable, Identifiable {
         _id = try c.decode(FlexibleID.self, forKey: .id)
         name = (try? c.decode(String.self, forKey: .name)) ?? ""
         country = try? c.decodeIfPresent(String.self, forKey: .country)
-        latitude = Self.number(c, .latitude)
-        longitude = Self.number(c, .longitude)
+        latitude = PlaceCoordinate.decode(c, .latitude)
+        longitude =
+            PlaceCoordinate.decode(c, .longitude) ?? PlaceCoordinate.decode(c, .legacyLongitude)
     }
 
-    /// Coordinates arrive as numbers or as strings, depending on who stored
-    /// the place.
-    private static func number(
-        _ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys
-    ) -> Double? {
-        if let value = try? c.decodeIfPresent(Double.self, forKey: key) { return value }
-        if let text = try? c.decodeIfPresent(String.self, forKey: key) { return Double(text) }
-        return nil
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(country, forKey: .country)
+        try c.encodeIfPresent(latitude, forKey: .latitude)
+        try c.encodeIfPresent(longitude, forKey: .longitude)
     }
 
     public init(
@@ -55,6 +59,16 @@ public struct Place: Codable, Sendable, Hashable, Identifiable {
     public var displayName: String {
         guard let country, !country.isEmpty else { return name }
         return "\(name), \(country)"
+    }
+}
+
+/// A coordinate as a place carries it: a number, or — in Pixelfed's shape,
+/// which is what the server exports — a string; an empty string is none.
+enum PlaceCoordinate {
+    static func decode<Key: CodingKey>(_ c: KeyedDecodingContainer<Key>, _ key: Key) -> Double? {
+        if let value = try? c.decodeIfPresent(Double.self, forKey: key) { return value }
+        if let text = try? c.decodeIfPresent(String.self, forKey: key) { return Double(text) }
+        return nil
     }
 }
 

@@ -85,7 +85,9 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
     /// the one this push was encrypted to will decrypt it.
     private static func resolve(subject: String) async -> Resolved? {
         let credentials = CredentialStore.shared
-        let accounts = AccountStore(modelContainer: StoreContainer.make())
+        // Read-only: the push can arrive before the first unlock, and a
+        // service extension is the last process that should touch the file.
+        let accounts = AccountStore(modelContainer: StoreContainer.reader())
 
         guard let snapshots = try? await accounts.allAccounts() else { return nil }
 

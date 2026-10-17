@@ -11,11 +11,12 @@ import OSLog
 /// empty `urls` object — that empty object is how a client learns to fall back
 /// to polling immediately rather than after a timeout. Live against real
 /// Mastodon, which is why it is written rather than deferred.
-/// **`nonisolated` deliberately.** This package compiles with `MainActor`
-/// default isolation, and these callbacks arrive on `URLSession`'s delegate
-/// queue and on a global queue. An isolated closure invoked from either trips
-/// Swift's runtime isolation check and traps the process.
-public nonisolated final class StreamingConnection: @unchecked Sendable {
+///
+/// **An actor.** The socket's state used to be touched from `URLSession`'s
+/// delegate queue, a global queue and the main actor at once. Here one receive
+/// loop owns it: messages are decoded on the actor, off the main thread, and
+/// only finished events leave through `onEvent`.
+public actor StreamingConnection {
     public enum Event: Sendable {
         case update(Status)
         case delete(String)
@@ -24,86 +25,99 @@ public nonisolated final class StreamingConnection: @unchecked Sendable {
         case closed
     }
 
+    /// How many reconnects before giving up. Polling never stopped, so giving
+    /// up is a degradation rather than a failure.
+    static let maximumAttempts = 5
+
     private let url: URL
     private let token: String
     private let onEvent: @Sendable (Event) -> Void
     private let session: URLSession
-    private var task: URLSessionWebSocketTask?
-    private var attempt = 0
-    private var isClosing = false
+    /// Whether `session` was made here, and so is this connection's to end.
+    private let ownsSession: Bool
+    private var socket: URLSessionWebSocketTask?
+    private var loop: Task<Void, Never>?
+    /// Set by `close()` and never cleared: a closed connection does not come
+    /// back, so a reconnect already sleeping cannot reopen it.
+    private var isClosed = false
     private let logger = Logger(subsystem: "social.aloha.app", category: "streaming")
 
     public private(set) var isOpen = false
 
     public init(
         url: URL, token: String,
-        session: URLSession = URLSession(configuration: .default),
+        session: URLSession? = nil,
         onEvent: @escaping @Sendable (Event) -> Void
     ) {
         self.url = url
         self.token = token
-        self.session = session
+        self.session = session ?? URLSession(configuration: .default)
+        self.ownsSession = session == nil
         self.onEvent = onEvent
     }
 
     public func open() {
+        guard !isClosed, loop == nil else { return }
+        loop = Task { await run() }
+    }
+
+    public func close() {
+        isClosed = true
+        isOpen = false
+        loop?.cancel()
+        loop = nil
+        socket?.cancel(with: .goingAway, reason: nil)
+        socket = nil
+        // A session left valid keeps its delegate queue and its connections
+        // alive for the life of the process.
+        if ownsSession { session.invalidateAndCancel() }
+    }
+
+    private func run() async {
+        var attempt = 0
+        while !isClosed, !Task.isCancelled {
+            guard let request = makeRequest() else { return }
+            let socket = session.webSocketTask(with: request)
+            self.socket = socket
+            socket.resume()
+            isOpen = true
+            do {
+                while !Task.isCancelled {
+                    let message = try await socket.receive()
+                    attempt = 0
+                    handle(message)
+                }
+            } catch {
+                isOpen = false
+                guard !isClosed, !Task.isCancelled else { return }
+            }
+
+            attempt += 1
+            guard attempt <= Self.maximumAttempts else {
+                logger.notice("streaming gave up after 5 attempts; polling continues")
+                loop = nil
+                onEvent(.closed)
+                return
+            }
+            try? await Task.sleep(for: .seconds(Backoff.delay(attempt: attempt, cap: 60)))
+        }
+    }
+
+    private func makeRequest() -> URLRequest? {
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            return
+            return nil
         }
         components.queryItems =
             (components.queryItems ?? []) + [
                 URLQueryItem(name: "stream", value: "user")
             ]
-        guard let socketURL = components.url else { return }
+        guard let socketURL = components.url else { return nil }
 
         var request = URLRequest(url: socketURL)
         // In the header rather than the query string: a token in a URL ends up
         // in logs on the way through.
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let task = session.webSocketTask(with: request)
-        self.task = task
-        isOpen = true
-        task.resume()
-        receive()
-    }
-
-    public func close() {
-        isClosing = true
-        isOpen = false
-        task?.cancel(with: .goingAway, reason: nil)
-        task = nil
-    }
-
-    private func receive() {
-        task?.receive { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let message):
-                self.attempt = 0
-                self.handle(message)
-                self.receive()
-            case .failure:
-                self.isOpen = false
-                guard !self.isClosing else { return }
-                self.reconnect()
-            }
-        }
-    }
-
-    /// Five attempts, then it gives up and says why. Polling never stopped, so
-    /// giving up is a degradation rather than a failure.
-    private func reconnect() {
-        attempt += 1
-        guard attempt <= 5 else {
-            logger.notice("streaming gave up after 5 attempts; polling continues")
-            onEvent(.closed)
-            return
-        }
-        let delay = Backoff.delay(attempt: attempt, cap: 60)
-        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.open()
-        }
+        return request
     }
 
     private func handle(_ message: URLSessionWebSocketTask.Message) {

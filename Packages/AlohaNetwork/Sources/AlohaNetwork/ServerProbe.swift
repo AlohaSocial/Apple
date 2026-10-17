@@ -16,14 +16,17 @@ import OSLog
 public struct ServerProbe: Sendable {
     private let transport: any HTTPTransport
     private let perCandidateTimeout: Duration
+    private let totalBudget: Duration
     private let logger = Logger(subsystem: "social.aloha.app", category: "probe")
 
     public init(
         transport: any HTTPTransport = URLSessionTransport(),
-        perCandidateTimeout: Duration = .seconds(5)
+        perCandidateTimeout: Duration = .seconds(5),
+        totalBudget: Duration = .seconds(10)
     ) {
         self.transport = transport
         self.perCandidateTimeout = perCandidateTimeout
+        self.totalBudget = totalBudget
     }
 
     // MARK: - Input normalisation
@@ -62,7 +65,7 @@ public struct ServerProbe: Sendable {
                 host.contains(".") || host == "localhost"
             else { return nil }
 
-            guard let scheme = components.scheme?.lowercased(),
+            guard var scheme = components.scheme?.lowercased(),
                 scheme == "http" || scheme == "https"
             else {
                 return nil
@@ -70,9 +73,18 @@ public struct ServerProbe: Sendable {
 
             if let port = components.port, !(1...65535).contains(port) { return nil }
 
+            // Plain http only on the local network (docs/11 §5): a public
+            // server is asked over https, which every one of them speaks,
+            // rather than sent a password and a token anybody can read.
+            var port = components.port
+            if scheme == "http", !LocalNetwork.isLocal(host: host) {
+                scheme = "https"
+                if port == 80 { port = nil }
+            }
+
             self.scheme = scheme
             self.host = host
-            self.port = components.port
+            self.port = port
             let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             self.pathHint = path.isEmpty ? nil : path
         }
@@ -178,32 +190,62 @@ public struct ServerProbe: Sendable {
 
     // MARK: - Probing
 
+    /// What a probe task hands back: a candidate's answer, or the moment the
+    /// whole probe's time ran out.
+    private enum ProbeEvent: Sendable {
+        case answered(Candidate, InstanceDescription?)
+        case outOfTime
+    }
+
     /// Probes all candidates concurrently and takes the lowest-ranked success.
-    /// Total budget 10 seconds; per candidate 5.
+    ///
+    /// Total budget 10 seconds, per candidate 5, both enforced here rather
+    /// than left to `URLRequest.timeoutInterval`: that is an idle timeout, so
+    /// a server that trickles a byte every few seconds never trips it, and a
+    /// transport other than URLSession does not read it at all. Sign-in waits
+    /// for this, so a hanging server must not hang it. When the budget runs
+    /// out, the best answer so far wins; with none, it is a failure that says
+    /// what was tried.
     public func discover(_ address: ServerAddress) async throws -> Outcome {
         let candidates = Self.candidates(for: address)
         guard !candidates.isEmpty else { throw ProbeFailure.malformedAddress }
 
-        async let nodeInfo = fetchNodeInfo(origin: address.origin)
+        let origin = address.origin
+        async let nodeInfo = Self.within(perCandidateTimeout) {
+            await self.fetchNodeInfo(origin: origin)
+        }
 
-        let winner = await withTaskGroup(of: (Candidate, InstanceDescription)?.self) { group in
+        let perCandidate = perCandidateTimeout
+        let budget = totalBudget
+        let winner = await withTaskGroup(of: ProbeEvent.self) { group in
             for candidate in candidates {
                 group.addTask {
-                    guard let instance = await self.fetchInstance(base: candidate.base) else {
-                        return nil
+                    let instance = await Self.within(perCandidate) {
+                        await self.fetchInstance(base: candidate.base)
                     }
-                    return (candidate, instance)
+                    return .answered(candidate, instance)
                 }
+            }
+            group.addTask {
+                try? await Task.sleep(for: budget)
+                return .outOfTime
             }
 
             var best: (Candidate, InstanceDescription)?
-            for await result in group {
-                guard let result else { continue }
-                if best == nil || result.0.rank < best!.0.rank {
-                    best = result
+            var outstanding = candidates.count
+            for await event in group {
+                guard case .answered(let candidate, let instance) = event else {
+                    // Out of time: whatever answered so far is the answer.
+                    group.cancelAll()
+                    break
                 }
-                // Rank 1 cannot be beaten, so stop paying for the rest.
-                if best?.0.rank == 1 {
+                outstanding -= 1
+                if let instance, best == nil || candidate.rank < best!.0.rank {
+                    best = (candidate, instance)
+                }
+                // Rank 1 cannot be beaten, and with every candidate heard
+                // from there is nothing left to wait for.
+                if best?.0.rank == 1 || outstanding == 0 {
                     group.cancelAll()
                     break
                 }
@@ -243,6 +285,24 @@ public struct ServerProbe: Sendable {
         return nil
     }
 
+    /// Runs `work`, giving up with nil once `limit` has passed. The work is
+    /// cancelled, not left running, so a hanging request is not still holding
+    /// a connection after the probe has moved on.
+    static func within<T: Sendable>(
+        _ limit: Duration, _ work: @escaping @Sendable () async -> T?
+    ) async -> T? {
+        await withTaskGroup(of: T?.self) { group in
+            group.addTask { await work() }
+            group.addTask {
+                try? await Task.sleep(for: limit)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+    }
+
     /// NodeInfo is served at the **true domain root** on Nextcloud Social
     /// regardless of the rewrite, which is what makes it a usable cross-check.
     public func fetchNodeInfo(origin: String) async -> NodeInfo? {
@@ -276,6 +336,22 @@ public struct ServerProbe: Sendable {
         } catch {
             return nil
         }
+    }
+}
+
+extension ServerProbe {
+    /// How often a signed-in account may set off a fresh discovery.
+    ///
+    /// The trigger is the instance route failing at the stored API base,
+    /// which is what an administrator adding or removing the rewrite looks
+    /// like from here. Once an hour: often enough to follow a real move the
+    /// same day, rarely enough that a server that is simply down is not
+    /// probed at six candidate addresses on every refresh.
+    public static let reprobeInterval: TimeInterval = 3600
+
+    public static func mayReprobe(lastAttempt: Date?, now: Date = Date()) -> Bool {
+        guard let lastAttempt else { return true }
+        return now.timeIntervalSince(lastAttempt) >= reprobeInterval
     }
 }
 

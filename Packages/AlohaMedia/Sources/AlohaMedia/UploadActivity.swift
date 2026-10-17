@@ -57,6 +57,7 @@ public struct UploadActivityAttributes: Sendable, Hashable, Codable {
         /// One failed file does not end the batch: the others are still going
         /// up, and the activity says the upload failed only once nothing else
         /// is in flight.
+        @MainActor
         public static func of(_ progress: UploadProgress, processing: Int) -> ContentState {
             let items = progress.items
             let phase: Phase

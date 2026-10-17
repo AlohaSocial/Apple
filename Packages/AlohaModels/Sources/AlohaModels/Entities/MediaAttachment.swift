@@ -154,15 +154,17 @@ public struct MediaAttachment: Codable, Sendable, Hashable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         _id = try c.decode(FlexibleID.self, forKey: .id)
         type = try c.decodeIfPresent(AttachmentKind.self, forKey: .type) ?? .unknown
-        _url = try c.decode(LenientURL.self, forKey: .url)
-        _previewURL = try c.decode(LenientURL.self, forKey: .previewURL)
-        _remoteURL = try c.decode(LenientURL.self, forKey: .remoteURL)
+        // Loaded in-app, so never over cleartext to a public host
+        // (`securedForLoading`, docs/11 §5).
+        _url = try c.decode(LenientURL.self, forKey: .url).securedForLoading()
+        _previewURL = try c.decode(LenientURL.self, forKey: .previewURL).securedForLoading()
+        _remoteURL = try c.decode(LenientURL.self, forKey: .remoteURL).securedForLoading()
         description = try c.decodeIfPresent(String.self, forKey: .description)
         blurhash = try c.decodeIfPresent(String.self, forKey: .blurhash)
         // Nextcloud Social always sends an object here, never a list — but a
         // fork that sends `[]` for "nothing" must not fail the attachment.
         meta = try? c.decodeIfPresent(Meta.self, forKey: .meta)
-        _hlsURL = try c.decode(LenientURL.self, forKey: .hlsURL)
+        _hlsURL = try c.decode(LenientURL.self, forKey: .hlsURL).securedForLoading()
         _aiGenerated = try c.decode(LenientBool.self, forKey: .aiGenerated)
     }
 

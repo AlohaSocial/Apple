@@ -68,11 +68,13 @@ extension Endpoint {
             Endpoint(path: "api/v1/preferences")
         }
         /// **Nextcloud extension.** `''` puts the account back to following the
-        /// instance, which is different from picking today's default.
+        /// instance, which is different from picking today's default. The
+        /// field is `expand_media` (`AccountApiController::preferencesUpdate`);
+        /// the camel-case spelling was read by nothing and never saved.
         public static func setExpandMedia(_ policy: String) -> Endpoint {
             Endpoint(
                 method: .put, path: "api/v1/preferences",
-                body: .form([URLQueryItem(name: "expandMedia", value: policy)]))
+                body: .form([URLQueryItem(name: "expand_media", value: policy)]))
         }
     }
 }
@@ -124,6 +126,10 @@ extension Endpoint {
                 accountItems += .flag("exclude_replies", !includeReplies)
                 accountItems += .flag("only_media", onlyMedia)
                 return Endpoint(path: "api/v1/accounts/\(id)/statuses", query: accountItems)
+            case .profile(let id, let filter):
+                return Endpoint(
+                    path: "api/v1/accounts/\(id)/statuses",
+                    query: pageItems(limit: limit, anchor: anchor) + profileItems(filter))
             case .trending:
                 return Endpoint(
                     path: "api/v1/trends/statuses", query: items, requiresAuthentication: false)
@@ -142,6 +148,20 @@ extension Endpoint {
                     path: "api/v1/timelines/\(segment)/", query: items,
                     requiresAuthentication: source.requiresViewer)
             }
+        }
+
+        /// `exclude_replies`, `exclude_reblogs`, `only_media` and `tagged` are
+        /// Mastodon's own; `media_type` and `only_short` are Aloha Social's,
+        /// and a server that does not know them reads `only_media` alone.
+        static func profileItems(_ filter: ProfilePostFilter) -> [URLQueryItem] {
+            var items: [URLQueryItem] = []
+            items += .flag("exclude_replies", !filter.includeReplies)
+            items += .flag("exclude_reblogs", !filter.includeBoosts)
+            items += .flag("only_media", filter.onlyMedia)
+            items += .optional("media_type", filter.mediaKind?.rawValue)
+            items += .flag("only_short", filter.onlyShort)
+            items += .optional("tagged", filter.tagged)
+            return items
         }
 
         private static func filterItems(_ filters: TimelineFilters) -> [URLQueryItem] {
@@ -253,18 +273,20 @@ extension Endpoint {
                 method: .post, path: "api/v1/statuses/\(id)/translate",
                 body: .form(.optional("lang", language)))
         }
+        /// The server reads `emoji` (`StatusApiController::statusReact`); a
+        /// request naming it anything else is a 422 for every reaction.
         public static func react(_ id: String, emoji: String) -> Endpoint {
             Endpoint(
                 method: .post, path: "api/v1/statuses/\(id)/react",
                 body: .form([
-                    URLQueryItem(name: "name", value: emoji)
+                    URLQueryItem(name: "emoji", value: emoji)
                 ]))
         }
         public static func unreact(_ id: String, emoji: String) -> Endpoint {
             Endpoint(
                 method: .post, path: "api/v1/statuses/\(id)/unreact",
                 body: .form([
-                    URLQueryItem(name: "name", value: emoji)
+                    URLQueryItem(name: "emoji", value: emoji)
                 ]))
         }
         public static func vote(pollID: String, choices: [Int]) -> Endpoint {
@@ -403,10 +425,23 @@ extension Endpoint {
                 query: pageItems(limit: limit, anchor: anchor)
                     + .repeated("types", types) + .repeated("exclude_types", excludeTypes))
         }
-        public static func unreadCount(grouped: Bool) -> Endpoint {
+        public static func unreadCount(grouped: Bool, types: [String] = []) -> Endpoint {
             Endpoint(
                 path: grouped
-                    ? "api/v2/notifications/unread_count" : "api/v1/notifications/unread_count")
+                    ? "api/v2/notifications/unread_count" : "api/v1/notifications/unread_count",
+                query: .repeated("types", types))
+        }
+
+        /// What to send as `types[]` for the whole list.
+        ///
+        /// Aloha Social leaves its own types — story reactions and comments,
+        /// photo tags, Bluesky's — out of a bearer client's page unless the
+        /// client names them (`Stream::notificationTypesKeptFromClients`). Naming
+        /// any type makes `types[]` an allow-list, so every type the app draws
+        /// is named. Elsewhere nothing is sent, which is "everything".
+        public static func everyType(onAlohaSocial: Bool) -> [String] {
+            guard onAlohaSocial else { return [] }
+            return (NotificationKind.mastodonKinds + NotificationKind.alohaKinds).map(\.rawValue)
         }
         public static func groupAccounts(_ key: String) -> Endpoint {
             Endpoint(path: "api/v2/notifications/\(key)/accounts")
@@ -722,12 +757,16 @@ extension Endpoint {
         /// **Nextcloud extension.** Attaches a file the viewer already has,
         /// so a picture on the server never travels to the phone and back.
         /// A traversal or a folder is a 422 (docs/07 §6).
+        /// A Nextcloud session route: the server answers a bearer token with
+        /// a 403 here (`MediaApiController::requireWebSession`), so it carries
+        /// the app password.
         public static func fromNextcloudFile(path: String, description: String?) -> Endpoint {
             Endpoint(
                 method: .post, path: "api/v1/media/from-file",
                 body: .form(
                     [URLQueryItem(name: "path", value: path)]
-                        + .optional("description", description)))
+                        + .optional("description", description)),
+                authentication: .nextcloudSession)
         }
     }
 
@@ -978,7 +1017,8 @@ public struct StatusPost: Sendable, Hashable {
             items.append(URLQueryItem(name: "place_name", value: placeName))
             items += .optional("place_country", placeCountry)
             items += .optional("place_lat", placeLatitude.map { String($0) })
-            items += .optional("place_lon", placeLongitude.map { String($0) })
+            // `place_long`, Pixelfed's spelling (`Status::import`).
+            items += .optional("place_long", placeLongitude.map { String($0) })
         }
         items += .optional("post_as", postAs)
         items += .optional("video_title", videoTitle)

@@ -92,79 +92,107 @@ public final class SendQueue {
         case later
     }
 
+    /// Sends one draft and the rest of its thread.
+    ///
+    /// Every post goes out with the key of its place in the thread, so a
+    /// segment whose earlier attempt landed unseen is recognised rather than
+    /// repeated. Whatever stops the thread part-way — a dropped connection or
+    /// a refusal — leaves the draft as what is left of it: the next segment,
+    /// replying to the last post that made it. The first post is never sent
+    /// twice.
     static func send(_ draft: DraftSnapshot, session: AccountSession) async -> Outcome {
+        var current = draft
+        var posted = 0
         do {
-            let posted = try await session.client.decode(
-                Status.self, from: Endpoint.composing.post(draft.statusPost))
-            session.notePosted(posted)
-            try? await session.timelineStore.updateStatus(accountID: session.id, status: posted)
-
-            // The rest of a thread chains off the post that just went out. A
-            // segment that fails leaves the remainder queued under the same
-            // draft, now replying to the last segment that made it.
-            var parentID = posted.id
-            var remaining = draft.threadSegments
-            while let next = remaining.first {
-                do {
-                    let reply = try await session.client.decode(
-                        Status.self,
-                        from: Endpoint.composing.post(
-                            StatusPost(
-                                text: next, visibility: draft.visibility,
-                                spoilerText: draft.spoilerText.isEmpty ? nil : draft.spoilerText,
-                                sensitive: draft.sensitive, language: draft.language,
-                                inReplyToID: parentID)))
-                    parentID = reply.id
-                    session.notePosted(reply)
-                    remaining.removeFirst()
-                } catch {
-                    var rest = draft
-                    rest.text = next
-                    rest.threadSegments = Array(remaining.dropFirst())
-                    rest.inReplyToID = parentID
-                    rest.uploadedMediaIDs = []
-                    rest.pollOptions = []
-                    rest.quotedID = nil
-                    rest.scheduledAt = nil
-                    rest.idempotencyKey = UUID().uuidString
-                    _ = try? await session.supportStore.saveDraft(rest)
-                    return .later
-                }
+            while true {
+                let status = try await session.client.decode(
+                    Status.self,
+                    from: Endpoint.composing.post(
+                        try await current.statusPost(
+                            session: session, total: draft.threadTotal)))
+                session.notePosted(status)
+                try? await session.timelineStore.updateStatus(
+                    accountID: session.id, status: status)
+                posted += 1
+                guard !current.threadSegments.isEmpty else { break }
+                current = current.resuming(
+                    afterPosted: current.threadPosition + 1, lastPostedID: status.id)
             }
-
             try? await session.supportStore.deleteDraft(id: draft.id)
             return .sent
-        } catch let error as APIError {
-            if error.isTransient { return .later }
-            // A 401 pauses this account's queue and raises the sign-in banner;
-            // nothing is discarded (docs/07 §7).
-            await session.handle(error)
-            if error.requiresReauthentication { return .later }
-            if case .notFound = error, !draft.uploadedMediaIDs.isEmpty {
-                return .refused(
-                    String(
-                        localized:
-                            "Its attachments expired on your server before it could be sent. Open it to add them again.",
-                        comment: "Queued post refused because its uploads are gone"))
-            }
-            return .refused(
-                error.errorDescription
-                    ?? String(localized: "Couldn't post that.", comment: "Post failed"))
         } catch {
-            return .later
+            // Part of the thread is out: keep only what is left, still queued
+            // and under the same draft, so the outcome below — later or
+            // refused — applies to that.
+            if posted > 0 {
+                current.queuedForSend = true
+                _ = try? await session.supportStore.saveDraft(current)
+            }
+            return await outcome(of: error, sending: current, session: session)
         }
+    }
+
+    /// What a failure means for the queue: wait, or give this one up.
+    private static func outcome(
+        of error: any Error, sending draft: DraftSnapshot, session: AccountSession
+    ) async -> Outcome {
+        guard let error = error as? APIError else { return .later }
+        if error.isTransient { return .later }
+        // A 401 pauses this account's queue and raises the sign-in banner;
+        // nothing is discarded (docs/07 §7).
+        await session.handle(error)
+        if error.requiresReauthentication { return .later }
+        if case .notFound = error, !draft.uploadedMediaIDs.isEmpty {
+            return .refused(
+                String(
+                    localized:
+                        "Its attachments expired on your server before it could be sent. Open it to add them again.",
+                    comment: "Queued post refused because its uploads are gone"))
+        }
+        return .refused(
+            error.errorDescription
+                ?? String(localized: "Couldn't post that.", comment: "Post failed"))
     }
 }
 
 extension DraftSnapshot {
-    /// The post a queued draft sends, exactly as the composer would have.
-    var statusPost: StatusPost {
-        StatusPost(
-            text: text, visibility: visibility,
+    /// How many posts the whole thread has, counting those already out.
+    var threadTotal: Int { threadPosition + 1 + threadSegments.count }
+
+    /// The post a queued draft sends, exactly as the composer would have: the
+    /// games played, the AI label and the card added, the team, the place and
+    /// the video's details carried, numbered where the account numbers its
+    /// threads, and keyed by its place in the thread.
+    @MainActor
+    func statusPost(session: AccountSession, total: Int) async throws -> StatusPost {
+        let isNextcloud = session.capabilities.isNextcloudSocial
+        var body = ComposerCommands.resolve(text).text
+        if threadPosition > 0, total > 1, session.settings.appendThreadNumbering {
+            body = ComposerModel.numbered(body, position: threadPosition, total: total)
+        }
+        if isNextcloud, marksAsAIGenerated {
+            body = ComposerModel.labelledAsAIGenerated(body)
+        }
+        var mediaIDs = uploadedMediaIDs
+        if let cardBackgroundID,
+            let card = try await ComposerModel.uploadCard(
+                text: text, backgroundID: cardBackgroundID, session: session)
+        {
+            mediaIDs = [card]
+        }
+        var post = StatusPost(
+            text: body, visibility: visibility,
             spoilerText: spoilerText.isEmpty ? nil : spoilerText,
             sensitive: sensitive, language: language, inReplyToID: inReplyToID,
-            mediaIDs: uploadedMediaIDs, pollOptions: pollOptions, pollExpiresIn: pollExpiresIn,
+            mediaIDs: mediaIDs, pollOptions: pollOptions, pollExpiresIn: pollExpiresIn,
             pollMultiple: pollMultiple, scheduledAt: scheduledAt,
-            idempotencyKey: idempotencyKey, quotedID: quotedID, quotePolicy: quotePolicy)
+            idempotencyKey: idempotencyKey(forPosition: threadPosition),
+            quotedID: quotedID, quotePolicy: quotePolicy,
+            placeID: placeID, placeName: placeID == nil ? placeName : nil,
+            placeCountry: placeID == nil ? placeCountry : nil,
+            postAs: postAs, videoTitle: videoTitle, videoCategory: videoCategory,
+            videoLicence: videoLicence)
+        if isNextcloud { post.replyPolicy = replyPolicy.flatMap(ReplyPolicy.init(rawValue:)) }
+        return post
     }
 }

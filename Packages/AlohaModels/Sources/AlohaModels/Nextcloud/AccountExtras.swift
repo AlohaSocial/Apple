@@ -537,6 +537,154 @@ public struct AccountStatistics: Codable, Sendable, Hashable {
         }
     }
 
+    /// One of the account's posts with what came back to it.
+    public struct TopPost: Codable, Sendable, Hashable, Identifiable {
+        public var id: String
+        public var url: String
+        public var publishedAt: Date?
+        public var excerpt: String
+        @LenientInt public var likes: Int
+        @LenientInt public var boosts: Int
+        @LenientInt public var replies: Int
+        @LenientInt public var quotes: Int
+
+        enum CodingKeys: String, CodingKey {
+            case id, url, excerpt, likes, boosts, replies, quotes
+            case publishedAt = "published_at"
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = (try? c.decode(FlexibleID.self, forKey: .id))?.wrappedValue ?? ""
+            url = (try? c.decode(String.self, forKey: .url)) ?? ""
+            publishedAt = try? c.decodeIfPresent(Date.self, forKey: .publishedAt)
+            excerpt = (try? c.decode(String.self, forKey: .excerpt)) ?? ""
+            _likes = (try? c.decode(LenientInt.self, forKey: .likes)) ?? .init(wrappedValue: 0)
+            _boosts = (try? c.decode(LenientInt.self, forKey: .boosts)) ?? .init(wrappedValue: 0)
+            _replies = (try? c.decode(LenientInt.self, forKey: .replies)) ?? .init(wrappedValue: 0)
+            _quotes = (try? c.decode(LenientInt.self, forKey: .quotes)) ?? .init(wrappedValue: 0)
+        }
+
+        public init(
+            id: String, url: String = "", publishedAt: Date? = nil, excerpt: String,
+            likes: Int = 0, boosts: Int = 0, replies: Int = 0, quotes: Int = 0
+        ) {
+            self.id = id
+            self.url = url
+            self.publishedAt = publishedAt
+            self.excerpt = excerpt
+            _likes = .init(wrappedValue: likes)
+            _boosts = .init(wrappedValue: boosts)
+            _replies = .init(wrappedValue: replies)
+            _quotes = .init(wrappedValue: quotes)
+        }
+    }
+
+    /// A server and how much came from it.
+    public struct HostCount: Codable, Sendable, Hashable, Identifiable {
+        public var host: String
+        @LenientInt public var count: Int
+        public var id: String { host }
+
+        public init(host: String, count: Int) {
+            self.host = host
+            _count = .init(wrappedValue: count)
+        }
+    }
+
+    /// Where the likes, boosts and replies came from.
+    public struct Sources: Codable, Sendable, Hashable {
+        public var servers: [HostCount]
+        /// The share made by accounts on this server, as a percentage.
+        public var localShare: Double
+        @LenientInt public var counted: Int
+
+        enum CodingKeys: String, CodingKey {
+            case servers, counted
+            case localShare = "local_share"
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            servers = (try? c.decode(LossyArray<HostCount>.self, forKey: .servers))?.elements ?? []
+            localShare = (try? c.decode(Double.self, forKey: .localShare)) ?? 0
+            _counted = (try? c.decode(LenientInt.self, forKey: .counted)) ?? .init(wrappedValue: 0)
+        }
+
+        public init(servers: [HostCount], localShare: Double = 0, counted: Int = 0) {
+            self.servers = servers
+            self.localShare = localShare
+            _counted = .init(wrappedValue: counted)
+        }
+    }
+
+    /// Who is listening, and where they are.
+    public struct Audience: Codable, Sendable, Hashable {
+        public var instances: [HostCount]
+        public var localShare: Double
+        /// People who joined through a Bluesky starter pack naming this
+        /// account, in the window.
+        @LenientInt public var starterPackJoins: Int
+
+        enum CodingKeys: String, CodingKey {
+            case instances
+            case localShare = "local_share"
+            case starterPackJoins = "starter_pack_joins"
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            instances =
+                (try? c.decode(LossyArray<HostCount>.self, forKey: .instances))?.elements ?? []
+            localShare = (try? c.decode(Double.self, forKey: .localShare)) ?? 0
+            _starterPackJoins =
+                (try? c.decode(LenientInt.self, forKey: .starterPackJoins))
+                ?? .init(wrappedValue: 0)
+        }
+
+        public init(
+            instances: [HostCount] = [], localShare: Double = 0, starterPackJoins: Int = 0
+        ) {
+            self.instances = instances
+            self.localShare = localShare
+            _starterPackJoins = .init(wrappedValue: starterPackJoins)
+        }
+    }
+
+    /// How far the posts went.
+    public struct Reach: Codable, Sendable, Hashable {
+        /// A network the posts also went out on without an instance to deliver
+        /// them to — Bluesky — and how many of the counted posts did.
+        public struct Network: Codable, Sendable, Hashable, Identifiable {
+            public var network: String
+            @LenientInt public var posts: Int
+            public var id: String { network }
+
+            public init(network: String, posts: Int) {
+                self.network = network
+                _posts = .init(wrappedValue: posts)
+            }
+        }
+
+        /// The servers the posts were actually addressed to.
+        @LenientInt public var instances: Int
+        public var networks: [Network]
+
+        enum CodingKeys: String, CodingKey { case instances, networks }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            _instances =
+                (try? c.decode(LenientInt.self, forKey: .instances)) ?? .init(wrappedValue: 0)
+            networks = (try? c.decode(LossyArray<Network>.self, forKey: .networks))?.elements ?? []
+        }
+
+        public init(instances: Int = 0, networks: [Network] = []) {
+            _instances = .init(wrappedValue: instances)
+            self.networks = networks
+        }
+    }
+
     public var account: AccountSummary?
     public var window: Window?
     public var posts: NumberMap
@@ -552,12 +700,18 @@ public struct AccountStatistics: Codable, Sendable, Hashable {
     public var languages: [NamedCount]
     public var domains: [NamedCount]
     public var hashtags: [NamedCount]
+    /// The posts that did best, each with its quotes as well as its likes.
+    public var best: [TopPost]
+    public var engagementSources: Sources?
+    public var audience: Audience?
+    public var reach: Reach?
 
     enum CodingKeys: String, CodingKey {
         case account, window, posts, engagement, rates, visibility, consistency, media
-        case activity, partners, languages, domains, hashtags
+        case activity, partners, languages, domains, hashtags, best, audience, reach
         case byMonth = "by_month"
         case engagementByMonth = "engagement_by_month"
+        case engagementSources = "engagement_sources"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -578,6 +732,10 @@ public struct AccountStatistics: Codable, Sendable, Hashable {
         languages = (try? c.decode(LossyArray<NamedCount>.self, forKey: .languages))?.elements ?? []
         domains = (try? c.decode(LossyArray<NamedCount>.self, forKey: .domains))?.elements ?? []
         hashtags = (try? c.decode(LossyArray<NamedCount>.self, forKey: .hashtags))?.elements ?? []
+        best = (try? c.decode(LossyArray<TopPost>.self, forKey: .best))?.elements ?? []
+        engagementSources = try? c.decodeIfPresent(Sources.self, forKey: .engagementSources)
+        audience = try? c.decodeIfPresent(Audience.self, forKey: .audience)
+        reach = try? c.decodeIfPresent(Reach.self, forKey: .reach)
     }
 
     public init(
@@ -587,7 +745,8 @@ public struct AccountStatistics: Codable, Sendable, Hashable {
         media: NumberMap = NumberMap(), byMonth: NumberMap = NumberMap(),
         engagementByMonth: NumberMap = NumberMap(), activity: Activity? = nil,
         partners: Partners? = nil, languages: [NamedCount] = [], domains: [NamedCount] = [],
-        hashtags: [NamedCount] = []
+        hashtags: [NamedCount] = [], best: [TopPost] = [], engagementSources: Sources? = nil,
+        audience: Audience? = nil, reach: Reach? = nil
     ) {
         self.account = account
         self.window = window
@@ -604,6 +763,10 @@ public struct AccountStatistics: Codable, Sendable, Hashable {
         self.languages = languages
         self.domains = domains
         self.hashtags = hashtags
+        self.best = best
+        self.engagementSources = engagementSources
+        self.audience = audience
+        self.reach = reach
     }
 }
 

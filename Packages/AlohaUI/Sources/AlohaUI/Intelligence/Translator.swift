@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaHTML
 import AlohaModels
 import AlohaNetwork
 import Foundation
@@ -21,6 +22,9 @@ public final class Translator {
         public var content: String
         public var attribution: String
         public var detectedSourceLanguage: String?
+        /// The server answers with the post's HTML translated; the device
+        /// translates the plain text it was given.
+        public var isHTML: Bool = false
     }
 
     public private(set) var translations: [String: Result] = [:]
@@ -48,7 +52,8 @@ public final class Translator {
                     attribution: String(
                         localized: "Translated by your server",
                         comment: "Translation attribution"),
-                    detectedSourceLanguage: translated.detectedSourceLanguage)
+                    detectedSourceLanguage: translated.detectedSourceLanguage,
+                    isHTML: true)
                 return
             } catch APIError.server(let status, _) where status == 503 {
                 // The server has no provider today; the device may still manage.
@@ -57,13 +62,10 @@ public final class Translator {
             }
         }
 
-        requestOnDevice(target, plainText: Self.plain(target.content))
-    }
-
-    private static func plain(_ html: String) -> String {
-        html.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // The parser's plain text, not a regex strip: it keeps paragraph
+        // breaks and decodes every entity, which a translation needs to read
+        // the post as it was written.
+        requestOnDevice(target, plainText: await RichTextCache.shared.plainText(for: target))
     }
 
     private var preferredLanguage: String? {

@@ -2,6 +2,7 @@
 
 import AlohaDesign
 import AlohaModels
+import AlohaNetwork
 import SwiftUI
 
 /// Applies the theme before the shell reads its palette, including presentations.
@@ -71,6 +72,20 @@ private struct ThemedAppShell: View {
     /// The Focus filter last applied, so it is applied once per change.
     @State private var appliedFocus = FocusFilterState.none
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURLAction
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+    /// Unread conversations, as the messages list last counted them. Read
+    /// through `@AppStorage` so the Messages badge moves the moment that list
+    /// writes a new count, rather than when this view happens to redraw.
+    @AppStorage(AppGroup.unreadConversationsKey, store: AppGroup.defaults)
+    private var unreadConversations = 0
+    #if os(iOS)
+        /// Which places a person pinned to the iPad's tab bar, and in what order.
+        @AppStorage("aloha.iPad.tabCustomization")
+        private var tabCustomization = TabViewCustomization()
+    #endif
 
     /// Set on a window opened for one destination. Such a window shows it and
     /// otherwise stays out of the way: the app-wide requests — compose, open a
@@ -508,7 +523,7 @@ private struct ThemedAppShell: View {
     private var rootRoutes: [Route] {
         #if os(iOS)
             return [
-                .conversations, .explore, .lists, .interests, .subscriptions,
+                .conversations, .explore, .lists, .interests,
                 .collections(accountID: nil), .notifications, .bookmarks, .settings,
                 .search(query: nil),
             ]
@@ -566,12 +581,25 @@ private struct ThemedAppShell: View {
     }
 
     private var shellCommands: ShellCommands? {
-        guard environment.activeSession != nil else { return nil }
+        guard let session = environment.activeSession else { return nil }
         return ShellCommands(
             compose: { composing = ComposerPresentation() },
             open: { open($0) },
             back: { goBack() },
-            canGoBack: canGoBack)
+            canGoBack: canGoBack,
+            places: ShellPlace.sidebarOrder(
+                modes: session.visibleModes, includesActivities: hasActivitiesRow,
+                modeTitle: modeTitle))
+    }
+
+    /// Whether Activities is one of the top places — a row on iPad, a tab on
+    /// a phone with room for it. The Mac sidebar reaches it from the menu.
+    private var hasActivitiesRow: Bool {
+        #if os(iOS)
+            usesSidebar || showsNotificationsTab
+        #else
+            false
+        #endif
     }
 
     // MARK: - iPhone
@@ -617,6 +645,7 @@ private struct ThemedAppShell: View {
                     )
                     Text("Messages", comment: "Tab title")
                 }
+                .badge(unreadConversations)
 
                 if ShellTab.showsNotificationsTab(feedCount: session.visibleModes.count) {
                     Tab(value: TabSelection.notifications) {
@@ -655,6 +684,20 @@ private struct ThemedAppShell: View {
     #endif
 
     #if os(iOS)
+        /// The iPad's tab bar and sidebar, as one customisable set.
+        ///
+        /// Activities is a tab of its own with its unread count — it used to
+        /// be a collapsed row in "Account", which vanished entirely whenever
+        /// the iPad showed the tab bar instead of the sidebar. The Library and
+        /// Account places are no longer sidebar-only: they sit in the sidebar
+        /// and stay out of the tab bar by default, and the tab bar's own edit
+        /// mode lets a person pin the ones they use (`TabViewCustomization`,
+        /// kept per device).
+        ///
+        /// No inspector for threads and profiles: every list in the app pushes
+        /// a `Route` onto the stack it lives in, and an inspector would need a
+        /// second, parallel notion of "what is selected" in each of them. The
+        /// reading column already keeps a thread at a readable width.
         private func iPadShell(_ session: AccountSession) -> some View {
             TabView(selection: $sidebarItem) {
                 ForEach(session.visibleModes) { mode in
@@ -663,6 +706,7 @@ private struct ThemedAppShell: View {
                     ) {
                         iPadDestination(.mode(mode), session: session)
                     }
+                    .customizationID("aloha.tab.mode.\(mode.rawValue)")
                 }
                 Tab(
                     "Direct messages", systemImage: "envelope",
@@ -670,81 +714,61 @@ private struct ThemedAppShell: View {
                 ) {
                     iPadDestination(.route(.conversations), session: session)
                 }
+                .badge(unreadConversations)
+                .customizationID("aloha.tab.conversations")
+                Tab(
+                    "Activities", systemImage: AlohaSymbol.notifications,
+                    value: SidebarItem.route(.notifications)
+                ) {
+                    iPadDestination(.route(.notifications), session: session)
+                }
+                .badge(unreadNotifications(session))
+                .customizationID("aloha.tab.notifications")
                 Tab("Discover", systemImage: "safari", value: SidebarItem.route(.explore)) {
                     iPadDestination(.route(.explore), session: session)
                 }
+                .customizationID("aloha.tab.explore")
                 TabSection("Library") {
-                    Tab(
-                        "Your lists", systemImage: "list.bullet.rectangle",
-                        value: SidebarItem.route(.lists)
-                    ) {
-                        iPadDestination(.route(.lists), session: session)
-                    }
+                    sidebarTab(
+                        "Your lists", symbol: "list.bullet.rectangle", route: .lists,
+                        session: session)
                     if session.capabilities.isNextcloudSocial {
-                        Tab(
-                            "My interests", systemImage: "sparkles",
-                            value: SidebarItem.route(.interests)
-                        ) {
-                            iPadDestination(.route(.interests), session: session)
-                        }
-                        Tab(
-                            "Subscriptions", systemImage: "dot.radiowaves.up.forward",
-                            value: SidebarItem.route(.subscriptions)
-                        ) {
-                            iPadDestination(.route(.subscriptions), session: session)
-                        }
+                        sidebarTab(
+                            "My interests", symbol: "sparkles", route: .interests,
+                            session: session)
                     }
                     if session.capabilities.collections {
-                        Tab(
-                            "Albums", systemImage: "rectangle.stack",
-                            value: SidebarItem.route(.collections(accountID: nil))
-                        ) {
-                            iPadDestination(.route(.collections(accountID: nil)), session: session)
-                        }
+                        sidebarTab(
+                            "Albums", symbol: "rectangle.stack",
+                            route: .collections(accountID: nil), session: session)
                     }
                 }
-                .tabPlacement(.sidebarOnly)
+                .customizationID("aloha.section.library")
                 TabSection("Account") {
-                    Tab("Activities", systemImage: "bell", value: SidebarItem.route(.notifications))
-                    {
-                        iPadDestination(.route(.notifications), session: session)
-                    }
-                    Tab("Bookmarks", systemImage: "bookmark", value: SidebarItem.route(.bookmarks))
-                    {
-                        iPadDestination(.route(.bookmarks), session: session)
-                    }
-                    Tab("Settings", systemImage: "gearshape", value: SidebarItem.route(.settings)) {
-                        iPadDestination(.route(.settings), session: session)
-                    }
-                    Tab("Liked posts", systemImage: "heart", value: SidebarItem.route(.favourites))
-                    {
-                        iPadDestination(.route(.favourites), session: session)
-                    }
-                    Tab(
-                        "Follow requests", systemImage: "person.badge.clock",
-                        value: SidebarItem.route(.followRequests)
-                    ) {
-                        iPadDestination(.route(.followRequests), session: session)
-                    }
-                    Tab("Blocking", systemImage: "hand.raised", value: SidebarItem.route(.safety)) {
-                        iPadDestination(.route(.safety), session: session)
-                    }
+                    sidebarTab(
+                        "Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks,
+                        session: session)
+                    sidebarTab(
+                        "Favourites", symbol: AlohaSymbol.favourite, route: .favourites,
+                        session: session)
+                    sidebarTab(
+                        "Follow requests", symbol: "person.badge.clock", route: .followRequests,
+                        session: session)
+                    sidebarTab(
+                        "Blocking", symbol: "hand.raised", route: .safety, session: session)
                     if session.capabilities.isNextcloudSocial {
-                        Tab(
-                            "Archived posts", systemImage: "archivebox",
-                            value: SidebarItem.route(.archived)
-                        ) {
-                            iPadDestination(.route(.archived), session: session)
-                        }
-                        Tab(
-                            "Statistics", systemImage: "chart.bar.xaxis",
-                            value: SidebarItem.route(.statistics)
-                        ) {
-                            iPadDestination(.route(.statistics), session: session)
-                        }
+                        sidebarTab(
+                            "Archived posts", symbol: "archivebox", route: .archived,
+                            session: session)
+                        sidebarTab(
+                            "Statistics", symbol: "chart.bar.xaxis", route: .statistics,
+                            session: session)
                     }
+                    sidebarTab(
+                        "Settings", symbol: AlohaSymbol.settings, route: .settings,
+                        session: session)
                 }
-                .tabPlacement(.sidebarOnly)
+                .customizationID("aloha.section.account")
                 .defaultSectionExpansion(.collapsed)
                 Tab(
                     "Search", systemImage: "magnifyingglass",
@@ -752,8 +776,10 @@ private struct ThemedAppShell: View {
                 ) {
                     iPadDestination(.route(.search(query: nil)), session: session)
                 }
+                .customizationID("aloha.tab.search")
             }
             .tabViewStyle(.sidebarAdaptable)
+            .tabViewCustomization($tabCustomization)
             .tabViewSidebarBottomBar {
                 AccountMenuButton(
                     session: session, onOpen: open,
@@ -765,13 +791,25 @@ private struct ThemedAppShell: View {
             }
         }
 
+        /// A Library or Account place: in the sidebar, out of the tab bar
+        /// until a person pins it there.
+        private func sidebarTab(
+            _ title: LocalizedStringKey, symbol: String, route: Route, session: AccountSession
+        ) -> some TabContent<SidebarItem> {
+            Tab(title, systemImage: symbol, value: SidebarItem.route(route)) {
+                iPadDestination(.route(route), session: session)
+            }
+            .customizationID(ShellTab.customizationID(for: route))
+            .defaultVisibility(.hidden, for: .tabBar)
+        }
+
         private func iPadDestination(_ item: SidebarItem, session: AccountSession) -> some View {
             AnyView(
                 NavigationStack(path: sidebarPath(item)) {
                     Group {
                         switch item {
                         case .mode(let mode): modeRoot(mode, session: session)
-                        case .route(let route): destination(route, session: session)
+                        case .route(let route): destination(route, session: session, isRoot: true)
                         }
                     }
                     .navigationDestination(for: Route.self) { destination($0, session: session) }
@@ -780,19 +818,24 @@ private struct ThemedAppShell: View {
                         iPadAccountToolbar(session)
                         composeToolbar
                     }
-                    .background(palette.background.ignoresSafeArea())
+                    .alohaWindowGround(palette)
                 })
         }
     #endif
 
     #if os(iOS)
+        /// The account menu at the top of a root screen. In compact width — a
+        /// narrow Stage Manager window, Slide Over — there is no sidebar to
+        /// hold Library and Account, so the menu carries all of them instead.
         @ToolbarContentBuilder
         private func iPadAccountToolbar(_ session: AccountSession) -> some ToolbarContent {
+            let isCompact = horizontalSizeClass == .compact
             ToolbarItem(id: "account-menu", placement: .topBarLeading) {
                 AccountMenuButton(
                     session: session, onOpen: open,
                     onAddAccount: { isPresentingSignIn = true },
-                    showsBrowseDestinations: false, usesCompactMenu: true)
+                    showsBrowseDestinations: isCompact, usesCompactMenu: !isCompact,
+                    showsActivities: false)
             }
         }
     #endif
@@ -816,16 +859,19 @@ private struct ThemedAppShell: View {
                     case .mode(let mode):
                         modeRoot(mode, session: session)
                     case .route(let route):
-                        destination(route, session: session)
+                        destination(route, session: session, isRoot: true)
                     }
                 }
+                // On the root; a pushed screen carries its own (`destination`).
+                // Declared once each, rather than on the stack *and* on every
+                // screen, which drew two "New post" buttons side by side.
+                .toolbar { composeToolbar }
                 .navigationDestination(for: Route.self) { destination($0, session: session) }
             }
             // A stack per sidebar row, as on iPad: each row keeps what was
             // pushed on it. A fresh stack for each row rather than one stack
             // whose path is swapped, which would animate as a pop and a push.
             .id(sidebarItem)
-            .toolbar { composeToolbar }
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -833,10 +879,10 @@ private struct ThemedAppShell: View {
             // centred in this space, and without this the space around it was
             // window background — a cool white the app never uses — so the
             // column read as a sheet of paper dropped on the wrong desk.
-            .background(palette.background.ignoresSafeArea())
+            .alohaWindowGround(palette)
         }
         // A sidebar the width of its content, not the default narrow sliver:
-        // "Direct messages" and "Subscriptions" are two-line labels at the
+        // "Direct messages" and "Waiting to be looked at" are two-line labels at the
         // default, and this is the navigation for a reading app on a big
         // screen.
         #if os(iOS)
@@ -865,6 +911,7 @@ private struct ThemedAppShell: View {
                 }
             }
             .keyboardShortcut("n", modifiers: .command)
+            .help(Text("New post", comment: "Toolbar action"))
         }
     }
 
@@ -942,7 +989,7 @@ private struct ThemedAppShell: View {
     }
 
     /// What every timeline screen wears: the account menu on a phone, and the
-    /// source toggle at its foot.
+    /// source menu in its title.
     ///
     /// One modifier rather than a toolbar builder plus an inset at five call
     /// sites — and a `ToolbarContentBuilder` whose only item is iOS-only does
@@ -958,7 +1005,7 @@ private struct ThemedAppShell: View {
             // old model, and the timeline never changed. This is why the
             // source picker has never worked, in either of its forms.
             .id(selectedSource)
-            .modifier(ScrollRevealedTimelineSource(source: $selectedSource))
+            .modifier(TimelineSourceMenu(source: $selectedSource))
             #if os(iOS)
                 .toolbar {
                     // Only on the phone: the split shell carries both of these
@@ -980,7 +1027,12 @@ private struct ThemedAppShell: View {
                             }
                             .keyboardShortcut("f", modifiers: .command)
                             .accessibilityLabel(Text("Search", comment: "Toolbar button"))
+                            .help(Text("Search", comment: "Toolbar button"))
                         }
+                        // Finding and writing are different kinds of action;
+                        // the gap keeps them in separate glass groups rather
+                        // than one capsule that reads as a single control.
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         ToolbarItem(placement: .topBarTrailing) {
                             Button {
                                 composing = ComposerPresentation()
@@ -989,20 +1041,24 @@ private struct ThemedAppShell: View {
                             }
                             .keyboardShortcut("n", modifiers: .command)
                             .accessibilityLabel(Text("New post", comment: "Toolbar action"))
+                            .help(Text("New post", comment: "Toolbar action"))
                         }
                     }
                 }
             #endif
     }
 
-    private func destination(_ route: Route, session: AccountSession) -> some View {
+    /// A screen, root or pushed. `isRoot` is for the sidebar shells, whose
+    /// root already wears "New post" and (on iPad) the account menu: a pushed
+    /// screen keeps "New post" — writing should never be a Back away — but
+    /// not the account menu, which sat beside the Back button there.
+    private func destination(
+        _ route: Route, session: AccountSession, isRoot: Bool = false
+    ) -> some View {
         AnyView(destinationContent(route, session: session))
             .modifier(ContinuityAdvertiser(route: route, session: session))
             .toolbar {
-                if usesSidebar { composeToolbar }
-                #if os(iOS)
-                    if usesSidebar { iPadAccountToolbar(session) }
-                #endif
+                if usesSidebar && !isRoot { composeToolbar }
             }
     }
 
@@ -1026,7 +1082,7 @@ private struct ThemedAppShell: View {
             TimelineView(
                 key: TimelineKey(mode: .home, source: .favourites), session: session
             ) { handle($0, session: session) }
-            .navigationTitle(Text("Liked posts", comment: "Screen title"))
+            .navigationTitle(Text("Favourites", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
                 .readerColumn
@@ -1046,7 +1102,6 @@ private struct ThemedAppShell: View {
                 .readerColumn
         case .safety:
             SafetyListsView(session: session)
-                .readerColumn
                 .readerColumn
         case .conversations:
             ConversationsView(
@@ -1077,8 +1132,6 @@ private struct ThemedAppShell: View {
         // Nextcloud Social surfaces.
         case .interests:
             InterestsView(session: session) { handle($0, session: session) }
-        case .subscriptions:
-            SubscriptionsView(session: session)
         case .memories:
             MemoriesView(session: session) { handle($0, session: session) }
         case .heldPosts:
@@ -1146,6 +1199,10 @@ private struct ThemedAppShell: View {
             }
         case .blueskySettings:
             BlueskySettingsView(session: session)
+        case .blueskyStarterPack(let address):
+            BlueskyStarterPackView(address: address, session: session)
+        case .filterPost(let statusID):
+            FilterPostView(statusID: statusID, session: session)
         case .linkTimeline(let url, let title):
             LinkTimelineView(url: url, title: title, session: session) {
                 handle($0, session: session)
@@ -1297,11 +1354,7 @@ private struct ThemedAppShell: View {
     /// the UIKit-only `open` compiled away and the action fell through
     /// silently, so no web content was reachable from a timeline there.
     private func openURL(_ url: URL) {
-        #if canImport(UIKit)
-            UIApplication.shared.open(url)
-        #elseif canImport(AppKit)
-            NSWorkspace.shared.open(url)
-        #endif
+        LinkOpening.open(url, with: openURLAction)
     }
 
     private func handle(_ url: URL) {
@@ -1384,24 +1437,17 @@ extension View {
     /// Full window width runs a post's text to twelve hundred point, which is
     /// unreadable — the eye cannot find the start of the next line. Mail and
     /// Reader constrain their columns, and so does this: 820 points on iPad
-    /// and 680 on Mac, centred, with the rest of the window quiet around it. On a phone
-    /// the tab shell already fills the screen and the constraint would only
-    /// add margins, so it does nothing there.
-    @ViewBuilder
+    /// and 680 on Mac, centred, with the rest of the window quiet around it.
+    /// In compact width — a phone, or an iPad in Slide Over or a narrow
+    /// window — the screen is already a column and the constraint would only
+    /// add margins, so it does nothing there. The size class decides, not
+    /// the device: an iPad can be either.
     var readerColumn: some View {
         #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                self
-            } else {
-                column(width: 820)
-            }
+            modifier(ReaderColumn(width: 820))
         #else
-            column(width: 680)
+            modifier(ReaderColumn(width: 680))
         #endif
-    }
-
-    private func column(width: CGFloat) -> some View {
-        modifier(ReaderColumn(width: width))
     }
 
     /// `fullScreenCover` does not exist on macOS; a sheet is the right
@@ -1437,12 +1483,27 @@ extension View {
 /// The surrounding canvas must inherit the same theme as the reading surface.
 private struct ReaderColumn: ViewModifier {
     @Environment(\.alohaPalette) private var palette
+    #if !os(macOS)
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     let width: CGFloat
 
     func body(content: Content) -> some View {
-        content
-            .frame(maxWidth: width)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.background.ignoresSafeArea())
+        if isCompact {
+            content
+        } else {
+            content
+                .frame(maxWidth: width)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .alohaWindowGround(palette)
+        }
+    }
+
+    private var isCompact: Bool {
+        #if os(macOS)
+            false
+        #else
+            horizontalSizeClass == .compact
+        #endif
     }
 }

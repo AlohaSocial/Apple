@@ -70,6 +70,15 @@ public actor APIClient {
         return try decodeBody(type, response.data, context: endpoint.path)
     }
 
+    /// The value and the response it came in, for the routes whose headers
+    /// say more than the body (`X-Social-Thread-Filling`).
+    public func decodeWithResponse<T: Decodable & Sendable>(
+        _ type: T.Type, from endpoint: Endpoint
+    ) async throws -> (T, RawResponse) {
+        let response = try await perform(endpoint, followingURL: nil)
+        return (try decodeBody(type, response.data, context: endpoint.path), response)
+    }
+
     /// A page, with its cursors. `limit` is remembered so `mayHaveMore` can fall
     /// back to the row count on the routes that send no `Link` header.
     public func page<T: Decodable & Sendable>(
@@ -104,7 +113,7 @@ public actor APIClient {
     // MARK: - Machinery
 
     private func perform(_ endpoint: Endpoint, followingURL: URL?) async throws -> RawResponse {
-        guard let url = followingURL ?? endpoint.url(base: apiBase) else {
+        guard let url = followingURL.map(upgradedCursor) ?? endpoint.url(base: apiBase) else {
             throw APIError.invalidResponse
         }
         if endpoint.requiresAuthentication, followingURL == nil {
@@ -117,8 +126,18 @@ public actor APIClient {
             }
         }
 
+        // A credential goes to this account's own origin and nowhere else. A
+        // `Link` header is the server's to write, and following one to another
+        // host with the token attached would hand that host the account; such
+        // a cursor is refused rather than followed without it, since a page
+        // from somewhere else has no business in this account's timeline.
+        guard url.isSameOrigin(as: apiBase) else {
+            logger.error("refused a request to another origin than the account's")
+            throw APIError.invalidResponse
+        }
+
         let host = url.host() ?? apiBase.host() ?? ""
-        await rateLimiter.acquire(host: host)
+        try await rateLimiter.acquire(host: host)
 
         var request = URLRequest(url: url)
         request.httpMethod =
@@ -165,8 +184,23 @@ public actor APIClient {
         return RawResponse(
             data: data,
             statusCode: http.statusCode,
-            link: LinkHeader(parsing: http.value(forHTTPHeaderField: "Link"))
+            link: LinkHeader(parsing: http.value(forHTTPHeaderField: "Link")),
+            socialHeaders: RawResponse.socialHeaders(of: http)
         )
+    }
+
+    /// A server behind a TLS-terminating proxy can write its `Link` cursors
+    /// as `http://` on its own https host. That is the same server, so the
+    /// cursor is followed over https rather than refused or downgraded.
+    private func upgradedCursor(_ url: URL) -> URL {
+        guard url.scheme?.lowercased() == "http", apiBase.scheme?.lowercased() == "https",
+            url.host()?.lowercased() == apiBase.host()?.lowercased(),
+            url.port == nil || url.port == 80,
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return url }
+        components.scheme = "https"
+        components.port = apiBase.port
+        return components.url ?? url
     }
 
     private func applyBody(_ body: Endpoint.Body?, to request: inout URLRequest) {
@@ -174,12 +208,8 @@ public actor APIClient {
         case .none, .empty:
             return
         case .form(let items):
-            var components = URLComponents()
-            components.queryItems = items.filter { $0.value != nil }
-            request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
-            request.setValue(
-                "application/x-www-form-urlencoded; charset=utf-8",
-                forHTTPHeaderField: "Content-Type")
+            request.httpBody = FormEncoding.body(items)
+            request.setValue(FormEncoding.contentType, forHTTPHeaderField: "Content-Type")
         case .json(let data):
             request.httpBody = data
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -205,11 +235,27 @@ public struct RawResponse: Sendable {
     public var data: Data
     public var statusCode: Int
     public var link: LinkHeader
+    /// Aloha Social's own `X-Social-*` headers, keyed in lower case: they say
+    /// when an answer is still being filled in from elsewhere.
+    public var socialHeaders: [String: String]
 
-    public init(data: Data, statusCode: Int, link: LinkHeader) {
+    public init(
+        data: Data, statusCode: Int, link: LinkHeader, socialHeaders: [String: String] = [:]
+    ) {
         self.data = data
         self.statusCode = statusCode
         self.link = link
+        self.socialHeaders = socialHeaders
+    }
+
+    static func socialHeaders(of response: HTTPURLResponse) -> [String: String] {
+        var result: [String: String] = [:]
+        for (key, value) in response.allHeaderFields {
+            guard let name = (key as? String)?.lowercased(), name.hasPrefix("x-social-")
+            else { continue }
+            result[name] = "\(value)"
+        }
+        return result
     }
 
     /// How many rows the query returned, for the "shorter than limit is the

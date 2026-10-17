@@ -3,21 +3,34 @@
 import AlohaDesign
 import AlohaMedia
 import AlohaModels
+import AlohaNetwork
 import SwiftUI
 
 public struct PollView: View {
     @Environment(\.alohaPalette) private var palette
+    /// Optional: a poll can be drawn where no account is signed in, and there
+    /// is nothing to read it again with.
+    @Environment(AppEnvironment.self) private var environment: AppEnvironment?
 
     private let poll: Poll
     private let onVote: ([Int]) -> Void
     @State private var selection: Set<Int> = []
+    /// The poll as read again just now, until the post brings a newer one.
+    @State private var refreshed: Poll?
+    @State private var isRefreshing = false
 
     public init(poll: Poll, onVote: @escaping ([Int]) -> Void) {
         self.poll = poll
         self.onVote = onVote
     }
 
+    private var current: Poll {
+        if let refreshed, refreshed.id == poll.id { return refreshed }
+        return poll
+    }
+
     public var body: some View {
+        let poll = current
         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
             ForEach(Array(poll.options.enumerated()), id: \.offset) { index, option in
                 optionRow(option, index: index)
@@ -36,6 +49,9 @@ public struct PollView: View {
                     }
                 }
                 Spacer()
+                if !poll.expired, environment?.activeSession != nil {
+                    refreshButton
+                }
                 if !poll.expired && !poll.voted && !selection.isEmpty {
                     Button {
                         onVote(Array(selection).sorted())
@@ -51,10 +67,43 @@ public struct PollView: View {
         .padding(AlohaMetrics.space3)
         .background(
             palette.surfaceRaised,
-            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous))
+            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+        )
+        // A vote or a refreshed timeline hands in a newer poll than the one
+        // read here; that one wins.
+        .onChange(of: self.poll) { refreshed = nil }
+    }
+
+    /// Reads the poll again (`GET /api/v1/polls/{id}`): an open poll's count
+    /// moves while the post sits on screen.
+    private var refreshButton: some View {
+        Button {
+            Task { await refresh() }
+        } label: {
+            Image(systemName: AlohaSymbol.refresh)
+                .symbolEffect(.rotate, isActive: isRefreshing)
+                .frame(minWidth: 28, minHeight: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isRefreshing)
+        .accessibilityLabel(Text("Refresh results", comment: "Poll action"))
+    }
+
+    private func refresh() async {
+        guard let session = environment?.activeSession, !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        do {
+            refreshed = try await session.client.decode(
+                Poll.self, from: Endpoint.statuses.poll(poll.id))
+        } catch {
+            await session.handle(error)
+        }
     }
 
     private func optionRow(_ option: Poll.Option, index: Int) -> some View {
+        let poll = current
         let share = poll.share(ofOptionAt: index)
         let isChosen = poll.ownVotes.contains(index)
 
@@ -295,7 +344,7 @@ private struct ReactionChip: View {
             .scaleEffect(isPopping ? 1.22 : 1)
         }
         .buttonStyle(.plain)
-        .sensoryFeedback(.impact(weight: .light), trigger: reaction.me)
+        .alohaSensoryFeedback(.impact(weight: .light), trigger: reaction.me)
         .accessibilityLabel(
             Text(
                 "\(reaction.name), \(reaction.count)",
@@ -412,6 +461,9 @@ public struct StatusMenu: View {
                     Image(systemName: "text.quote")
                 }
             }
+            // The author's quote policy shuts this reader out
+            // (`quote_approval.current_user`): a quote would only ever wait.
+            .disabled(displayed.viewerMayQuote == false)
             NavigationLink(value: Route.quotes(statusID: displayed.id)) {
                 Label {
                     Text("Posts quoting this", comment: "Status menu item")
@@ -478,6 +530,22 @@ public struct StatusMenu: View {
                     comment: "Status menu item")
             } icon: {
                 Image(systemName: AlohaSymbol.mute)
+            }
+        }
+
+        // One post put under a filter by name (`/api/v2/filters/{id}/statuses`),
+        // for the post a keyword cannot describe without catching others.
+        if !isOwn, session?.capabilities.filtersV2 == true {
+            Button {
+                NotificationCenter.default.post(
+                    name: .alohaOpenRoute, object: nil,
+                    userInfo: ["route": Route.filterPost(statusID: displayed.id)])
+            } label: {
+                Label {
+                    Text("Filter this post…", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
             }
         }
 

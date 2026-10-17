@@ -100,6 +100,11 @@ public struct AccountSettings: Codable, Sendable, Hashable {
             [
                 NotificationKind.mention, .reblog, .favourite, .follow, .followRequest,
                 .poll, .status, .update, .moderationWarning, .severedRelationships,
+                // Aloha Social's own kinds, which only arrive when asked for
+                // by name (`types[]`); stored settings keep their own choice.
+                .storyReaction, .storyComment, .tagged, .blueskyRepostLiked,
+                .blueskyRepostReposted, .blueskyVerified, .blueskyUnverified,
+                .blueskyStarterPackJoined,
             ].map(\.rawValue)),
         pollFrequency: PollFrequency = .normal,
         quietHoursStart: Int? = nil,

@@ -51,7 +51,7 @@ public final class SyncEngine {
     public func stop() {
         for task in tickTasks.values { task.cancel() }
         tickTasks.removeAll()
-        for stream in streams.values { stream.close() }
+        for stream in streams.values { Task { await stream.close() } }
         streams.removeAll()
     }
 
@@ -76,6 +76,10 @@ public final class SyncEngine {
         let total = unreadCounts.values.reduce(0, +)
         AppGroup.defaults.set(total, forKey: AppGroup.unreadTotalKey)
         WidgetReloader.reloadAll()
+        #if os(iOS)
+            // The watch face counts the paired account only, not the total.
+            WatchBridge.shared.sendUnread(unreadCounts)
+        #endif
         Task { await notifier.setBadge(total) }
     }
 
@@ -89,6 +93,12 @@ public final class SyncEngine {
         // Nothing goes out for an account whose token was revoked.
         guard !session.needsReauthentication else { return }
 
+        // A second start — every scene activation calls it — would otherwise
+        // leave the first socket open and unreachable beside the new one.
+        if let previous = streams.removeValue(forKey: session.id) {
+            Task { await previous.close() }
+        }
+
         if let streamingURL = session.capabilities.streamingURL,
             let token = (try? environment?.credentials.token(for: session.id)) ?? nil
         {
@@ -97,7 +107,7 @@ public final class SyncEngine {
                 onEvent: { [weak self] event in
                     Task { @MainActor in await self?.handle(event, session: session) }
                 })
-            connection.open()
+            Task { await connection.open() }
             streams[session.id] = connection
         }
 
@@ -115,7 +125,9 @@ public final class SyncEngine {
             // polling a safety net rather than the mechanism — neither is
             // trusted absolutely, because a socket can be silently dead and a
             // push can be dropped (docs/08 §6).
-            if streams[session.id]?.isOpen == true { interval = max(interval, 300) }
+            if let stream = streams[session.id], await stream.isOpen {
+                interval = max(interval, 300)
+            }
             if session.isPushActive { interval = max(interval, 600) }
 
             // Backoff after failures, capped.
@@ -187,7 +199,9 @@ public final class SyncEngine {
 
     private func fetchUnreadCount(_ session: AccountSession) async throws -> Int {
         let endpoint = Endpoint.notifications.unreadCount(
-            grouped: session.capabilities.groupedNotifications)
+            grouped: session.capabilities.groupedNotifications,
+            types: Endpoint.notifications.everyType(
+                onAlohaSocial: session.capabilities.isNextcloudSocial))
         return try await session.client.decode(UnreadCount.self, from: endpoint).count
     }
 
@@ -196,8 +210,13 @@ public final class SyncEngine {
     private func fetchAndAnnounceNotifications(_ session: AccountSession) async {
         do {
             let arrivals = try await NotificationSync.fetch(session: session)
-            let fresh = try await session.supportStore.storeNotifications(
+            let arrived = try await session.supportStore.storeNotifications(
                 arrivals, accountID: session.id)
+            // What quiet hours or a Focus held back on an earlier poll is
+            // offered again with what just arrived, for the last twelve hours.
+            let fresh = try await session.supportStore.pendingAnnouncements(
+                arrived: arrived, accountID: session.id,
+                since: Date().addingTimeInterval(-12 * 3600))
             guard !fresh.isEmpty else { return }
 
             // Web Push, where a server has it, delivers the alert itself —
@@ -263,10 +282,12 @@ public final class SyncEngine {
 /// Reads whichever notification surface the server has.
 enum NotificationSync {
     static func fetch(session: AccountSession) async throws -> [StoredNotification] {
+        let types = Endpoint.notifications.everyType(
+            onAlohaSocial: session.capabilities.isNextcloudSocial)
         if session.capabilities.groupedNotifications {
             let results = try await session.client.decode(
                 GroupedNotificationsResults.self,
-                from: Endpoint.notifications.grouped(limit: 40))
+                from: Endpoint.notifications.grouped(limit: 40, types: types))
 
             return results.notificationGroups.map { group in
                 StoredNotification(
@@ -281,7 +302,8 @@ enum NotificationSync {
         }
 
         let page = try await session.client.decode(
-            LossyArray<MastodonNotification>.self, from: Endpoint.notifications.flat(limit: 40))
+            LossyArray<MastodonNotification>.self,
+            from: Endpoint.notifications.flat(limit: 40, types: types))
 
         return page.elements.map { notification in
             StoredNotification(

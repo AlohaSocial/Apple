@@ -1,0 +1,28 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Continue watching" : {
+      "comment" : "Top Shelf section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiterschauen"
+          }
+        }
+      }
+    },
+    "Following" : {
+      "comment" : "Top Shelf section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folge ich"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

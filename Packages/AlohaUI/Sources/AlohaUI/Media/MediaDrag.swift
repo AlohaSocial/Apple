@@ -52,6 +52,38 @@ struct DroppedImage: Transferable {
     }
 }
 
+/// A picture or a video handed to the composer by a drop or a paste.
+///
+/// A video comes as a file, never as `Data`: a long one would otherwise be
+/// read into memory whole before the trim sheet even opens. It is tried
+/// first, so a movie is never taken for a still frame of itself.
+enum DroppedMedia: Transferable {
+    case image(DroppedImage)
+    case movie(URL)
+
+    /// What the composer accepts, in the order it is asked for.
+    static let acceptedTypes: [UTType] = [.movie, .image]
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .movie) { received in
+            .movie(try copyIn(received.file))
+        }
+        DataRepresentation(importedContentType: .image) { data in
+            .image(DroppedImage(data: data))
+        }
+    }
+
+    /// The file is the sender's and may vanish once the drop is over, so the
+    /// composer works on its own copy.
+    private static func copyIn(_ file: URL) throws -> URL {
+        let ext = file.pathExtension.isEmpty ? "mov" : file.pathExtension
+        let destination = FileManager.default.temporaryDirectory
+            .appending(path: "dropped-\(UUID().uuidString).\(ext)")
+        try FileManager.default.copyItem(at: file, to: destination)
+        return destination
+    }
+}
+
 /// Makes a view drag out the picture at `url`, or nothing when there is
 /// none — a covered sensitive image is not handed out before it is shown.
 struct ImageDragSource: ViewModifier {

@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Close" : {
+      "comment" : "Share extension, no account action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließen"
+          }
+        }
+      }
+    },
     "No account yet" : {
       "comment" : "Share extension, no account",
       "localizations" : {

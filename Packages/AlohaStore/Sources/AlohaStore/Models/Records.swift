@@ -211,8 +211,8 @@ public final class DraftRecord {
     public var queuedForSend: Bool = false
     public var lastSendError: String?
     public var updatedAt: Date = Date.distantPast
-    /// Position in a thread being posted as a chain, so a failure part-way
-    /// through can resume rather than re-post.
+    /// Where this draft drains in the send queue, before the time it was
+    /// saved.
     public var threadIndex: Int = 0
     public var threadGroupID: UUID?
     // Added after the first release, each with a default, so SwiftData's
@@ -225,6 +225,26 @@ public final class DraftRecord {
     public var quotePolicy: String?
     /// The segments after the first, for a thread that has not gone out yet.
     public var threadSegments: [String] = []
+    /// How many posts of this thread are already out. Above zero, `text` is
+    /// the next segment and `inReplyToID` the last one that went out — the
+    /// first post is never sent again (docs/07 §5).
+    public var threadPosition: Int = 0
+    // What else a post carries, so a queued one goes out as written rather
+    // than as the person, open to everyone, without its place or its card.
+    /// Aloha Social's `reply_policy`, by raw value.
+    public var replyPolicy: String?
+    /// The "made with AI" switch; the hashtag is added when it sends.
+    public var marksAsAIGenerated: Bool = false
+    public var placeID: String?
+    public var placeName: String?
+    public var placeCountry: String?
+    /// The team account it posts as, by handle; nil posts as yourself.
+    public var postAs: String?
+    /// The background a short post is drawn on, when it goes out as a card.
+    public var cardBackgroundID: String?
+    public var videoTitle: String?
+    public var videoCategory: String?
+    public var videoLicence: String?
 
     public init(accountID: UUID, text: String = "") {
         self.accountID = accountID

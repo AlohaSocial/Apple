@@ -78,9 +78,6 @@ struct PhotoFilterSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(.top, AlohaMetrics.space4)
-            .presentationBackground {
-                Color.clear.alohaGlassEffect(.regular, in: Rectangle())
-            }
             .navigationTitle(Text("Adjust", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

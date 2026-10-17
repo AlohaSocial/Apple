@@ -53,11 +53,11 @@ struct WiringTests {
         let route = Route.timeline(TimelineKey(mode: .shorts, source: .federated))
         await IntentNavigation.request(route)
 
-        let taken = await IntentNavigation.take()
+        let taken = IntentNavigation.take()
         #expect(taken == route)
 
         // Taking it clears it, so a relaunch does not navigate again.
-        #expect(await IntentNavigation.take() == nil)
+        #expect(IntentNavigation.take() == nil)
     }
 }
 

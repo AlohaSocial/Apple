@@ -13,8 +13,9 @@ floats above the tab bar on Home, Photos and News.
 **iPad, Mac, Vision Pro** — `NavigationSplitView`, three columns.
 
 - *Sidebar*: the modes, then Direct messages and Discover; then Lists, My
-  interests and Subscriptions. The search field is at the top, as it is on the
-  web, and the account drawer is at the bottom.
+  interests and Albums. The search field is at the top, as it is on the web,
+  and the account drawer is at the bottom. (Feed subscriptions were removed:
+  the server dropped them in 0.26.95.)
 - *Account drawer*: My profile, **Activities**, Follow requests, Liked posts,
   Bookmarks, Archived posts, Statistics, Blocking, Settings, and the other
   accounts to switch to.

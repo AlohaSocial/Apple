@@ -133,12 +133,43 @@ public struct ScheduledPostsView: View {
         }
     }
 
+    /// The rows go at once, and any the server refused come back: a scheduled
+    /// post that vanished from this list but still publishes is the one
+    /// outcome that must never happen.
     private func cancel(at offsets: IndexSet) async {
         let targets = offsets.map { scheduled[$0] }
         scheduled.remove(atOffsets: offsets)
+        var refused: [ScheduledStatus] = []
+        var lastError: (any Error)?
         for post in targets {
-            _ = try? await session.client.send(Endpoint.composing.deleteScheduled(post.id))
+            do {
+                _ = try await session.client.send(Endpoint.composing.deleteScheduled(post.id))
+            } catch {
+                refused.append(post)
+                lastError = error
+            }
         }
+        guard let lastError else {
+            errorMessage = nil
+            return
+        }
+        await session.handle(lastError)
+        scheduled = Self.restoring(refused, into: scheduled)
+        errorMessage = StatusActions.failureMessage(
+            lastError,
+            fallback: String(
+                localized: "That post could not be cancelled. It will still go out.",
+                comment: "Scheduled post cancel failure"))
+    }
+
+    /// Puts refused rows back where they belong — the list is in the order
+    /// the posts go out — without doubling any that is still there.
+    static func restoring(
+        _ refused: [ScheduledStatus], into list: [ScheduledStatus]
+    ) -> [ScheduledStatus] {
+        let present = Set(list.map(\.id))
+        return (list + refused.filter { !present.contains($0.id) })
+            .sorted { $0.scheduledAt < $1.scheduledAt }
     }
 }
 

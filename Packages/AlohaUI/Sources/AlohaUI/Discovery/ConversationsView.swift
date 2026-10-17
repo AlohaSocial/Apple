@@ -33,8 +33,18 @@ public struct ConversationsView: View {
     /// change while the first load is still on the wire used to bring the old
     /// list back.
     @State private var loadID = UUID()
+    /// The `Link` cursor for the conversations after the last one shown; the
+    /// server pages by message, so a long history arrives a page at a time.
+    @State private var nextPage: URL?
+    @State private var isLoadingMore = false
+    /// How many conversations have something unread, counted by the server
+    /// (`/api/v1/conversations/unread_count`) rather than from whichever page
+    /// happens to be loaded.
+    @State private var serverUnread: Int?
 
-    enum Filter: Hashable, CaseIterable {
+    private static let pageSize = 40
+
+    nonisolated enum Filter: Hashable, CaseIterable {
         case all, unread
 
         var title: String {
@@ -55,7 +65,9 @@ public struct ConversationsView: View {
         self.onOpen = onOpen
     }
 
-    private var unreadCount: Int { conversations.filter(\.unread).count }
+    private var unreadCount: Int {
+        max(serverUnread ?? 0, conversations.filter(\.unread).count)
+    }
 
     private var visible: [Conversation] {
         let trimmed = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -112,6 +124,16 @@ public struct ConversationsView: View {
                                 }
                             }
                         }
+                        .onAppear {
+                            if conversation.id == conversations.last?.id {
+                                Task { await loadMore() }
+                            }
+                        }
+                    }
+
+                    if isLoadingMore {
+                        ConversationSkeletonRow()
+                            .listRowSeparator(.hidden)
                     }
 
                     if visible.isEmpty && !isLoading && errorMessage == nil { emptyState }
@@ -187,11 +209,15 @@ public struct ConversationsView: View {
 
     private func markAllRead() async {
         let previous = conversations
+        let previousUnread = serverUnread
         for index in conversations.indices { conversations[index].unread = false }
+        serverUnread = 0
         do {
             _ = try await session.client.send(Endpoint.timelines.markAllConversationsRead)
+            publishUnread()
         } catch {
             conversations = previous
+            serverUnread = previousUnread
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription
         }
@@ -355,6 +381,8 @@ public struct ConversationsView: View {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
             conversations[index].unread = false
         }
+        if let count = serverUnread { serverUnread = max(0, count - 1) }
+        publishUnread()
         Task {
             _ = try? await session.client.send(
                 Endpoint.timelines.markConversationRead(conversation.id))
@@ -380,15 +408,23 @@ public struct ConversationsView: View {
         isLoading = true
         defer { if loadID == requestID { isLoading = false } }
         do {
-            let page = try await session.client.decode(
-                LossyArray<Conversation>.self, from: Endpoint.timelines.conversations())
+            async let pageTask = session.client.page(
+                LossyArray<Conversation>.self,
+                from: Endpoint.timelines.conversations(limit: Self.pageSize),
+                limit: Self.pageSize)
+            // Absent on a server older than Mastodon 4.3; the loaded page then
+            // stands in for it.
+            async let unreadTask = try? session.client.decode(
+                UnreadCount.self, from: Endpoint.timelines.conversationsUnreadCount)
+            let page = try await pageTask
+            let unread = await unreadTask
             guard !Task.isCancelled, loadID == requestID else { return }
-            conversations = page.elements
-            // The sidebar's badge on "Direct messages" reads this, so it is
-            // written here — the one place that already holds the answer
-            // (docs/05 §5).
-            AppGroup.defaults.set(
-                conversations.filter(\.unread).count, forKey: AppGroup.unreadConversationsKey)
+            // The server keys a conversation by the root of its thread however
+            // deep a reply goes, so a page is already one row per thread.
+            conversations = page.value.elements
+            nextPage = page.mayHaveMore ? page.link.next : nil
+            serverUnread = unread?.count
+            publishUnread()
             errorMessage = nil
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
@@ -398,6 +434,33 @@ public struct ConversationsView: View {
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "Messages could not be loaded. Pull down to try again.")
         }
+    }
+
+    /// The next page, by the `Link` cursor the server sent, never rebuilt
+    /// from ids: the server pages conversations by message, not by row.
+    private func loadMore() async {
+        guard let next = nextPage, !isLoadingMore, !isLoading else { return }
+        let requestID = loadID
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let page = try await session.client.page(
+                LossyArray<Conversation>.self, following: next, limit: Self.pageSize)
+            guard !Task.isCancelled, loadID == requestID else { return }
+            let known = Set(conversations.map(\.id))
+            conversations += page.value.elements.filter { !known.contains($0.id) }
+            nextPage = page.mayHaveMore ? page.link.next : nil
+        } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
+            await session.handle(error)
+            errorMessage = (error as? APIError)?.errorDescription
+        }
+    }
+
+    /// The sidebar's badge on "Direct messages" reads this, so it is written
+    /// here — the one place that already holds the answer (docs/05 §5).
+    private func publishUnread() {
+        AppGroup.defaults.set(unreadCount, forKey: AppGroup.unreadConversationsKey)
     }
 }
 
@@ -490,6 +553,8 @@ struct NewMessageView: View {
     @State private var results: [Account] = []
     @State private var isSearching = false
     @State private var errorMessage: String?
+    /// The search the Search key started, so typing again supersedes it.
+    @State private var submittedSearch: Task<Void, Never>?
     /// Mutual follows, which is who most messages go to. Offered before a
     /// search rather than after it: making somebody search for a person the
     /// app could have listed is a step that answers its own question.
@@ -577,7 +642,14 @@ struct NewMessageView: View {
                     }
                 }
             }
-            .task(id: query) { await search() }
+            .onSubmit(of: .search) {
+                submittedSearch?.cancel()
+                submittedSearch = Task { await search(resolving: true) }
+            }
+            .task(id: query) {
+                submittedSearch?.cancel()
+                await search()
+            }
             .task { await loadMutuals() }
         }
     }
@@ -642,7 +714,9 @@ struct NewMessageView: View {
         .listRowSeparator(.hidden)
     }
 
-    private func search() async {
+    /// Typing searches who this server already knows; the Search key asks
+    /// their servers too (`resolve`), as the server wants it asked.
+    private func search(resolving: Bool = false) async {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else {
             isSearching = false
@@ -657,12 +731,13 @@ struct NewMessageView: View {
         // spinner down; a newer one owns it from here.
         defer { if query == trimmed { isSearching = false } }
         // Wait for typing to settle before every keystroke becomes a request.
-        try? await Task.sleep(for: .milliseconds(250))
+        if !resolving { try? await Task.sleep(for: .milliseconds(250)) }
         guard !Task.isCancelled else { return }
         do {
             let found = try await session.client.decode(
                 SearchResults.self,
-                from: Endpoint.search.search(trimmed, type: "accounts", resolve: true, limit: 20))
+                from: Endpoint.search.search(
+                    trimmed, type: "accounts", resolve: resolving, limit: 20))
             guard !Task.isCancelled else { return }
             results = (found.accounts).filter { $0.id != session.snapshot.serverAccountID }
             errorMessage = nil

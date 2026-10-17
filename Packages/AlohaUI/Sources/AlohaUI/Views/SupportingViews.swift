@@ -212,7 +212,7 @@ public struct WelcomeView: View {
                             Label {
                                 Text("Back", comment: "Onboarding action")
                             } icon: {
-                                Image(systemName: "chevron.left")
+                                Image(systemName: "chevron.backward")
                             }
                         }
                         .buttonStyle(.borderless)
@@ -245,7 +245,7 @@ public struct WelcomeView: View {
                     Label {
                         Text("Back", comment: "Onboarding action")
                     } icon: {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.backward")
                     }
                 }
                 .buttonStyle(.borderless)
@@ -478,7 +478,7 @@ public enum SidebarItem: Hashable, Sendable {
     /// The destinations that live in the sidebar rather than being pushed.
     public static let sidebarRoutes: [Route] = [
         .notifications, .conversations, .explore, .search(query: nil), .lists,
-        .interests, .subscriptions, .collections(accountID: nil),
+        .interests, .collections(accountID: nil),
         .followRequests, .favourites, .bookmarks, .archived, .statistics, .safety, .settings,
     ]
 }
@@ -495,8 +495,11 @@ public struct SidebarView: View {
     @State private var searchText = ""
     /// How many conversations are unread, for the badge on "Direct messages".
     /// The messages list writes it to the app group so this and the widgets
-    /// read the same number (docs/05 §5).
-    @State private var unreadConversations = 0
+    /// read the same number (docs/05 §5). Observed, not read once on appear:
+    /// a sidebar is on screen for hours, and a count read at launch was the
+    /// count the badge kept.
+    @AppStorage(AppGroup.unreadConversationsKey, store: AppGroup.defaults)
+    private var unreadConversations = 0
 
     private let onAddAccount: () -> Void
     private let onSwitchAccount: (UUID) -> Void
@@ -562,9 +565,6 @@ public struct SidebarView: View {
                     row(
                         "My interests", symbol: "sparkles", route: .interests,
                         comment: "Sidebar item")
-                    row(
-                        "Subscriptions", symbol: "dot.radiowaves.up.forward",
-                        route: .subscriptions, comment: "Sidebar item")
                 }
                 if session.capabilities.collections {
                     row(
@@ -573,18 +573,15 @@ public struct SidebarView: View {
                 }
             } header: {
                 // "Explore" was wrong over these: Discover is already in the
-                // top group, and this section is lists, interests,
-                // subscriptions and albums — the things a person gathers, not
-                // where they stumble on new ones.
+                // top group, and this section is lists, interests and albums —
+                // the things a person gathers, not where they stumble on new
+                // ones.
                 Text("Library", comment: "Sidebar section")
             }
 
         }
 
         .listStyle(.sidebar)
-        .onAppear {
-            unreadConversations = AppGroup.defaults.integer(forKey: AppGroup.unreadConversationsKey)
-        }
         .searchable(
             text: $searchText, placement: .sidebar,
             prompt: Text("Search", comment: "Sidebar search field")

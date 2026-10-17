@@ -1,0 +1,138 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld unread" : {
+      "comment" : "Watch inline complication, unread count",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ungelesen"
+          }
+        }
+      }
+    },
+    "Aloha Social" : {
+      "comment" : "Watch inline complication, nothing counted yet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aloha Social"
+          }
+        }
+      }
+    },
+    "Mentions" : {
+      "comment" : "Watch complication name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erwähnungen"
+          }
+        }
+      }
+    },
+    "Not counted yet" : {
+      "comment" : "Watch complication, no count yet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht gezählt"
+          }
+        }
+      }
+    },
+    "Nothing said lately" : {
+      "comment" : "Watch mentions complication, empty",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In letzter Zeit nichts"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "comment" : "Watch rectangular complication title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benachrichtigungen"
+          }
+        }
+      }
+    },
+    "Notifications not counted yet" : {
+      "comment" : "Watch complication accessibility label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benachrichtigungen noch nicht gezählt"
+          }
+        }
+      }
+    },
+    "Notifications you haven't read yet." : {
+      "comment" : "Watch complication description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benachrichtigungen, die du noch nicht gelesen hast."
+          }
+        }
+      }
+    },
+    "Open Aloha Social on your iPhone" : {
+      "comment" : "Watch complication, not paired",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Aloha Social auf deinem iPhone"
+          }
+        }
+      }
+    },
+    "The newest thing said to you." : {
+      "comment" : "Watch complication description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Neueste, was dir jemand gesagt hat."
+          }
+        }
+      }
+    },
+    "Unread" : {
+      "comment" : "Watch complication name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungelesen"
+          }
+        }
+      }
+    },
+    "^[%lld unread notification](inflect: true)" : {
+      "comment" : "Watch complication accessibility label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "^[%lld ungelesene Benachrichtigung](inflect: true)"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.1"
+}

@@ -100,9 +100,9 @@ public struct NextcloudLoginFlow: Sendable {
                 forHTTPHeaderField: "Content-Type")
             request.setValue(AlohaUserAgent.value, forHTTPHeaderField: "User-Agent")
 
-            var components = URLComponents()
-            components.queryItems = [URLQueryItem(name: "token", value: start.pollToken)]
-            request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+            request.httpBody = FormEncoding.body([
+                URLQueryItem(name: "token", value: start.pollToken)
+            ])
 
             if let (data, response) = try? await transport.send(request),
                 response.statusCode == 200

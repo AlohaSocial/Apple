@@ -13,7 +13,6 @@ import TipKit
 /// tap away for browsing; the toggle is remembered.
 public struct PhotosModeView: View {
     @Environment(\.alohaPalette) private var palette
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.mediaTransition) private var mediaTransition
 
     private let session: AccountSession
@@ -50,7 +49,7 @@ public struct PhotosModeView: View {
             }
         }
         .background(palette.background)
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .safeAreaBar(edge: .top, spacing: 0) {
             if let message = model.errorMessage {
                 AlohaErrorStrip(message: message) { Task { await model.refresh() } }
             }
@@ -94,6 +93,7 @@ public struct PhotosModeView: View {
             Image(systemName: symbolName(for: layout))
         }
         .accessibilityLabel(Text("Photo layout", comment: "Photos layout menu"))
+        .help(Text("Photo layout", comment: "Photos layout menu"))
         .accessibilityValue(Text(title(for: layout)))
     }
 
@@ -161,24 +161,20 @@ public struct PhotosModeView: View {
 
     static let gutter: Double = 1.5
 
-    /// How many columns the grid takes. A photo grid is the one surface that
-    /// wants more width, not less: three square columns across a Mac window
-    /// leaves two thirds of it empty, so a regular-width shell gets six and a
-    /// phone its three.
-    private var columnCount: Int {
-        horizontalSizeClass == .regular ? 6 : 3
-    }
+    /// As many square columns as the width holds. A photo grid is the one
+    /// surface that wants more width, not less, and a fixed count was wrong
+    /// at both ends: six columns on an iPad in a narrow Stage Manager window,
+    /// six on a Mac window as wide as the screen. A tile no smaller than
+    /// 110pt gives a phone its three and lets everything wider fill.
+    static let columns = [
+        GridItem(.adaptive(minimum: 110, maximum: 240), spacing: gutter)
+    ]
 
     private var grid: some View {
         ScrollView {
             if session.capabilities.stories { storyCarousel }
 
-            LazyVGrid(
-                columns: Array(
-                    repeating: GridItem(.flexible(), spacing: Self.gutter),
-                    count: columnCount),
-                spacing: Self.gutter
-            ) {
+            LazyVGrid(columns: Self.columns, spacing: Self.gutter) {
                 ForEach(statuses) { status in
                     cell(status)
                         .aspectRatio(1, contentMode: .fit)
@@ -378,6 +374,9 @@ public struct PhotoPostCard: View {
     @State private var isRevealed = false
     @State private var isCaptionExpanded = false
     @State private var isHearting = false
+    /// A pointer over the card — a trackpad or mouse on iPad — which has no
+    /// swipe to page with and needs the arrows the Mac always shows.
+    @State private var isPointerOver = false
 
     public init(
         status: Status, policy: SensitiveMediaPolicy, localHost: String?,
@@ -410,37 +409,52 @@ public struct PhotoPostCard: View {
             details
         }
         .padding(.bottom, AlohaMetrics.space4)
-        #if !os(iOS)
-            .overlay {
-                if attachments.count > 1 {
-                    HStack {
-                        Button {
-                            page = max(0, page - 1)
-                        } label: {
-                            Image(systemName: "chevron.left")
-                            .frame(width: 44, height: 44)
-                        }
-                        .disabled(page == 0)
-                        .accessibilityLabel(
-                            Text("Previous photo", comment: "Photo carousel action"))
-                        Spacer()
-                        Button {
-                            page = min(attachments.count - 1, page + 1)
-                        } label: {
-                            Image(systemName: "chevron.right")
-                            .frame(width: 44, height: 44)
-                        }
-                        .disabled(page >= attachments.count - 1)
-                        .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
-                    }
-                    .alohaGlassButtonStyle()
-                    .padding(AlohaMetrics.space2)
-                }
-            }
+        .overlay {
+            if attachments.count > 1 && showsCarouselArrows { carouselArrows }
+        }
+        #if os(iOS)
+            .onHover { isPointerOver = $0 }
         #endif
         .overlay(alignment: .bottom) { Divider().foregroundStyle(palette.separator) }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("photo.\(displayed.id)")
+    }
+
+    /// Touch pages with a swipe; a pointer has no swipe, so the arrows are
+    /// there whenever one is — always on the Mac and Vision, and on iPad
+    /// while the pointer is over the card.
+    private var showsCarouselArrows: Bool {
+        #if os(iOS)
+            isPointerOver
+        #else
+            true
+        #endif
+    }
+
+    private var carouselArrows: some View {
+        HStack {
+            Button {
+                page = max(0, page - 1)
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(page == 0)
+            .accessibilityLabel(Text("Previous photo", comment: "Photo carousel action"))
+            .help(Text("Previous photo", comment: "Photo carousel action"))
+            Spacer()
+            Button {
+                page = min(attachments.count - 1, page + 1)
+            } label: {
+                Image(systemName: "chevron.forward")
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(page >= attachments.count - 1)
+            .accessibilityLabel(Text("Next photo", comment: "Photo carousel action"))
+            .help(Text("Next photo", comment: "Photo carousel action"))
+        }
+        .alohaGlassButtonStyle()
+        .padding(AlohaMetrics.space2)
     }
 
     // MARK: Header
@@ -494,6 +508,7 @@ public struct PhotoPostCard: View {
             }
             .menuStyle(.borderlessButton)
             .accessibilityLabel(Text("More actions", comment: "Status action"))
+            .help(Text("More actions", comment: "Status action"))
         }
         .padding(.leading, AlohaMetrics.space3)
         .padding(.trailing, AlohaMetrics.space1)
@@ -562,7 +577,7 @@ public struct PhotoPostCard: View {
                 onAction(.openMedia(status: displayed, index: page))
             }
         }
-        .sensoryFeedback(.success, trigger: isHearting) { _, new in new }
+        .alohaSensoryFeedback(.success, trigger: isHearting) { _, new in new }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(
@@ -668,6 +683,7 @@ public struct PhotoPostCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Share", comment: "Status action"))
+            .help(Text("Share", comment: "Status action"))
 
             Spacer(minLength: 0)
 
@@ -709,7 +725,7 @@ public struct PhotoPostCard: View {
             if showsCounts, displayed.favouritesCount > 0 {
                 Text(
                     "^[\(displayed.favouritesCount) favourite](inflect: true)",
-                    comment: "Photo post like count"
+                    comment: "Photo post favourite count"
                 )
                 .font(.subheadline.weight(.semibold))
             }

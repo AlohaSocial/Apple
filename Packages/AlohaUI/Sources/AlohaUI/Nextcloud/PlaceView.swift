@@ -84,6 +84,7 @@ public struct PlaceView: View {
                             onAction: onAction
                         )
                         .padding(.horizontal, AlohaMetrics.space4)
+                        .statusRowInteractions(status, session: session, onAction: onAction)
                         .onAppear {
                             if status.id == statuses.last?.id { Task { await loadMore() } }
                         }

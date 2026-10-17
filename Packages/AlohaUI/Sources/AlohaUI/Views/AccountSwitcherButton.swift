@@ -33,9 +33,6 @@ struct AccountMenuButton: View {
                     item("Your lists", symbol: AlohaSymbol.list, route: .lists)
                     if session.capabilities.isNextcloudSocial {
                         item("My interests", symbol: "sparkles", route: .interests)
-                        item(
-                            "Subscriptions", symbol: "dot.radiowaves.up.forward",
-                            route: .subscriptions)
                     }
                     if session.capabilities.collections {
                         item(
@@ -54,7 +51,7 @@ struct AccountMenuButton: View {
                 if !usesCompactMenu {
                     item(
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests)
-                    item("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
+                    item("Favourites", symbol: AlohaSymbol.favourite, route: .favourites)
                     item("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
                     if session.capabilities.isNextcloudSocial {
                         item("Archived posts", symbol: "archivebox", route: .archived)
@@ -65,7 +62,19 @@ struct AccountMenuButton: View {
                         item("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
                     }
                 }
-                item("Settings", symbol: AlohaSymbol.settings, route: .settings)
+                #if os(macOS)
+                    // The Mac has a Settings window (⌘,), and settings that
+                    // open inside the main window are a phone's habit.
+                    SettingsLink {
+                        Label {
+                            Text("Settings…", comment: "Account menu item")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.settings)
+                        }
+                    }
+                #else
+                    item("Settings", symbol: AlohaSymbol.settings, route: .settings)
+                #endif
             } header: {
                 Text("Account", comment: "Account menu section")
             }
@@ -123,6 +132,7 @@ struct AccountMenuButton: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(showsName ? .visible : .hidden)
         .accessibilityLabel(accessibilityLabel)
+        .help(Text("Account", comment: "Account menu section"))
     }
 
     private var accessibilityLabel: Text {

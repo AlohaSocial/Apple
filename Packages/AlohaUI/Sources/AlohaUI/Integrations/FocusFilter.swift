@@ -12,7 +12,9 @@ import Foundation
 /// Stored, because the Focus is set by the system while the app may not be
 /// running, and read wherever it applies — the shell when it comes to the
 /// front, the notifier before it announces anything.
-public struct FocusFilterState: Codable, Sendable, Hashable {
+/// Not main-actor bound: the intent stores it from wherever the system runs
+/// `perform()`, and the notifier and the notification service read it.
+public nonisolated struct FocusFilterState: Codable, Sendable, Hashable {
     /// The local account the Focus keeps the app on, or nil for any.
     public var accountID: UUID?
     /// The feed the app opens to under this Focus, or nil to leave it be.
@@ -140,7 +142,7 @@ public struct SignedInAccountQuery: EntityQuery {
                 SignedInAccountEntity(id: $0.id, handle: $0.snapshot.qualifiedHandle)
             }
         }
-        let accounts = AccountStore(modelContainer: StoreContainer.make())
+        let accounts = AccountStore(modelContainer: StoreContainer.reader())
         return try await accounts.allAccounts().map {
             SignedInAccountEntity(id: $0.id, handle: $0.qualifiedHandle)
         }
