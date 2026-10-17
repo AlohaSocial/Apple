@@ -1,22 +1,25 @@
 // SPDX-License-Identifier: MIT
 
 import Foundation
+import Synchronization
 import Testing
 
 @testable import AlohaUI
 
-/// A source of numbers a test can know the answer to. `@unchecked Sendable`
-/// because the closure it hands out is called synchronously from one task.
-private final class Dice: @unchecked Sendable {
-    private var values: [Double]
-    private var index = 0
+/// A source of numbers a test can know the answer to: the values in order,
+/// then zeros.
+private nonisolated final class Dice: Sendable {
+    private let state: Mutex<(values: [Double], index: Int)>
 
-    init(_ values: [Double]) { self.values = values }
+    init(_ values: [Double]) { self.state = Mutex((values, 0)) }
 
     var source: ComposerCommands.RandomSource {
         { [self] in
-            defer { index += 1 }
-            return values.indices.contains(index) ? values[index] : 0
+            state.withLock { state in
+                defer { state.index += 1 }
+                return state.values.indices.contains(state.index)
+                    ? state.values[state.index] : 0
+            }
         }
     }
 }

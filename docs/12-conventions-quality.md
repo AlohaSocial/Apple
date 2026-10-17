@@ -2,12 +2,31 @@
 
 ## 1. Swift conventions
 
-- Swift 6 language mode, strict concurrency **complete**, warnings as errors in
-  CI for **every** target and package, not a chosen four: the isolation warnings
-  that matter turned up in the view layer and the extensions, which the narrower
-  rule would have kept letting through.
-- Default actor isolation `MainActor` (`SWIFT_DEFAULT_ACTOR_ISOLATION`), so view
-  code needs no annotation and anything off the main actor says so explicitly.
+- Swift 6 language mode, strict concurrency **complete**, warnings as errors for
+  **every** target and package, not a chosen four: the isolation warnings that
+  matter turned up in the view layer and the extensions, which the narrower rule
+  would have kept letting through. The app targets inherit
+  `SWIFT_TREAT_WARNINGS_AS_ERRORS` from the project; the packages declare
+  `.treatAllWarnings(as: .error)`, which SwiftPM applies when the package is
+  built on its own (`swift test`). Inside an Xcode build a package is a
+  dependency and its setting does not apply, so the CI build jobs have to pass
+  `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` to `xcodebuild` as well — that is what
+  catches a warning in a platform-only path of a package, such as visionOS.
+- Default actor isolation `MainActor` where the code is view code: every app
+  target (`SWIFT_DEFAULT_ACTOR_ISOLATION`) and the two UI packages, AlohaUI and
+  AlohaDesign (`.defaultIsolation(MainActor.self)`). View code then needs no
+  annotation, and anything that must run anywhere — design tokens, palettes,
+  pure value helpers — says `nonisolated`.
+  - The data, networking and store packages (AlohaModels, AlohaHTML,
+    AlohaNetwork, AlohaStore, AlohaMedia, AlohaIntelligence) stay nonisolated by
+    default. Their shared state already lives in actors — `APIClient`,
+    `ImageLoader`, `RichTextCache`, the SwiftData model actors — and a
+    main-actor default would pull decoding and parsing onto the main thread.
+    The few types in them that SwiftUI reads, such as `UploadProgress`, are
+    `@MainActor` explicitly.
+  - The notification service and Top Shelf extensions also stay nonisolated:
+    the system calls their entry points on its own threads, where a main-actor
+    default would trap.
 - `@Observable`, not `ObservableObject`. No Combine.
 - `async`/`await` throughout. No completion handlers, no `DispatchQueue`.
 - Value types by default; `final class` only for SwiftData models, actors, and

@@ -4,7 +4,9 @@
 import PackageDescription
 
 let settings: [SwiftSetting] = [
-    .swiftLanguageMode(.v6)
+    .swiftLanguageMode(.v6),
+    // docs/12 §1: a warning fails the build, in every package.
+    .treatAllWarnings(as: .error),
 ]
 
 let package = Package(

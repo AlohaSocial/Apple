@@ -2,7 +2,6 @@
 
 import AVFoundation
 import AVKit
-import Combine
 import OSLog
 import SwiftUI
 
@@ -36,10 +35,24 @@ struct PlayerSurface: View {
         // AVPlayer's mute control is independent from the system audio
         // session. Activate audible playback only when sound is requested;
         // silent previews must not interrupt somebody else's music.
-        .onReceive(
-            player.publisher(for: \.isMuted).removeDuplicates().receive(on: DispatchQueue.main)
-        ) { muted in
-            if !muted { PlaybackAudioSession.activate() }
+        .task(id: ObjectIdentifier(player)) {
+            var wasMuted: Bool?
+            for await muted in Self.mutedStates(of: player) where muted != wasMuted {
+                wasMuted = muted
+                if !muted { PlaybackAudioSession.activate() }
+            }
+        }
+    }
+
+    /// The player's `isMuted`, now and on every change, by key-value
+    /// observation — what Combine's KVO publisher did, without Combine
+    /// (docs/12 §1). The observation ends with the stream.
+    private static func mutedStates(of player: AVPlayer) -> AsyncStream<Bool> {
+        AsyncStream { continuation in
+            let observation = player.observe(\.isMuted, options: [.initial, .new]) { player, _ in
+                continuation.yield(player.isMuted)
+            }
+            continuation.onTermination = { _ in observation.invalidate() }
         }
     }
 }
@@ -188,7 +201,9 @@ enum PlaybackReadiness {
     ) async -> PlaybackOutcome {
         await withTaskGroup(of: PlaybackOutcome.self) { group in
             group.addTask {
-                for await status in PlaybackReadiness.statuses(item) {
+                // The stream is made on the main actor, where the item's
+                // status is read; only its values cross into this task.
+                for await status in await PlaybackReadiness.statuses(item) {
                     switch status {
                     case .readyToPlay: return .ready
                     case .failed: return .failed

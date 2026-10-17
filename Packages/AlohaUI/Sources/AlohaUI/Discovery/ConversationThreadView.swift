@@ -543,7 +543,7 @@ public struct ConversationThreadView: View {
 }
 
 /// A chat bubble: three round corners, and the one nearest the sender sharp.
-struct BubbleShape: Shape {
+nonisolated struct BubbleShape: Shape {
     let own: Bool
 
     func path(in rect: CGRect) -> Path {

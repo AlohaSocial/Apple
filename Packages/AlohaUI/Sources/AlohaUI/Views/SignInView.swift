@@ -225,11 +225,13 @@ public struct SignInView: View {
             },
         ].compactMap { $0 }
         if !stats.isEmpty {
-            // One Text from many: `Text + Text` localises as a unit, and the
+            // One Text from many, so the line wraps as a unit, and the
             // separators join without a trailing one.
-            stats.dropFirst().reduce(stats[0]) { $0 + Text(verbatim: " · ") + $1 }
-                .font(.caption)
-                .foregroundStyle(palette.tertiaryLabel)
+            Text.concatenating(
+                stats.dropFirst().reduce([stats[0]]) { $0 + [Text(verbatim: " · "), $1] }
+            )
+            .font(.caption)
+            .foregroundStyle(palette.tertiaryLabel)
         }
     }
 

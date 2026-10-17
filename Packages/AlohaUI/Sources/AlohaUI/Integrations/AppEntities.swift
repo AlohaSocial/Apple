@@ -164,8 +164,9 @@ public struct OpenProfileIntent: AppIntent {
     }
 }
 
-/// Status HTML, as one line of plain text for a Shortcuts row.
-enum IntentText {
+/// Status HTML, as one line of plain text for a Shortcuts row. Pure, and
+/// used from entity initialisers the system runs off the main actor.
+nonisolated enum IntentText {
     static func plain(_ html: String) -> String {
         html.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)

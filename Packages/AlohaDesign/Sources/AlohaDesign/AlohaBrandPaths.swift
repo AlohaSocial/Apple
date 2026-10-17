@@ -3,7 +3,7 @@
 import SwiftUI
 
 /// Geometry from tools/logo/default.svg, without the icon background.
-enum AlohaBrandPaths {
+nonisolated enum AlohaBrandPaths {
     static func flower(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: 0.30925990, y: 0.56197522))

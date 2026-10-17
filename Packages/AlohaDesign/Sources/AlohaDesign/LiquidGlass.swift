@@ -18,7 +18,7 @@ import SwiftUI
 ///
 /// It reads like `Glass` at the call site — `.regular.tint(…).interactive()`
 /// — so moving a view onto it is a rename, not a rewrite.
-public struct AlohaGlassStyle: Sendable {
+public nonisolated struct AlohaGlassStyle: Sendable {
     fileprivate var tintColor: Color?
     fileprivate var isInteractive = false
 

@@ -51,7 +51,7 @@ public final class SyncEngine {
     public func stop() {
         for task in tickTasks.values { task.cancel() }
         tickTasks.removeAll()
-        for stream in streams.values { stream.close() }
+        for stream in streams.values { Task { await stream.close() } }
         streams.removeAll()
     }
 
@@ -93,6 +93,12 @@ public final class SyncEngine {
         // Nothing goes out for an account whose token was revoked.
         guard !session.needsReauthentication else { return }
 
+        // A second start — every scene activation calls it — would otherwise
+        // leave the first socket open and unreachable beside the new one.
+        if let previous = streams.removeValue(forKey: session.id) {
+            Task { await previous.close() }
+        }
+
         if let streamingURL = session.capabilities.streamingURL,
             let token = (try? environment?.credentials.token(for: session.id)) ?? nil
         {
@@ -101,7 +107,7 @@ public final class SyncEngine {
                 onEvent: { [weak self] event in
                     Task { @MainActor in await self?.handle(event, session: session) }
                 })
-            connection.open()
+            Task { await connection.open() }
             streams[session.id] = connection
         }
 
@@ -119,7 +125,9 @@ public final class SyncEngine {
             // polling a safety net rather than the mechanism — neither is
             // trusted absolutely, because a socket can be silently dead and a
             // push can be dropped (docs/08 §6).
-            if streams[session.id]?.isOpen == true { interval = max(interval, 300) }
+            if let stream = streams[session.id], await stream.isOpen {
+                interval = max(interval, 300)
+            }
             if session.isPushActive { interval = max(interval, 600) }
 
             // Backoff after failures, capped.

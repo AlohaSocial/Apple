@@ -10,7 +10,7 @@ import SwiftUI
 ///
 /// All of them are relative to the person's Dynamic Type setting: the sizes
 /// below are the *default* metrics, not fixed points.
-public enum AlohaType {
+public nonisolated enum AlohaType {
     /// The one thing a screen is about: a profile's name, a focused post.
     public static var display: Font { .system(.title2, design: .default, weight: .bold) }
 
