@@ -6,13 +6,23 @@
 #
 # A pull request that fails any job does not merge. There are no exceptions for
 # "just a small change" (docs/12 §6).
+#
+# Skips are not passes. A job that cannot do its work on this image (an Xcode
+# that cannot open the objectVersion 110 project, no iPhone simulator, a host
+# without FoundationModels.framework) fails, unless the repository variable
+# ALLOW_SKIP is "true" — then it passes with a yellow warning that names what
+# did not run. Set it while the hosted images lag Xcode 27; clear it the day
+# they catch up, so a green tick means the work was done.
 
 name: CI
 
 on:
   push:
-    branches: [main, "fix/**", "feature/**"]
+    branches: [main, "fix/**", "feature/**", "ideas/**", "r2/**"]
   pull_request:
+
+env:
+  ALLOW_SKIP: ${{ vars.ALLOW_SKIP == 'true' }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -64,13 +74,18 @@ jobs:
             else
               # The one failure that says nothing about this repository: the
               # suite built fine, but the host OS has no
-              # FoundationModels.framework to load at run time. Report it and
-              # move on rather than pointing a red cross at the code.
+              # FoundationModels.framework to load at run time. Allowed as a
+              # skip only while ALLOW_SKIP is set; otherwise the suite did
+              # not run, and that is a failure.
               if grep -q "Library not loaded: .*FoundationModels.framework" "$RUNNER_TEMP/package-tests.log"; then
-                echo "::notice title=$scheme tests skipped::The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded. Run the suite on a macos-26 host to exercise it."
-                echo "::endgroup::"
-                rm -f "$RUNNER_TEMP/package-tests.log"
-                continue
+                message="The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded."
+                if [ "$ALLOW_SKIP" = "true" ]; then
+                  echo "::warning title=$scheme tests skipped::$message"
+                  echo "::endgroup::"
+                  rm -f "$RUNNER_TEMP/package-tests.log"
+                  continue
+                fi
+                echo "::error title=$scheme tests not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
               fi
               failed=1
             fi
@@ -117,8 +132,13 @@ jobs:
                 print(pick)
           ')
           if [ -z "$device" ]; then
-            echo "::notice title=Package tests skipped::No available iPhone simulator on this runner image, so no package suite can be run under an iOS trait environment. The macOS job above exercises the same suites; simulator-only behaviour needs an image with an iPhone simulator."
-            exit 0
+            message="No available iPhone simulator on this runner image, so no package suite can be run under an iOS trait environment."
+            if [ "$ALLOW_SKIP" = "true" ]; then
+              echo "::warning title=Package tests skipped::$message"
+              exit 0
+            fi
+            echo "::error title=Package tests not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
+            exit 1
           fi
           echo "Testing on $device"
           failed=0
@@ -136,10 +156,14 @@ jobs:
               # not, the suite compiled and linked and the bundle could not be
               # loaded — reported rather than pointed at the code.
               if grep -q "Library not loaded: .*FoundationModels.framework" "$RUNNER_TEMP/sim-package-tests.log"; then
-                echo "::notice title=$scheme tests skipped::The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded. Run the suite on a macos-26 host to exercise it."
-                rm -f "$RUNNER_TEMP/sim-package-tests.log"
-                echo "::endgroup::"
-                continue
+                message="The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded."
+                if [ "$ALLOW_SKIP" = "true" ]; then
+                  echo "::warning title=$scheme tests skipped::$message"
+                  rm -f "$RUNNER_TEMP/sim-package-tests.log"
+                  echo "::endgroup::"
+                  continue
+                fi
+                echo "::error title=$scheme tests not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
               fi
               failed=1
             fi
@@ -148,13 +172,11 @@ jobs:
           done
           exit $failed
 
-  # Every app target, every platform. Signing is off: CI is about the code
-  # compiling, not about a certificate nobody should be committing.
-  #
-  # All four platforms, with signing off: CI is about the code compiling,
-  # not about a certificate nobody should be committing. The runner images
-  # now carry Xcode 27, so this job is real signal — a failure is a failure
-  # about the branch.
+  # Every app target, every platform, in the Release configuration that
+  # ships, with warnings as errors (docs/12 §1, §6). Signing is off: CI is
+  # about the code compiling, not about a certificate nobody should be
+  # committing. Release also proves the debug-only pieces (MockAPIServer,
+  # MockMode) are not needed by anything that ships.
   build:
     name: Build (${{ matrix.name }})
     runs-on: macos-26
@@ -175,6 +197,9 @@ jobs:
           - name: watchOS
             scheme: AlohaSocialWatch
             destination: generic/platform=watchOS
+          - name: visionOS
+            scheme: AlohaSocial
+            destination: generic/platform=visionOS
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode
@@ -198,8 +223,13 @@ jobs:
               # which takes the whole script down.
               xcodebuild -version >"$RUNNER_TEMP/xcode-version" 2>&1 || true
               version=$(tr -s ' ' <"$RUNNER_TEMP/xcode-version" | cut -d' ' -f2 | head -1)
-              echo "::notice title=Build skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format. The project needs Xcode 27; when an image ships it, remove this skip and the build runs for real."
-              exit 0
+              message="AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format."
+              if [ "$ALLOW_SKIP" = "true" ]; then
+                echo "::warning title=Build skipped::$message"
+                exit 0
+              fi
+              echo "::error title=Build not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
+              exit 1
             fi
             cat "$RUNNER_TEMP/xcode-list" >&2
             exit 1
@@ -211,10 +241,13 @@ jobs:
           xcodebuild build \
             -project AlohaSocial.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
+            -configuration Release \
             -destination "${{ matrix.destination }}" \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            GCC_TREAT_WARNINGS_AS_ERRORS=YES \
             >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/build-${{ matrix.name }}.log"
@@ -245,7 +278,14 @@ jobs:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
           set -u
-          skip () { echo "::notice title=UI tours skipped::$1"; exit 0; }
+          skip () {
+            if [ "$ALLOW_SKIP" = "true" ]; then
+              echo "::warning title=UI tours skipped::$1"
+              exit 0
+            fi
+            echo "::error title=UI tours not run::$1 Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
+            exit 1
+          }
 
           # 1. An Xcode that cannot open the project cannot run its tests.
           if ! xcodebuild -list -quiet -project AlohaSocial.xcodeproj \
@@ -318,3 +358,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Every user-facing string has a translator comment
         run: python3 tools/check-localisation.py
+
+  # The other half of docs/12's accessibility gate: every colour role resolves
+  # in light, dark and both high-contrast variants, meets WCAG AA, and keeps
+  # boost / favourite / bookmark apart under the three colour-vision
+  # deficiencies (docs/12 §5). Its own job, so a contrast regression is named
+  # as one rather than buried among the package suites.
+  design-tokens:
+    name: Design tokens (contrast)
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Colour roles meet the contrast floor
+        run: cd Packages/AlohaDesign && swift test

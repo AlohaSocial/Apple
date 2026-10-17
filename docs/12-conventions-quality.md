@@ -164,9 +164,17 @@ GitHub Actions, on every push and pull request.
 | `test` | Every package with a `Tests` directory, on macOS. Discovered by walking `Packages/*/`, so a new package cannot be quietly left untested — a hand-written list had already lost `AlohaDesign` and `AlohaIntelligence`. |
 | `test-simulator` | The same suites on the iOS simulator, where the `#if os(iOS)` paths are the ones that run. |
 | `ui` | The screen tours and the accessibility audit on the iOS simulator, with the screenshots kept as an artefact. |
-| `accessibility` | The localisation gate and the design-token suite. |
+| `localisation` + `design-tokens` | The accessibility gate, as two jobs so each names its own failure: every user-facing string has a translator comment, and the design-token suite (§5) passes. |
 | `lint` | `swift-format --strict` with `.swift-format` at the repository root. |
 | `licence` | Asserts the SPDX header on every source file and that no SPM dependency has been added. |
+
+**Skips are not passes.** A job that cannot do its work on the runner image —
+an Xcode that cannot open the objectVersion 110 project, no iPhone simulator,
+a host without `FoundationModels.framework` — fails, unless the repository
+variable `ALLOW_SKIP` is `true`, in which case it passes with a warning naming
+what did not run. The variable exists for the weeks the hosted images lag the
+Xcode the project needs; it is cleared again once they catch up, so that a
+green tick means the work was done rather than that it was skipped politely.
 
 There is **no app unit-test target**: the app target is a shell around the
 packages, and every piece of logic lives in one of them. "The app's unit tests"

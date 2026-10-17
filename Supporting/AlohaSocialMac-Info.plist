@@ -40,5 +40,10 @@
 		<string>social.aloha.app.viewingProfile</string>
 		<string>social.aloha.app.composing</string>
 	</array>
+	<!-- Export compliance: only Apple's own TLS (URLSession, Security.framework)
+	     is used, which is exempt. The iOS app says the same through
+	     INFOPLIST_KEY_ITSAppUsesNonExemptEncryption. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

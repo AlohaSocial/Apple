@@ -1,12 +1,30 @@
 # Supporting files
 
+## One Mac app
+
+The Mac is `AlohaSocialMac` (`social.aloha.app.mac`) and nothing else. The
+`AlohaSocial` target builds for iPhone, iPad and Vision only: it used to list
+`macosx` too, which made it a second, native Mac app with its own bundle,
+store and Keychain and none of the Mac app's menu bar, window or notification
+wiring. "Designed for iPad" on Apple silicon Macs is off for the same reason
+(`SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO`): the store should offer the
+Mac app, not the iPad one, to Mac users.
+
+The UI tests follow: on macOS they drive `AlohaSocialMac`
+(`TEST_TARGET_NAME[sdk=macosx*]`), elsewhere `AlohaSocial`.
+
+Because the Mac app has its own bundle id, it is a separate App Store record.
+Universal purchase (one record, one purchase across iPhone and Mac) would need
+the Mac app to share `social.aloha.app`, and its widgets and share extension
+to move under that id — a decision for App Store Connect, not for this file.
+
 ## App group and Keychain sharing
 
 Every process that reads what the app wrote shares two things:
 
 | Target | Bundle id | Entitlements file | App group | Keychain group | Sandbox |
 |---|---|---|---|---|---|
-| AlohaSocial (iPhone, iPad, Vision, Mac) | `social.aloha.app` | `AlohaSocial.entitlements` | ✓ | ✓ | ✓ (Mac) |
+| AlohaSocial (iPhone, iPad, Vision) | `social.aloha.app` | `AlohaSocial.entitlements` | ✓ | ✓ | — |
 | AlohaWidgets (iOS) | `social.aloha.app.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | — |
 | AlohaWidgets (Mac) | `social.aloha.app.mac.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | ✓ + network client |
 | AlohaShareExtension (iOS) | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |

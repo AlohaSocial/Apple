@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- The privacy manifest of the watch app. Every process that ships carries its
+     own: Apple reads each bundle's file, not only the app's. -->
+<dict>
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+    <!-- Nothing is collected in Apple's sense: no data reaches the developer
+         or a third party. There is no analytics SDK, no crash reporter that
+         phones home and no telemetry (docs/11 §3). What leaves the device
+         (posts, uploads, and the For you reading signals: dwell, skip, open)
+         goes only to the server the person signed in to, which they chose
+         and which is not the developer's. -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <!-- CA92.1: settings only this process reads. 1C8F.1: the app group
+             group.social.aloha.app, which the app, its extensions and
+             widgets share (AppGroup.defaults). -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array><string>CA92.1</string><string>1C8F.1</string></array>
+        </dict>
+    </array>
+</dict>
+</plist>
