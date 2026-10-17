@@ -8,6 +8,8 @@ let settings: [SwiftSetting] = [
     // docs/12 §1: view code is main-actor code, and anything that is not
     // says so explicitly.
     .defaultIsolation(MainActor.self),
+    // A warning fails the build, in every package.
+    .treatAllWarnings(as: .error),
 ]
 
 let package = Package(

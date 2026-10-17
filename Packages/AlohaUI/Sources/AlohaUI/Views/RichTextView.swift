@@ -366,6 +366,11 @@ public struct EmojiLabel: View {
 
     private static func baseSize(for style: Font.TextStyle) -> CGFloat {
         switch style {
+        #if os(visionOS)
+            // visionOS's two styles above large title.
+            case .extraLargeTitle: 48
+            case .extraLargeTitle2: 40
+        #endif
         case .largeTitle: 34
         case .title: 28
         case .title2: 22
