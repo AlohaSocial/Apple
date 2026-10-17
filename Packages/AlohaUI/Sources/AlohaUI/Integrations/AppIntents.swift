@@ -37,9 +37,8 @@ public struct PostStatusIntent: AppIntent {
         // A post is public speech under somebody's name: Siri or a Shortcut
         // says what will go out, and where, before it does.
         try await requestConfirmation(
-            result: .result(
-                dialog: "Post this as \(context.handle)? \(Self.preview(of: text))"),
-            confirmationActionName: .post)
+            actionName: .post,
+            dialog: "Post this as \(context.handle)? \(Self.preview(of: text))")
 
         let draft = StatusPost(
             text: text,
