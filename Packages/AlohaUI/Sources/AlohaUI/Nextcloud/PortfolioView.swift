@@ -163,7 +163,7 @@ public struct PortfolioView: View {
                                 get: { settings.collectionID ?? "" },
                                 set: { settings.collectionID = $0.isEmpty ? nil : $0 })
                         ) {
-                            Text("Choose an album", comment: "Portfolio collection placeholder")
+                            Text("Choose an album", comment: "Portfolio album placeholder")
                                 .tag("")
                             ForEach(collections) { collection in
                                 Text(collection.title).tag(collection.id)
@@ -172,7 +172,7 @@ public struct PortfolioView: View {
                             Text("Album", comment: "Portfolio field")
                         }
                         if collections.isEmpty {
-                            Text("You have no albums yet.", comment: "Portfolio no collections")
+                            Text("You have no albums yet.", comment: "Portfolio no albums")
                                 .font(.footnote)
                                 .foregroundStyle(palette.secondaryLabel)
                         }

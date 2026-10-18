@@ -97,7 +97,7 @@ with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`; both extensions ship.
 Every phase in [13-implementation-plan.md](13-implementation-plan.md), including
 the pieces that were partial in the first pass: alt-text generation, on-device
 translation, video trim, scheduled-post management, Web Push, the upload Live
-Activity, the collections UI, the Nextcloud attach picker, String Catalogs and
+Activity, the albums UI, the Nextcloud attach picker, String Catalogs and
 the CI gates.
 
 ### Deliberately different from the specification
