@@ -793,12 +793,10 @@ public struct ProfileView: View {
                 Task { await toggleFollow() }
             } label: {
                 Label {
-                    if relationship?.following == true {
-                        Text("Following", comment: "Profile action")
-                    } else if relationship?.requested == true {
-                        Text("Requested", comment: "Profile action")
-                    } else {
-                        Text("Follow", comment: "Profile action")
+                    switch followState {
+                    case .following: Text("Following", comment: "Profile action")
+                    case .requested: Text("Requested", comment: "Profile action")
+                    case .notFollowing: Text("Follow", comment: "Profile action")
                     }
                 } icon: {
                     // The glyph says the state as well as the word, and moves
@@ -810,7 +808,7 @@ public struct ProfileView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .animation(reduceMotion ? nil : .snappy, value: followSymbol)
-            .sensoryFeedback(.success, trigger: relationship?.following == true) { _, new in new }
+            .sensoryFeedback(.success, trigger: followState == .following) { _, new in new }
 
             Menu {
                 OpenInNewWindowButton(.profile(accountID: account.id))
@@ -988,19 +986,29 @@ public struct ProfileView: View {
         }
     }
 
+    private var followState: FollowState {
+        relationship?.followState(locked: account?.locked ?? false) ?? .notFollowing
+    }
+
     private var followSymbol: String {
-        if relationship?.following == true { return "checkmark" }
-        if relationship?.requested == true { return "clock" }
-        return "person.badge.plus"
+        switch followState {
+        case .following: "checkmark"
+        case .requested: "clock"
+        case .notFollowing: "person.badge.plus"
+        }
     }
 
     private func toggleFollow() async {
-        let isFollowing = relationship?.following == true || relationship?.requested == true
+        let isFollowing = relationship?.isFollowingOrRequested == true
         let endpoint =
             isFollowing
             ? Endpoint.accounts.simpleAction(accountID, "unfollow")
             : Endpoint.accounts.follow(accountID)
         await update(with: endpoint)
+        guard !isFollowing, let relationship else { return }
+        await session.settleFollow(relationship, locked: account?.locked ?? false) {
+            self.relationship = $0
+        }
     }
 
     private func toggleShowBoosts() async {

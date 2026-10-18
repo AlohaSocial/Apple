@@ -384,15 +384,15 @@ public struct VideoWatchView: View {
     }
 
     private func followButton(_ account: Account) -> some View {
-        let isFollowing = relationship?.following == true || relationship?.requested == true
+        let isFollowing = relationship?.isFollowingOrRequested == true
         return Button {
             Task { await toggleFollow(account) }
         } label: {
             Group {
-                if isFollowing {
-                    Text("Following", comment: "Watch page follow state")
-                } else {
-                    Text("Follow", comment: "Watch page follow action")
+                switch relationship?.followState(locked: account.locked) ?? .notFollowing {
+                case .following: Text("Following", comment: "Watch page follow state")
+                case .requested: Text("Requested", comment: "Watch page follow state")
+                case .notFollowing: Text("Follow", comment: "Watch page follow action")
                 }
             }
             .font(.subheadline.weight(.semibold))
@@ -666,13 +666,14 @@ public struct VideoWatchView: View {
 
     private func toggleFollow(_ account: Account) async {
         guard let current = relationship else { return }
-        let wasFollowing = current.following || current.requested
+        let wasFollowing = current.isFollowingOrRequested
         var optimistic = current
-        optimistic.following = !wasFollowing
-        optimistic.requested = false
+        optimistic.following = !wasFollowing && !account.locked
+        optimistic.requested = !wasFollowing && account.locked
         relationship = optimistic
+        let updated: Relationship
         do {
-            relationship = try await session.client.decode(
+            updated = try await session.client.decode(
                 Relationship.self,
                 from: wasFollowing
                     ? Endpoint.accounts.simpleAction(account.id, "unfollow")
@@ -680,6 +681,9 @@ public struct VideoWatchView: View {
         } catch {
             relationship = current
             await session.handle(error)
+            return
         }
+        relationship = updated
+        await session.settleFollow(updated, locked: account.locked) { relationship = $0 }
     }
 }
