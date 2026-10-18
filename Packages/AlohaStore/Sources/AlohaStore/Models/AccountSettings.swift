@@ -195,6 +195,6 @@ public struct AccountSettings: Codable, Sendable, Hashable {
 
     /// Which modes to show, filtered by what this server can actually source.
     public func visibleModes(capabilities: ServerCapabilities) -> [FeedMode] {
-        enabledModes.filter { capabilities.supports($0) }
+        enabledModes.filter { $0.isOffered && capabilities.supports($0) }
     }
 }

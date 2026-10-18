@@ -133,7 +133,7 @@ public struct ModeSelectionView: View {
     public var body: some View {
         List {
             Section {
-                ForEach(FeedMode.allCases.filter { capabilities.supports($0) }) { mode in
+                ForEach(FeedMode.offered.filter { capabilities.supports($0) }) { mode in
                     Button {
                         if selected.contains(mode) {
                             selected.remove(mode)

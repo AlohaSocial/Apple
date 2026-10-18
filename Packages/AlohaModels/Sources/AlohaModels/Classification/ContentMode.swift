@@ -20,6 +20,14 @@ public enum FeedMode: String, Codable, Sendable, Hashable, CaseIterable, Identif
 
     public static let defaultEnabled: [FeedMode] = [.home, .photos, .video, .shorts]
 
+    /// Whether the app offers this feed at all yet. News and Audio are kept in
+    /// the model for later but have no screen worth showing, so no picker lists
+    /// them and a stored choice of either does not get a tab.
+    public var isOffered: Bool { !isOptional }
+
+    /// The feeds a person can choose, in display order.
+    public static let offered: [FeedMode] = allCases.filter(\.isOffered)
+
     /// Each mode needs a silhouette of its own at 24pt. Photos, Video and
     /// Shorts were all a rounded rectangle with a mark in it, so the tab bar
     /// read as three of the same thing.

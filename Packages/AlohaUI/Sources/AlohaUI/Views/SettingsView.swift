@@ -1000,7 +1000,7 @@ extension SettingsView {
     /// the same problem the account row solved one level down.
     private func feedsSection(_ session: AccountSession) -> some View {
         Section {
-            ForEach(FeedMode.allCases.filter { session.capabilities.supports($0) }) { mode in
+            ForEach(FeedMode.offered.filter { session.capabilities.supports($0) }) { mode in
                 Toggle(isOn: feedBinding(mode, session: session)) {
                     Label {
                         Text(feedTitle(mode))
@@ -1038,7 +1038,7 @@ extension SettingsView {
         }
         guard !modes.isEmpty else { return }
         // The sidebar and the tab bar both read this order.
-        let ordered = FeedMode.allCases.filter { modes.contains($0) }
+        let ordered = FeedMode.offered.filter { modes.contains($0) }
         await session.updateSettings { $0.enabledModes = ordered }
     }
 

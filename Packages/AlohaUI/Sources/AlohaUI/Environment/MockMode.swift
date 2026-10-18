@@ -56,7 +56,7 @@ import Foundation
                 UserDefaults.standard.removeObject(forKey: "aloha.chosenModes")
             } else {
                 UserDefaults.standard.set(
-                    FeedMode.allCases.map(\.rawValue), forKey: "aloha.chosenModes")
+                    FeedMode.offered.map(\.rawValue), forKey: "aloha.chosenModes")
             }
             guard !startsSignedOut else { return }
             TermsGate.recordAcceptance()
