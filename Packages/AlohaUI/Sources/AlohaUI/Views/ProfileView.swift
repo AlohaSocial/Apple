@@ -904,146 +904,159 @@ public struct ProfileView: View {
 
     // MARK: - Relationship controls
 
+    // The follow button and the menu are separate properties: as one
+    // expression the HStack took the type-checker past its time limit.
     private func relationshipControls(_ account: Account) -> some View {
         HStack(spacing: AlohaMetrics.space2) {
-            Button {
-                Task { await toggleFollow() }
-            } label: {
-                Label {
-                    switch followState {
-                    case .following: Text("Following", comment: "Profile action")
-                    case .requested: Text("Requested", comment: "Profile action")
-                    case .notFollowing: Text("Follow", comment: "Profile action")
-                    }
-                } icon: {
-                    // The glyph says the state as well as the word, and moves
-                    // from one to the next as the symbol's own transition.
-                    Image(systemName: followSymbol)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .animation(reduceMotion ? nil : .snappy, value: followSymbol)
-            // From "not following" to "following" only: loading the profile
-            // of somebody you already follow goes from nil to following, and is
-            // not a follow.
-            .alohaSensoryFeedback(.success, trigger: relationship.map { _ in followState }) {
-                old, new in
-                old == .notFollowing && new == .following
-            }
+            followButton
+            moreMenu(account)
+        }
+    }
 
-            Menu {
-                OpenInNewWindowButton(.profile(accountID: account.id))
-                if relationship?.following == true {
-                    // Nextcloud Social enforces this as a predicate of the
-                    // timeline query rather than by filtering a page.
-                    Button {
-                        Task { await toggleShowBoosts() }
-                    } label: {
-                        Text(
-                            relationship?.showingReblogs == true
-                                ? String(localized: "Hide boosts", comment: "Profile action")
-                                : String(localized: "Show boosts", comment: "Profile action"))
-                    }
-                    Button {
-                        Task { await toggleNotify() }
-                    } label: {
-                        Text(
-                            relationship?.notifying == true
-                                ? String(localized: "Stop notifying me", comment: "Profile action")
-                                : String(
-                                    localized: "Notify me about posts", comment: "Profile action"))
-                    }
-                    Button {
-                        Task { await toggleEndorse() }
-                    } label: {
-                        Text(
-                            relationship?.endorsed == true
-                                ? String(
-                                    localized: "Don't feature on my profile",
-                                    comment: "Profile action")
-                                : String(
-                                    localized: "Feature on my profile", comment: "Profile action"))
-                    }
-                    Divider()
-                }
+    private var followTitle: Text {
+        switch followState {
+        case .following: Text("Following", comment: "Profile action")
+        case .requested: Text("Requested", comment: "Profile action")
+        case .notFollowing: Text("Follow", comment: "Profile action")
+        }
+    }
 
-                NavigationLink(
-                    value: Route.conversation(
-                        Conversation(id: "new-\(account.id)", accounts: [account]))
-                ) {
-                    Label {
-                        Text("Message", comment: "Profile action")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.envelope)
-                    }
+    private var followButton: some View {
+        Button {
+            Task { await toggleFollow() }
+        } label: {
+            Label {
+                followTitle
+            } icon: {
+                // The glyph says the state as well as the word, and moves
+                // from one to the next as the symbol's own transition.
+                Image(systemName: followSymbol)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.small)
+        .animation(reduceMotion ? nil : .snappy, value: followSymbol)
+        // From "not following" to "following" only: loading the profile
+        // of somebody you already follow goes from nil to following, and is
+        // not a follow.
+        .alohaSensoryFeedback(.success, trigger: relationship.map { _ in followState }) {
+            (old: FollowState?, new: FollowState?) in
+            old == .notFollowing && new == .following
+        }
+    }
+
+    private func moreMenu(_ account: Account) -> some View {
+        Menu {
+            OpenInNewWindowButton(.profile(accountID: account.id))
+            if relationship?.following == true {
+                // Nextcloud Social enforces this as a predicate of the
+                // timeline query rather than by filtering a page.
+                Button {
+                    Task { await toggleShowBoosts() }
+                } label: {
+                    Text(
+                        relationship?.showingReblogs == true
+                            ? String(localized: "Hide boosts", comment: "Profile action")
+                            : String(localized: "Show boosts", comment: "Profile action"))
                 }
                 Button {
-                    onAction(.addToList(account))
+                    Task { await toggleNotify() }
                 } label: {
-                    Label {
-                        Text("Add to list", comment: "Profile action")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.list)
-                    }
+                    Text(
+                        relationship?.notifying == true
+                            ? String(localized: "Stop notifying me", comment: "Profile action")
+                            : String(
+                                localized: "Notify me about posts", comment: "Profile action"))
                 }
                 Button {
-                    startEditingNote()
+                    Task { await toggleEndorse() }
                 } label: {
-                    Label {
-                        (relationship?.note ?? "").isEmpty
-                            ? Text("Add a note", comment: "Profile action")
-                            : Text("Edit note", comment: "Profile action")
-                    } icon: {
-                        Image(systemName: "note.text")
-                    }
-                }
-                if relationship?.followedBy == true {
-                    Button {
-                        isConfirmingRemoveFollower = true
-                    } label: {
-                        Label {
-                            Text("Remove from followers", comment: "Profile action")
-                        } icon: {
-                            Image(systemName: "person.badge.minus")
-                        }
-                    }
+                    Text(
+                        relationship?.endorsed == true
+                            ? String(
+                                localized: "Don't feature on my profile",
+                                comment: "Profile action")
+                            : String(
+                                localized: "Feature on my profile", comment: "Profile action"))
                 }
                 Divider()
+            }
 
-                Button(role: .destructive) {
-                    onAction(.mute(account))
-                } label: {
-                    Text("Mute", comment: "Profile action")
+            NavigationLink(
+                value: Route.conversation(
+                    Conversation(id: "new-\(account.id)", accounts: [account]))
+            ) {
+                Label {
+                    Text("Message", comment: "Profile action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.envelope)
                 }
-                Button(role: .destructive) {
-                    onAction(.block(account))
-                } label: {
-                    Text("Block", comment: "Profile action")
+            }
+            Button {
+                onAction(.addToList(account))
+            } label: {
+                Label {
+                    Text("Add to list", comment: "Profile action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.list)
                 }
-                if let host = account.host, host != session.snapshot.instanceHost,
-                    relationship?.domainBlocking != true
-                {
-                    Button(role: .destructive) {
-                        isConfirmingDomainBlock = true
-                    } label: {
-                        Text("Block \(host)", comment: "Profile action")
+            }
+            Button {
+                startEditingNote()
+            } label: {
+                Label {
+                    (relationship?.note ?? "").isEmpty
+                        ? Text("Add a note", comment: "Profile action")
+                        : Text("Edit note", comment: "Profile action")
+                } icon: {
+                    Image(systemName: "note.text")
+                }
+            }
+            if relationship?.followedBy == true {
+                Button {
+                    isConfirmingRemoveFollower = true
+                } label: {
+                    Label {
+                        Text("Remove from followers", comment: "Profile action")
+                    } icon: {
+                        Image(systemName: "person.badge.minus")
                     }
                 }
-                Button(role: .destructive) {
-                    onAction(.report(Status(id: "", account: account)))
-                } label: {
-                    Text("Report", comment: "Profile action")
-                }
-            } label: {
-                Image(systemName: AlohaSymbol.more)
-                    .frame(width: 44, height: 32)
-                    .contentShape(Rectangle())
             }
-            .menuStyle(.borderlessButton)
-            .accessibilityLabel(Text("More actions", comment: "Profile action"))
+            Divider()
+
+            Button(role: .destructive) {
+                onAction(.mute(account))
+            } label: {
+                Text("Mute", comment: "Profile action")
+            }
+            Button(role: .destructive) {
+                onAction(.block(account))
+            } label: {
+                Text("Block", comment: "Profile action")
+            }
+            if let host = account.host, host != session.snapshot.instanceHost,
+                relationship?.domainBlocking != true
+            {
+                Button(role: .destructive) {
+                    isConfirmingDomainBlock = true
+                } label: {
+                    Text("Block \(host)", comment: "Profile action")
+                }
+            }
+            Button(role: .destructive) {
+                onAction(.report(Status(id: "", account: account)))
+            } label: {
+                Text("Report", comment: "Profile action")
+            }
+        } label: {
+            Image(systemName: AlohaSymbol.more)
+                .frame(width: 44, height: 32)
+                .contentShape(Rectangle())
         }
+        .menuStyle(.borderlessButton)
+        .accessibilityLabel(Text("More actions", comment: "Profile action"))
     }
 
     // MARK: - Loading
