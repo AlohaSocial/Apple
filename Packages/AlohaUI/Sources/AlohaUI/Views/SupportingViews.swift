@@ -478,7 +478,7 @@ public enum SidebarItem: Hashable, Sendable {
     /// The destinations that live in the sidebar rather than being pushed.
     public static let sidebarRoutes: [Route] = [
         .notifications, .conversations, .explore, .search(query: nil), .lists,
-        .interests, .collections(accountID: nil),
+        .collections(accountID: nil),
         .followRequests, .favourites, .bookmarks, .archived, .statistics, .safety, .settings,
     ]
 }
@@ -529,6 +529,22 @@ public struct SidebarView: View {
                 }
 
                 Label {
+                    Text("Activities", comment: "Sidebar item")
+                } icon: {
+                    Image(
+                        systemName: selectedRoute == .notifications
+                            ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications)
+                }
+                .badge(unreadActivities > 0 ? Text(verbatim: String(unreadActivities)) : nil)
+                .tag(SidebarItem.route(.notifications))
+                .accessibilityLabel(
+                    unreadActivities > 0
+                        ? Text(
+                            "Activities, \(unreadActivities) unread",
+                            comment: "Sidebar item with badge")
+                        : Text("Activities", comment: "Sidebar item"))
+
+                Label {
                     Text("Direct messages", comment: "Sidebar item")
                 } icon: {
                     Image(
@@ -561,11 +577,6 @@ public struct SidebarView: View {
                     symbol: selectedRoute == .lists
                         ? "list.bullet.rectangle.fill" : "list.bullet.rectangle", route: .lists,
                     comment: "Sidebar item")
-                if session.capabilities.isNextcloudSocial {
-                    row(
-                        "My interests", symbol: "sparkles", route: .interests,
-                        comment: "Sidebar item")
-                }
                 if session.capabilities.collections {
                     row(
                         "Albums", symbol: "rectangle.stack", route: .collections(accountID: nil),
@@ -573,7 +584,7 @@ public struct SidebarView: View {
                 }
             } header: {
                 // "Explore" was wrong over these: Discover is already in the
-                // top group, and this section is lists, interests and albums —
+                // top group, and this section is lists and albums —
                 // the things a person gathers, not where they stumble on new
                 // ones.
                 Text("Library", comment: "Sidebar section")
@@ -625,6 +636,10 @@ public struct SidebarView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         selection = .route(.search(query: query))
+    }
+
+    private var unreadActivities: Int {
+        environment.sync.unreadCounts[session.id] ?? 0
     }
 
     private var myProfile: Route {

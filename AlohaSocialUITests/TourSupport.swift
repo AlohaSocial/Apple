@@ -166,6 +166,27 @@ extension XCUICoordinate {
 
         func openSettingsFromBrowseMenu() -> Bool { openFromAccountMenu("Settings") }
 
+        /// Direct messages are a toolbar button on the feeds, beside Search;
+        /// its label carries the unread count ("Direct messages, 1 unread").
+        @discardableResult
+        func openDirectMessages() -> Bool {
+            let button = buttons.matching(
+                NSPredicate(format: "label BEGINSWITH 'Direct messages'")
+            ).firstMatch
+            guard button.waitForExistence(timeout: 8) else { return false }
+            button.tap()
+            return true
+        }
+
+        /// Activities is a tab after the feeds.
+        @discardableResult
+        func openActivities() -> Bool {
+            let tab = tabBars.buttons["Activities"]
+            guard tab.waitForExistence(timeout: 8) else { return false }
+            tab.tap()
+            return true
+        }
+
         /// Search is a button of its own in the top-right, not a menu item.
         @discardableResult
         func openSearch() -> Bool {

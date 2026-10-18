@@ -293,3 +293,31 @@ struct SocialMockTests {
         }
     }
 }
+
+@Suite("For you")
+struct ForYouEndpointTests {
+    private func value(_ name: String, in endpoint: Endpoint) -> String? {
+        endpoint.query.first { $0.name == name }?.value
+    }
+
+    @Test("For you is the interests timeline, narrowed by the server's own parameters")
+    func narrowing() {
+        let home = Endpoint.timelines.timeline(.interests)
+        #expect(home.path == "api/v1/timelines/interests")
+        #expect(value("media", in: home) == nil)
+
+        let photos = Endpoint.timelines.timeline(
+            .interests, filters: TimelineFilters(onlyMedia: true))
+        #expect(value("media", in: photos) == "photos")
+        #expect(value("only_media", in: photos) == nil)
+
+        let videos = Endpoint.timelines.timeline(
+            .interests, filters: TimelineFilters(onlyVideo: true))
+        #expect(value("media", in: videos) == "videos")
+
+        let shorts = Endpoint.timelines.timeline(
+            .interests, filters: TimelineFilters(onlyVideo: true, onlyShort: true))
+        #expect(value("only_short", in: shorts) == "true")
+        #expect(value("media", in: shorts) == nil)
+    }
+}

@@ -3,25 +3,18 @@
 import AlohaModels
 import Foundation
 
-/// A tab on the phone's tab bar: a feed, the messages, or the activities.
+/// A tab on the phone's tab bar: a feed, or the activities.
 ///
-/// Its own type rather than tagging the extra tabs with a `FeedMode`, which
-/// made them collide.
+/// Its own type rather than tagging the extra tab with a `FeedMode`, which
+/// made them collide. Direct messages are a toolbar button on the feeds,
+/// not a tab, so every feed and Activities fit without "More".
 enum ShellTab: Hashable, Codable, Sendable {
     case mode(FeedMode)
-    case messages
     case notifications
 
     /// Apple's ceiling for a phone's tab bar. A sixth tab becomes "More",
     /// which hides two tabs behind one to show one more.
     static let phoneTabLimit = 5
-
-    /// Whether Activities earns a tab next to these feeds and Messages, or
-    /// stays in the account menu (with a badge on it) because a tab would
-    /// push the bar into "More".
-    static func showsNotificationsTab(feedCount: Int) -> Bool {
-        feedCount + 2 <= phoneTabLimit
-    }
 
     /// The iPad tab customisation's name for a sidebar place. Stored by the
     /// system across launches, so these strings are a format: renaming one

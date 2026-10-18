@@ -35,7 +35,9 @@ public enum Route: Codable, Hashable, Sendable {
     case video(statusID: String)
 
     // Nextcloud Social surfaces the web app has and this app did not.
-    /// "My interests": the hashtag feed the server learns, and its settings.
+    /// For you's settings: the hashtags the server has learned you read, and
+    /// the switches that govern the learning. The feed itself is the
+    /// `.interests` scope of My Feed.
     case interests
     /// "On this day" memories and the weekly recap, with their settings.
     case memories
@@ -183,6 +185,8 @@ public enum RouteResolver {
             switch components.dropFirst().first {
             case "local": source = .local
             case "federated": source = .federated
+            // The web app's path for For you (`/timeline/interests`).
+            case "interests": source = .interests
             default: source = .home
             }
             return .timeline(TimelineKey(mode: mode, source: source))

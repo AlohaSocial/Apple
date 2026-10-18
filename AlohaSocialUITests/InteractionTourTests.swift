@@ -129,7 +129,7 @@ import XCTest
             launch()
             let global = app.buttons["Global"].firstMatch
             XCTAssertTrue(global.waitForExistence(timeout: 5), "No source toggle")
-            XCTAssertTrue(app.buttons["My feed"].exists, "Toggle is missing My feed")
+            XCTAssertTrue(app.buttons["My Feed"].exists, "Toggle is missing My Feed")
             XCTAssertTrue(app.buttons["Local"].exists, "Toggle is missing Local")
 
             global.tap()
@@ -144,7 +144,7 @@ import XCTest
                 "Tapping Local did not load the local timeline")
             shoot("37-local")
 
-            app.buttons["My feed"].firstMatch.tap()
+            app.buttons["My Feed"].firstMatch.tap()
             sleep(2)
             shoot("38-back-to-my-feed")
             XCTAssertTrue(
@@ -217,9 +217,7 @@ import XCTest
 
         func testConversationsShowChatRows() {
             launch()
-            let tab = app.tabBars.buttons["Messages"]
-            XCTAssertTrue(tab.waitForExistence(timeout: 8), "Messages tab missing")
-            tab.tap()
+            XCTAssertTrue(app.openDirectMessages(), "Direct messages button missing")
             XCTAssertTrue(
                 app.labelled("Bob").firstMatch.waitForExistence(timeout: 10),
                 "No conversation row rendered")
@@ -255,7 +253,7 @@ import XCTest
             launch(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"])
             sleep(1)
             shoot("41-large-text-home")
-            app.tabBars.buttons["Messages"].tap()
+            app.openDirectMessages()
             sleep(1)
             shoot("42-large-text-messages")
         }
@@ -271,7 +269,7 @@ import XCTest
             app.tabBars.buttons["Photos"].tap()
             sleep(2)
             shoot("48-dark-photos")
-            app.tabBars.buttons["Messages"].tap()
+            app.openDirectMessages()
             sleep(1)
             shoot("49-dark-messages")
             if app.openSettingsFromBrowseMenu() {
@@ -284,7 +282,7 @@ import XCTest
         /// lands in it as your own bubble.
         func testConversationThreadSendsMessage() {
             launch()
-            app.tabBars.buttons["Messages"].tap()
+            app.openDirectMessages()
             let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Unread. Bob'"))
                 .firstMatch
             XCTAssertTrue(row.waitForExistence(timeout: 10), "No conversation row")

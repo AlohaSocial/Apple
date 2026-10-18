@@ -7,6 +7,11 @@ public enum TimelineSource: Codable, Sendable, Hashable {
     case home
     case local
     case federated
+    /// For you: Nextcloud Social's ranking of what the reader is likely to
+    /// read, from the hashtags it has learned they read
+    /// (`/api/v1/timelines/interests`). A fourth scope beside the three
+    /// above, as the server's own timeline switcher offers it.
+    case interests
     case direct
     case favourites
     case bookmarks
@@ -31,7 +36,8 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .local, .federated: "public"
         case .direct: "direct"
         case .favourites: "favourites"
-        case .bookmarks, .list, .hashtag, .account, .profile, .trending, .bluesky: nil
+        case .interests, .bookmarks, .list, .hashtag, .account, .profile, .trending, .bluesky:
+            nil
         }
     }
 
@@ -56,6 +62,7 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .home: "home"
         case .local: "public:local"
         case .federated: "public:federated"
+        case .interests: "interests"
         case .direct: "direct"
         case .favourites: "favourites"
         case .bookmarks: "bookmarks"

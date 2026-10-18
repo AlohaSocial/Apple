@@ -2,28 +2,42 @@
 
 ## 1. Structure
 
-Six modes, one shared chrome.
+The feeds — My Feed, Photos, Videos, Shorts — and one shared chrome, laid out
+the way Nextcloud Social's web sidebar is: the feeds, then **Activities**, then
+**Direct messages**, then **Discover**. (News and Audio stay in the model but
+are not offered until they have a screen worth showing.)
 
-**iPhone** — `TabView` with a bottom bar. Default tabs: **Home**, **Photos**,
-**Video**, **Shorts**, **Notifications**, **Profile**. Search and Settings are
-reached from Home's toolbar. The mode set and its order are user-configurable;
-News and Audio are off by default and enabled in Settings. A compose button
-floats above the tab bar on Home, Photos and News.
+Every feed but Shorts carries the timeline scopes in its title menu, the web
+app's switcher: **My Feed · For you · Local · Global**. For you is Nextcloud
+Social's ranking (`/api/v1/timelines/interests`, narrowed with `media` and
+`only_short` on Photos, Videos and Shorts) and is offered only there. Shorts
+has the same four scopes as a switch along its top.
 
-**iPad, Mac, Vision Pro** — `NavigationSplitView`, three columns.
+**iPhone** — `TabView` with a bottom bar: one tab per feed, then Activities.
+Every feed and Activities fit in five tabs. Direct messages are a toolbar
+button on the feeds, beside Search, with the unread count on it; compose is the
+toolbar's `+`. The account menu (the avatar) holds Discover, Lists, Albums,
+My profile and the account places.
 
-- *Sidebar*: the modes, then Direct messages and Discover; then Lists, My
-  interests and Albums. The search field is at the top, as it is on the web,
-  and the account drawer is at the bottom. (Feed subscriptions were removed:
+**iPad** — a sidebar-adaptable `TabView`, **Mac and Vision Pro** — a
+`NavigationSplitView`.
+
+**iPhone Duo** is an iPhone, in the same iOS target. Folded it has the iPhone's
+tab bar; unfolded, its inner screen is regular in both size classes and it
+gets the iPad's shell. The shell is chosen by size class rather than by device
+(`ShellLayout`), and folding or unfolding carries the selected place and its
+pushed screens across — a place with no tab of its own is pushed onto the feed.
+A large iPhone on its side is regular wide but compact tall, and keeps the tab
+bar.
+
+- *Sidebar*: the feeds, Activities, Direct messages and Discover; then the
+  Library — Lists and Albums. The search field is at the top, as it is on the
+  web, and the account menu is at the bottom. (Feed subscriptions were removed:
   the server dropped them in 0.26.95.)
-- *Account drawer*: My profile, **Activities**, Follow requests, Liked posts,
-  Bookmarks, Archived posts, Statistics, Blocking, Settings, and the other
-  accounts to switch to.
-
-  Activities lives here rather than in the sidebar above: the sidebar is feeds —
-  things to read — and Activities is about you, like everything else in the
-  drawer. It is the one row that answers "what happened to me", so it sits
-  directly under the profile it happened to.
+- *Account menu*: My profile, Follow requests, Liked posts, Bookmarks, Archived
+  posts, Statistics, Blocking, Settings, and the other accounts to switch to.
+  For you's own settings — what the server has learned, and the learning
+  switches — are in Settings → Home feed, as the web app's Settings → Reading.
 - *Content*: the selected timeline.
 - *Detail*: the selected status's thread, or a profile, or a media viewer.
 
@@ -218,8 +232,8 @@ exist undocumented.
   query, not by filtering a page), Add to list, Mention, Direct message,
   Block, Mute (with duration and "also mute notifications"), Report, Block
   domain, Add note.
-- Tabs: Posts · Posts & Replies · Media · Videos · Collections (where the
-  server has them) · Stories (where present and visible).
+- Tabs, in the web app's order: Posts · Photos · Videos · Tagged (Nextcloud
+  Social) · Albums (where the server has collections).
 - Own profile additionally: Edit profile (`PATCH /accounts/update_credentials`
   — name, avatar, header, note, fields, bot, locked, discoverable, and
   `source[privacy]`). **A Nextcloud with an external identity backend (LDAP,
@@ -234,8 +248,8 @@ exist undocumented.
   with a stacked avatar row. Tapping the count opens
   `/api/v2/notifications/{group_key}/accounts`.
 - Mentions never group. Polls, edits and moderation decisions never group.
-- Filter chips across the top: All · Mentions · Boosts · Favourites · Follows ·
-  Polls · Updates. Backed by `types`/`exclude_types`.
+- Filter chips across the top, in the web app's order: All · Mentions ·
+  Favourites · Boosts · Follows · Polls · Edits.
 - Unread count from `/api/v2/notifications/unread_count` (groups, not rows) or
   the v1 route, both capped at 99 by the server.
 - The read marker is `POST /api/v1/markers` with `notifications[last_read_id]`.

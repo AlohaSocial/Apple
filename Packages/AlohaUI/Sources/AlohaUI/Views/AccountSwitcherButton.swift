@@ -7,7 +7,6 @@ import SwiftUI
 /// Native navigation menu and checked account picker, shared across platforms.
 struct AccountMenuButton: View {
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.alohaPalette) private var palette
 
     let session: AccountSession
     let onOpen: (Route) -> Void
@@ -15,25 +14,15 @@ struct AccountMenuButton: View {
     var showsBrowseDestinations = true
     var showsName = false
     var usesCompactMenu = false
-    /// False where Activities has a tab of its own, so the menu does not
-    /// offer the same place twice.
-    var showsActivities = true
-    /// Unread activities, drawn on the avatar where Activities has no tab to
-    /// carry the count — otherwise the only sign of them is the app icon.
-    var unreadActivities = 0
 
     var body: some View {
         Menu {
             if showsBrowseDestinations {
+                // No Activities: it is a tab or a sidebar row on every
+                // platform, as in Nextcloud Social's sidebar.
                 Section {
-                    if showsActivities {
-                        item("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
-                    }
                     item("Discover", symbol: "safari", route: .explore)
                     item("Your lists", symbol: AlohaSymbol.list, route: .lists)
-                    if session.capabilities.isNextcloudSocial {
-                        item("My interests", symbol: "sparkles", route: .interests)
-                    }
                     if session.capabilities.collections {
                         item(
                             "Albums", symbol: "rectangle.stack", route: .collections(accountID: nil)
@@ -51,16 +40,13 @@ struct AccountMenuButton: View {
                 if !usesCompactMenu {
                     item(
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests)
-                    item("Favourites", symbol: AlohaSymbol.favourite, route: .favourites)
+                    item("Liked posts", symbol: AlohaSymbol.favourite, route: .favourites)
                     item("Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks)
                     if session.capabilities.isNextcloudSocial {
                         item("Archived posts", symbol: "archivebox", route: .archived)
                         item("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
                     }
                     item("Blocking", symbol: "hand.raised", route: .safety)
-                    if !showsBrowseDestinations {
-                        item("Activities", symbol: AlohaSymbol.notifications, route: .notifications)
-                    }
                 }
                 #if os(macOS)
                     // The Mac has a Settings window (⌘,), and settings that
@@ -112,9 +98,6 @@ struct AccountMenuButton: View {
             // asks for, so the tap does not need aim.
             HStack(spacing: 8) {
                 AvatarView(account: session.snapshot.asAccount, size: 30)
-                    .overlay(alignment: .topTrailing) {
-                        if unreadActivities > 0 { unreadDot }
-                    }
                     .accessibilityHidden(true)
                 if showsName {
                     VStack(alignment: .leading) {
@@ -136,24 +119,9 @@ struct AccountMenuButton: View {
     }
 
     private var accessibilityLabel: Text {
-        guard unreadActivities > 0 else {
-            return Text(
-                "\(session.snapshot.bestDisplayName), account menu",
-                comment: "Accessibility label for the account drawer toggle")
-        }
-        return Text(
-            "\(session.snapshot.bestDisplayName), account menu, ^[\(unreadActivities) unread activity](inflect: true)",
-            comment: "Accessibility label for the account drawer toggle with unread activities")
-    }
-
-    /// A dot rather than a number on a 30pt avatar: the count is in the
-    /// accessibility label, and digits at this size are unreadable anyway.
-    private var unreadDot: some View {
-        Circle()
-            .fill(palette.destructive)
-            .frame(width: 10, height: 10)
-            .overlay(Circle().strokeBorder(palette.background, lineWidth: 1.5))
-            .offset(x: 2, y: -2)
+        Text(
+            "\(session.snapshot.bestDisplayName), account menu",
+            comment: "Accessibility label for the account drawer toggle")
     }
 
     private func item(

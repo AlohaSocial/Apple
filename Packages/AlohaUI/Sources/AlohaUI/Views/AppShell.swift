@@ -75,6 +75,7 @@ private struct ThemedAppShell: View {
     @Environment(\.openURL) private var openURLAction
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+        @Environment(\.verticalSizeClass) private var verticalSizeClass
     #endif
     /// Unread conversations, as the messages list last counted them. Read
     /// through `@AppStorage` so the Messages badge moves the moment that list
@@ -131,6 +132,8 @@ private struct ThemedAppShell: View {
                 }
             }
             .environment(\.mediaTransition, mediaTransition)
+            .environment(\.shellUsesTabBar, !usesSidebar)
+            .onChange(of: usesSidebar) { _, toSidebar in handOver(toSidebar: toSidebar) }
             .modifier(
                 ShellSheets(
                     isPresentingSignIn: $isPresentingSignIn,
@@ -157,6 +160,12 @@ private struct ThemedAppShell: View {
                 guard previous != nil, previous != current else { return }
                 tabPaths = [:]
                 sidebarPaths = [:]
+                // For you is Nextcloud Social's; another server has no such feed.
+                if selectedSource == .interests,
+                    environment.activeSession?.capabilities.isNextcloudSocial != true
+                {
+                    selectedSource = .home
+                }
             }
             .onChange(of: scenePhase) { _, phase in
                 // A socket closes on background immediately; BGAppRefreshTask
@@ -333,13 +342,6 @@ private struct ThemedAppShell: View {
             selectedTab = .mode(fallback)
             tabPaths[.mode(mode)] = nil
         }
-        // One feed more can leave Activities without room on the tab bar.
-        if selectedTab == .notifications,
-            !ShellTab.showsNotificationsTab(feedCount: modes.count)
-        {
-            selectedTab = .mode(fallback)
-            tabPaths[.notifications] = nil
-        }
         if case .mode(let mode) = sidebarItem, !modes.contains(mode) {
             sidebarItem = .mode(fallback)
             sidebarPaths[.mode(mode)] = nil
@@ -449,14 +451,6 @@ private struct ThemedAppShell: View {
             sidebarItem: sidebarItem, sidebarPaths: sidebarPaths)
     }
 
-    /// Whether Activities is a tab of its own on this phone, or stays in the
-    /// account menu because a tab would push the bar past five.
-    private var showsNotificationsTab: Bool {
-        environment.activeSession.map {
-            ShellTab.showsNotificationsTab(feedCount: $0.visibleModes.count)
-        } ?? false
-    }
-
     private func unreadNotifications(_ session: AccountSession) -> Int {
         environment.sync.unreadCounts[session.id] ?? 0
     }
@@ -503,12 +497,8 @@ private struct ThemedAppShell: View {
             selectedSource = key.source
             tabPaths[.mode(key.mode)] = []
             sidebarPaths[.mode(key.mode)] = []
-        } else if !usesSidebar, route == .conversations {
-            // On a phone direct messages are a tab, not a push.
-            selectedTab = .messages
-            tabPaths[.messages] = []
-        } else if !usesSidebar, route == .notifications, showsNotificationsTab {
-            // And so are activities, where the tab bar has room for them.
+        } else if !usesSidebar, route == .notifications {
+            // On a phone activities are a tab, not a push.
             selectedTab = .notifications
             tabPaths[.notifications] = []
         } else if usesSidebar, rootRoutes.contains(route) {
@@ -523,7 +513,7 @@ private struct ThemedAppShell: View {
     private var rootRoutes: [Route] {
         #if os(iOS)
             return [
-                .conversations, .explore, .lists, .interests,
+                .conversations, .explore, .lists,
                 .collections(accountID: nil), .notifications, .bookmarks, .settings,
                 .search(query: nil),
             ]
@@ -532,20 +522,46 @@ private struct ThemedAppShell: View {
         #endif
     }
 
+    /// The sidebar shell, or the phone's tab bar. By the screen rather than
+    /// the device: an unfolded iPhone Duo is a phone with an iPad's room,
+    /// and gets the iPad's shell (`ShellLayout`).
     private var usesSidebar: Bool {
         #if os(iOS)
-            UIDevice.current.userInterfaceIdiom == .pad
+            ShellLayout.usesSidebar(
+                idiom: UIDevice.current.userInterfaceIdiom,
+                horizontal: horizontalSizeClass, vertical: verticalSizeClass)
         #else
             true
         #endif
     }
+
+    /// Folding or unfolding swaps the shell; the place a person was in
+    /// moves across with it, so the screen they were reading stays.
+    private func handOver(toSidebar: Bool) {
+        guard let session = environment.activeSession else { return }
+        if toSidebar {
+            let state = ShellLayout.sidebarState(tab: selectedTab, tabPaths: tabPaths)
+            sidebarItem = state.item
+            sidebarPaths = state.paths
+        } else {
+            let feed =
+                session.visibleModes.contains(selectedMode)
+                ? selectedMode : session.visibleModes.first ?? .home
+            let state = ShellLayout.tabState(
+                item: sidebarItem, sidebarPaths: sidebarPaths, feed: feed)
+            selectedTab = state.tab
+            tabPaths = state.paths
+        }
+        repairFeedSelection(session.visibleModes)
+    }
+
     // Erase at the platform boundary so the root does not embed every tab tree.
     private func shell(_ session: AccountSession) -> AnyView {
         #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                return AnyView(tabShell(session))
-            } else {
+            if usesSidebar {
                 return AnyView(iPadShell(session))
+            } else {
+                return AnyView(tabShell(session))
             }
         #else
             return AnyView(splitShell(session))
@@ -587,19 +603,7 @@ private struct ThemedAppShell: View {
             open: { open($0) },
             back: { goBack() },
             canGoBack: canGoBack,
-            places: ShellPlace.sidebarOrder(
-                modes: session.visibleModes, includesActivities: hasActivitiesRow,
-                modeTitle: modeTitle))
-    }
-
-    /// Whether Activities is one of the top places — a row on iPad, a tab on
-    /// a phone with room for it. The Mac sidebar reaches it from the menu.
-    private var hasActivitiesRow: Bool {
-        #if os(iOS)
-            usesSidebar || showsNotificationsTab
-        #else
-            false
-        #endif
+            places: ShellPlace.sidebarOrder(modes: session.visibleModes, modeTitle: modeTitle))
     }
 
     // MARK: - iPhone
@@ -627,45 +631,27 @@ private struct ThemedAppShell: View {
                     }
                 }
 
-                Tab(value: TabSelection.messages) {
-                    NavigationStack(path: tabPath(.messages)) {
-                        ConversationsView(
-                            session: session,
-                            onAction: { handle($0, session: session) },
-                            onOpen: { open($0) }
-                        )
-                        .navigationDestination(for: Route.self) {
-                            destination($0, session: session)
-                        }
+                // Activities follows the feeds, as in Nextcloud Social's
+                // sidebar. Direct messages are a toolbar button on the feeds
+                // (`timelineChrome`), which keeps the bar at five tabs or
+                // fewer with every feed switched on.
+                Tab(value: TabSelection.notifications) {
+                    NavigationStack(path: tabPath(.notifications)) {
+                        NotificationsView(session: session) { handle($0, session: session) }
+                            .navigationDestination(for: Route.self) {
+                                destination($0, session: session)
+                            }
                     }
                 } label: {
                     Image(
-                        systemName: selectedTab == .messages
-                            ? "envelope.fill" : AlohaSymbol.envelope
+                        systemName: selectedTab == .notifications
+                            ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications
                     )
-                    Text("Messages", comment: "Tab title")
+                    Text("Activities", comment: "Tab title")
                 }
-                .badge(unreadConversations)
-
-                if ShellTab.showsNotificationsTab(feedCount: session.visibleModes.count) {
-                    Tab(value: TabSelection.notifications) {
-                        NavigationStack(path: tabPath(.notifications)) {
-                            NotificationsView(session: session) { handle($0, session: session) }
-                                .navigationDestination(for: Route.self) {
-                                    destination($0, session: session)
-                                }
-                        }
-                    } label: {
-                        Image(
-                            systemName: selectedTab == .notifications
-                                ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications
-                        )
-                        Text("Activities", comment: "Tab title")
-                    }
-                    // The count the app icon already wears, where it can be
-                    // acted on. Zero draws no badge.
-                    .badge(unreadNotifications(session))
-                }
+                // The count the app icon already wears, where it can be
+                // acted on. Zero draws no badge.
+                .badge(unreadNotifications(session))
             }
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
@@ -709,14 +695,6 @@ private struct ThemedAppShell: View {
                     .customizationID("aloha.tab.mode.\(mode.rawValue)")
                 }
                 Tab(
-                    "Direct messages", systemImage: "envelope",
-                    value: SidebarItem.route(.conversations)
-                ) {
-                    iPadDestination(.route(.conversations), session: session)
-                }
-                .badge(unreadConversations)
-                .customizationID("aloha.tab.conversations")
-                Tab(
                     "Activities", systemImage: AlohaSymbol.notifications,
                     value: SidebarItem.route(.notifications)
                 ) {
@@ -724,6 +702,14 @@ private struct ThemedAppShell: View {
                 }
                 .badge(unreadNotifications(session))
                 .customizationID("aloha.tab.notifications")
+                Tab(
+                    "Direct messages", systemImage: "envelope",
+                    value: SidebarItem.route(.conversations)
+                ) {
+                    iPadDestination(.route(.conversations), session: session)
+                }
+                .badge(unreadConversations)
+                .customizationID("aloha.tab.conversations")
                 Tab("Discover", systemImage: "safari", value: SidebarItem.route(.explore)) {
                     iPadDestination(.route(.explore), session: session)
                 }
@@ -732,11 +718,6 @@ private struct ThemedAppShell: View {
                     sidebarTab(
                         "Your lists", symbol: "list.bullet.rectangle", route: .lists,
                         session: session)
-                    if session.capabilities.isNextcloudSocial {
-                        sidebarTab(
-                            "My interests", symbol: "sparkles", route: .interests,
-                            session: session)
-                    }
                     if session.capabilities.collections {
                         sidebarTab(
                             "Albums", symbol: "rectangle.stack",
@@ -749,7 +730,7 @@ private struct ThemedAppShell: View {
                         "Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks,
                         session: session)
                     sidebarTab(
-                        "Favourites", symbol: AlohaSymbol.favourite, route: .favourites,
+                        "Liked posts", symbol: AlohaSymbol.favourite, route: .favourites,
                         session: session)
                     sidebarTab(
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests,
@@ -834,8 +815,7 @@ private struct ThemedAppShell: View {
                 AccountMenuButton(
                     session: session, onOpen: open,
                     onAddAccount: { isPresentingSignIn = true },
-                    showsBrowseDestinations: isCompact, usesCompactMenu: !isCompact,
-                    showsActivities: false)
+                    showsBrowseDestinations: isCompact, usesCompactMenu: !isCompact)
             }
         }
     #endif
@@ -971,6 +951,17 @@ private struct ThemedAppShell: View {
                 .readerColumn,
                 session: session)
 
+        case .home where selectedSource == .interests:
+            // For you keeps its own list: each post says why it is there, and
+            // "Show fewer like this" teaches the ranking.
+            timelineChrome(
+                InterestsView(session: session) { handle($0, session: session) }
+                    .navigationTitle(sourceTitle)
+                    #if !os(iOS)
+                        .readerColumn
+                    #endif
+                , session: session)
+
         case .home:
             timelineChrome(
                 TimelineView(
@@ -1005,7 +996,11 @@ private struct ThemedAppShell: View {
             // old model, and the timeline never changed. This is why the
             // source picker has never worked, in either of its forms.
             .id(selectedSource)
-            .modifier(TimelineSourceMenu(source: $selectedSource))
+            .modifier(
+                TimelineSourceMenu(
+                    source: $selectedSource,
+                    offersForYou: session.capabilities.isNextcloudSocial)
+            )
             #if os(iOS)
                 .toolbar {
                     // Only on the phone: the split shell carries both of these
@@ -1016,10 +1011,7 @@ private struct ThemedAppShell: View {
                             AccountMenuButton(
                                 session: session,
                                 onOpen: { open($0) },
-                                onAddAccount: { isPresentingSignIn = true },
-                                showsActivities: !showsNotificationsTab,
-                                unreadActivities: showsNotificationsTab
-                                    ? 0 : unreadNotifications(session))
+                                onAddAccount: { isPresentingSignIn = true })
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink(value: Route.search(query: nil)) {
@@ -1028,6 +1020,14 @@ private struct ThemedAppShell: View {
                             .keyboardShortcut("f", modifiers: .command)
                             .accessibilityLabel(Text("Search", comment: "Toolbar button"))
                             .help(Text("Search", comment: "Toolbar button"))
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            NavigationLink(value: Route.conversations) {
+                                Image(systemName: AlohaSymbol.envelope)
+                            }
+                            .badge(unreadConversations)
+                            .accessibilityLabel(directMessagesLabel)
+                            .help(Text("Direct messages", comment: "Toolbar button"))
                         }
                         // Finding and writing are different kinds of action;
                         // the gap keeps them in separate glass groups rather
@@ -1046,6 +1046,14 @@ private struct ThemedAppShell: View {
                     }
                 }
             #endif
+    }
+
+    private var directMessagesLabel: Text {
+        unreadConversations > 0
+            ? Text(
+                "Direct messages, \(unreadConversations) unread",
+                comment: "Toolbar button with badge")
+            : Text("Direct messages", comment: "Toolbar button")
     }
 
     /// A screen, root or pushed. `isRoot` is for the sidebar shells, whose
@@ -1082,7 +1090,7 @@ private struct ThemedAppShell: View {
             TimelineView(
                 key: TimelineKey(mode: .home, source: .favourites), session: session
             ) { handle($0, session: session) }
-            .navigationTitle(Text("Favourites", comment: "Screen title"))
+            .navigationTitle(Text("Liked posts", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
                 .readerColumn
@@ -1131,7 +1139,7 @@ private struct ThemedAppShell: View {
 
         // Nextcloud Social surfaces.
         case .interests:
-            InterestsView(session: session) { handle($0, session: session) }
+            InterestsSettingsScreen(session: session)
         case .memories:
             MemoriesView(session: session) { handle($0, session: session) }
         case .heldPosts:
@@ -1212,6 +1220,7 @@ private struct ThemedAppShell: View {
 
     private var sourceTitle: String {
         switch selectedSource {
+        case .interests: String(localized: "For you", comment: "Timeline source")
         case .local: String(localized: "Local", comment: "Timeline source")
         case .federated: String(localized: "Global", comment: "Timeline source")
         default: String(localized: "My Feed", comment: "Mode title")

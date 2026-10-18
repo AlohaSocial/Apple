@@ -41,19 +41,16 @@ struct ShellPolishTests {
     @Test("The menu bar numbers places in the sidebar's order")
     func placesFollowTheSidebar() {
         let places = ShellPlace.sidebarOrder(
-            modes: [.home, .photos, .video], includesActivities: true,
-            modeTitle: { "\($0)" })
+            modes: [.home, .photos, .video], modeTitle: { "\($0)" })
+        // Nextcloud Social's sidebar order: the feeds, then Activities,
+        // Direct messages and Discover.
         #expect(
             places.map(\.route) == [
                 .timeline(TimelineKey(mode: .home, source: .home)),
                 .timeline(TimelineKey(mode: .photos, source: .home)),
                 .timeline(TimelineKey(mode: .video, source: .home)),
-                .conversations, .notifications, .explore,
+                .notifications, .conversations, .explore,
             ])
-
-        let withoutActivities = ShellPlace.sidebarOrder(
-            modes: [.home], includesActivities: false, modeTitle: { "\($0)" })
-        #expect(!withoutActivities.contains { $0.route == .notifications })
     }
 
     @Test("Only the first nine places get a digit")

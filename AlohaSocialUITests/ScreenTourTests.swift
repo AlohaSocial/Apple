@@ -44,7 +44,7 @@ import XCTest
 
         func testEveryTabOpens() {
             XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
-            for name in ["Photos", "Videos", "Shorts", "Messages"] {
+            for name in ["Photos", "Videos", "Shorts", "Activities"] {
                 let tab = app.tabBars.buttons[name]
                 XCTAssertTrue(tab.waitForExistence(timeout: 5), "\(name) tab missing")
                 tab.tap()
@@ -99,8 +99,7 @@ import XCTest
 
         func testNotificationsListRenders() {
             XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
-            XCTAssertTrue(
-                app.openFromAccountMenu("Activities"), "Activities missing from the account menu")
+            XCTAssertTrue(app.openActivities(), "Activities tab missing")
             XCTAssertTrue(
                 app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Bob '")).firstMatch
                     .waitForExistence(timeout: 10),

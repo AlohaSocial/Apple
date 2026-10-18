@@ -68,7 +68,8 @@ enum SettingsSection: CaseIterable, Sendable {
             )
         case .timeline:
             String(
-                localized: "timeline feed boosts replies pill position restore numbers swipe",
+                localized:
+                    "timeline feed boosts replies pill position restore numbers swipe for you interests",
                 comment:
                     "Settings search keywords for the Timeline section, separated by spaces. Translate into the words people in your language would type."
             )
