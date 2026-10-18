@@ -12,6 +12,7 @@ public struct TimelineView: View {
     @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.shellUsesTabBar) private var shellUsesTabBar
     /// The same scale `AvatarView` applies, for the prefetch's avatar size.
     @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
 
@@ -113,7 +114,9 @@ public struct TimelineView: View {
 
     private func readingInset(for width: CGFloat) -> CGFloat {
         #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad {
+            // The sidebar shell's reading column: iPad, and an unfolded
+            // iPhone Duo.
+            if !shellUsesTabBar {
                 return max(24, (width - 960) / 2)
             }
         #endif

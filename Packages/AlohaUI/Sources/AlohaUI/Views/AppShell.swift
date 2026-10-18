@@ -75,6 +75,7 @@ private struct ThemedAppShell: View {
     @Environment(\.openURL) private var openURLAction
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+        @Environment(\.verticalSizeClass) private var verticalSizeClass
     #endif
     /// Unread conversations, as the messages list last counted them. Read
     /// through `@AppStorage` so the Messages badge moves the moment that list
@@ -131,6 +132,8 @@ private struct ThemedAppShell: View {
                 }
             }
             .environment(\.mediaTransition, mediaTransition)
+            .environment(\.shellUsesTabBar, !usesSidebar)
+            .onChange(of: usesSidebar) { _, toSidebar in handOver(toSidebar: toSidebar) }
             .modifier(
                 ShellSheets(
                     isPresentingSignIn: $isPresentingSignIn,
@@ -519,20 +522,46 @@ private struct ThemedAppShell: View {
         #endif
     }
 
+    /// The sidebar shell, or the phone's tab bar. By the screen rather than
+    /// the device: an unfolded iPhone Duo is a phone with an iPad's room,
+    /// and gets the iPad's shell (`ShellLayout`).
     private var usesSidebar: Bool {
         #if os(iOS)
-            UIDevice.current.userInterfaceIdiom == .pad
+            ShellLayout.usesSidebar(
+                idiom: UIDevice.current.userInterfaceIdiom,
+                horizontal: horizontalSizeClass, vertical: verticalSizeClass)
         #else
             true
         #endif
     }
+
+    /// Folding or unfolding swaps the shell; the place a person was in
+    /// moves across with it, so the screen they were reading stays.
+    private func handOver(toSidebar: Bool) {
+        guard let session = environment.activeSession else { return }
+        if toSidebar {
+            let state = ShellLayout.sidebarState(tab: selectedTab, tabPaths: tabPaths)
+            sidebarItem = state.item
+            sidebarPaths = state.paths
+        } else {
+            let feed =
+                session.visibleModes.contains(selectedMode)
+                ? selectedMode : session.visibleModes.first ?? .home
+            let state = ShellLayout.tabState(
+                item: sidebarItem, sidebarPaths: sidebarPaths, feed: feed)
+            selectedTab = state.tab
+            tabPaths = state.paths
+        }
+        repairFeedSelection(session.visibleModes)
+    }
+
     // Erase at the platform boundary so the root does not embed every tab tree.
     private func shell(_ session: AccountSession) -> AnyView {
         #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                return AnyView(tabShell(session))
-            } else {
+            if usesSidebar {
                 return AnyView(iPadShell(session))
+            } else {
+                return AnyView(tabShell(session))
             }
         #else
             return AnyView(splitShell(session))

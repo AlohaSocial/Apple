@@ -347,16 +347,14 @@ public nonisolated struct AlohaMetrics: Sendable, Hashable {
 ///
 /// Shorts is a phone-shaped thing: on a regular-width shell it stays a vertical
 /// column in the middle of the window, the way TikTok and Reels do on an iPad,
-/// rather than becoming a letterboxed sprawl across a Mac window. On a phone it
-/// takes the whole screen, which it already does.
+/// rather than becoming a letterboxed sprawl across a Mac window. Under a
+/// phone's tab bar it takes the whole screen, which it already does.
 public enum PlatformBehavior {
-    /// How wide a vertical full-screen surface may grow.
-    public static var shortsColumnWidth: CGFloat? {
-        #if os(iOS)
-            return UIDevice.current.userInterfaceIdiom == .phone ? nil : 460
-        #else
-            return 460
-        #endif
+    /// How wide a vertical full-screen surface may grow. `fullScreen` is the
+    /// phone's tab-bar shell — the shell, not the device, since an unfolded
+    /// iPhone Duo is a phone with the sidebar shell.
+    public static func shortsColumnWidth(fullScreen: Bool) -> CGFloat? {
+        fullScreen ? nil : 460
     }
 }
 

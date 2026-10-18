@@ -21,6 +21,7 @@ import TipKit
 public struct ShortsView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.shellUsesTabBar) private var shellUsesTabBar
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
@@ -117,7 +118,8 @@ public struct ShortsView: View {
                     // shell it stays a vertical column in the middle of the
                     // window rather than becoming a letterboxed sprawl, the
                     // way TikTok and Reels do on an iPad.
-                    .frame(maxWidth: PlatformBehavior.shortsColumnWidth)
+                    .frame(
+                        maxWidth: PlatformBehavior.shortsColumnWidth(fullScreen: shellUsesTabBar))
                 }
 
                 VStack(spacing: AlohaMetrics.space2) {

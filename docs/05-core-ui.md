@@ -22,6 +22,14 @@ My profile and the account places.
 **iPad** — a sidebar-adaptable `TabView`, **Mac and Vision Pro** — a
 `NavigationSplitView`.
 
+**iPhone Duo** is an iPhone, in the same iOS target. Folded it has the iPhone's
+tab bar; unfolded, its inner screen is regular in both size classes and it
+gets the iPad's shell. The shell is chosen by size class rather than by device
+(`ShellLayout`), and folding or unfolding carries the selected place and its
+pushed screens across — a place with no tab of its own is pushed onto the feed.
+A large iPhone on its side is regular wide but compact tall, and keeps the tab
+bar.
+
 - *Sidebar*: the feeds, Activities, Direct messages and Discover; then the
   Library — Lists and Albums. The search field is at the top, as it is on the
   web, and the account menu is at the bottom. (Feed subscriptions were removed:
