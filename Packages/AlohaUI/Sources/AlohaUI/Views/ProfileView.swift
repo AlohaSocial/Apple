@@ -890,9 +890,9 @@ public struct ProfileView: View {
         .overlay {
             if collections.isEmpty {
                 ContentUnavailableView {
-                    Text("No albums", comment: "Empty collections")
+                    Text("No albums", comment: "Empty albums")
                 } description: {
-                    Text("Albums group photos together.", comment: "Collections explanation")
+                    Text("Albums group photos together.", comment: "Albums explanation")
                 }
                 .padding(.top, AlohaMetrics.space6)
             }

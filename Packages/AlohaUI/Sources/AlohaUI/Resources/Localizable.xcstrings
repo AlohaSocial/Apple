@@ -1648,7 +1648,7 @@
       }
     },
     "Albums group photos together." : {
-      "comment" : "Collections explanation",
+      "comment" : "Albums explanation",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1659,7 +1659,7 @@
       }
     },
     "Albums group photos together. Create one from any post's menu." : {
-      "comment" : "Collections explanation",
+      "comment" : "Albums explanation",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2804,7 +2804,7 @@
       }
     },
     "Choose an album" : {
-      "comment" : "Portfolio collection placeholder",
+      "comment" : "Portfolio album placeholder",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3485,7 +3485,7 @@
       }
     },
     "Create album" : {
-      "comment" : "Collection picker action",
+      "comment" : "Album picker action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7230,7 +7230,7 @@
       "comment" : "Policy row"
     },
     "New album" : {
-      "comment" : "Albums action\nCollection picker placeholder",
+      "comment" : "Albums action\nAlbum picker placeholder",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7420,7 +7420,7 @@
       }
     },
     "No albums" : {
-      "comment" : "Empty collections",
+      "comment" : "Empty albums",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7431,7 +7431,7 @@
       }
     },
     "No albums yet." : {
-      "comment" : "Collection picker empty state",
+      "comment" : "Album picker empty state",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12048,7 +12048,7 @@
       }
     },
     "Start a new album with this post" : {
-      "comment" : "Collection picker section",
+      "comment" : "Album picker section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15057,7 +15057,7 @@
       }
     },
     "You have no albums yet." : {
-      "comment" : "Portfolio no collections",
+      "comment" : "Portfolio no albums",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15247,7 +15247,7 @@
       }
     },
     "Your albums" : {
-      "comment" : "Collection picker section",
+      "comment" : "Album picker section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
