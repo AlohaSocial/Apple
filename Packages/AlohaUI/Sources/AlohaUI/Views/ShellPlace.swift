@@ -27,24 +27,23 @@ public struct ShellPlace: Hashable, Sendable {
         return Character(String(index + 1))
     }
 
-    /// The sidebar's top group, in the order it lists it: the feeds this
-    /// account shows, then messages, then — where it is a row of its own, as
-    /// on iPad — activities, then Discover.
+    /// The sidebar's top group, in the order it lists it — Nextcloud
+    /// Social's own sidebar order: the feeds this account shows, then
+    /// activities, then direct messages, then Discover.
     static func sidebarOrder(
-        modes: [FeedMode], includesActivities: Bool, modeTitle: (FeedMode) -> String
+        modes: [FeedMode], modeTitle: (FeedMode) -> String
     ) -> [ShellPlace] {
         var places = modes.map {
             ShellPlace(title: modeTitle($0), route: .timeline(TimelineKey(mode: $0, source: .home)))
         }
         places.append(
             ShellPlace(
-                title: String(localized: "Messages", comment: "Menu item"), route: .conversations))
-        if includesActivities {
-            places.append(
-                ShellPlace(
-                    title: String(localized: "Activities", comment: "Menu item"),
-                    route: .notifications))
-        }
+                title: String(localized: "Activities", comment: "Menu item"),
+                route: .notifications))
+        places.append(
+            ShellPlace(
+                title: String(localized: "Direct messages", comment: "Menu item"),
+                route: .conversations))
         places.append(
             ShellPlace(title: String(localized: "Discover", comment: "Menu item"), route: .explore))
         return places

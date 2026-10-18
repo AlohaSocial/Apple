@@ -130,6 +130,20 @@ extension Endpoint {
                 return Endpoint(
                     path: "api/v1/accounts/\(id)/statuses",
                     query: pageItems(limit: limit, anchor: anchor) + profileItems(filter))
+            case .interests:
+                // For you is narrowed to a feed's kind by the server's own
+                // parameters — `media` and `only_short` — rather than by
+                // `only_media`, the way the web app's Photos, Videos and
+                // Shorts ask for it.
+                var interestItems = pageItems(limit: limit, anchor: anchor)
+                if filters.onlyShort {
+                    interestItems += .flag("only_short", true)
+                } else if filters.onlyVideo {
+                    interestItems += .optional("media", "videos")
+                } else if filters.onlyMedia {
+                    interestItems += .optional("media", "photos")
+                }
+                return Endpoint(path: "api/v1/timelines/interests", query: interestItems)
             case .trending:
                 return Endpoint(
                     path: "api/v1/trends/statuses", query: items, requiresAuthentication: false)

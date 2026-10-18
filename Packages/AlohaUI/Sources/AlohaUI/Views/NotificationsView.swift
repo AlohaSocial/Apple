@@ -162,16 +162,18 @@ public struct NotificationsView: View {
                     chip(
                         .mention,
                         label: String(localized: "Mentions", comment: "Notification filter"))
-                    chip(
-                        .reblog,
-                        label: String(localized: "Boosts", comment: "Notification filter"))
+                    // Nextcloud Social's own filters, in its order.
                     chip(
                         .favourite,
                         label: String(localized: "Favourites", comment: "Notification filter"))
                     chip(
+                        .reblog,
+                        label: String(localized: "Boosts", comment: "Notification filter"))
+                    chip(
                         .follow,
                         label: String(localized: "Follows", comment: "Notification filter"))
                     chip(.poll, label: String(localized: "Polls", comment: "Notification filter"))
+                    chip(.update, label: String(localized: "Edits", comment: "Notification filter"))
                 }
                 .padding(.vertical, AlohaMetrics.space1)
             }

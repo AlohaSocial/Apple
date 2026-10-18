@@ -5,19 +5,16 @@ import AlohaModels
 import AlohaNetwork
 import SwiftUI
 
-/// "My interests": the feed Nextcloud Social builds from the hashtags it has
-/// learned you read, and the switches and cloud that govern the learning.
-///
-/// One screen with two faces rather than a feed and a settings page apart:
-/// the feed only makes sense once you have seen what it is made of, and the
-/// settings only matter because of the feed.
+/// For you: the feed Nextcloud Social builds from the hashtags it has learned
+/// you read. It is a scope of My Feed, as in the web app's timeline
+/// switcher; the switches and cloud that govern the learning are in
+/// Settings (`InterestsSettingsScreen`).
 public struct InterestsView: View {
     @Environment(\.alohaPalette) private var palette
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
 
-    @State private var face: Face = .feed
     @State private var statuses: [Status] = []
     @State private var nextPage: URL?
     @State private var mayHaveMore = true
@@ -37,41 +34,18 @@ public struct InterestsView: View {
         statuses.filter { !hiddenIDs.contains($0.displayed.id) }
     }
 
-    enum Face: Hashable {
-        case feed, settings
-    }
-
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
         self.onAction = onAction
     }
 
     public var body: some View {
-        Group {
-            switch face {
-            case .feed: feed
-            case .settings:
-                InterestsSettingsView(session: session, state: $state, isLoaded: $isStateLoaded)
+        feed
+            .background(palette.background)
+            .task {
+                await loadState()
+                await refresh()
             }
-        }
-        .background(palette.background)
-        .navigationTitle(Text("My interests", comment: "Screen title"))
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker(selection: $face) {
-                    Text("Feed", comment: "Interests face").tag(Face.feed)
-                    Text("Settings", comment: "Interests face").tag(Face.settings)
-                } label: {
-                    Text("Section", comment: "Interests face picker")
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 240)
-            }
-        }
-        .task {
-            await loadState()
-            await refresh()
-        }
     }
 
     // MARK: - Feed
@@ -203,9 +177,7 @@ public struct InterestsView: View {
                     comment: "Empty interests feed with interests")
             }
         } actions: {
-            Button {
-                face = .settings
-            } label: {
+            NavigationLink(value: Route.interests) {
                 Text("Add interests", comment: "Empty interests feed action")
             }
             .buttonStyle(.borderedProminent)
@@ -398,6 +370,20 @@ struct InterestReasonLine: View {
 }
 
 // MARK: - Settings
+
+/// For you's settings as a screen of their own, reached from Settings, as
+/// the web app's Settings → Reading → For you.
+struct InterestsSettingsScreen: View {
+    let session: AccountSession
+
+    @State private var state = InterestsState()
+    @State private var isLoaded = false
+
+    var body: some View {
+        InterestsSettingsView(session: session, state: $state, isLoaded: $isLoaded)
+            .navigationTitle(Text("For you", comment: "Screen title"))
+    }
+}
 
 /// The learning switches, the interest cloud, the candidates, languages, and
 /// the reset — everything that shapes the feed.

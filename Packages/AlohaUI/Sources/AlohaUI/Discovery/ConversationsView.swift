@@ -148,7 +148,7 @@ public struct ConversationsView: View {
             text: $query,
             prompt: Text("Search conversations", comment: "Conversations search prompt")
         )
-        .navigationTitle(Text("Messages", comment: "Screen title"))
+        .navigationTitle(Text("Direct messages", comment: "Screen title"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

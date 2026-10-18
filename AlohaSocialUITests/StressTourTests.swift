@@ -28,7 +28,7 @@ import XCTest
             ])
             XCTAssertTrue(app.labelled("Test post").waitForExistence(timeout: 20))
             shoot("63-ax5-home")
-            app.tabBars.buttons["Messages"].tap()
+            app.openDirectMessages()
             sleep(1)
             shoot("64-ax5-messages")
         }

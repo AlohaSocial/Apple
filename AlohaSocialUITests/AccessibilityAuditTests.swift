@@ -36,11 +36,15 @@ import XCTest
         }
 
         func testEveryTabIsAccessible() throws {
-            for name in ["Photos", "Videos", "Messages"] {
+            for name in ["Photos", "Videos", "Activities"] {
                 app.tabBars.buttons[name].tap()
                 sleep(2)
                 try audit(name)
             }
+            app.tabBars.buttons["My Feed"].tap()
+            XCTAssertTrue(app.openDirectMessages(), "Direct messages not reachable")
+            sleep(2)
+            try audit("Direct messages")
         }
 
         func testComposerIsAccessible() throws {
@@ -86,9 +90,7 @@ import XCTest
             XCTAssertTrue(app.labelled("People to follow").waitForExistence(timeout: 10))
             try audit("Discover")
 
-            app.navigationBars.buttons.firstMatch.tap()
-            XCTAssertTrue(
-                app.openFromAccountMenu("Activities"), "Activities not reachable")
+            XCTAssertTrue(app.openActivities(), "Activities not reachable")
             sleep(2)
             try audit("Activities")
         }

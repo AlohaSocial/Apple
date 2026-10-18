@@ -521,6 +521,18 @@ public struct SettingsView: View {
     /// all. Every switch here now exists (docs/05 §2).
     private func timelineSection(_ session: AccountSession) -> some View {
         Section {
+            // What shapes the For you scope, where the web app keeps it:
+            // Settings → Reading → For you.
+            if session.capabilities.isNextcloudSocial {
+                NavigationLink(value: Route.interests) {
+                    Label {
+                        Text("For you", comment: "Settings item")
+                    } icon: {
+                        Image(systemName: "sparkles")
+                    }
+                }
+            }
+
             Toggle(
                 isOn: Binding(
                     get: { session.settings.showBoosts },

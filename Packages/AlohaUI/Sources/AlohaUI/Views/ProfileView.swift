@@ -47,7 +47,8 @@ public struct ProfileView: View {
     @State private var endorsed: [Account] = []
 
     enum Tab: String, CaseIterable, Identifiable {
-        case posts, replies, media, videos, albums, tagged
+        // Nextcloud Social's own profile tabs, in its order (`useProfileKinds`).
+        case posts, photos, videos, tagged, albums
         var id: String { rawValue }
     }
 
@@ -63,9 +64,9 @@ public struct ProfileView: View {
     private var isOwn: Bool { accountID == session.snapshot.serverAccountID }
 
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = [.posts, .replies, .media, .videos]
-        if session.capabilities.collections { tabs.append(.albums) }
+        var tabs: [Tab] = [.posts, .photos, .videos]
         if session.capabilities.isNextcloudSocial { tabs.append(.tagged) }
+        if session.capabilities.collections { tabs.append(.albums) }
         return tabs
     }
 
@@ -197,8 +198,7 @@ public struct ProfileView: View {
     private func title(for tab: Tab) -> Text {
         switch tab {
         case .posts: Text("Posts", comment: "Profile tab")
-        case .replies: Text("Replies", comment: "Profile tab")
-        case .media: Text("Media", comment: "Profile tab")
+        case .photos: Text("Photos", comment: "Profile tab")
         case .videos: Text("Videos", comment: "Profile tab")
         case .albums: Text("Albums", comment: "Profile tab")
         case .tagged: Text("Tagged", comment: "Profile tab")
@@ -213,9 +213,7 @@ public struct ProfileView: View {
             statusList(
                 .home,
                 ProfilePostFilter(includeBoosts: showsBoosts, tagged: taggedFilter))
-        case .replies:
-            statusList(.home, ProfilePostFilter(includeReplies: true))
-        case .media:
+        case .photos:
             // `media_type` keeps the pictures to this tab and the videos to the
             // next; a server without it reads `only_media` and shows both.
             statusList(.photos, ProfilePostFilter(mediaKind: .image))

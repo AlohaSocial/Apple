@@ -75,14 +75,6 @@ import SwiftUI
                     placeButton(place, digit: ShellPlace.shortcutDigit(at: index))
                 }
 
-                if !places.contains(where: { $0.route == .notifications }) {
-                    Button {
-                        open(.notifications)
-                    } label: {
-                        Text("Notifications", comment: "Menu item")
-                    }
-                }
-
                 Button {
                     open(.search(query: nil))
                 } label: {
@@ -157,11 +149,11 @@ import SwiftUI
         }
 
         /// The front window's places, or — with no window to ask, every one
-        /// closed on the Mac — the three every account has.
+        /// closed on the Mac — the ones every account has.
         private var places: [ShellPlace] {
             shell?.places
                 ?? ShellPlace.sidebarOrder(
-                    modes: [.home], includesActivities: false,
+                    modes: [.home],
                     modeTitle: { _ in String(localized: "My Feed", comment: "Mode title") })
         }
 

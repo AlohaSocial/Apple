@@ -10,8 +10,8 @@ import SwiftUI
 import TipKit
 
 /// Full-screen vertical pager, one short per page, edge to edge — laid out
-/// the way a short-video app lays it out: a Following / For You switch at
-/// the top, a rail of big glyphs with counts down the trailing edge, the
+/// the way a short-video app lays it out: the web app's scopes — My Feed,
+/// For you, Local, Global — as a switch at the top, a rail of big glyphs with counts down the trailing edge, the
 /// handle and caption at the foot, and a hairline of playback progress along
 /// the very bottom.
 ///
@@ -25,25 +25,40 @@ public struct ShortsView: View {
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
 
-    /// Following is your home timeline; For You is everything the server sees.
+    /// Whose shorts: the same scopes as every other feed, in the order the
+    /// web app's Shorts page offers them.
     enum Feed: String, CaseIterable, Identifiable {
-        case following, forYou
+        case home, interests, local, federated
         var id: String { rawValue }
         var source: TimelineSource {
             switch self {
-            case .following: .home
-            case .forYou: .federated
+            case .home: .home
+            case .interests: .interests
+            case .local: .local
+            case .federated: .federated
             }
         }
         var title: Text {
             switch self {
-            case .following: Text("Following", comment: "Shorts feed")
-            case .forYou: Text("For You", comment: "Shorts feed")
+            case .home: Text("My Feed", comment: "Shorts feed")
+            case .interests: Text("For you", comment: "Shorts feed")
+            case .local: Text("Local", comment: "Shorts feed")
+            case .federated: Text("Global", comment: "Shorts feed")
             }
+        }
+
+        /// For you is Nextcloud Social's, and where it is offered it is
+        /// where the stack starts, as on the web; elsewhere, My Feed.
+        static func options(offersForYou: Bool) -> [Feed] {
+            offersForYou ? allCases : allCases.filter { $0 != .interests }
+        }
+
+        static func initial(offersForYou: Bool) -> Feed {
+            offersForYou ? .interests : .home
         }
     }
 
-    @State private var feed: Feed = .forYou
+    @State private var feed: Feed
     @State private var model: TimelineModel
     @State private var currentID: String?
     @AppStorage("aloha.shorts.muted") private var isMuted = true
@@ -55,9 +70,11 @@ public struct ShortsView: View {
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
         self.onAction = onAction
+        let initial = Feed.initial(offersForYou: session.capabilities.isNextcloudSocial)
+        _feed = State(initialValue: initial)
         _model = State(
             initialValue: TimelineModel(
-                key: TimelineKey(mode: .shorts, source: Feed.forYou.source), session: session))
+                key: TimelineKey(mode: .shorts, source: initial.source), session: session))
     }
 
     private var shorts: [Status] {
@@ -171,8 +188,9 @@ public struct ShortsView: View {
 
     private var topBar: some View {
         ZStack {
-            HStack(spacing: AlohaMetrics.space5) {
-                ForEach(Feed.allCases) { option in
+            HStack(spacing: AlohaMetrics.space4) {
+                ForEach(Feed.options(offersForYou: session.capabilities.isNextcloudSocial)) {
+                    option in
                     Button {
                         if reduceMotion {
                             feed = option
@@ -620,9 +638,9 @@ public struct ShortsView: View {
                 .font(.largeTitle)
             Text("No shorts yet", comment: "Empty Shorts mode")
                 .font(.headline)
-            if feed == .following {
+            if feed == .home {
                 Text(
-                    "Nobody you follow has posted a short. Try For You.",
+                    "Nobody you follow has posted a short. Try Global.",
                     comment: "Shorts empty state on the following feed"
                 )
                 .font(.footnote)

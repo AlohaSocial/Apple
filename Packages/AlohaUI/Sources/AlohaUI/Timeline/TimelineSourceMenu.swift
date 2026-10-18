@@ -5,9 +5,9 @@ import AlohaModels
 import SwiftUI
 import TipKit
 
-/// Which of the three timelines you are reading — My feed, Local, Global —
-/// chosen from the screen's title, the way Photos and Mail switch what a
-/// screen shows.
+/// Which timeline you are reading — My Feed, For you, Local, Global, the
+/// scopes Nextcloud Social's own switcher offers — chosen from the screen's
+/// title, the way Photos and Mail switch what a screen shows.
 ///
 /// It used to be two things at once: a glass segmented control that floated
 /// up from the foot of the feed when you scrolled *down* and hid again four
@@ -16,6 +16,8 @@ import TipKit
 /// is where the system puts exactly this choice.
 struct TimelineSourceMenu: ViewModifier {
     @Binding var source: TimelineSource
+    /// For you is Nextcloud Social's; other servers have no such ranking.
+    var offersForYou = false
 
     func body(content: Content) -> some View {
         #if os(tvOS) || os(watchOS)
@@ -24,7 +26,8 @@ struct TimelineSourceMenu: ViewModifier {
             content
                 .toolbarTitleMenu {
                     Picker(selection: $source) {
-                        ForEach(Self.options, id: \.source) { option in
+                        ForEach(Self.options(offersForYou: offersForYou), id: \.source) {
+                            option in
                             Text(option.title).tag(option.source)
                         }
                     } label: {
@@ -43,9 +46,21 @@ struct TimelineSourceMenu: ViewModifier {
         #endif
     }
 
-    static let options: [(source: TimelineSource, title: LocalizedStringResource)] = [
-        (.home, LocalizedStringResource("My feed", comment: "Timeline source")),
-        (.local, LocalizedStringResource("Local", comment: "Timeline source")),
-        (.federated, LocalizedStringResource("Global", comment: "Timeline source")),
-    ]
+    static func options(
+        offersForYou: Bool
+    ) -> [(source: TimelineSource, title: LocalizedStringResource)] {
+        var options: [(source: TimelineSource, title: LocalizedStringResource)] = [
+            (.home, LocalizedStringResource("My Feed", comment: "Timeline source"))
+        ]
+        // Second, where the web app puts it.
+        if offersForYou {
+            options.append(
+                (.interests, LocalizedStringResource("For you", comment: "Timeline source")))
+        }
+        options += [
+            (.local, LocalizedStringResource("Local", comment: "Timeline source")),
+            (.federated, LocalizedStringResource("Global", comment: "Timeline source")),
+        ]
+        return options
+    }
 }
