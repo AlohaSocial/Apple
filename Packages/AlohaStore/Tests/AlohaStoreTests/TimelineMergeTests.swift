@@ -221,9 +221,12 @@ struct AccountSettingsTests {
         let mastodon = ServerCapabilities(apiBase: URL(string: "https://m.test/")!)
         #expect(settings.visibleModes(capabilities: mastodon).contains(.news) == false)
 
+        // News and Audio are not offered yet, so a stored choice of either
+        // stays hidden even where the server could source it.
         let nextcloud = ServerCapabilities(
             apiBase: URL(string: "https://c.test/")!, onlyNewsFilter: true)
-        #expect(settings.visibleModes(capabilities: nextcloud).contains(.news))
+        #expect(settings.visibleModes(capabilities: nextcloud).contains(.news) == false)
+        #expect(settings.visibleModes(capabilities: nextcloud) == FeedMode.defaultEnabled)
     }
 }
 
