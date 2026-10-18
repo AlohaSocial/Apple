@@ -177,9 +177,13 @@ jobs:
   # about the code compiling, not about a certificate nobody should be
   # committing. Release also proves the debug-only pieces (MockAPIServer,
   # MockMode) are not needed by anything that ships.
+  #
+  # xcode-27, not macos-26: the project is objectVersion 110, which no Xcode
+  # on the macos-26 image can open. That image is GitHub's preview of
+  # Xcode 27 on a macOS 27 host (actions/runner-images#14404).
   build:
     name: Build (${{ matrix.name }})
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -202,9 +206,12 @@ jobs:
             destination: generic/platform=visionOS
     steps:
       - uses: actions/checkout@v4
-      - name: Select the newest Xcode
+      - name: Select the newest released Xcode
         run: |
-          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          # The image's aliases (Xcode_27.2.app) point at betas, so resolve
+          # each one before leaving the betas out.
+          latest=$(for app in /Applications/Xcode*.app; do (cd "$app" && pwd -P); done \
+            | grep -vi beta | sort -uV | tail -1)
           if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
           sudo xcode-select --switch "$latest/Contents/Developer"
       - name: Build ${{ matrix.name }}
@@ -264,13 +271,15 @@ jobs:
   # next, which is what a crash mid-job looked like.
   ui:
     name: UI tours
-    runs-on: macos-26
+    # xcode-27 for the same reason as the build job.
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Select the newest Xcode
+      - name: Select the newest released Xcode
         run: |
-          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          latest=$(for app in /Applications/Xcode*.app; do (cd "$app" && pwd -P); done \
+            | grep -vi beta | sort -uV | tail -1)
           if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
           sudo xcode-select --switch "$latest/Contents/Developer"
       - name: Run the tour suite
