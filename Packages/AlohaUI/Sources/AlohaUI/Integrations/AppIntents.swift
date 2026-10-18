@@ -162,7 +162,7 @@ public enum VisibilityAppEnum: String, AppEnum {
 }
 
 public enum FeedModeAppEnum: String, AppEnum {
-    case home, photos, video, shorts, news, audio
+    case home, photos, video, shorts
 
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Feed")
     public static let caseDisplayRepresentations: [FeedModeAppEnum: DisplayRepresentation] = [
@@ -170,8 +170,6 @@ public enum FeedModeAppEnum: String, AppEnum {
         .photos: "Photos",
         .video: "Video",
         .shorts: "Shorts",
-        .news: "News",
-        .audio: "Audio",
     ]
 
     var modelValue: FeedMode {

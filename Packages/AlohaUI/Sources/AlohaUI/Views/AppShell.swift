@@ -314,7 +314,7 @@ private struct ThemedAppShell: View {
 
     private func finishModeSelection(_ session: AccountSession) {
         guard let chosenModes, !chosenModes.isEmpty else { return }
-        let ordered = FeedMode.allCases.filter {
+        let ordered = FeedMode.offered.filter {
             chosenModes.contains($0) && session.capabilities.supports($0)
         }
         guard !ordered.isEmpty else { return }

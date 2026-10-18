@@ -414,7 +414,7 @@ private struct DeviceRow: View {
     }
 }
 
-/// The six feeds, as tiles, on the introduction's second page.
+/// The offered feeds, as tiles, on the introduction's second page.
 ///
 /// These are the same symbols and names the sidebar and tab bar carry, so
 /// nothing here is invented for the tour: what a person sees is what they get.
@@ -426,7 +426,7 @@ private struct ModeTour: View {
             columns: [GridItem(.adaptive(minimum: 110), spacing: AlohaMetrics.space4)],
             spacing: AlohaMetrics.space4
         ) {
-            ForEach(FeedMode.allCases) { mode in
+            ForEach(FeedMode.offered) { mode in
                 VStack(spacing: 6) {
                     Image(systemName: mode.symbolName)
                         .font(.title3)
