@@ -77,3 +77,28 @@ public struct Relationship: Codable, Sendable, Hashable, Identifiable {
         self.languages = languages
     }
 }
+
+/// What a follow button says about a relationship.
+public enum FollowState: Sendable, Hashable {
+    case notFollowing, requested, following
+}
+
+extension Relationship {
+    /// A follow of an account on another server stays `requested` until that
+    /// server sends its Accept. An open account sends it by itself within
+    /// seconds, so only a locked account, which waits for a person, reads as
+    /// requested.
+    public func followState(locked: Bool) -> FollowState {
+        if following { return .following }
+        if requested { return locked ? .requested : .following }
+        return .notFollowing
+    }
+
+    /// Following or asking to: what tapping the follow button undoes.
+    public var isFollowingOrRequested: Bool { following || requested }
+
+    /// A pending follow the other server accepts without anybody approving it.
+    public func awaitsAutomaticAccept(locked: Bool) -> Bool {
+        requested && !following && !locked
+    }
+}

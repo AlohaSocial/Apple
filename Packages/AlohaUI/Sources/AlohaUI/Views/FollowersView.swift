@@ -227,31 +227,34 @@ struct FollowableAccountRow: View {
         Button {
             Task { await toggleFollow() }
         } label: {
-            if relationship?.following == true {
-                Text("Following", comment: "Follow button state")
-            } else if relationship?.requested == true {
-                Text("Requested", comment: "Follow button state")
-            } else {
-                Text("Follow", comment: "Follow button action")
+            switch relationship?.followState(locked: account.locked) ?? .notFollowing {
+            case .following: Text("Following", comment: "Follow button state")
+            case .requested: Text("Requested", comment: "Follow button state")
+            case .notFollowing: Text("Follow", comment: "Follow button action")
             }
         }
         .controlSize(.small)
         .disabled(isBusy || relationship == nil)
     }
 
+    @MainActor
     private func toggleFollow() async {
         guard let relationship else { return }
         isBusy = true
         defer { isBusy = false }
-        let isFollowing = relationship.following || relationship.requested
+        let isFollowing = relationship.isFollowingOrRequested
         let endpoint =
             isFollowing
             ? Endpoint.accounts.simpleAction(account.id, "unfollow")
             : Endpoint.accounts.follow(account.id)
+        let updated: Relationship
         do {
-            onRelationshipChange(try await session.client.decode(Relationship.self, from: endpoint))
+            updated = try await session.client.decode(Relationship.self, from: endpoint)
         } catch {
             await session.handle(error)
+            return
         }
+        onRelationshipChange(updated)
+        await session.settleFollow(updated, locked: account.locked, update: onRelationshipChange)
     }
 }
