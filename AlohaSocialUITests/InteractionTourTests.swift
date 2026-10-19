@@ -127,29 +127,54 @@ import XCTest
         /// nothing passed just as happily.
         func testSourceToggleActuallySwitchesTimeline() {
             launch()
-            let global = app.buttons["Global"].firstMatch
-            XCTAssertTrue(global.waitForExistence(timeout: 5), "No source toggle")
-            XCTAssertTrue(app.buttons["My Feed"].exists, "Toggle is missing My Feed")
-            XCTAssertTrue(app.buttons["Local"].exists, "Toggle is missing Local")
-
-            global.tap()
+            // The sources are the title's menu; the title says which is on.
+            XCTAssertTrue(openSourceMenu(titled: "My Feed"), "No source menu on the title")
+            for source in ["My Feed", "Local", "Global"] {
+                XCTAssertTrue(sourceMenuItem(source).exists, "Menu is missing \(source)")
+            }
+            sourceMenuItem("Global").tap()
             XCTAssertTrue(
                 app.labelled("Global timeline post").waitForExistence(timeout: 10),
-                "Tapping Global did not load the global timeline")
+                "Choosing Global did not load the global timeline")
             shoot("36-global")
 
-            app.buttons["Local"].firstMatch.tap()
+            XCTAssertTrue(openSourceMenu(titled: "Global"), "The title no longer says Global")
+            sourceMenuItem("Local").tap()
             XCTAssertTrue(
                 app.labelled("Local timeline post").waitForExistence(timeout: 10),
-                "Tapping Local did not load the local timeline")
+                "Choosing Local did not load the local timeline")
             shoot("37-local")
 
-            app.buttons["My Feed"].firstMatch.tap()
+            XCTAssertTrue(openSourceMenu(titled: "Local"), "The title no longer says Local")
+            sourceMenuItem("My Feed").tap()
             sleep(2)
             shoot("38-back-to-my-feed")
             XCTAssertTrue(
                 app.labelled("Test post number").waitForExistence(timeout: 10),
-                "Tapping My feed did not come back to the home timeline")
+                "Choosing My Feed did not come back to the home timeline")
+        }
+
+        /// The navigation title is a menu button ("My Feed, Actions Menu");
+        /// open, its items are the sources.
+        private func openSourceMenu(titled title: String) -> Bool {
+            let button = app.navigationBars.firstMatch.buttons.matching(
+                NSPredicate(format: "label BEGINSWITH %@", title)
+            ).firstMatch
+            guard button.waitForExistence(timeout: 8) else { return false }
+            button.tap()
+            return sourceMenuItem("Local").waitForExistence(timeout: 5)
+        }
+
+        /// A source in the open menu — not the "My Feed" tab, which shares
+        /// the name, nor the title button. The menu hangs above the tab bar.
+        private func sourceMenuItem(_ name: String) -> XCUIElement {
+            let barTop = app.tabBars.firstMatch.frame.minY
+            let candidates = app.buttons.matching(NSPredicate(format: "label == %@", name))
+            for index in 0..<candidates.count {
+                let item = candidates.element(boundBy: index)
+                if item.frame.maxY < barTop { return item }
+            }
+            return candidates.element(boundBy: candidates.count)
         }
 
         func testAccountMenuReachesDiscoverAndLists() {

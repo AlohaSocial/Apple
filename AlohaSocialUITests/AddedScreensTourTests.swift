@@ -30,7 +30,7 @@ import XCTest
             app.launchArguments = ["-AlohaMockServer"]
             app.launch()
             app.dismissSystemAlertsIfPresent()
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 15))
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 15))
         }
 
         // MARK: - Settings surfaces

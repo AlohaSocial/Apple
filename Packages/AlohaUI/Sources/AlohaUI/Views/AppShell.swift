@@ -1002,6 +1002,11 @@ private struct ThemedAppShell: View {
                     offersForYou: session.capabilities.isNextcloudSocial)
             )
             #if os(iOS)
+                // The source menu is the title's, and only an inline title
+                // carries one: as a large title — or inline-large — it drew no
+                // chevron and tapping it opened nothing, so on a phone the
+                // source could not be changed at all. iPad is inline already.
+                .toolbarTitleDisplayMode(.inline)
                 .toolbar {
                     // Only on the phone: the split shell carries both of these
                     // in the sidebar — the account drawer at its foot, and a
