@@ -69,6 +69,11 @@
 
         // MARK: - Transport
 
+        /// The token the second seeded account signs in with. Each account
+        /// has its own, as on a real server, so `verify_credentials` can say
+        /// which of them is asking.
+        public static let secondAccountToken = "mock-access-token-bob"
+
         public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
             guard let url = request.url else { throw APIError.invalidResponse }
 
@@ -106,6 +111,16 @@
 
             guard let route = route(for: url) else {
                 return respond(url: url, status: 404, body: #"{"error":"Not found"}"#)
+            }
+            // With one answer for every token, the profile refresh rewrote the
+            // second account as Alice, and the switcher offered her twice.
+            if route == "api/v1/accounts/verify_credentials",
+                request.value(forHTTPHeaderField: "Authorization")
+                    == "Bearer \(Self.secondAccountToken)"
+            {
+                return respond(
+                    url: url, status: 200,
+                    json: Fixtures.account(id: "2", username: "bob", host: host))
             }
             return try answer(route: route, url: url, method: method, body: request.httpBody)
         }
