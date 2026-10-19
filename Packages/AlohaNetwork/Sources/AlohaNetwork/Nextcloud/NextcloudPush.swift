@@ -92,13 +92,12 @@ public struct NextcloudPush: Sendable {
             "application/x-www-form-urlencoded; charset=utf-8",
             forHTTPHeaderField: "Content-Type")
 
-        var components = URLComponents()
-        components.queryItems = [
+        let fields: [URLQueryItem] = [
             URLQueryItem(name: "pushTokenHash", value: pushTokenHash),
             URLQueryItem(name: "devicePublicKey", value: devicePublicKey),
             URLQueryItem(name: "proxyServer", value: proxy.absoluteString),
         ]
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(fields)
 
         let (data, response) = try await transport.send(request)
         // A Nextcloud without the notifications app answers 404 here, which is
@@ -146,14 +145,13 @@ public struct NextcloudPush: Sendable {
             "application/x-www-form-urlencoded; charset=utf-8",
             forHTTPHeaderField: "Content-Type")
 
-        var body = URLComponents()
-        body.queryItems = [
+        let body: [URLQueryItem] = [
             URLQueryItem(name: "pushToken", value: pushToken),
             URLQueryItem(name: "deviceIdentifier", value: registration.deviceIdentifier),
             URLQueryItem(name: "deviceIdentifierSignature", value: registration.signature),
             URLQueryItem(name: "userPublicKey", value: registration.serverPublicKey),
         ]
-        request.httpBody = Data((body.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(body)
 
         let (_, response) = try await transport.send(request)
         guard (200..<300).contains(response.statusCode) else {
@@ -182,13 +180,12 @@ public struct NextcloudPush: Sendable {
             "application/x-www-form-urlencoded; charset=utf-8",
             forHTTPHeaderField: "Content-Type")
 
-        var body = URLComponents()
-        body.queryItems = [
+        let body: [URLQueryItem] = [
             URLQueryItem(name: "deviceIdentifier", value: registration.deviceIdentifier),
             URLQueryItem(name: "deviceIdentifierSignature", value: registration.signature),
             URLQueryItem(name: "userPublicKey", value: registration.serverPublicKey),
         ]
-        proxyRequest.httpBody = Data((body.percentEncodedQuery ?? "").utf8)
+        proxyRequest.httpBody = FormEncoding.body(body)
         _ = try? await transport.send(proxyRequest)
     }
 }

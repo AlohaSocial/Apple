@@ -4,6 +4,7 @@ import AlohaModels
 import AlohaNetwork
 import AlohaStore
 import AppIntents
+import CryptoKit
 import Foundation
 
 /// Shortcuts, Siri and Spotlight all reach the app through these.
@@ -15,12 +16,14 @@ public struct PostStatusIntent: AppIntent {
     @Parameter(title: "Text")
     public var text: String
 
-    @Parameter(title: "Visibility", default: .public)
-    public var visibility: VisibilityAppEnum
+    /// Left empty, the post goes out with the account's own default
+    /// visibility, the same one the composer starts from, not as public.
+    @Parameter(title: "Visibility")
+    public var visibility: VisibilityAppEnum?
 
     public init() {}
 
-    public init(text: String, visibility: VisibilityAppEnum = .public) {
+    public init(text: String, visibility: VisibilityAppEnum? = nil) {
         self.text = text
         self.visibility = visibility
     }
@@ -29,15 +32,48 @@ public struct PostStatusIntent: AppIntent {
         guard let context = await IntentContext.current() else {
             throw IntentError.noAccount
         }
+        let visibility = visibility?.modelValue ?? context.defaultVisibility
+
+        // A post is public speech under somebody's name: Siri or a Shortcut
+        // says what will go out, and where, before it does.
+        try await requestConfirmation(
+            actionName: .post,
+            dialog: "Post this as \(context.handle)? \(Self.preview(of: text))")
 
         let draft = StatusPost(
             text: text,
-            visibility: visibility.modelValue,
-            // Generated per run, so a Shortcut that retries cannot double-post.
-            idempotencyKey: UUID().uuidString)
+            visibility: visibility,
+            idempotencyKey: Self.idempotencyKey(
+                accountID: context.accountID, text: text, visibility: visibility))
 
         _ = try await context.client.decode(Status.self, from: Endpoint.composing.post(draft))
         return .result(dialog: "Posted.")
+    }
+
+    /// The same post, from the same account, within the same ten minutes
+    /// gets the same key.
+    ///
+    /// A random key per run cannot stop a double post: a Shortcut or Siri
+    /// that retries runs `perform` again, with a new key. Derived from what is
+    /// posted, the retry carries the key the first attempt did, and the
+    /// server answers it with the post it already made. The cost is that the
+    /// very same words cannot be posted twice from a Shortcut inside one
+    /// window, which is what a duplicate is.
+    static func idempotencyKey(
+        accountID: UUID, text: String, visibility: Visibility, now: Date = Date()
+    ) -> String {
+        let window = Int(now.timeIntervalSince1970 / 600)
+        let material = "\(accountID.uuidString)|\(visibility.rawValue)|\(window)|\(text)"
+        return SHA256.hash(data: Data(material.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+
+    /// The opening of the post, for the confirmation: enough to recognise it.
+    static func preview(of text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 80 else { return trimmed }
+        return String(trimmed.prefix(80)) + "…"
     }
 }
 
@@ -158,6 +194,10 @@ enum IntentContext {
         let accountID: UUID
         let serverAccountID: String
         let client: APIClient
+        /// `@name@server`, for anything that asks before acting as them.
+        let handle: String
+        /// What the composer starts a new post as.
+        let defaultVisibility: Visibility
     }
 
     /// The running app's environment, when the intent runs inside the app.
@@ -175,13 +215,13 @@ enum IntentContext {
             if let session = live.activeSession {
                 return Context(
                     accountID: session.id, serverAccountID: session.snapshot.serverAccountID,
-                    client: session.client)
+                    client: session.client, handle: session.snapshot.qualifiedHandle,
+                    defaultVisibility: session.settings.defaultVisibility)
             }
             return nil
         }
 
-        let container = StoreContainer.make()
-        let accounts = AccountStore(modelContainer: container)
+        let accounts = AccountStore(modelContainer: StoreContainer.reader())
         guard let snapshots = try? await accounts.allAccounts(),
             let active = activeSnapshot(from: snapshots)
         else { return nil }
@@ -193,7 +233,9 @@ enum IntentContext {
             accountID: active.id,
             serverAccountID: active.serverAccountID,
             client: APIClient(
-                accountID: active.id, apiBase: active.capabilities.apiBase, accessToken: token))
+                accountID: active.id, apiBase: active.capabilities.apiBase, accessToken: token),
+            handle: active.qualifiedHandle,
+            defaultVisibility: active.settings.defaultVisibility)
     }
 
     private static func activeSnapshot(

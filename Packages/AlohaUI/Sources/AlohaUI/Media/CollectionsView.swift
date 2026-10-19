@@ -85,11 +85,11 @@ public struct CollectionsView: View {
 
             if collections.isEmpty && !isLoading {
                 ContentUnavailableView {
-                    Text("No albums", comment: "Empty collections")
+                    Text("No albums", comment: "Empty albums")
                 } description: {
                     Text(
                         "Albums group photos together. Create one from any post's menu.",
-                        comment: "Collections explanation")
+                        comment: "Albums explanation")
                 }
                 .padding(.top, AlohaMetrics.space6)
             }

@@ -140,6 +140,7 @@ public final class AudioPlayerCoordinator {
 
 public struct AudioModeView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.shellUsesTabBar) private var shellUsesTabBar
 
     private let session: AccountSession
     private let source: TimelineSource
@@ -234,11 +235,12 @@ public struct AudioModeView: View {
         .onTapGesture { onAction(.open(status)) }
     }
 
-    /// On a phone the player lives in the tab bar's accessory, where it
-    /// stays across tabs; drawing it here as well would show it twice.
+    /// Under the phone's tab bar the player lives in the bar's accessory,
+    /// where it stays across tabs; drawing it here as well would show it
+    /// twice. Not on the sidebar shell — an unfolded iPhone Duo included.
     private var usesTabAccessory: Bool {
         #if os(iOS)
-            UIDevice.current.userInterfaceIdiom == .phone
+            shellUsesTabBar
         #else
             false
         #endif

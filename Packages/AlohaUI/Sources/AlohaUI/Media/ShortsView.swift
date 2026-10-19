@@ -10,8 +10,8 @@ import SwiftUI
 import TipKit
 
 /// Full-screen vertical pager, one short per page, edge to edge — laid out
-/// the way a short-video app lays it out: a Following / For You switch at
-/// the top, a rail of big glyphs with counts down the trailing edge, the
+/// the way a short-video app lays it out: the web app's scopes — My Feed,
+/// For you, Local, Global — as a switch at the top, a rail of big glyphs with counts down the trailing edge, the
 /// handle and caption at the foot, and a hairline of playback progress along
 /// the very bottom.
 ///
@@ -21,29 +21,45 @@ import TipKit
 public struct ShortsView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.shellUsesTabBar) private var shellUsesTabBar
 
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
 
-    /// Following is your home timeline; For You is everything the server sees.
+    /// Whose shorts: the same scopes as every other feed, in the order the
+    /// web app's Shorts page offers them.
     enum Feed: String, CaseIterable, Identifiable {
-        case following, forYou
+        case home, interests, local, federated
         var id: String { rawValue }
         var source: TimelineSource {
             switch self {
-            case .following: .home
-            case .forYou: .federated
+            case .home: .home
+            case .interests: .interests
+            case .local: .local
+            case .federated: .federated
             }
         }
         var title: Text {
             switch self {
-            case .following: Text("Following", comment: "Shorts feed")
-            case .forYou: Text("For You", comment: "Shorts feed")
+            case .home: Text("My Feed", comment: "Shorts feed")
+            case .interests: Text("For you", comment: "Shorts feed")
+            case .local: Text("Local", comment: "Shorts feed")
+            case .federated: Text("Global", comment: "Shorts feed")
             }
+        }
+
+        /// For you is Nextcloud Social's, and where it is offered it is
+        /// where the stack starts, as on the web; elsewhere, My Feed.
+        static func options(offersForYou: Bool) -> [Feed] {
+            offersForYou ? allCases : allCases.filter { $0 != .interests }
+        }
+
+        static func initial(offersForYou: Bool) -> Feed {
+            offersForYou ? .interests : .home
         }
     }
 
-    @State private var feed: Feed = .forYou
+    @State private var feed: Feed
     @State private var model: TimelineModel
     @State private var currentID: String?
     @AppStorage("aloha.shorts.muted") private var isMuted = true
@@ -55,9 +71,11 @@ public struct ShortsView: View {
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
         self.onAction = onAction
+        let initial = Feed.initial(offersForYou: session.capabilities.isNextcloudSocial)
+        _feed = State(initialValue: initial)
         _model = State(
             initialValue: TimelineModel(
-                key: TimelineKey(mode: .shorts, source: Feed.forYou.source), session: session))
+                key: TimelineKey(mode: .shorts, source: initial.source), session: session))
     }
 
     private var shorts: [Status] {
@@ -100,7 +118,8 @@ public struct ShortsView: View {
                     // shell it stays a vertical column in the middle of the
                     // window rather than becoming a letterboxed sprawl, the
                     // way TikTok and Reels do on an iPad.
-                    .frame(maxWidth: PlatformBehavior.shortsColumnWidth)
+                    .frame(
+                        maxWidth: PlatformBehavior.shortsColumnWidth(fullScreen: shellUsesTabBar))
                 }
 
                 VStack(spacing: AlohaMetrics.space2) {
@@ -171,8 +190,9 @@ public struct ShortsView: View {
 
     private var topBar: some View {
         ZStack {
-            HStack(spacing: AlohaMetrics.space5) {
-                ForEach(Feed.allCases) { option in
+            HStack(spacing: AlohaMetrics.space4) {
+                ForEach(Feed.options(offersForYou: session.capabilities.isNextcloudSocial)) {
+                    option in
                     Button {
                         if reduceMotion {
                             feed = option
@@ -183,7 +203,7 @@ public struct ShortsView: View {
                         VStack(spacing: 5) {
                             option.title
                                 .font(.body.weight(feed == option ? .bold : .semibold))
-                                .foregroundStyle(.white.opacity(feed == option ? 1 : 0.65))
+                                .foregroundStyle(.white.opacity(feed == option ? 1 : 0.85))
                             Capsule()
                                 .fill(.white)
                                 .frame(width: 28, height: 3)
@@ -343,11 +363,17 @@ public struct ShortsView: View {
             }
 
             // Without scrims, white overlay text vanishes over a bright frame.
+            // The top one holds its depth down past the scope switch, which
+            // used to sit where it had already faded to a quarter.
             LinearGradient(
-                colors: [.black.opacity(0.55), .clear],
+                stops: [
+                    .init(color: .black.opacity(0.6), location: 0),
+                    .init(color: .black.opacity(0.5), location: 0.55),
+                    .init(color: .clear, location: 1),
+                ],
                 startPoint: .top, endPoint: .bottom
             )
-            .frame(height: 160)
+            .frame(height: 200)
             .frame(maxHeight: .infinity, alignment: .top)
             .allowsHitTesting(false)
 
@@ -393,7 +419,7 @@ public struct ShortsView: View {
                 withAnimation(.easeOut(duration: 0.15)) { isPaused = pressing }
             }, perform: {}
         )
-        .sensoryFeedback(.success, trigger: hearted)
+        .alohaSensoryFeedback(.success, trigger: hearted)
     }
 
     private func heart(_ status: Status) {
@@ -537,6 +563,8 @@ public struct ShortsView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Share", comment: "Shorts action"))
+            .alohaLargeContentViewer(
+                symbol: AlohaSymbol.share, label: Text("Share", comment: "Shorts action"))
 
             Menu {
                 StatusMenu(status: status, onAction: onAction)
@@ -550,6 +578,12 @@ public struct ShortsView: View {
             }
             .menuStyle(.borderlessButton)
             .accessibilityLabel(Text("More actions", comment: "Shorts action"))
+            .accessibilityInputLabels([
+                Text("More actions", comment: "Shorts action"),
+                Text("More", comment: "Voice Control name for the post's More actions menu"),
+            ])
+            .alohaLargeContentViewer(
+                symbol: AlohaSymbol.more, label: Text("More actions", comment: "Shorts action"))
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
     }
@@ -562,6 +596,10 @@ public struct ShortsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        // The rail's glyphs are drawn at a fixed size over the video, where
+        // growing with text would cover the picture; at the accessibility
+        // sizes a long press shows each one large instead.
+        .alohaLargeContentViewer(symbol: symbol, label: label)
     }
 
     private func railLabel(symbol: String, tint: Color, count: Int?) -> some View {
@@ -608,9 +646,9 @@ public struct ShortsView: View {
                 .font(.largeTitle)
             Text("No shorts yet", comment: "Empty Shorts mode")
                 .font(.headline)
-            if feed == .following {
+            if feed == .home {
                 Text(
-                    "Nobody you follow has posted a short. Try For You.",
+                    "Nobody you follow has posted a short. Try Global.",
                     comment: "Shorts empty state on the following feed"
                 )
                 .font(.footnote)

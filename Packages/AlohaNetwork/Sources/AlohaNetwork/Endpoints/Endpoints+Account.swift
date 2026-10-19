@@ -186,8 +186,19 @@ extension Endpoint {
 
     /// Taking the account somewhere else, or bringing one here.
     public enum migration {
+        /// The lists `GET /api/v1/migration/export/{kind}` writes as CSV
+        /// (`MigrationController::exportCsv`), in Mastodon's columns.
         public enum ListKind: String, Sendable, Hashable, CaseIterable {
-            case following, followers, blocks, mutes, lists
+            case following, followers, blocks, mutes, lists, bookmarks
+            case domainBlocks = "domain_blocks"
+
+            /// Whether the server takes this list back in. Followers cannot
+            /// be imported — a follow is the other account's to make, and
+            /// only a move brings followers — so there is no route for it.
+            public var isImportable: Bool { self != .followers }
+
+            /// The kinds an import can be offered for.
+            public static var importable: [ListKind] { allCases.filter(\.isImportable) }
 
             /// The route an import of this kind lives at. Following goes in
             /// as `follows`; the rest keep their name.
@@ -212,8 +223,10 @@ extension Endpoint {
                     ])))
         }
 
-        public static func importList(_ kind: ListKind, csv: Data, filename: String) -> Endpoint {
-            Endpoint(
+        /// `nil` for a kind the server takes no import of (`isImportable`).
+        public static func importList(_ kind: ListKind, csv: Data, filename: String) -> Endpoint? {
+            guard kind.isImportable else { return nil }
+            return Endpoint(
                 method: .post, path: "api/v1/migration/\(kind.importPath)",
                 body: .multipart(
                     Multipart(parts: [
@@ -244,6 +257,11 @@ extension Endpoint {
                 ]))
         }
 
+        // The people, announcement and alias routes are Nextcloud session
+        // routes (`#[NoAdminRequired]` without `#[PublicPage]` in
+        // `MigrationController`): a bearer token is refused there, so they
+        // carry the app password.
+
         /// Candidate handles out of an Instagram archive.
         public static func instagramPeople(_ data: Data, filename: String) -> Endpoint {
             Endpoint(
@@ -253,23 +271,30 @@ extension Endpoint {
                         .init(
                             name: "file", filename: filename, mimeType: "application/zip",
                             data: data)
-                    ])))
+                    ])),
+                authentication: .nextcloudSession)
         }
 
         public static func findPeople(_ handles: [String]) -> Endpoint {
             Endpoint(
                 method: .post, path: "api/v1/migration/people/find",
-                body: .form(.repeated("handles", handles)))
+                body: .form(.repeated("handles", handles)),
+                authentication: .nextcloudSession)
         }
 
-        public static var announcement: Endpoint { Endpoint(path: "api/v1/migration/announcement") }
+        public static var announcement: Endpoint {
+            Endpoint(path: "api/v1/migration/announcement", authentication: .nextcloudSession)
+        }
 
-        public static var aliases: Endpoint { Endpoint(path: "api/v1/migration/aliases") }
+        public static var aliases: Endpoint {
+            Endpoint(path: "api/v1/migration/aliases", authentication: .nextcloudSession)
+        }
 
         public static func addAlias(_ alias: String) -> Endpoint {
             Endpoint(
                 method: .post, path: "api/v1/migration/aliases",
-                body: .form([URLQueryItem(name: "alias", value: alias)]))
+                body: .form([URLQueryItem(name: "alias", value: alias)]),
+                authentication: .nextcloudSession)
         }
 
         /// The alias rides in the query: a DELETE with a body is dropped by
@@ -277,7 +302,8 @@ extension Endpoint {
         public static func removeAlias(_ alias: String) -> Endpoint {
             Endpoint(
                 method: .delete, path: "api/v1/migration/aliases",
-                query: [URLQueryItem(name: "alias", value: alias)])
+                query: [URLQueryItem(name: "alias", value: alias)],
+                authentication: .nextcloudSession)
         }
     }
 

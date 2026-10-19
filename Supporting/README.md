@@ -1,17 +1,40 @@
 # Supporting files
 
+## One Mac app
+
+The Mac is `AlohaSocialMac` (`social.aloha.app.mac`) and nothing else. The
+`AlohaSocial` target builds for iPhone, iPad and Vision only: it used to list
+`macosx` too, which made it a second, native Mac app with its own bundle,
+store and Keychain and none of the Mac app's menu bar, window or notification
+wiring. "Designed for iPad" on Apple silicon Macs is off for the same reason
+(`SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO`): the store should offer the
+Mac app, not the iPad one, to Mac users.
+
+The UI tests follow: on macOS they drive `AlohaSocialMac`
+(`TEST_TARGET_NAME[sdk=macosx*]`), elsewhere `AlohaSocial`.
+
+Because the Mac app has its own bundle id, it is a separate App Store record.
+Universal purchase (one record, one purchase across iPhone and Mac) would need
+the Mac app to share `social.aloha.app`, and its widgets and share extension
+to move under that id — a decision for App Store Connect, not for this file.
+
 ## App group and Keychain sharing
 
 Every process that reads what the app wrote shares two things:
 
 | Target | Bundle id | Entitlements file | App group | Keychain group | Sandbox |
 |---|---|---|---|---|---|
-| AlohaSocial (iPhone, iPad, Vision, Mac) | `social.aloha.app` | `AlohaSocial.entitlements` | ✓ | ✓ | ✓ (Mac) |
+| AlohaSocial (iPhone, iPad, Vision) | `social.aloha.app` | `AlohaSocial.entitlements` | ✓ | ✓ | — |
 | AlohaWidgets (iOS) | `social.aloha.app.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | — |
 | AlohaWidgets (Mac) | `social.aloha.app.mac.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | ✓ + network client |
-| AlohaShareExtension | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
+| AlohaShareExtension (iOS) | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
+| AlohaShareExtension (Mac) | `social.aloha.app.mac.share` | `AlohaShareExtensionMac.entitlements` | ✓ | ✓ | ✓ + network client |
 | AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService.entitlements` | ✓ | ✓ | — |
 | AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac.entitlements` | ✓ | ✓ | ✓ + network client, user-selected files |
+| AlohaSocialTV | `social.aloha.app.tv` | `AlohaSocialTV.entitlements` | ✓ | ✓ | — |
+| AlohaTopShelf (tvOS) | `social.aloha.app.tv.topshelf` | `AlohaTopShelf.entitlements` | ✓ | ✓ | — |
+| AlohaSocialWatch | `social.aloha.app.watch` | `AlohaSocialWatch.entitlements` | ✓ (on the watch) | ✓ (on the watch) | — |
+| AlohaWatchWidgets (complications) | `social.aloha.app.watch.widgets` | `AlohaWatchWidgets.entitlements` | ✓ (on the watch) | ✓ (on the watch) | — |
 
 - App group: `group.social.aloha.app`, on every platform. Since macOS 15 an
   iOS-style `group.` identifier is valid on the Mac when the provisioning
@@ -20,6 +43,11 @@ Every process that reads what the app wrote shares two things:
   shared items live in the data protection keychain, the only one that honours
   an access group; items an older build left in the file-based keychain are
   moved over on first read.
+- The watch's group and Keychain are the watch's own: the identifiers are the
+  same strings, but nothing crosses to the phone except over
+  `WatchConnectivity`. The watch app keeps the pairing in the shared Keychain
+  group so its complications can read the token; a pairing an older build
+  stored privately is moved over on first launch (`WatchPairingStore`).
 - Each target that has the app group says so with `AlohaAppGroupEnabled` in
   its Info.plist. Without the key, `AppGroup` stays on the process's own
   container rather than claiming one it was never granted.
@@ -37,6 +65,11 @@ change the group to one of your own — the string in each `*.entitlements`,
 `AlohaAppGroupEnabled` to `false` in the Info.plists and remove
 `com.apple.security.application-groups` from the entitlements. The second gives
 an app that works alone, with widgets and extensions that see no accounts.
+
+The Apple TV shares the same group name with its Top Shelf extension; it is a
+different device, so nothing actually crosses between it and the phone. Its
+first launch with the group moves the TV sign-in from the app's own defaults
+and Keychain item into the shared ones (`TVAccountStore`).
 
 The first launch of a build with the group moves what the app kept in its own
 container — the SwiftData store and the `aloha.*` defaults — into the group

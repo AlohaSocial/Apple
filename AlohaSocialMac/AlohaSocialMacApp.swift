@@ -103,22 +103,23 @@ struct AlohaSocialMacApp: App {
 
             Divider()
 
+            // The sidebar's order and names (`ShellPlace.sidebarOrder`).
             Button {
                 openRoute(.notifications)
             } label: {
-                Text("Notifications", comment: "Menu item")
+                Text("Activities", comment: "Menu item")
+            }
+
+            Button {
+                openRoute(.conversations)
+            } label: {
+                Text("Direct messages", comment: "Menu item")
             }
 
             Button {
                 openRoute(.explore)
             } label: {
                 Text("Discover", comment: "Menu item")
-            }
-
-            Button {
-                openRoute(.conversations)
-            } label: {
-                Text("Messages", comment: "Menu item")
             }
         } label: {
             Label {

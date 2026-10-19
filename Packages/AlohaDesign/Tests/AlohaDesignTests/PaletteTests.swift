@@ -29,7 +29,7 @@ struct PaletteTests {
                 for contrast in [false, true] {
                     let palette = theme.palette(for: scheme, increaseContrast: contrast)
                     for (name, path) in roles {
-                        let resolved = palette[keyPath: path].resolve(in: .init())
+                        let resolved = palette[keyPath: path].resolve(in: environment(scheme))
                         #expect(
                             resolved.opacity > 0,
                             "\(theme.rawValue)/\(scheme)/\(contrast) has no \(name)")
@@ -48,7 +48,7 @@ struct PaletteTests {
             for scheme in [ColorScheme.light, .dark] {
                 let palette = theme.palette(for: scheme)
                 let tints = [palette.boost, palette.favourite, palette.bookmark]
-                    .map { $0.resolve(in: .init()) }
+                    .map { $0.resolve(in: environment(scheme)) }
 
                 for first in 0..<tints.count {
                     for second in (first + 1)..<tints.count {
@@ -73,7 +73,7 @@ struct PaletteTests {
             for scheme in [ColorScheme.light, .dark] {
                 let palette = theme.palette(for: scheme)
                 let tints = [palette.boost, palette.favourite, palette.bookmark]
-                    .map { $0.resolve(in: .init()) }
+                    .map { $0.resolve(in: environment(scheme)) }
 
                 for deficiency in Deficiency.allCases {
                     let mapped = tints.map { deficiency.apply(to: $0) }
@@ -111,7 +111,7 @@ struct PaletteTests {
                     ("hashtag", palette.hashtag),
                 ]
                 for (name, colour) in roles {
-                    let ratio = contrast(colour, palette.background)
+                    let ratio = contrast(colour, palette.background, in: scheme)
                     // WCAG AA for body text.
                     #expect(
                         ratio >= 4.5,
@@ -129,7 +129,7 @@ struct PaletteTests {
         for theme in AlohaTheme.allCases {
             for scheme in [ColorScheme.light, .dark] {
                 let palette = theme.palette(for: scheme)
-                let ratio = contrast(palette.onAccent, palette.accent)
+                let ratio = contrast(palette.onAccent, palette.accent, in: scheme)
                 #expect(
                     ratio >= 4.5,
                     "\(theme.rawValue)/\(scheme) accent is \(ratio) under its own text colour")
@@ -137,10 +137,34 @@ struct PaletteTests {
         }
     }
 
-    private func contrast(_ first: Color, _ second: Color) -> Double {
-        let a = luminance(first.resolve(in: .init()))
-        let b = luminance(second.resolve(in: .init()))
+    private func contrast(_ first: Color, _ second: Color, in scheme: ColorScheme) -> Double {
+        let a = luminance(first.resolve(in: environment(scheme)))
+        let b = luminance(second.resolve(in: environment(scheme)))
         return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+    }
+
+    /// The appearance a role is drawn in. The System theme's grounds and label
+    /// are the platform's semantic colours, which only mean something once a
+    /// scheme is named — resolved in a default environment every one of them
+    /// would come back as its light-mode self.
+    private func environment(_ scheme: ColorScheme) -> EnvironmentValues {
+        var environment = EnvironmentValues()
+        environment.colorScheme = scheme
+        return environment
+    }
+
+    @Test("The System theme uses the platform's grounds; the others paint their own")
+    func systemThemeUsesSystemGrounds() {
+        #if os(iOS) || os(visionOS) || os(macOS)
+            #expect(AlohaTheme.system.palette(for: .light).usesSystemGrounds)
+            #expect(AlohaTheme.system.palette(for: .dark, increaseContrast: true).usesSystemGrounds)
+            #expect(AlohaTheme.system.palette(for: .dark).backgroundComponents.red < 0.2)
+            #expect(AlohaTheme.system.palette(for: .light).backgroundComponents == .white)
+        #endif
+        for theme in AlohaTheme.allCases where theme != .system {
+            #expect(!theme.palette(for: .light).usesSystemGrounds)
+            #expect(!theme.palette(for: .dark).usesSystemGrounds)
+        }
     }
 
     @Test("A theme's preferred scheme matches its palette")

@@ -30,10 +30,15 @@
 		BBSL030000000000000BB /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
 		BBSL070000000000000BB /* AlohaUI in Frameworks */ = {isa = PBXBuildFile; productRef = AA200700000000000000AA /* AlohaUI */; };
 		BBSZ000000000000000BB /* AlohaShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBSP000000000000000BB /* AlohaShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FFMZ00000000000000FF /* AlohaShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBSP000000000000000BB /* AlohaShareExtension.appex */; platformFilter = macos; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BBWL000000000000000BB /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
 		BBWL030000000000000BB /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
 		BBWL040000000000000BB /* AlohaMedia in Frameworks */ = {isa = PBXBuildFile; productRef = AA200400000000000000AA /* AlohaMedia */; };
 		BBWL060000000000000BB /* AlohaDesign in Frameworks */ = {isa = PBXBuildFile; productRef = AA200600000000000000AA /* AlohaDesign */; };
+		EEWL00000000000000EE /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
+		EEWL01000000000000EE /* AlohaHTML in Frameworks */ = {isa = PBXBuildFile; productRef = AA200100000000000000AA /* AlohaHTML */; };
+		EEWL02000000000000EE /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
+		EEWZ00000000000000EE /* AlohaWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEWP00000000000000EE /* AlohaWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		MACWZ0000000000000MA /* AlohaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBWP000000000000000BB /* AlohaWidgets.appex */; platformFilter = macos; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BBWZ000000000000000BB /* AlohaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBWP000000000000000BB /* AlohaWidgets.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CCKL000000000000000CC /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
@@ -47,6 +52,10 @@
 		DDNL020000000000000DD /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
 		DDNL030000000000000DD /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
 		DDNZ00000000000000DD /* AlohaNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DDNP00000000000000DD /* AlohaNotificationService.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		GGTL000000000000000GG /* AlohaModels in Frameworks */ = {isa = PBXBuildFile; productRef = AA200000000000000000AA /* AlohaModels */; };
+		GGTL020000000000000GG /* AlohaNetwork in Frameworks */ = {isa = PBXBuildFile; productRef = AA200200000000000000AA /* AlohaNetwork */; };
+		GGTL030000000000000GG /* AlohaStore in Frameworks */ = {isa = PBXBuildFile; productRef = AA200300000000000000AA /* AlohaStore */; };
+		GGTZ00000000000000GG /* AlohaTopShelf.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = GGTP00000000000000GG /* AlohaTopShelf.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +87,20 @@
 			remoteGlobalIDString = 56A4A911306020030052D930;
 			remoteInfo = AlohaSocial;
 		};
+		HHRY00000000000000HH /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = MACT00000000000000MA;
+			remoteInfo = AlohaSocialMac;
+		};
+		EEWY00000000000000EE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EEWT00000000000000EE;
+			remoteInfo = AlohaWatchWidgets;
+		};
 		CCKY00000000000000CC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 56A4A90A306020030052D930 /* Project object */;
@@ -91,6 +114,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = BBWT000000000000000BB;
 			remoteInfo = AlohaWidgets;
+		};
+		GGTY00000000000000GG /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = GGTT00000000000000GG;
+			remoteInfo = AlohaTopShelf;
+		};
+		FFMY00000000000000FF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56A4A90A306020030052D930 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBST000000000000000BB;
+			remoteInfo = AlohaShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -117,12 +154,31 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EEWEMBED000000000000EE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				EEWZ00000000000000EE /* AlohaWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
 		MACEMBED0000000000000MA /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			dstPath = "";
 			dstSubfolder = PlugIns;
 			files = (
 				MACWZ0000000000000MA /* AlohaWidgets.appex in Embed Foundation Extensions */,
+				FFMZ00000000000000FF /* AlohaShareExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+		GGTEMBED000000000000GG /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				GGTZ00000000000000GG /* AlohaTopShelf.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 		};
@@ -136,7 +192,9 @@
 		CCVP00000000000000CC /* AlohaSocialTV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DDNP00000000000000DD /* AlohaNotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEUP00000000000000EE /* AlohaSocialUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlohaSocialUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EEWP00000000000000EE /* AlohaWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		MACP00000000000000MA /* AlohaSocialMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlohaSocialMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		GGTP00000000000000GG /* AlohaTopShelf.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AlohaTopShelf.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -175,9 +233,19 @@
 			path = AlohaSocialUITests;
 			sourceTree = "<group>";
 		};
+		EEWG00000000000000EE /* AlohaWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AlohaWatchWidgets;
+			sourceTree = "<group>";
+		};
 		MACG00000000000000MA /* AlohaSocialMac */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AlohaSocialMac;
+			sourceTree = "<group>";
+		};
+		GGTG00000000000000GG /* AlohaTopShelf */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AlohaTopShelf;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -245,6 +313,14 @@
 			files = (
 			);
 		};
+		EEWF00000000000000EE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				EEWL00000000000000EE /* AlohaModels in Frameworks */,
+				EEWL01000000000000EE /* AlohaHTML in Frameworks */,
+				EEWL02000000000000EE /* AlohaNetwork in Frameworks */,
+			);
+		};
 		MACF00000000000000MA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
@@ -256,6 +332,14 @@
 				2234FA52307D30E800E1E442 /* AlohaNetwork in Frameworks */,
 				2234FA51307D30E800E1E442 /* AlohaHTML in Frameworks */,
 				2234FA56307D30E800E1E442 /* AlohaDesign in Frameworks */,
+			);
+		};
+		GGTF00000000000000GG /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				GGTL000000000000000GG /* AlohaModels in Frameworks */,
+				GGTL020000000000000GG /* AlohaNetwork in Frameworks */,
+				GGTL030000000000000GG /* AlohaStore in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -276,10 +360,12 @@
 				56A4A914306020030052D930 /* AlohaSocial */,
 				CCKG00000000000000CC /* AlohaSocialWatch */,
 				CCVG00000000000000CC /* AlohaSocialTV */,
+				GGTG00000000000000GG /* AlohaTopShelf */,
 				BBWG000000000000000BB /* AlohaWidgets */,
 				BBSG000000000000000BB /* AlohaShareExtension */,
 				DDNG00000000000000DD /* AlohaNotificationService */,
 				EEUG00000000000000EE /* AlohaSocialUITests */,
+				EEWG00000000000000EE /* AlohaWatchWidgets */,
 				56A4A913306020030052D930 /* Products */,
 				5693770A306271EE00CA10CF /* Recovered References */,
 			);
@@ -292,9 +378,11 @@
 				CCKP00000000000000CC /* AlohaSocialWatch.app */,
 				MACP00000000000000MA /* AlohaSocialMac.app */,
 				CCVP00000000000000CC /* AlohaSocialTV.app */,
+				GGTP00000000000000GG /* AlohaTopShelf.appex */,
 				BBWP000000000000000BB /* AlohaWidgets.appex */,
 				BBSP000000000000000BB /* AlohaShareExtension.appex */,
 				EEUP00000000000000EE /* AlohaSocialUITests.xctest */,
+				EEWP00000000000000EE /* AlohaWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -392,8 +480,12 @@
 				CCKS00000000000000CC /* Sources */,
 				CCKF00000000000000CC /* Frameworks */,
 				CCKR00000000000000CC /* Resources */,
+				EEWEMBED000000000000EE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
+			);
+			dependencies = (
+				EEWX00000000000000EE /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CCKG00000000000000CC /* AlohaSocialWatch */,
@@ -416,8 +508,12 @@
 				CCVS00000000000000CC /* Sources */,
 				CCVF00000000000000CC /* Frameworks */,
 				CCVR00000000000000CC /* Resources */,
+				GGTEMBED000000000000GG /* Embed Foundation Extensions */,
 			);
 			buildRules = (
+			);
+			dependencies = (
+				GGTX00000000000000GG /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CCVG00000000000000CC /* AlohaSocialTV */,
@@ -468,6 +564,7 @@
 			);
 			dependencies = (
 				EEUX00000000000000EE /* PBXTargetDependency */,
+				HHRX00000000000000HH /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				EEUG00000000000000EE /* AlohaSocialUITests */,
@@ -476,6 +573,29 @@
 			productName = AlohaSocialUITests;
 			productReference = EEUP00000000000000EE /* AlohaSocialUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		EEWT00000000000000EE /* AlohaWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EEWC00000000000000EE /* Build configuration list for PBXNativeTarget "AlohaWatchWidgets" */;
+			buildPhases = (
+				EEWS00000000000000EE /* Sources */,
+				EEWF00000000000000EE /* Frameworks */,
+				EEWR00000000000000EE /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				EEWG00000000000000EE /* AlohaWatchWidgets */,
+			);
+			name = AlohaWatchWidgets;
+			packageProductDependencies = (
+				AA200000000000000000AA /* AlohaModels */,
+				AA200100000000000000AA /* AlohaHTML */,
+				AA200200000000000000AA /* AlohaNetwork */,
+			);
+			productName = AlohaWatchWidgets;
+			productReference = EEWP00000000000000EE /* AlohaWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		MACT00000000000000MA /* AlohaSocialMac */ = {
 			isa = PBXNativeTarget;
@@ -490,6 +610,7 @@
 			);
 			dependencies = (
 				MACWX0000000000000MA /* PBXTargetDependency */,
+				FFMX00000000000000FF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				MACG00000000000000MA /* AlohaSocialMac */,
@@ -508,6 +629,29 @@
 			productName = AlohaSocialMac;
 			productReference = MACP00000000000000MA /* AlohaSocialMac.app */;
 			productType = "com.apple.product-type.application";
+		};
+		GGTT00000000000000GG /* AlohaTopShelf */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = GGTC00000000000000GG /* Build configuration list for PBXNativeTarget "AlohaTopShelf" */;
+			buildPhases = (
+				GGTS00000000000000GG /* Sources */,
+				GGTF00000000000000GG /* Frameworks */,
+				GGTR00000000000000GG /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				GGTG00000000000000GG /* AlohaTopShelf */,
+			);
+			name = AlohaTopShelf;
+			packageProductDependencies = (
+				AA200000000000000000AA /* AlohaModels */,
+				AA200200000000000000AA /* AlohaNetwork */,
+				AA200300000000000000AA /* AlohaStore */,
+			);
+			productName = AlohaTopShelf;
+			productReference = GGTP00000000000000GG /* AlohaTopShelf.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -556,10 +700,12 @@
 				CCKT00000000000000CC /* AlohaSocialWatch */,
 				MACT00000000000000MA /* AlohaSocialMac */,
 				CCVT00000000000000CC /* AlohaSocialTV */,
+				GGTT00000000000000GG /* AlohaTopShelf */,
 				BBWT000000000000000BB /* AlohaWidgets */,
 				BBST000000000000000BB /* AlohaShareExtension */,
 				DDNT00000000000000DD /* AlohaNotificationService */,
 				EEUT00000000000000EE /* AlohaSocialUITests */,
+				EEWT00000000000000EE /* AlohaWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -595,7 +741,17 @@
 			files = (
 			);
 		};
+		EEWR00000000000000EE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
 		MACR00000000000000MA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		GGTR00000000000000GG /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -638,7 +794,17 @@
 			files = (
 			);
 		};
+		EEWS00000000000000EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 		MACS00000000000000MA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		GGTS00000000000000GG /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -666,8 +832,15 @@
 		};
 		EEUX00000000000000EE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 56A4A911306020030052D930 /* AlohaSocial */;
 			targetProxy = EEUY00000000000000EE /* PBXContainerItemProxy */;
+		};
+		HHRX00000000000000HH /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = macos;
+			target = MACT00000000000000MA /* AlohaSocialMac */;
+			targetProxy = HHRY00000000000000HH /* PBXContainerItemProxy */;
 		};
 		CCKX00000000000000CC /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -675,11 +848,27 @@
 			target = CCKT00000000000000CC /* AlohaSocialWatch */;
 			targetProxy = CCKY00000000000000CC /* PBXContainerItemProxy */;
 		};
+		EEWX00000000000000EE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EEWT00000000000000EE /* AlohaWatchWidgets */;
+			targetProxy = EEWY00000000000000EE /* PBXContainerItemProxy */;
+		};
 		MACWX0000000000000MA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			platformFilter = macos;
 			target = BBWT000000000000000BB /* AlohaWidgets */;
 			targetProxy = MACWY0000000000000MA /* PBXContainerItemProxy */;
+		};
+		GGTX00000000000000GG /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = GGTT00000000000000GG /* AlohaTopShelf */;
+			targetProxy = GGTY00000000000000GG /* PBXContainerItemProxy */;
+		};
+		FFMX00000000000000FF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = macos;
+			target = BBST000000000000000BB /* AlohaShareExtension */;
+			targetProxy = FFMY00000000000000FF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -743,6 +932,8 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 			};
 			name = Debug;
 		};
@@ -797,6 +988,8 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 			};
 			name = Release;
 		};
@@ -847,8 +1040,9 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -907,8 +1101,9 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -924,6 +1119,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaShareExtension.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Supporting/AlohaShareExtensionMac.entitlements;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = social.aloha.app.mac.share;
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -938,7 +1135,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -951,6 +1148,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaShareExtension.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Supporting/AlohaShareExtensionMac.entitlements;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = social.aloha.app.mac.share;
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -965,7 +1164,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1033,6 +1232,7 @@
 		CCKD00000000000000CC /* Debug configuration for PBXNativeTarget "AlohaSocialWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1044,6 +1244,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.watch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1058,6 +1259,7 @@
 		CCKE00000000000000CC /* Release configuration for PBXNativeTarget "AlohaSocialWatch" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1069,6 +1271,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.watch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -1083,6 +1286,8 @@
 		CCVD00000000000000CC /* Debug configuration for PBXNativeTarget "AlohaSocialTV" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialTV.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1106,6 +1311,8 @@
 		CCVE00000000000000CC /* Release configuration for PBXNativeTarget "AlohaSocialTV" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialTV.entitlements;
+				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
@@ -1194,6 +1401,7 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = AlohaSocial;
+				"TEST_TARGET_NAME[sdk=macosx*]" = AlohaSocialMac;
 			};
 			name = Debug;
 		};
@@ -1215,6 +1423,59 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = AlohaSocial;
+				"TEST_TARGET_NAME[sdk=macosx*]" = AlohaSocialMac;
+			};
+			name = Release;
+		};
+		EEWD00000000000000EE /* Debug configuration for PBXNativeTarget "AlohaWatchWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaWatchWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.watch.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		EEWE00000000000000EE /* Release configuration for PBXNativeTarget "AlohaWatchWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaWatchWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.watch.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
 			};
 			name = Release;
 		};
@@ -1239,7 +1500,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -1265,7 +1526,57 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		GGTD00000000000000GG /* Debug configuration for PBXNativeTarget "AlohaTopShelf" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaTopShelf.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaTopShelf-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.tv.topshelf;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		GGTE00000000000000GG /* Release configuration for PBXNativeTarget "AlohaTopShelf" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaTopShelf.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Supporting/AlohaTopShelf-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app.tv.topshelf;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 27.0;
 			};
 			name = Release;
 		};
@@ -1336,11 +1647,27 @@
 			);
 			defaultConfigurationName = Release;
 		};
+		EEWC00000000000000EE /* Build configuration list for PBXNativeTarget "AlohaWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EEWD00000000000000EE /* Debug configuration for PBXNativeTarget "AlohaWatchWidgets" */,
+				EEWE00000000000000EE /* Release configuration for PBXNativeTarget "AlohaWatchWidgets" */,
+			);
+			defaultConfigurationName = Release;
+		};
 		MACC00000000000000MA /* Build configuration list for PBXNativeTarget "AlohaSocialMac" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				MACD00000000000000MA /* Debug configuration for PBXNativeTarget "AlohaSocialMac" */,
 				MACX00000000000000MA /* Release configuration for PBXNativeTarget "AlohaSocialMac" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		GGTC00000000000000GG /* Build configuration list for PBXNativeTarget "AlohaTopShelf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				GGTD00000000000000GG /* Debug configuration for PBXNativeTarget "AlohaTopShelf" */,
+				GGTE00000000000000GG /* Release configuration for PBXNativeTarget "AlohaTopShelf" */,
 			);
 			defaultConfigurationName = Release;
 		};

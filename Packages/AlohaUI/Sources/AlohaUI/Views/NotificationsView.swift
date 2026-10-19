@@ -99,11 +99,13 @@ public struct NotificationsView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
-        .safeAreaInset(edge: .top, spacing: 0) {
+        // A bar, not an opaque inset: the system's scroll-edge effect keeps
+        // the chips legible over the rows passing under them, the way a
+        // toolbar does, instead of a slab of ground colour cutting the list.
+        .safeAreaBar(edge: .top, spacing: 0) {
             filterChips
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
-                .background(palette.background)
         }
         .overlay {
             if isLoading && groups.isEmpty && flat.isEmpty {
@@ -129,35 +131,20 @@ public struct NotificationsView: View {
     /// notification appears (handled in `flatRow`).
     private var flatRowsWithMarker: some View {
         let notifications = visibleFlat
-        guard let markerID = caughtUpNotificationID,
-            let markerIdx = notifications.firstIndex(where: { $0.id == markerID })
-        else {
-            return AnyView(
-                ForEach(notifications) { notification in
-                    flatRow(notification)
-                        .listRowBackground(palette.background)
-                })
-        }
-        // Insert divider after the marker
-        var rows: [AnyView] = []
-        for (idx, notification) in notifications.enumerated() {
-            rows.append(
-                AnyView(
-                    flatRow(notification)
-                        .listRowBackground(palette.background)
-                ))
-            if idx == markerIdx {
-                rows.append(
-                    AnyView(
-                        caughtUpDivider(after: markerID)
-                            .listRowBackground(palette.background)
-                    ))
+        let markerID = caughtUpNotificationID
+        let markerIndex = markerID.flatMap { id in notifications.firstIndex { $0.id == id } }
+        return ForEach(
+            ActivityListRow.rows(notifications, dividerAfter: markerIndex, markerID: markerID)
+        ) { row in
+            switch row {
+            case .item(let notification):
+                flatRow(notification)
+                    .listRowBackground(palette.background)
+            case .caughtUp(let after):
+                caughtUpDivider(after: after)
+                    .listRowBackground(palette.background)
             }
         }
-        return AnyView(
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                row
-            })
     }
 
     nonisolated static func matches(
@@ -175,16 +162,18 @@ public struct NotificationsView: View {
                     chip(
                         .mention,
                         label: String(localized: "Mentions", comment: "Notification filter"))
-                    chip(
-                        .reblog,
-                        label: String(localized: "Boosts", comment: "Notification filter"))
+                    // Nextcloud Social's own filters, in its order.
                     chip(
                         .favourite,
                         label: String(localized: "Favourites", comment: "Notification filter"))
                     chip(
+                        .reblog,
+                        label: String(localized: "Boosts", comment: "Notification filter"))
+                    chip(
                         .follow,
                         label: String(localized: "Follows", comment: "Notification filter"))
                     chip(.poll, label: String(localized: "Polls", comment: "Notification filter"))
+                    chip(.update, label: String(localized: "Edits", comment: "Notification filter"))
                 }
                 .padding(.vertical, AlohaMetrics.space1)
             }
@@ -281,13 +270,15 @@ public struct NotificationsView: View {
                 }
 
                 if let status {
-                    Text(
-                        status.displayed.spoilerText.isEmpty
-                            ? plainPreview(status) : status.displayed.spoilerText
-                    )
+                    Group {
+                        if status.displayed.spoilerText.isEmpty {
+                            StatusPlainPreview(status: status)
+                        } else {
+                            Text(status.displayed.spoilerText).lineLimit(2)
+                        }
+                    }
                     .font(.caption)
                     .foregroundStyle(palette.secondaryLabel)
-                    .lineLimit(2)
                 }
                 if let date = group.latestPageNotificationAt {
                     activityDate(date)
@@ -341,34 +332,22 @@ public struct NotificationsView: View {
     /// marker's.
     private var groupedRowsWithMarker: some View {
         let groups = visibleGroups
-        guard let markerID = caughtUpNotificationID,
-            let markerIndex = groups.firstIndex(where: { $0.mostRecentNotificationID == markerID })
-        else {
-            return AnyView(
-                ForEach(groups) { group in
-                    groupRow(group)
-                        .listRowBackground(palette.background)
-                })
+        let markerID = caughtUpNotificationID
+        let markerIndex = markerID.flatMap { id in
+            groups.firstIndex { $0.mostRecentNotificationID == id }
         }
-
-        var rows: [AnyView] = []
-        for (index, group) in groups.enumerated() {
-            rows.append(
-                AnyView(
-                    groupRow(group)
-                        .listRowBackground(palette.background)
-                ))
-            if index == markerIndex {
-                rows.append(
-                    AnyView(
-                        caughtUpDivider(after: markerID)
-                            .listRowBackground(palette.background)
-                    ))
+        return ForEach(
+            ActivityListRow.rows(groups, dividerAfter: markerIndex, markerID: markerID)
+        ) { row in
+            switch row {
+            case .item(let group):
+                groupRow(group)
+                    .listRowBackground(palette.background)
+            case .caughtUp(let after):
+                caughtUpDivider(after: after)
+                    .listRowBackground(palette.background)
             }
         }
-        return AnyView(
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in row }
-        )
     }
 
     private func flatRow(_ notification: MastodonNotification) -> some View {
@@ -396,10 +375,9 @@ public struct NotificationsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let status = notification.status {
-                        Text(plainPreview(status))
+                        StatusPlainPreview(status: status)
                             .font(.caption)
                             .foregroundStyle(palette.secondaryLabel)
-                            .lineLimit(2)
                     }
                     activityDate(notification.createdAt)
                 }
@@ -465,10 +443,13 @@ public struct NotificationsView: View {
         isLoading = true
         defer { if loadID == requestID { isLoading = false } }
 
+        let types = Endpoint.notifications.everyType(
+            onAlohaSocial: session.capabilities.isNextcloudSocial)
         do {
             if session.capabilities.groupedNotifications {
                 let results = try await session.client.decode(
-                    GroupedNotificationsResults.self, from: Endpoint.notifications.grouped())
+                    GroupedNotificationsResults.self,
+                    from: Endpoint.notifications.grouped(types: types))
                 guard !Task.isCancelled, loadID == requestID else { return }
                 groups = results.notificationGroups
                 accounts = Dictionary(
@@ -477,7 +458,8 @@ public struct NotificationsView: View {
                     results.statuses.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             } else {
                 let page = try await session.client.decode(
-                    LossyArray<MastodonNotification>.self, from: Endpoint.notifications.flat())
+                    LossyArray<MastodonNotification>.self,
+                    from: Endpoint.notifications.flat(types: types))
                 guard !Task.isCancelled, loadID == requestID else { return }
                 flat = page.elements
             }
@@ -517,14 +499,22 @@ public struct NotificationsView: View {
         case .status: AlohaSymbol.notificationsFilled
         case .update: AlohaSymbol.edit
         case .moderationWarning, .severedRelationships: AlohaSymbol.warning
+        case .storyReaction: "face.smiling"
+        case .storyComment: "bubble.left"
+        case .tagged: "person.crop.rectangle"
+        case .blueskyRepostLiked: AlohaSymbol.favouriteFilled
+        case .blueskyRepostReposted: AlohaSymbol.boost
+        case .blueskyVerified: "checkmark.seal.fill"
+        case .blueskyUnverified: "checkmark.seal"
+        case .blueskyStarterPackJoined: "person.3"
         default: AlohaSymbol.notifications
         }
     }
 
     private func tint(for kind: NotificationKind) -> Color {
         switch kind {
-        case .reblog: palette.boost
-        case .favourite: palette.favourite
+        case .reblog, .blueskyRepostReposted: palette.boost
+        case .favourite, .blueskyRepostLiked: palette.favourite
         case .moderationWarning, .severedRelationships: palette.destructive
         default: palette.secondaryLabel
         }
@@ -572,6 +562,33 @@ public struct NotificationsView: View {
             return String(localized: "\(who) edited a post", comment: "Notification summary")
         case .status:
             return String(localized: "\(who) posted", comment: "Notification summary")
+        case .storyReaction:
+            return String(
+                localized: "\(who) reacted to your story", comment: "Notification summary")
+        case .storyComment:
+            return String(
+                localized: "\(who) replied to your story", comment: "Notification summary")
+        case .tagged:
+            return String(
+                localized: "\(who) tagged you in a photo", comment: "Notification summary")
+        case .blueskyRepostLiked:
+            return String(
+                localized: "\(who) liked your repost on Bluesky", comment: "Notification summary")
+        case .blueskyRepostReposted:
+            return String(
+                localized: "\(who) reposted your repost on Bluesky",
+                comment: "Notification summary")
+        case .blueskyVerified:
+            return String(
+                localized: "Bluesky verified your account", comment: "Notification summary")
+        case .blueskyUnverified:
+            return String(
+                localized: "Bluesky no longer verifies your account",
+                comment: "Notification summary")
+        case .blueskyStarterPackJoined:
+            return String(
+                localized: "\(who) joined Bluesky with your starter pack",
+                comment: "Notification summary")
         default:
             return who
         }
@@ -585,11 +602,6 @@ public struct NotificationsView: View {
             sample: [notification.account])
     }
 
-    private func plainPreview(_ status: Status) -> String {
-        StatusHTMLParser().plainText(status.displayed.content)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     /// Advances the notifications marker past the divider.
     ///
     /// Async because the local marker lives in an actor: this is the one write
@@ -599,8 +611,10 @@ public struct NotificationsView: View {
         guard caughtUpNotificationID != nil else { return }
         caughtUpNotificationID = notificationID
 
+        // Whether the stored marker actually moved does not matter here: the
+        // server's copy is written either way, and it never moves backwards.
         do {
-            try await session.supportStore.advanceMarker(
+            _ = try await session.supportStore.advanceMarker(
                 accountID: session.id, timeline: "notifications", to: notificationID)
         } catch {}
 

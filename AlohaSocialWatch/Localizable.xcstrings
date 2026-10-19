@@ -23,6 +23,17 @@
         }
       }
     },
+    "Couldn't load this post" : {
+      "comment" : "Watch, post failed to load",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beitrag konnte nicht geladen werden"
+          }
+        }
+      }
+    },
     "Couldn't send the reply" : {
       "comment" : "Watch reply status",
       "localizations" : {
@@ -41,6 +52,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Favorisieren"
+          }
+        }
+      }
+    },
+    "Mentions" : {
+      "comment" : "Watch mentions screen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erwähnungen"
+          }
+        }
+      }
+    },
+    "No mentions yet" : {
+      "comment" : "Watch, empty mentions list",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Erwähnungen"
           }
         }
       }

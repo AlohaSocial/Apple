@@ -77,7 +77,9 @@ extension AccountSession {
     }
 }
 
-extension AccountSettings {
+/// A value transform on a store type: no isolation of its own, so the
+/// settings closures, which run wherever they are called, can use it.
+nonisolated extension AccountSettings {
     /// The server's delivery, in this app's terms: whole hours, at most four
     /// digest times, quiet hours as a start and an end or none at all.
     mutating func adopt(_ delivery: NotificationDeliverySettings) {

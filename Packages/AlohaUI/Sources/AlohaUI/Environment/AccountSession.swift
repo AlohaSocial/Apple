@@ -10,8 +10,13 @@ import Observation
 
 /// One signed-in account's live services. Created and torn down with the
 /// account — a signed-out account leaves no live object and no cached bytes.
+///
+/// On the main actor, where SwiftUI reads it: its snapshot and flags change
+/// only there, so a view never sees one half-written. The network and store
+/// work it starts runs on their own actors.
+@MainActor
 @Observable
-public final class AccountSession: Identifiable, @unchecked Sendable {
+public final class AccountSession: Identifiable {
     public let id: UUID
     public private(set) var snapshot: AccountStore.Snapshot
     public let client: APIClient
@@ -155,17 +160,48 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
             // So verify against the one endpoint that is authoritative before
             // believing it: if the token still works, the 401 belonged to that
             // route and nothing else changes.
-            let stillSignedIn =
-                (try? await client.decode(
-                    Account.self, from: Endpoint.session.verifyCredentials)) != nil
-            guard !stillSignedIn else { return }
+            guard await isTokenRefused() else { return }
             await markNeedsReauthentication()
         }
+    }
+
+    /// The check in flight, shared: ten screens failing at once ask once.
+    /// No lock: the session is on the main actor, and so is every caller.
+    private var tokenCheck: Task<Bool, Never>?
+
+    /// Whether `verify_credentials` itself says the token is no good.
+    ///
+    /// Only its own 401 counts. Offline, a timeout or a 5xx says nothing
+    /// about the token, and treating any failure as "signed out" is how a
+    /// person on a train is asked to sign in again.
+    private func isTokenRefused() async -> Bool {
+        let check: Task<Bool, Never>
+        if let running = tokenCheck {
+            check = running
+        } else {
+            let client = client
+            check = Task {
+                do {
+                    _ = try await client.decode(
+                        Account.self, from: Endpoint.session.verifyCredentials)
+                    return false
+                } catch let error as APIError {
+                    return error.requiresReauthentication
+                } catch {
+                    return false
+                }
+            }
+            tokenCheck = check
+        }
+        let refused = await check.value
+        if tokenCheck == check { tokenCheck = nil }
+        return refused
     }
 
     /// Adopts the server's own statement of this account's defaults, and
     /// latches the three capabilities that have nothing to announce them.
     public func refreshServerState() async {
+        await refreshProfile()
         do {
             if let preferences = try? await client.decode(
                 Preferences.self, from: Endpoint.instance.preferences)
@@ -186,6 +222,32 @@ public final class AccountSession: Identifiable, @unchecked Sendable {
         } catch {
             await handle(error)
         }
+    }
+
+    /// The account as the server has it now: a handle, a name or an avatar
+    /// changed on the web would otherwise stay as they were at sign-in.
+    func refreshProfile() async {
+        guard
+            let account = try? await client.decode(
+                Account.self, from: Endpoint.session.verifyCredentials)
+        else { return }
+        adoptProfile(account)
+        try? await accounts.updateProfile(account, for: id)
+    }
+
+    /// The profile fields of the snapshot, as `account` has them.
+    func adoptProfile(_ account: Account) {
+        snapshot.handle = account.acct
+        snapshot.displayName = account.bestDisplayName
+        snapshot.avatarURL = account.preferredAvatarURL
+        snapshot.headerURL = account.preferredHeaderURL
+    }
+
+    /// Back to signed in, after a fresh sign-in to this same account.
+    func clearNeedsReauthentication() async {
+        guard snapshot.needsReauthentication else { return }
+        snapshot.needsReauthentication = false
+        try? await accounts.setNeedsReauthentication(false, for: id)
     }
 
     public func latchCapabilities(observing statuses: [Status]) async {

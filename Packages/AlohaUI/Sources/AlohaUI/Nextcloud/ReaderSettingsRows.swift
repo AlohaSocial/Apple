@@ -148,6 +148,19 @@ struct BlueskySettingsRows: View {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                     }
                 }
+            case .accountNotSetUp(let setupURL):
+                // The server reads Bluesky; this account is one step short.
+                if let setupURL {
+                    Link(destination: setupURL) {
+                        Label {
+                            Text(
+                                "Finish setting up your account to use Bluesky",
+                                comment: "Settings item, account not set up")
+                        } icon: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                    }
+                }
             case .needsNextcloudConnection, .off, .unknown:
                 EmptyView()
             }

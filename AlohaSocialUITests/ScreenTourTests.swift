@@ -35,7 +35,8 @@ import XCTest
 
         func testHomeTimelineRenders() {
             XCTAssertTrue(
-                app.staticTexts["My Feed"].waitForExistence(timeout: 10), "My Feed title missing")
+                app.navigationTitle("My Feed").waitForExistence(timeout: 10),
+                "My Feed title missing")
             XCTAssertTrue(
                 app.staticTexts["Alice"].firstMatch.waitForExistence(timeout: 10),
                 "No status row rendered — the timeline did not load from the mock")
@@ -43,8 +44,8 @@ import XCTest
         }
 
         func testEveryTabOpens() {
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
-            for name in ["Photos", "Videos", "Shorts", "Messages"] {
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
+            for name in ["Photos", "Videos", "Shorts", "Activities"] {
                 let tab = app.tabBars.buttons[name]
                 XCTAssertTrue(tab.waitForExistence(timeout: 5), "\(name) tab missing")
                 tab.tap()
@@ -68,7 +69,7 @@ import XCTest
         }
 
         func testComposerOpens() {
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
             let compose = app.buttons["New post"].firstMatch
             XCTAssertTrue(compose.waitForExistence(timeout: 5), "Compose button missing")
             compose.tap()
@@ -89,7 +90,7 @@ import XCTest
         }
 
         func testSettingsOpens() {
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
             XCTAssertTrue(app.openSettingsFromBrowseMenu(), "Settings not reachable from Browse")
             XCTAssertTrue(
                 app.navigationBars["Settings"].waitForExistence(timeout: 5), "Settings did not open"
@@ -98,9 +99,8 @@ import XCTest
         }
 
         func testNotificationsListRenders() {
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
-            XCTAssertTrue(
-                app.openFromAccountMenu("Activities"), "Activities missing from the account menu")
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
+            XCTAssertTrue(app.openActivities(), "Activities tab missing")
             XCTAssertTrue(
                 app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Bob '")).firstMatch
                     .waitForExistence(timeout: 10),
@@ -109,7 +109,7 @@ import XCTest
         }
 
         func testShortsRendersOverlay() {
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
             app.tabBars.buttons["Shorts"].tap()
             XCTAssertTrue(
                 app.buttons["Unmute"].waitForExistence(timeout: 10), "Shorts overlay missing")
@@ -118,7 +118,7 @@ import XCTest
         }
 
         func testSearchOpens() {
-            XCTAssertTrue(app.staticTexts["My Feed"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
             XCTAssertTrue(app.openSearch(), "No search button in the toolbar")
             XCTAssertTrue(
                 app.searchFields.firstMatch.waitForExistence(timeout: 5), "No search field")

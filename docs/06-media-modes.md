@@ -232,7 +232,7 @@ For Pixelfed-style image posts.
 Tapping a cell opens the media viewer (§8) with the caption, alt text, author,
 action row, and a "View post" affordance that pushes the thread.
 
-### Collections
+### Albums
 
 Where `capabilities.collections`: an Albums section in the mode and on profiles,
 backed by `/api/v1/collections`. Create, rename, delete, add and remove posts

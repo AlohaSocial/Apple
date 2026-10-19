@@ -61,12 +61,20 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
 - Actions: favourite, boost, bookmark, follow-back.
 - Reply composer: dictation, Scribble, emoji, and up to 8 user-defined canned
   responses edited on the phone.
-- Complications (`WidgetKit` on watchOS): unread notification count
-  (`.accessoryCircular`, `.accessoryCorner`) and latest mention
-  (`.accessoryRectangular`, `.accessoryInline`).
-- Data arrives via `WCSession` transfer from the phone's background refresh,
-  plus an independent `URLSession` fetch when the watch is on Wi-Fi and the
-  phone is unreachable.
+- Complications (`AlohaWatchWidgets`, a WidgetKit extension embedded in the
+  watch app): unread notification count (`.accessoryCircular`,
+  `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`) and the
+  latest mention (`.accessoryRectangular`, showing the content warning rather
+  than the post where there is one). A tap opens the mention, or the
+  mentions list.
+- The complications draw from one snapshot in the watch's app group
+  (`WatchComplicationSnapshot`), kept current three ways: the watch app
+  refreshes it whenever it comes to the front; the phone pushes the paired
+  account's unread count with `transferCurrentComplicationUserInfo` when it
+  changes, only while a complication is on the face and within the daily
+  budget; and the complication's own timeline asks the server directly when
+  the snapshot is older than fifteen minutes, with the token the watch app
+  keeps in the shared Keychain group.
 - No modes, no media viewer, no settings beyond notification toggles.
 
 ## 5. tvOS
@@ -83,6 +91,17 @@ Video only. Video mode and Shorts mode, nothing else.
   beyond search.
 - Search via the system keyboard and dictation, backed by `/api/v2/search`
   narrowed to statuses with video.
+- **Top Shelf** (`AlohaTopShelf`, `social.aloha.app.tv.topshelf`): when the
+  app sits in the top row, the shelf shows *Continue watching* (with each
+  video's progress) and the newest videos from *Following*. The TV app writes
+  what its Video tab loaded into the app group (`TopShelfSnapshot`) and asks
+  the system to redraw only when that changed; the extension reads it, and
+  goes to the server itself only when the snapshot is missing or older than
+  half an hour, with the account the app keeps in the shared Keychain group
+  (`TVAccountStore`). Posts with sensitive media or a content warning are left
+  off: the shelf draws stills full size on the home screen, with no way to
+  hide them. Select and Play open `alohasocial://tv/show|play/<id>?t=<s>`,
+  which starts the video where it was left.
 
 ## 6. Share extension
 
@@ -102,6 +121,15 @@ Target: `AlohaShareExtension`, available on iOS, iPadOS and macOS.
   and tells the person so.
 - Memory budget is tight: the extension must not build the full model container
   with every relationship warm. It uses a dedicated lightweight fetch path.
+- One target builds for both: on the Mac it is `social.aloha.app.mac.share`
+  (an embedded extension's id must start with its app's), embedded in
+  `AlohaSocialMac`, sandboxed with outgoing network, the app group and the
+  Keychain group (`AlohaShareExtensionMac.entitlements`). Only the hosting
+  controller differs; the Mac's share sheet owns its window's toolbar, so the
+  composer draws Cancel and Post itself there (`composerHost`).
+- Shared media goes up in the first type a server stores (JPEG, PNG, HEIC, GIF,
+  WebP; MPEG-4 or QuickTime for video). An image offered only as something
+  else — a Mac's TIFF — is re-encoded as JPEG rather than sent mislabelled.
 
 ## 7. App Intents and Shortcuts
 

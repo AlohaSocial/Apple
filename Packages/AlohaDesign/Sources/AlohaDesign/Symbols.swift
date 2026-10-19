@@ -3,7 +3,7 @@
 import Foundation
 
 /// SF Symbol names as typed constants, so a rename is one edit.
-public enum AlohaSymbol {
+public nonisolated enum AlohaSymbol {
     public static let reply = "bubble.left"
     public static let boost = "arrow.2.squarepath"
     public static let favourite = "heart"

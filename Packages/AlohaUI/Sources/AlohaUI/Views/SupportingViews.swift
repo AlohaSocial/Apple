@@ -125,8 +125,9 @@ public struct WelcomeView: View {
                         Text("Continue", comment: "Onboarding sign-in action")
                             .frame(maxWidth: .infinity)
                     }
-                    .alohaGlassProminentButtonStyle()
-                    .controlSize(.large)
+                    // Solid accent, not tinted glass: the glass lightened the
+                    // red until white on it measured 4:1.
+                    .buttonStyle(.alohaProminent)
                     // Return continues on a hardware keyboard: on the Mac the
                     // introduction is a window, and a primary action without a
                     // default shortcut is one a keyboard cannot reach.
@@ -191,8 +192,8 @@ public struct WelcomeView: View {
                     Text("Continue", comment: "Onboarding action")
                         .frame(maxWidth: .infinity)
                 }
-                .alohaGlassProminentButtonStyle()
-                .controlSize(.large)
+                // Solid accent, as the sign-in button: see there.
+                .buttonStyle(.alohaProminent)
                 // The tour is keyboard-navigable on iPad and Mac: Return
                 // advances, so the introduction never traps keyboard users.
                 .keyboardShortcut(.defaultAction)
@@ -212,7 +213,7 @@ public struct WelcomeView: View {
                             Label {
                                 Text("Back", comment: "Onboarding action")
                             } icon: {
-                                Image(systemName: "chevron.left")
+                                Image(systemName: "chevron.backward")
                             }
                         }
                         .buttonStyle(.borderless)
@@ -245,7 +246,7 @@ public struct WelcomeView: View {
                     Label {
                         Text("Back", comment: "Onboarding action")
                     } icon: {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.backward")
                     }
                 }
                 .buttonStyle(.borderless)
@@ -478,7 +479,7 @@ public enum SidebarItem: Hashable, Sendable {
     /// The destinations that live in the sidebar rather than being pushed.
     public static let sidebarRoutes: [Route] = [
         .notifications, .conversations, .explore, .search(query: nil), .lists,
-        .interests, .subscriptions, .collections(accountID: nil),
+        .collections(accountID: nil),
         .followRequests, .favourites, .bookmarks, .archived, .statistics, .safety, .settings,
     ]
 }
@@ -495,8 +496,11 @@ public struct SidebarView: View {
     @State private var searchText = ""
     /// How many conversations are unread, for the badge on "Direct messages".
     /// The messages list writes it to the app group so this and the widgets
-    /// read the same number (docs/05 §5).
-    @State private var unreadConversations = 0
+    /// read the same number (docs/05 §5). Observed, not read once on appear:
+    /// a sidebar is on screen for hours, and a count read at launch was the
+    /// count the badge kept.
+    @AppStorage(AppGroup.unreadConversationsKey, store: AppGroup.defaults)
+    private var unreadConversations = 0
 
     private let onAddAccount: () -> Void
     private let onSwitchAccount: (UUID) -> Void
@@ -524,6 +528,22 @@ public struct SidebarView: View {
                 ForEach(session.visibleModes, id: \.self) { mode in
                     modeRow(mode)
                 }
+
+                Label {
+                    Text("Activities", comment: "Sidebar item")
+                } icon: {
+                    Image(
+                        systemName: selectedRoute == .notifications
+                            ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications)
+                }
+                .badge(unreadActivities > 0 ? Text(verbatim: String(unreadActivities)) : nil)
+                .tag(SidebarItem.route(.notifications))
+                .accessibilityLabel(
+                    unreadActivities > 0
+                        ? Text(
+                            "Activities, \(unreadActivities) unread",
+                            comment: "Sidebar item with badge")
+                        : Text("Activities", comment: "Sidebar item"))
 
                 Label {
                     Text("Direct messages", comment: "Sidebar item")
@@ -558,14 +578,6 @@ public struct SidebarView: View {
                     symbol: selectedRoute == .lists
                         ? "list.bullet.rectangle.fill" : "list.bullet.rectangle", route: .lists,
                     comment: "Sidebar item")
-                if session.capabilities.isNextcloudSocial {
-                    row(
-                        "My interests", symbol: "sparkles", route: .interests,
-                        comment: "Sidebar item")
-                    row(
-                        "Subscriptions", symbol: "dot.radiowaves.up.forward",
-                        route: .subscriptions, comment: "Sidebar item")
-                }
                 if session.capabilities.collections {
                     row(
                         "Albums", symbol: "rectangle.stack", route: .collections(accountID: nil),
@@ -573,18 +585,15 @@ public struct SidebarView: View {
                 }
             } header: {
                 // "Explore" was wrong over these: Discover is already in the
-                // top group, and this section is lists, interests,
-                // subscriptions and albums — the things a person gathers, not
-                // where they stumble on new ones.
+                // top group, and this section is lists and albums —
+                // the things a person gathers, not where they stumble on new
+                // ones.
                 Text("Library", comment: "Sidebar section")
             }
 
         }
 
         .listStyle(.sidebar)
-        .onAppear {
-            unreadConversations = AppGroup.defaults.integer(forKey: AppGroup.unreadConversationsKey)
-        }
         .searchable(
             text: $searchText, placement: .sidebar,
             prompt: Text("Search", comment: "Sidebar search field")
@@ -628,6 +637,10 @@ public struct SidebarView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         selection = .route(.search(query: query))
+    }
+
+    private var unreadActivities: Int {
+        environment.sync.unreadCounts[session.id] ?? 0
     }
 
     private var myProfile: Route {

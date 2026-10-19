@@ -78,6 +78,15 @@ extension XCTestCase {
 extension XCUIApplication {
     /// Any element whose label, title or value contains the text. Rows combine
     /// their children for VoiceOver, so exact static-text matches miss.
+    /// The screen's title in the navigation bar. A feed's title is the
+    /// timeline source menu, so it is a button ("My Feed, Actions Menu")
+    /// rather than text; this finds it either way.
+    func navigationTitle(_ title: String) -> XCUIElement {
+        navigationBars.firstMatch.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@ OR label BEGINSWITH %@", title, title + ",")
+        ).firstMatch
+    }
+
     func labelled(_ text: String) -> XCUIElement {
         descendants(matching: .any).matching(
             NSPredicate(
@@ -165,6 +174,27 @@ extension XCUICoordinate {
         }
 
         func openSettingsFromBrowseMenu() -> Bool { openFromAccountMenu("Settings") }
+
+        /// Direct messages are a toolbar button on the feeds, beside Search;
+        /// its label carries the unread count ("Direct messages, 1 unread").
+        @discardableResult
+        func openDirectMessages() -> Bool {
+            let button = buttons.matching(
+                NSPredicate(format: "label BEGINSWITH 'Direct messages'")
+            ).firstMatch
+            guard button.waitForExistence(timeout: 8) else { return false }
+            button.tap()
+            return true
+        }
+
+        /// Activities is a tab after the feeds.
+        @discardableResult
+        func openActivities() -> Bool {
+            let tab = tabBars.buttons["Activities"]
+            guard tab.waitForExistence(timeout: 8) else { return false }
+            tab.tap()
+            return true
+        }
 
         /// Search is a button of its own in the top-right, not a menu item.
         @discardableResult

@@ -40,7 +40,7 @@ public struct HashtagTimelineView: View {
             key: TimelineKey(mode: .home, source: .hashtag(name: name)), session: session,
             onAction: onAction
         )
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .safeAreaBar(edge: .top, spacing: 0) {
             if !related.isEmpty { relatedRow }
         }
         .navigationTitle(Text(verbatim: "#\(name)"))

@@ -163,6 +163,17 @@ public actor SupportStore {
         record.quotePolicy = snapshot.quotePolicy
         record.threadSegments = snapshot.threadSegments
         record.lastSendError = snapshot.lastSendError
+        record.threadPosition = snapshot.threadPosition
+        record.replyPolicy = snapshot.replyPolicy
+        record.marksAsAIGenerated = snapshot.marksAsAIGenerated
+        record.placeID = snapshot.placeID
+        record.placeName = snapshot.placeName
+        record.placeCountry = snapshot.placeCountry
+        record.postAs = snapshot.postAs
+        record.cardBackgroundID = snapshot.cardBackgroundID
+        record.videoTitle = snapshot.videoTitle
+        record.videoCategory = snapshot.videoCategory
+        record.videoLicence = snapshot.videoLicence
         record.updatedAt = Date()
 
         try modelContext.save()
@@ -196,12 +207,38 @@ public actor SupportStore {
 
     // MARK: - Notifications
 
+    /// Stores a fetched page and returns what is new to announce.
+    ///
+    /// The first page an account ever stores — a new sign-in, or a store that
+    /// had to start again — is history, not news: forty old mentions raised at
+    /// once is a storm, not a notification. Those are stored as already
+    /// announced, and only what arrived after the account was added is
+    /// returned.
     public func storeNotifications(
         _ notifications: [StoredNotification], accountID: UUID
     ) throws -> [StoredNotification] {
         var newlyArrived: [StoredNotification] = []
+        let isFirstFetch =
+            try modelContext.fetchCount(
+                FetchDescriptor<NotificationRecord>(
+                    predicate: #Predicate { $0.accountID == accountID })) == 0
+        let addedAt =
+            isFirstFetch
+            ? try modelContext.fetch(
+                FetchDescriptor<AccountRecord>(predicate: #Predicate { $0.id == accountID })
+            ).first?.addedAt : nil
 
         for notification in notifications {
+            if isFirstFetch, notification.createdAt <= (addedAt ?? .distantPast) {
+                let record = NotificationRecord(
+                    accountID: accountID, serverID: notification.serverID,
+                    isGroup: notification.isGroup, kind: notification.kind,
+                    createdAt: notification.createdAt, groupCount: notification.groupCount,
+                    payload: notification.payload, statusServerID: notification.statusServerID)
+                record.announced = true
+                modelContext.insert(record)
+                continue
+            }
             let serverID = notification.serverID
             let descriptor = FetchDescriptor<NotificationRecord>(
                 predicate: #Predicate { $0.accountID == accountID && $0.serverID == serverID })
@@ -247,6 +284,26 @@ public actor SupportStore {
                 sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
         ).map(StoredNotification.init)
     }
+
+    /// What a poll offers the notifier: what just arrived, and what an
+    /// earlier poll held back.
+    ///
+    /// Quiet hours and a Focus leave a notification unannounced rather than
+    /// dropping it. Offering only what is new, as polls did, meant a mention
+    /// that came in at 23:00 was never raised at all: by the morning it was
+    /// no longer new. Held ones older than `since` stay unraised, because a
+    /// banner about yesterday is noise, and at most `limit` are offered, so a
+    /// long quiet night does not end in a burst — the rest wait for the next
+    /// poll.
+    public func pendingAnnouncements(
+        arrived fresh: [StoredNotification], accountID: UUID, since: Date, limit: Int = 20
+    ) throws -> [StoredNotification] {
+        let arrivedIDs = Set(fresh.map(\.serverID))
+        let held = try unannouncedNotifications(accountID: accountID).filter {
+            $0.createdAt >= since && !arrivedIDs.contains($0.serverID)
+        }
+        return Array((fresh + held).sorted { $0.createdAt > $1.createdAt }.prefix(limit))
+    }
 }
 
 public struct DraftSnapshot: Sendable, Hashable, Identifiable {
@@ -274,6 +331,56 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
     /// Why the send queue gave up on this draft, shown in Drafts.
     public var lastSendError: String?
     public var updatedAt: Date
+    /// How many posts of this thread are already out; see `DraftRecord`.
+    public var threadPosition = 0
+    // The rest of what the composer sends; see `DraftRecord`.
+    public var replyPolicy: String?
+    public var marksAsAIGenerated = false
+    public var placeID: String?
+    public var placeName: String?
+    public var placeCountry: String?
+    public var postAs: String?
+    public var cardBackgroundID: String?
+    public var videoTitle: String?
+    public var videoCategory: String?
+    public var videoLicence: String?
+
+    /// The key the post at `position` in this thread goes out with: the
+    /// draft's own for the first, and one derived from it for each segment.
+    /// Derived rather than random, so a segment whose first attempt landed
+    /// unseen is recognised by the server when the queue sends it again.
+    public func idempotencyKey(forPosition position: Int) -> String {
+        position == 0 ? idempotencyKey : "\(idempotencyKey)-\(position)"
+    }
+
+    /// The same draft once `posted` posts of its thread are out, the last of
+    /// them `lastPostedID`: the next segment becomes the text, replying to
+    /// what went out. What belonged to the first post — media, poll, quote,
+    /// schedule, place, card, video — has gone out with it.
+    public func resuming(afterPosted posted: Int, lastPostedID: String) -> DraftSnapshot {
+        var rest = self
+        rest.text = threadSegments.first ?? ""
+        rest.threadSegments = Array(threadSegments.dropFirst())
+        rest.threadPosition = posted
+        rest.inReplyToID = lastPostedID
+        rest.uploadedMediaIDs = []
+        rest.localMediaPaths = []
+        rest.pollOptions = []
+        rest.pollExpiresIn = nil
+        rest.quotedID = nil
+        rest.quotePolicy = nil
+        rest.scheduledAt = nil
+        rest.replyPolicy = nil
+        rest.marksAsAIGenerated = false
+        rest.placeID = nil
+        rest.placeName = nil
+        rest.placeCountry = nil
+        rest.cardBackgroundID = nil
+        rest.videoTitle = nil
+        rest.videoCategory = nil
+        rest.videoLicence = nil
+        return rest
+    }
 
     public init(
         id: UUID = UUID(), accountID: UUID, text: String = "", spoilerText: String = "",
@@ -323,6 +430,17 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
             threadGroupID: record.threadGroupID, quotedID: record.quotedID,
             quotePolicy: record.quotePolicy, threadSegments: record.threadSegments,
             lastSendError: record.lastSendError, updatedAt: record.updatedAt)
+        threadPosition = record.threadPosition
+        replyPolicy = record.replyPolicy
+        marksAsAIGenerated = record.marksAsAIGenerated
+        placeID = record.placeID
+        placeName = record.placeName
+        placeCountry = record.placeCountry
+        postAs = record.postAs
+        cardBackgroundID = record.cardBackgroundID
+        videoTitle = record.videoTitle
+        videoCategory = record.videoCategory
+        videoLicence = record.videoLicence
     }
 
     /// A quote with nothing typed is still a post: the quoted card is the

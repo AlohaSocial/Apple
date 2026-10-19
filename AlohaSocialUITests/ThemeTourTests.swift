@@ -31,15 +31,20 @@ import XCTest
             XCUIDevice.shared.orientation = .portrait
         }
 
-        func testEveryThemeRenders() {
-            for theme in [
-                "Warm Light", "Warm Dark", "High Contrast Light",
-                "High Contrast Dark", "Dim", "Black",
-            ] {
-                launchAndChoose(theme: theme)
-                shoot("60-theme-\(theme.lowercased().replacingOccurrences(of: " ", with: "-"))")
-                app.terminate()
-            }
+        // One test per theme: each launch and pick takes about 40 seconds,
+        // so six in one test outran the per-test time allowance, and a
+        // failure now names the theme that broke.
+        func testWarmLightRenders() { render(theme: "Warm Light") }
+        func testWarmDarkRenders() { render(theme: "Warm Dark") }
+        func testHighContrastLightRenders() { render(theme: "High Contrast Light") }
+        func testHighContrastDarkRenders() { render(theme: "High Contrast Dark") }
+        func testDimRenders() { render(theme: "Dim") }
+        func testBlackRenders() { render(theme: "Black") }
+
+        private func render(theme: String) {
+            launchAndChoose(theme: theme)
+            shoot("60-theme-\(theme.lowercased().replacingOccurrences(of: " ", with: "-"))")
+            app.terminate()
         }
 
         /// The system theme has to follow the system, which is the one case a

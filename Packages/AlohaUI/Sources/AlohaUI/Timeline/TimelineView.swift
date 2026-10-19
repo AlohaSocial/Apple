@@ -11,8 +11,13 @@ public struct TimelineView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.displayScale) private var displayScale
+    @Environment(\.shellUsesTabBar) private var shellUsesTabBar
+    /// The same scale `AvatarView` applies, for the prefetch's avatar size.
+    @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
 
     @State private var model: TimelineModel
+    @State private var listWidth: CGFloat = 0
     /// The post the keyboard is on. `nil` until somebody presses `j`, so a
     /// timeline opened with a mouse shows no ring it did not earn.
     @State private var focusedStatusID: String?
@@ -47,15 +52,8 @@ public struct TimelineView: View {
         .timelineKeyboard(
             focusedID: $focusedStatusID,
             isShowingShortcuts: $isShowingShortcuts,
-            ids: model.rows.compactMap { row in
-                if case .status(let status) = row { return status.id } else { return nil }
-            },
-            status: { id in
-                model.rows.compactMap { row -> Status? in
-                    if case .status(let status) = row, status.id == id { return status }
-                    return nil
-                }.first
-            },
+            ids: model.index.statusIDs,
+            status: { [index = model.index] id in index.status(id: id) },
             onAction: onAction,
             onRefresh: { await model.refresh() }
         )
@@ -70,36 +68,55 @@ public struct TimelineView: View {
 
     private var list: some View {
         ScrollViewReader { proxy in
-            GeometryReader { geometry in
-                rows(horizontalInset: readingInset(for: geometry.size.width))
-            }
-            // "Return to where I was": once the first page is in, scroll to
-            // the last-read post rather than to the top. Off, the timeline
-            // opens at the newest post, which is what a storefront expects.
-            .onChange(of: model.rows.isEmpty) { _, isEmpty in
-                guard
-                    !isEmpty, !didRestorePosition,
-                    session.settings.restoreTimelinePosition,
-                    let markerID = model.caughtUpMarkerID,
-                    model.rows.contains(where: { $0.id == markerID })
-                else { return }
-                didRestorePosition = true
-                withAnimation(.easeOut(duration: 0.25)) {
-                    proxy.scrollTo(markerID, anchor: .top)
+            rows(horizontalInset: readingInset(for: listWidth))
+                // Measured, not read: a GeometryReader around the whole list
+                // re-evaluated it on every size pass for one number.
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.width
+                } action: { width in
+                    listWidth = width
+                    reportPrefetchGeometry()
                 }
-            }
-            .onChange(of: focusedStatusID) { _, id in
-                guard let id else { return }
-                withAnimation(.easeOut(duration: 0.18)) {
-                    proxy.scrollTo(id, anchor: .center)
+                .onChange(of: displayScale) { _, _ in reportPrefetchGeometry() }
+                // "Return to where I was": once the first page is in, scroll to
+                // the last-read post rather than to the top. Off, the timeline
+                // opens at the newest post, which is what a storefront expects.
+                .onChange(of: model.rows.isEmpty) { _, isEmpty in
+                    guard
+                        !isEmpty, !didRestorePosition,
+                        session.settings.restoreTimelinePosition,
+                        let markerID = model.caughtUpMarkerID,
+                        model.rows.contains(where: { $0.id == markerID })
+                    else { return }
+                    didRestorePosition = true
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo(markerID, anchor: .top)
+                    }
                 }
-            }
+                .onChange(of: focusedStatusID) { _, id in
+                    guard let id else { return }
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        proxy.scrollTo(id, anchor: .center)
+                    }
+                }
         }
+    }
+
+    /// What the rows will ask the image loader for, so the prefetch asks for
+    /// the same sizes (`TimelineModel.prefetchRequests`).
+    private func reportPrefetchGeometry() {
+        let avatar = AvatarView.dimension(base: metrics.avatarSize, typeScale: typeScale)
+        let inset = readingInset(for: listWidth)
+        model.prefetchGeometry = PrefetchGeometry(
+            contentWidth: max(1, listWidth - 2 * inset - avatar - AlohaMetrics.space3),
+            avatarSize: avatar, scale: displayScale)
     }
 
     private func readingInset(for width: CGFloat) -> CGFloat {
         #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .pad {
+            // The sidebar shell's reading column: iPad, and an unfolded
+            // iPhone Duo.
+            if !shellUsesTabBar {
                 return max(24, (width - 960) / 2)
             }
         #endif
@@ -216,7 +233,7 @@ public struct TimelineView: View {
         // carry links, without walking every action inside each row
         // (docs/12 §3).
         .accessibilityRotor(Text("Posts", comment: "VoiceOver rotor name")) {
-            ForEach(statuses) { status in
+            ForEach(model.index.statuses) { status in
                 AccessibilityRotorEntry(
                     Text(
                         "\(status.displayed.account.bestDisplayName), \(PostAge.spoken(status.displayed.createdAt))",
@@ -225,24 +242,10 @@ public struct TimelineView: View {
             }
         }
         .accessibilityRotor(Text("Links", comment: "VoiceOver rotor name")) {
-            ForEach(linkEntries) { entry in
+            // One entry per link, in reading order, named for where it goes.
+            ForEach(model.index.linkEntries) { entry in
                 AccessibilityRotorEntry(
                     Text(verbatim: entry.label), id: entry.statusID, in: rotorNamespace)
-            }
-        }
-    }
-
-    private var statuses: [Status] {
-        model.rows.compactMap(\.status)
-    }
-
-    /// One entry per link, in reading order, named for where it goes.
-    private var linkEntries: [LinkRotorEntry] {
-        statuses.flatMap { status in
-            (model.webLinks[status.id] ?? []).enumerated().map { index, url in
-                LinkRotorEntry(
-                    id: "\(status.id)-\(index)", statusID: status.id,
-                    label: LinkRotorEntry.label(for: url))
             }
         }
     }

@@ -89,7 +89,9 @@ import Foundation
                 do {
                     _ = try await environment.addAccount(
                         instanceHost: host, apiBase: apiBase, account: account,
-                        capabilities: capabilities, token: "mock-access-token")
+                        capabilities: capabilities,
+                        token: account.id == "2"
+                            ? MockAPIServer.secondAccountToken : "mock-access-token")
                 } catch {
                     // Loud on purpose: a silent seed failure looked like a
                     // working app that happened to have no account.

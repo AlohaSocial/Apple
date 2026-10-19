@@ -187,6 +187,17 @@ public final class ComposerModel {
     public let session: AccountSession
     private var idempotencyKey = UUID().uuidString
     private var postedSegmentCount = 0
+    /// How far a thread got before something failed: how many of its posts
+    /// are out, and the last one's id. Set, the next attempt — here or from
+    /// the send queue — continues from there and never posts the first one
+    /// again (docs/07 §5).
+    private var threadProgress: (posted: Int, lastID: String)?
+    /// Where the text in the box sits in its thread: 0 for a new post, more
+    /// for a reopened thread whose first posts already went out.
+    private var threadBasePosition = 0
+    /// The team account a reopened draft posts as, matched once the teams
+    /// have loaded.
+    private var restoredPostAsHandle: String?
     private var draftID = UUID()
     private var completionTask: Task<Void, Never>?
 
@@ -252,6 +263,23 @@ public final class ComposerModel {
         self.pollMultiple = draft.pollMultiple
         self.threadSegments = draft.threadSegments
         self.quotePolicy = draft.quotePolicy.flatMap(QuotePolicy.init(rawValue:)) ?? .public
+        self.replyPolicy = draft.replyPolicy.flatMap(ReplyPolicy.init(rawValue:)) ?? .everyone
+        self.marksAsAIGenerated = draft.marksAsAIGenerated
+        if let placeID = draft.placeID {
+            self.place = .known(
+                Place(id: placeID, name: draft.placeName ?? "", country: draft.placeCountry))
+        } else if let name = draft.placeName {
+            self.place = .new(name: name, country: draft.placeCountry ?? "")
+        }
+        self.restoredPostAsHandle = draft.postAs
+        self.cardBackgroundID = draft.cardBackgroundID
+        self.videoTitle = draft.videoTitle ?? ""
+        self.videoCategory = draft.videoCategory ?? ""
+        self.videoLicence = draft.videoLicence ?? ""
+        // A thread that already went out in part: this draft is its next
+        // segment, already replying to the last one that made it, and it
+        // keeps its place in the thread for its key and its numbering.
+        self.threadBasePosition = draft.threadPosition
         // After the text: the same words keep the same key, so a send that
         // may already have landed is recognised by the server, not repeated.
         self.idempotencyKey = draft.idempotencyKey
@@ -382,6 +410,9 @@ public final class ComposerModel {
         guard isNextcloud else { return }
         teams =
             (try? await session.client.decode(TeamList.self, from: Endpoint.teams.all))?.teams ?? []
+        if let handle = restoredPostAsHandle, postAs == nil {
+            postAs = teams.first { $0.handle == handle }
+        }
     }
 
     public var isThread: Bool { !threadSegments.isEmpty }
@@ -564,6 +595,21 @@ public final class ComposerModel {
     /// Draws the card and uploads it, with the words as its description so a
     /// reader using a screen reader gets the post rather than "image".
     private func uploadCard(backgroundID: String) async -> String? {
+        do {
+            return try await Self.uploadCard(
+                text: text, backgroundID: backgroundID, session: session)
+        } catch {
+            await session.handle(error)
+            return nil
+        }
+    }
+
+    /// The card for `text` on `backgroundID`, uploaded; nil where it cannot be
+    /// drawn. Shared with the send queue, which draws a queued card the same
+    /// way the composer would have.
+    static func uploadCard(
+        text: String, backgroundID: String, session: AccountSession
+    ) async throws -> String? {
         #if canImport(ImageIO)
             let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
             let backgrounds = TextCard.backgrounds(
@@ -572,18 +618,12 @@ public final class ComposerModel {
             guard let data = TextCard.render(text: words, background: background) else {
                 return nil
             }
-
-            do {
-                let attachment = try await session.client.decode(
-                    MediaAttachment.self,
-                    from: Endpoint.media.upload(
-                        data: data, filename: "card.png", mimeType: "image/png",
-                        description: words, v2: true))
-                return attachment.id
-            } catch {
-                await session.handle(error)
-                return nil
-            }
+            let attachment = try await session.client.decode(
+                MediaAttachment.self,
+                from: Endpoint.media.upload(
+                    data: data, filename: "card.png", mimeType: "image/png",
+                    description: words, v2: true))
+            return attachment.id
         #else
             return nil
         #endif
@@ -624,9 +664,10 @@ public final class ComposerModel {
 
         // The card is drawn from what was typed rather than from what the dice
         // said: a card is a short thought on colour, and a rolled die on one
-        // would be a picture of a number.
+        // would be a picture of a number. A thread whose first post is
+        // already out has nothing left to draw.
         var cardAttachmentID: String?
-        if let backgroundID = cardBackgroundID, canBeCard {
+        if threadProgress == nil, let backgroundID = cardBackgroundID, canBeCard {
             guard let id = await uploadCard(backgroundID: backgroundID) else {
                 // The web refuses too. A card that could not be drawn must not
                 // quietly become a plain post the writer did not choose.
@@ -649,7 +690,7 @@ public final class ComposerModel {
             pollOptions: pollOptions.filter { !$0.isEmpty },
             pollMultiple: pollMultiple,
             scheduledAt: scheduledAt,
-            idempotencyKey: idempotencyKey
+            idempotencyKey: draftSnapshot.idempotencyKey(forPosition: threadBasePosition)
         )
         draft.quotedID = quoting?.id ?? restoredQuotedID
         if editingStatus != nil {
@@ -673,7 +714,9 @@ public final class ComposerModel {
         case nil:
             break
         }
-        draft.postAs = postAs?.handle
+        // Teams that did not load still leave the draft posting as the team
+        // it was written for, never quietly as the person.
+        draft.postAs = postAs?.handle ?? restoredPostAsHandle
         if hasVideoAttachment {
             draft.videoTitle = videoTitle.isEmpty ? nil : videoTitle
             draft.videoCategory = videoCategory.isEmpty ? nil : videoCategory
@@ -684,51 +727,66 @@ public final class ComposerModel {
         // upload that finished is not yet a post that went out.
         UploadActivityController.shared.posting()
         do {
-            let posted: Status
-            if let editingStatus {
-                posted = try await session.client.decode(
-                    Status.self, from: Endpoint.composing.edit(editingStatus.id, draft))
+            var parentID: String
+            if let progress = threadProgress {
+                // The first post went out on an earlier attempt; only the
+                // rest of the thread is left.
+                parentID = progress.lastID
             } else {
-                if previousAttemptMayHaveLanded, draft.scheduledAt == nil,
-                    let landed = await alreadyPosted(draft)
-                {
-                    posted = landed
+                let posted: Status
+                if let editingStatus {
+                    posted = try await session.client.decode(
+                        Status.self, from: Endpoint.composing.edit(editingStatus.id, draft))
                 } else {
-                    // One request, decoded twice: the status, and the one extra
-                    // flag Nextcloud Social adds when a moderator must look first.
-                    let response = try await session.client.send(Endpoint.composing.post(draft))
-                    posted = try AlohaJSON.decoder.decode(Status.self, from: response.data)
-                    let flags = try? AlohaJSON.decoder.decode(
-                        ReviewFlags.self, from: response.data)
-                    wasHeldForReview = flags?.heldForReview ?? false
+                    if previousAttemptMayHaveLanded, draft.scheduledAt == nil,
+                        let landed = await alreadyPosted(draft)
+                    {
+                        posted = landed
+                    } else {
+                        // One request, decoded twice: the status, and the one
+                        // extra flag Nextcloud Social adds when a moderator
+                        // must look first.
+                        let response = try await session.client.send(
+                            Endpoint.composing.post(draft))
+                        posted = try AlohaJSON.decoder.decode(Status.self, from: response.data)
+                        let flags = try? AlohaJSON.decoder.decode(
+                            ReviewFlags.self, from: response.data)
+                        wasHeldForReview = flags?.heldForReview ?? false
+                    }
+                    previousAttemptMayHaveLanded = false
+                    threadProgress = (threadBasePosition + 1, posted.id)
                 }
-                previousAttemptMayHaveLanded = false
+                try? await session.timelineStore.updateStatus(
+                    accountID: session.id, status: posted)
+                if editingStatus == nil, !wasHeldForReview { session.notePosted(posted) }
+                parentID = posted.id
             }
-            try? await session.timelineStore.updateStatus(accountID: session.id, status: posted)
-            if editingStatus == nil, !wasHeldForReview { session.notePosted(posted) }
 
             // A failure part-way through a thread stops, keeps what posted, and
             // resumes from the failed segment — it must never double-post.
             if !threadSegments.isEmpty, editingStatus == nil {
-                var parentID = posted.id
                 while let next = threadSegments.first {
+                    let position = threadBasePosition + postedSegmentCount + 1
                     let segment = StatusPost(
                         text: ComposerCommands.resolve(
-                            numbered(next, index: postedSegmentCount + 1)
+                            numbered(next, position: position)
                         ).text,
                         visibility: visibility,
                         spoilerText: spoilerText.isEmpty ? nil : spoilerText,
                         sensitive: !spoilerText.isEmpty,
                         language: language ?? session.settings.defaultLanguage,
-                        inReplyToID: parentID)
+                        inReplyToID: parentID,
+                        idempotencyKey: draftSnapshot.idempotencyKey(forPosition: position))
                     let reply = try await session.client.decode(
                         Status.self, from: Endpoint.composing.post(segment))
                     parentID = reply.id
                     session.notePosted(reply)
                     threadSegments.removeFirst()
                     postedSegmentCount += 1
+                    threadProgress = (position + 1, reply.id)
                 }
             }
+            threadProgress = nil
 
             try? await session.supportStore.deleteDraft(id: draftID)
             // Only now: the original goes once its replacement exists.
@@ -788,11 +846,17 @@ public final class ComposerModel {
         enum CodingKeys: String, CodingKey { case heldForReview = "held_for_review" }
     }
 
-    /// Optional "1/5" numbering, appended at post time and off by default.
-    private func numbered(_ text: String, index: Int) -> String {
+    /// Optional "2/5" numbering, appended at post time and off by default.
+    private func numbered(_ text: String, position: Int) -> String {
         guard session.settings.appendThreadNumbering else { return text }
-        let total = threadSegments.count + postedSegmentCount + 1
-        return "\(text)\n\n\(index + 1)/\(total)"
+        let total = threadBasePosition + 1 + postedSegmentCount + threadSegments.count
+        return Self.numbered(text, position: position, total: total)
+    }
+
+    /// The numbering the composer and the send queue both write, so a thread
+    /// that finishes from the queue counts the way it started.
+    nonisolated static func numbered(_ text: String, position: Int, total: Int) -> String {
+        "\(text)\n\n\(position + 1)/\(total)"
     }
 
     /// Descriptions and focal points for the attachments an edit keeps. Sent
@@ -812,8 +876,12 @@ public final class ComposerModel {
 
     /// Everything the send queue needs to post this exactly as written, or a
     /// reopened composer needs to show it as it was left.
+    ///
+    /// For a thread that already went out in part, it is what is left: the
+    /// next segment, replying to the last post that made it — never the first
+    /// post again.
     public var draftSnapshot: DraftSnapshot {
-        DraftSnapshot(
+        var snapshot = DraftSnapshot(
             id: draftID, accountID: session.id, text: text, spoilerText: spoilerText,
             visibility: visibility,
             sensitive: !spoilerText.isEmpty || session.settings.defaultSensitive,
@@ -829,6 +897,38 @@ public final class ComposerModel {
             threadSegments: threadSegments.filter {
                 !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             })
+        snapshot.threadPosition = threadBasePosition
+        snapshot.replyPolicy =
+            isNextcloud && replyPolicy != .everyone ? replyPolicy.rawValue : nil
+        snapshot.marksAsAIGenerated = isNextcloud && marksAsAIGenerated
+        switch place {
+        case .known(let known):
+            snapshot.placeID = known.id
+            snapshot.placeName = known.name
+            snapshot.placeCountry = known.country
+        case .new(let name, let country):
+            snapshot.placeName = name
+            snapshot.placeCountry = country.isEmpty ? nil : country
+        case nil:
+            break
+        }
+        snapshot.postAs = postAs?.handle ?? restoredPostAsHandle
+        snapshot.cardBackgroundID = canBeCard ? cardBackgroundID : nil
+        if hasVideoAttachment {
+            snapshot.videoTitle = videoTitle.isEmpty ? nil : videoTitle
+            snapshot.videoCategory = videoCategory.isEmpty ? nil : videoCategory
+            snapshot.videoLicence = videoLicence.isEmpty ? nil : videoLicence
+        }
+        if let progress = threadProgress {
+            return snapshot.resuming(afterPosted: progress.posted, lastPostedID: progress.lastID)
+        }
+        return snapshot
+    }
+
+    /// Whether closing now would lose something — what a sheet asks before it
+    /// lets a swipe take the composer away.
+    public var hasUnsavedContent: Bool {
+        editingStatus == nil ? !draftSnapshot.isEmpty : true
     }
 
     public func saveDraftIfNeeded(queued: Bool = false) async {

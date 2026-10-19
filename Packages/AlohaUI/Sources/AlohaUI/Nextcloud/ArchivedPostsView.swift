@@ -41,6 +41,8 @@ public struct ArchivedPostsView: View {
                     showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
+                // The swipe here is the list's own: unarchive.
+                .statusRowInteractions(status, session: session, swipes: false, onAction: onAction)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)

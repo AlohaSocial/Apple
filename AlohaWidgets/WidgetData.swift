@@ -12,7 +12,7 @@ import SwiftData
 enum WidgetData {
     @MainActor
     static func account(matching configuration: WidgetAccount) async -> AccountStore.Snapshot? {
-        let store = AccountStore(modelContainer: StoreContainer.make())
+        let store = AccountStore(modelContainer: StoreContainer.reader())
         guard let snapshots = try? await store.allAccounts() else { return nil }
         if let handle = configuration.handle,
             let match = snapshots.first(where: { $0.qualifiedHandle == handle })
@@ -27,7 +27,7 @@ enum WidgetData {
 
     @MainActor
     static func latestPosts(accountID: UUID, limit: Int) async -> [WidgetPost] {
-        let timelines = TimelineStore(modelContainer: StoreContainer.make())
+        let timelines = TimelineStore(modelContainer: StoreContainer.reader())
         guard
             let rows = try? await timelines.cachedTimeline(
                 accountID: accountID, timelineKey: "home:home")
@@ -78,7 +78,7 @@ enum WidgetData {
     /// count, and the newest few are what a person opens their phone to see.
     @MainActor
     static func latestMentions(accountID: UUID, limit: Int) async -> [WidgetMention] {
-        let container = StoreContainer.make()
+        let container = StoreContainer.reader()
         let descriptor = FetchDescriptor<NotificationRecord>(
             predicate: #Predicate { $0.accountID == accountID && $0.kindRaw == "mention" },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]

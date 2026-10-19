@@ -158,6 +158,7 @@ import XCTest
             shoot("20-mac-home")
 
             let expectations: [(row: String, marker: String)] = [
+                ("Activities", "Bob favourited your post"),
                 ("Direct messages", "Bob"),
                 ("Discover", "Discover"),
                 ("Your lists", "Colleagues"),
@@ -175,36 +176,6 @@ import XCTest
                     "\(row) did not show '\(marker)'")
                 shoot("21-mac-\(row.lowercased())")
             }
-        }
-
-        /// Activities moved out of the sidebar and into the account menu,
-        /// under My profile: the sidebar is feeds, and this is about you.
-        func testActivitiesLivesInTheAccountDrawer() throws {
-            #if os(iOS)
-                try XCTSkipIf(
-                    UIDevice.current.userInterfaceIdiom != .pad, "Sidebar exists on iPad only")
-            #endif
-            XCTAssertTrue(
-                app.labelled("Alice").waitForExistence(timeout: 20), "Home did not render")
-
-            XCTAssertNil(
-                app.sidebarRow("Activities").exists ? true : nil,
-                "Activities is still a sidebar row")
-
-            let toggle = app.buttons.matching(
-                NSPredicate(format: "label CONTAINS 'account menu'")
-            ).firstMatch
-            XCTAssertTrue(toggle.waitForExistence(timeout: 8), "No account menu toggle")
-            toggle.tapOrClick()
-
-            let activities = app.labelled("Activities")
-            XCTAssertTrue(
-                activities.waitForExistence(timeout: 5), "Activities missing from the drawer")
-            activities.tapOrClick()
-            XCTAssertTrue(
-                app.labelled("Bob favourited your post").waitForExistence(timeout: 8),
-                "Activities did not open from the drawer")
-            shoot("29-drawer-activities")
         }
     }
 #endif

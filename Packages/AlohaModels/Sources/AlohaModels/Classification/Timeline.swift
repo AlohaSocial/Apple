@@ -7,12 +7,20 @@ public enum TimelineSource: Codable, Sendable, Hashable {
     case home
     case local
     case federated
+    /// For you: Nextcloud Social's ranking of what the reader is likely to
+    /// read, from the hashtags it has learned they read
+    /// (`/api/v1/timelines/interests`). A fourth scope beside the three
+    /// above, as the server's own timeline switcher offers it.
+    case interests
     case direct
     case favourites
     case bookmarks
     case list(id: String)
     case hashtag(name: String)
     case account(id: String, includeReplies: Bool, onlyMedia: Bool)
+    /// A profile's posts, narrowed the ways `/api/v1/accounts/{id}/statuses`
+    /// can narrow them.
+    case profile(id: String, filter: ProfilePostFilter)
     case trending
     /// A Bluesky feed or list the reader keeps, by its `at://` URI. Aloha
     /// Social reads it from Bluesky and answers with statuses
@@ -28,12 +36,19 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .local, .federated: "public"
         case .direct: "direct"
         case .favourites: "favourites"
-        case .bookmarks, .list, .hashtag, .account, .trending, .bluesky: nil
+        case .interests, .bookmarks, .list, .hashtag, .account, .profile, .trending, .bluesky:
+            nil
         }
     }
 
     /// `local=true` narrows `public` to this instance.
     public var isLocalOnly: Bool { self == .local }
+
+    /// Paged by the favourite's or bookmark's own id rather than the post's,
+    /// as Mastodon pages them: a status id is no cursor here, and a
+    /// `max_id` built from one asks for the wrong window. Only the server's
+    /// `Link` URLs page these.
+    public var pagesOnlyByLink: Bool { self == .favourites || self == .bookmarks }
 
     public var requiresViewer: Bool {
         switch self {
@@ -47,6 +62,7 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .home: "home"
         case .local: "public:local"
         case .federated: "public:federated"
+        case .interests: "interests"
         case .direct: "direct"
         case .favourites: "favourites"
         case .bookmarks: "bookmarks"
@@ -54,9 +70,56 @@ public enum TimelineSource: Codable, Sendable, Hashable {
         case .hashtag(let name): "tag:\(name.lowercased())"
         case .account(let id, let replies, let media):
             "account:\(id):\(replies ? 1 : 0):\(media ? 1 : 0)"
+        case .profile(let id, let filter): "profile:\(id):\(filter.storageKey)"
         case .trending: "trending"
         case .bluesky(let uri): "bluesky:\(uri)"
         }
+    }
+}
+
+/// How a profile's posts are narrowed. Every one of these is one query
+/// parameter of `/api/v1/accounts/{id}/statuses`, so pages stay full rather
+/// than being thinned out after they arrive.
+public struct ProfilePostFilter: Codable, Sendable, Hashable {
+    /// What kind of attachment a post must carry.
+    public enum MediaKind: String, Codable, Sendable, Hashable {
+        case image, video, audio
+    }
+
+    /// Replies to other accounts. Off keeps the account's own threads.
+    public var includeReplies: Bool
+    /// Boosts, which an account's statuses carry as on Mastodon. `exclude_reblogs`.
+    public var includeBoosts: Bool
+    /// Mastodon's `only_media`.
+    public var onlyMedia: Bool
+    /// Aloha Social's `media_type`, narrowing `only_media` to one kind. A
+    /// server that does not know it ignores it, and `only_media` still holds.
+    public var mediaKind: MediaKind?
+    /// Aloha Social's `only_short`: short upright videos.
+    public var onlyShort: Bool
+    /// Mastodon's `tagged`: posts carrying this hashtag, without `#`.
+    public var tagged: String?
+
+    public init(
+        includeReplies: Bool = false, includeBoosts: Bool = true, onlyMedia: Bool = false,
+        mediaKind: MediaKind? = nil, onlyShort: Bool = false, tagged: String? = nil
+    ) {
+        self.includeReplies = includeReplies
+        self.includeBoosts = includeBoosts
+        self.onlyMedia = onlyMedia || mediaKind != nil
+        self.mediaKind = mediaKind
+        self.onlyShort = onlyShort
+        self.tagged = tagged.flatMap { Tag.normalise($0) }
+    }
+
+    /// Posts and boosts, no replies: a profile's first tab.
+    public static let posts = ProfilePostFilter()
+
+    var storageKey: String {
+        [
+            includeReplies ? "r" : "", includeBoosts ? "" : "nb", onlyMedia ? "m" : "",
+            mediaKind?.rawValue ?? "", onlyShort ? "s" : "", tagged.map { "t=\($0)" } ?? "",
+        ].joined(separator: ":")
     }
 }
 

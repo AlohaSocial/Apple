@@ -60,6 +60,12 @@ public struct LocalNotifier: Sendable {
         showAccountName: Bool
     ) async -> [String] {
         let enabled = session.settings.localNotificationKinds
+        // A kind the person switched off is a decision, not a hold: it is
+        // reported as handled, so it never waits in the queue a poll offers
+        // again (SupportStore.pendingAnnouncements), crowding out what is
+        // only held back by quiet hours or a Focus.
+        let switchedOff = notifications.filter { !enabled.contains($0.kind.rawValue) }
+            .map(\.serverID)
         // What the Focus filters out is held, as quiet hours hold it: not
         // reported as announced, so it comes through once the Focus ends.
         let focus = FocusFilterState.current
@@ -68,7 +74,7 @@ public struct LocalNotifier: Sendable {
         }
         let authorization = await center.notificationSettings().authorizationStatus
         guard authorization == .authorized || authorization == .provisional else {
-            return eligible.map(\.serverID)
+            return eligible.map(\.serverID) + switchedOff
         }
         var announced: [String] = []
 
@@ -116,7 +122,7 @@ public struct LocalNotifier: Sendable {
                 )
             }
             announced.append(contentsOf: held.map { $0.serverID })
-            return announced
+            return announced + switchedOff
         }
 
         for notification in announcements {
@@ -135,7 +141,7 @@ public struct LocalNotifier: Sendable {
                 )
             }
         }
-        return announced
+        return announced + switchedOff
     }
 
     /// One request for everything held since the last digest.
@@ -159,8 +165,7 @@ public struct LocalNotifier: Sendable {
         guard
             let trigger = nextDigestTrigger(
                 times: times, quietStart: quietStart, quietEnd: quietEnd),
-            let calendarTrigger = trigger as? UNCalendarNotificationTrigger,
-            let nextDate = calendarTrigger.nextTriggerDate()
+            let nextDate = trigger.nextTriggerDate()
         else { return }
 
         // One identity per digest time, so successive polls replace.
@@ -239,6 +244,12 @@ public struct LocalNotifier: Sendable {
         case .moderationWarning: String(localized: "warning", comment: "Digest summary kind")
         case .severedRelationships: String(localized: "separation", comment: "Digest summary kind")
         case .annualReport: String(localized: "report", comment: "Digest summary kind")
+        case .storyReaction: String(localized: "reaction", comment: "Digest summary kind")
+        case .storyComment: String(localized: "story reply", comment: "Digest summary kind")
+        case .tagged: String(localized: "photo tag", comment: "Digest summary kind")
+        case .blueskyRepostLiked, .blueskyRepostReposted, .blueskyVerified,
+            .blueskyUnverified, .blueskyStarterPackJoined:
+            String(localized: "Bluesky update", comment: "Digest summary kind")
         default:
             // Everything this app has no name for — the kinds a newer server
             // can add — reads as the server's own raw value rather than being
@@ -380,6 +391,31 @@ public struct LocalNotifier: Sendable {
                 localized: "A moderator acted on your account", comment: "Notification title")
         case .severedRelationships:
             return String(localized: "Some of your follows were cut", comment: "Notification title")
+        case .storyReaction:
+            return String(
+                localized: "\(subject) reacted to your story", comment: "Notification title")
+        case .storyComment:
+            return String(
+                localized: "\(subject) replied to your story", comment: "Notification title")
+        case .tagged:
+            return String(
+                localized: "\(subject) tagged you in a photo", comment: "Notification title")
+        case .blueskyRepostLiked:
+            return String(
+                localized: "\(subject) liked your repost on Bluesky", comment: "Notification title")
+        case .blueskyRepostReposted:
+            return String(
+                localized: "\(subject) reposted your repost on Bluesky",
+                comment: "Notification title")
+        case .blueskyVerified:
+            return String(localized: "Bluesky verified your account", comment: "Notification title")
+        case .blueskyUnverified:
+            return String(
+                localized: "Bluesky no longer verifies your account", comment: "Notification title")
+        case .blueskyStarterPackJoined:
+            return String(
+                localized: "\(subject) joined Bluesky with your starter pack",
+                comment: "Notification title")
         default: return subject
         }
     }

@@ -9,10 +9,15 @@ import AlohaStore
 import PhotosUI
 import SwiftUI
 
+#if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+    import ImagePlayground
+#endif
+
 public struct ComposerView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.composerHost) private var host
     @State private var didSend = false
     @State private var showsCardOptions = false
     @State private var isShowingPollEditor = false
@@ -31,6 +36,18 @@ public struct ComposerView: View {
     @State private var rewritingStyle: RewriteStyle?
     @State private var isShowingCamera = false
     @FocusState private var isEditorFocused: Bool
+    /// Set once the composer has ended on purpose — posted, or cancelled with
+    /// the draft saved — so the disappearance that follows is not mistaken
+    /// for one that would lose the words.
+    @State private var didFinish = false
+    @State private var selection: TextSelection?
+    @State private var isShowingImagePlayground = false
+    #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+        @Environment(\.supportsImagePlayground) private var supportsImagePlayground
+    #endif
+    /// An edit's text as it arrived, so closing an unchanged edit needs no
+    /// guard while closing a changed one does.
+    private let editBaseline: String?
 
     private let prefilledText: String
     private let prefilledAttachments: [PrefilledAttachment]
@@ -55,6 +72,7 @@ public struct ComposerView: View {
         self.quoting = nil
         self.prefilledText = ""
         self.prefilledAttachments = []
+        self.editBaseline = source.text
         _model = State(
             initialValue: ComposerModel(session: session, editing: status, source: source))
     }
@@ -64,6 +82,7 @@ public struct ComposerView: View {
         self.quoting = nil
         self.prefilledText = ""
         self.prefilledAttachments = []
+        self.editBaseline = nil
         _model = State(initialValue: ComposerModel(session: session, draft: draft))
     }
 
@@ -73,6 +92,7 @@ public struct ComposerView: View {
         self.quoting = nil
         self.prefilledText = ""
         self.prefilledAttachments = []
+        self.editBaseline = nil
         _model = State(
             initialValue: ComposerModel(session: session, redrafting: status, source: source))
     }
@@ -87,6 +107,7 @@ public struct ComposerView: View {
         self.quoting = quoting
         self.prefilledText = prefilledText
         self.prefilledAttachments = prefilledAttachments
+        self.editBaseline = nil
         _model = State(
             initialValue: ComposerModel(session: session, replyTo: replyTo, quoting: quoting))
     }
@@ -124,28 +145,28 @@ public struct ComposerView: View {
                     Button {
                         isShowingPollEditor = true
                     } label: {
-                        Label("Edit poll", systemImage: AlohaSymbol.poll)
+                        Label {
+                            Text("Edit poll", comment: "Composer action")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.poll)
+                        }
                     }
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
                     .padding(AlohaMetrics.space2)
                 }
 
                 toolbar
+                if host?.showsInlineActions == true { inlineActions }
             }
             .background(palette.background)
             .sensoryFeedback(.success, trigger: didSend)
             #if !os(tvOS) && !os(watchOS)
-                // A picture dragged in from Photos, Files or another app is
-                // an attachment, the same as one picked.
-                .dropDestination(for: DroppedImage.self) { images, _ in
-                    Task {
-                        for image in images {
-                            await model.uploader.add(
-                                data: image.data, filename: image.filename,
-                                mimeType: image.mimeType)
-                        }
-                    }
-                    return !images.isEmpty
+                // A picture or a video dragged in from Photos, Files or
+                // another app is an attachment, the same as one picked.
+                .dropDestination(for: DroppedMedia.self) { items, _ in
+                    guard model.canAddMedia, !items.isEmpty else { return false }
+                    Task { await attach(items) }
+                    return true
                 }
             #endif
             .navigationTitle(model.title)
@@ -153,29 +174,9 @@ public struct ComposerView: View {
                 .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        close()
-                    } label: {
-                        Text("Cancel", comment: "Composer action")
-                            .foregroundStyle(palette.label)
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task { await send() }
-                    } label: {
-                        if model.isPosting {
-                            ProgressView()
-                        } else {
-                            Text("Post", comment: "Composer action")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                    }
-                    .alohaGlassProminentButtonStyle()
-                    .tint(palette.accent)
-                    .disabled(!model.canPost)
-                    .keyboardShortcut(.return, modifiers: .command)
+                if host?.showsInlineActions != true {
+                    ToolbarItem(placement: .cancellationAction) { cancelButton }
+                    ToolbarItem(placement: .confirmationAction) { postButton }
                 }
             }
             .alert(
@@ -209,44 +210,27 @@ public struct ComposerView: View {
             .sheet(isPresented: $isShowingPollEditor) {
                 NavigationStack {
                     ScrollView { pollEditor }
-                        .navigationTitle("Poll")
+                        .navigationTitle(Text("Poll", comment: "Poll editor title"))
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { isShowingPollEditor = false }
+                                Button {
+                                    isShowingPollEditor = false
+                                } label: {
+                                    Text("Done", comment: "Sheet action")
+                                }
                             }
                             ToolbarItem(placement: .cancellationAction) {
-                                Button("Remove poll", role: .destructive) {
+                                Button(role: .destructive) {
                                     model.pollOptions = []
                                     isShowingPollEditor = false
+                                } label: {
+                                    Text("Remove poll", comment: "Poll editor action")
                                 }
                             }
                         }
                 }
                 .presentationDetents([.medium, .large])
-                .presentationBackground {
-                    Color.clear.alohaGlassEffect(.regular, in: Rectangle())
-                }
                 .presentationDragIndicator(.visible)
-            }
-            .sheet(isPresented: $isShowingSchedule) {
-                SchedulePicker(scheduledAt: $model.scheduledAt)
-            }
-            .sheet(isPresented: $isShowingPlacePicker) {
-                if let session = environment.activeSession {
-                    PlacePicker(session: session) { model.place = $0 }
-                }
-            }
-            .sheet(isPresented: $isShowingGIFPicker) {
-                if let session = environment.activeSession {
-                    GIFPicker(session: session) { entry in
-                        Task { await model.attachLibraryPicture(entry) }
-                    }
-                }
-            }
-            .sheet(isPresented: $isShowingEmojiPicker) {
-                if let session = environment.activeSession {
-                    EmojiPicker(session: session) { model.insert(emoji: $0) }
-                }
             }
             .sheet(item: $filteringAttachment) { attachment in
                 PhotoFilterSheet(attachment: attachment, uploader: model.uploader)
@@ -266,7 +250,7 @@ public struct ComposerView: View {
                 isPresented: $isShowingHeldNotice
             ) {
                 Button {
-                    dismiss()
+                    finish(.posted)
                 } label: {
                     Text("OK", comment: "Held for review action")
                 }
@@ -364,6 +348,22 @@ public struct ComposerView: View {
                     activity, draft: model.text, account: AccountIdentity(session: model.session))
             }
         }
+        .interactiveDismissDisabled(dismissal.isGuarded && !didFinish)
+        // Every way out that is not Post or Cancel — the shell replacing the
+        // sheet, the account changing underneath it, a window closing — still
+        // keeps what was written.
+        .onDisappear {
+            guard !didFinish else { return }
+            UploadActivityController.shared.cancel()
+            Task { await model.saveDraftIfNeeded() }
+        }
+    }
+
+    private var dismissal: ComposerDismissal {
+        ComposerDismissal(
+            text: model.text, spoilerText: model.spoilerText,
+            hasAttachments: !model.attachments.isEmpty, hasPoll: model.hasPoll,
+            threadSegments: model.threadSegments, editBaseline: editBaseline)
     }
 
     // MARK: - Posting
@@ -374,8 +374,60 @@ public struct ComposerView: View {
             isShowingHeldNotice = true
         } else {
             didSend.toggle()
+            finish(.posted)
+        }
+    }
+
+    /// Done, one way or the other: the host's own ending where there is one
+    /// (a share extension), otherwise the sheet's.
+    private func finish(_ outcome: ComposerOutcome) {
+        didFinish = true
+        if let host {
+            host.finish(outcome)
+        } else {
             dismiss()
         }
+    }
+
+    // MARK: - Actions
+
+    private var cancelButton: some View {
+        Button {
+            close()
+        } label: {
+            Text("Cancel", comment: "Composer action")
+                .foregroundStyle(palette.label)
+        }
+        .keyboardShortcut(.cancelAction)
+    }
+
+    private var postButton: some View {
+        Button {
+            Task { await send() }
+        } label: {
+            if model.isPosting {
+                ProgressView()
+            } else {
+                Text("Post", comment: "Composer action")
+                    .font(.subheadline.weight(.semibold))
+            }
+        }
+        .alohaGlassProminentButtonStyle()
+        .tint(palette.accent)
+        .disabled(!model.canPost)
+        .keyboardShortcut(.return, modifiers: .command)
+    }
+
+    /// Cancel and Post under the composer, for a host whose toolbar is not
+    /// the composer's to fill (`ComposerHost.showsInlineActions`).
+    private var inlineActions: some View {
+        HStack {
+            cancelButton
+            Spacer()
+            postButton
+        }
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.vertical, AlohaMetrics.space3)
     }
 
     // MARK: - Pieces
@@ -529,28 +581,89 @@ public struct ComposerView: View {
         .background(palette.surfaceRaised)
     }
 
+    /// The editor stays on a plain `String`, deliberately.
+    ///
+    /// A post is plain text on the wire, and an `AttributedString` editor
+    /// would offer formatting and Genmoji the server cannot carry. A Genmoji
+    /// is a picture with no faithful text form — its description is not what
+    /// was chosen — so rather than quietly turning a picture into words at
+    /// posting time, the editor does not offer one. What an attributed editor
+    /// was wanted for is the selection, and a `String` editor has that too.
     private var editor: some View {
-        ZStack(alignment: .topLeading) {
-            if model.text.isEmpty {
-                Text("What's happening?", comment: "Composer placeholder")
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .padding(.horizontal, AlohaMetrics.space4)
-                    .padding(.vertical, AlohaMetrics.space3 + 2)
-                    .allowsHitTesting(false)
+        TextEditor(text: $model.text, selection: $selection)
+            .focused($isEditorFocused)
+            .accessibilityLabel(Text("What's happening?", comment: "Composer placeholder"))
+            .scrollContentBackground(.hidden)
+            #if os(iOS) || os(macOS) || os(visionOS)
+                // Proofread and rewrite in place, in the system's own panel.
+                .writingToolsBehavior(.complete)
+            #endif
+            .padding(.horizontal, AlohaMetrics.space3)
+            .padding(.vertical, AlohaMetrics.space2)
+            .font(.body)
+            // `TextEditor` takes no prompt, so the placeholder is drawn over
+            // it — and hidden from VoiceOver, which already reads it as the
+            // editor's label.
+            .overlay(alignment: .topLeading) {
+                if model.text.isEmpty {
+                    Text("What's happening?", comment: "Composer placeholder")
+                        .foregroundStyle(palette.tertiaryLabel)
+                        .padding(.horizontal, AlohaMetrics.space4)
+                        .padding(.vertical, AlohaMetrics.space3 + 2)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
             }
+            .frame(minHeight: 140)
+            #if os(iOS)
+                // Above the keyboard, where a suggestion bar belongs, rather
+                // than over the last lines being typed.
+                .toolbar {
+                    if !model.completions.isEmpty {
+                        ToolbarItem(placement: .keyboard) { completionBar }
+                    }
+                }
+            #else
+                .overlay(alignment: .bottom) {
+                    if !model.completions.isEmpty {
+                        completionBar.background(.thinMaterial)
+                    }
+                }
+            #endif
+    }
 
-            TextEditor(text: $model.text)
-                .focused($isEditorFocused)
-                .accessibilityLabel(Text("What's happening?", comment: "Composer placeholder"))
-                .scrollContentBackground(.hidden)
-                .padding(.horizontal, AlohaMetrics.space3)
-                .padding(.vertical, AlohaMetrics.space2)
-                .font(.body)
+    /// Puts a snippet where the cursor is, replacing a selection, and leaves
+    /// the cursor after it.
+    private func insertAtCursor(_ snippet: String) {
+        var range: Range<String.Index>?
+        if case .selection(let selected) = selection?.indices,
+            selected.upperBound <= model.text.endIndex
+        {
+            range = selected
         }
-        .frame(minHeight: 140)
-        .overlay(alignment: .bottom) {
-            if !model.completions.isEmpty { completionBar }
+        let result = ComposerTextInsertion.inserting(snippet, into: model.text, replacing: range)
+        model.text = result.text
+        let cursor =
+            model.text.index(
+                model.text.startIndex, offsetBy: result.cursorOffset,
+                limitedBy: model.text.endIndex) ?? model.text.endIndex
+        selection = TextSelection(insertionPoint: cursor)
+    }
+
+    /// Pictures from a drop or a paste go straight up; a video goes through
+    /// the trim sheet, one at a time, the way a picked one does.
+    private func attach(_ items: [DroppedMedia]) async {
+        var movie: URL?
+        for item in items {
+            switch item {
+            case .image(let image):
+                await model.uploader.add(
+                    data: image.data, filename: image.filename, mimeType: image.mimeType)
+            case .movie(let url):
+                if movie == nil { movie = url }
+            }
         }
+        if let movie { trimmingVideoAt = movie }
     }
 
     private var completionBar: some View {
@@ -572,8 +685,7 @@ public struct ComposerView: View {
             .padding(.horizontal, AlohaMetrics.space3)
         }
         .scrollIndicators(.hidden)
-        .frame(height: 40)
-        .background(.thinMaterial)
+        .frame(minHeight: 40)
     }
 
     private var mediaStrip: some View {
@@ -852,10 +964,8 @@ public struct ComposerView: View {
                     ) {
                         Text("Choice", comment: "Poll option label")
                     }
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, AlohaMetrics.space3)
+                    .textFieldStyle(.roundedBorder)
                     .frame(minHeight: 44)
-                    .alohaGlassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
                     Button(role: .destructive) {
                         guard model.pollOptions.count > 2,
                             model.pollOptions.indices.contains(index)
@@ -863,9 +973,9 @@ public struct ComposerView: View {
                         model.pollOptions.remove(at: index)
                     } label: {
                         Image(systemName: "minus.circle")
-                            .frame(width: 44, height: 44)
+                            .frame(minWidth: 44, minHeight: 44)
                     }
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.borderless)
                     .disabled(model.pollOptions.count <= 2)
                     .accessibilityLabel(Text("Remove choice", comment: "Poll editor action"))
                 }
@@ -878,7 +988,7 @@ public struct ComposerView: View {
                     Text("Add choice", comment: "Poll action")
                 }
                 .disabled(model.pollOptions.count >= model.limits.maxPollOptions)
-                .alohaGlassButtonStyle()
+                .buttonStyle(.bordered)
 
                 Spacer()
             }
@@ -938,6 +1048,18 @@ public struct ComposerView: View {
                 .disabled(!model.canAddMedia)
                 .accessibilityLabel(Text("Take a photo or video", comment: "Composer action"))
             }
+        #endif
+
+        #if os(iOS) || os(macOS) || os(visionOS)
+            // The system's paste button reads the pasteboard only when tapped,
+            // so a copied picture is attached without the "allow paste"
+            // prompt, and it greys itself out when nothing pasteable is there.
+            PasteButton(payloadType: DroppedMedia.self) { items in
+                Task { await attach(items) }
+            }
+            .labelStyle(.iconOnly)
+            .buttonBorderShape(.circle)
+            .disabled(!model.canAddMedia)
         #endif
 
         Button {
@@ -1188,6 +1310,21 @@ public struct ComposerView: View {
                 .accessibilityLabel(Text("Post as", comment: "Composer action"))
             }
 
+            #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+                if supportsImagePlayground {
+                    Button {
+                        isShowingImagePlayground = true
+                    } label: {
+                        Label {
+                            Text("Create an image", comment: "Composer action")
+                        } icon: {
+                            Image(systemName: "apple.image.playground")
+                        }
+                    }
+                    .disabled(!model.canAddMedia)
+                }
+            #endif
+
             if environment.intelligence.availability.isAvailable {
                 Menu {
                     ForEach(RewriteStyle.allCases) { style in
@@ -1211,6 +1348,49 @@ public struct ComposerView: View {
             Image(systemName: "ellipsis")
         }
         .accessibilityLabel(Text("More options", comment: "Composer additional actions"))
+        // Each picker comes out of the button it was chosen from: a popover
+        // on an iPad or a Mac, where a full sheet over the composer hid the
+        // post being written, and a sheet on a phone, where a popover would
+        // be a postage stamp.
+        .composerPicker(isPresented: $isShowingSchedule) {
+            SchedulePicker(scheduledAt: $model.scheduledAt)
+        }
+        .composerPicker(isPresented: $isShowingPlacePicker) {
+            if let session = environment.activeSession {
+                PlacePicker(session: session) { model.place = $0 }
+            }
+        }
+        .composerPicker(isPresented: $isShowingGIFPicker) {
+            if let session = environment.activeSession {
+                GIFPicker(session: session) { entry in
+                    Task { await model.attachLibraryPicture(entry) }
+                }
+            }
+        }
+        .composerPicker(isPresented: $isShowingEmojiPicker) {
+            if let session = environment.activeSession {
+                EmojiPicker(session: session) { insertAtCursor(":\($0.shortcode):") }
+            }
+        }
+        #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+            .imagePlaygroundSheet(
+                isPresented: $isShowingImagePlayground,
+                concepts: model.text.isEmpty ? [] : [.extracted(from: model.text, title: nil)]
+            ) { url in
+                Task { await attachPlaygroundImage(at: url) }
+            }
+        #endif
+    }
+
+    /// An image made in Image Playground goes up like any other picture, and
+    /// the post is marked as made with AI where the server can carry that:
+    /// the label is the honest default for a picture the person did not take.
+    private func attachPlaygroundImage(at url: URL) async {
+        guard let data = try? Data(contentsOf: url) else { return }
+        let image = DroppedImage(data: data)
+        await model.uploader.add(
+            data: image.data, filename: image.filename, mimeType: image.mimeType)
+        if model.isNextcloud { model.marksAsAIGenerated = true }
     }
 
     private var uploadProgress: some View {
@@ -1337,20 +1517,44 @@ public struct ComposerView: View {
         UploadActivityController.shared.cancel()
         Task {
             await model.saveDraftIfNeeded()
-            dismiss()
+            finish(.cancelled)
         }
     }
 }
 
+/// The composer's tool row: tinted glyphs at the text size the person reads
+/// at, each with a hit area that grows with it.
+///
+/// Glass is the navigation layer's material, not a control's inside the
+/// content; a row of glass circles under the text read as a second toolbar
+/// floating over the post. A fixed 18-point glyph also ignored Dynamic Type.
 private struct ComposerToolStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @ScaledMetric(relativeTo: .title3) private var side: CGFloat = 44
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 18, weight: .medium))
-            .frame(width: 44, height: 44)
-            .contentShape(Circle())
-            .alohaGlassEffect(.regular.interactive(), in: Circle())
-            .opacity(!isEnabled ? 0.4 : (configuration.isPressed ? 0.65 : 1))
+            .font(.title3.weight(.medium))
+            .frame(minWidth: side, minHeight: side)
+            .contentShape(Rectangle())
+            .foregroundStyle(.tint)
+            .opacity(!isEnabled ? 0.4 : (configuration.isPressed ? 0.6 : 1))
+    }
+}
+
+extension View {
+    /// A composer picker: a popover in regular width and on the Mac, a sheet
+    /// in compact width, sized so a search field and a grid of results have
+    /// room either way.
+    fileprivate func composerPicker<Content: View>(
+        isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        popover(isPresented: isPresented, arrowEdge: .bottom) {
+            content()
+                .frame(minWidth: 320, idealWidth: 400, minHeight: 420, idealHeight: 560)
+                .presentationCompactAdaptation(.sheet)
+                .presentationDetents([.medium, .large])
+        }
     }
 }
 

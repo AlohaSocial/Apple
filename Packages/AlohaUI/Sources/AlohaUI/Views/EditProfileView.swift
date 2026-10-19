@@ -151,7 +151,7 @@ public struct EditProfileView: View {
                 isPreparingHeader = false
             }
         }
-        .sensoryFeedback(.success, trigger: didSave)
+        .alohaSensoryFeedback(.success, trigger: didSave)
         .alert(
             "Image could not be loaded",
             isPresented: Binding(

@@ -24,10 +24,10 @@ struct ShellRestorationTests {
     @Test("Each tab's stack and the sidebar's survive encoding")
     func roundTrip() throws {
         let original = restoration(
-            tab: .messages,
+            tab: .notifications,
             tabPaths: [
                 .mode(.home): [.thread(statusID: "109"), .profile(accountID: "7")],
-                .messages: [.hashtag("swift")],
+                .mode(.photos): [.hashtag("swift")],
                 .notifications: [.notificationPolicy],
             ],
             sidebarItem: .route(.explore),
@@ -39,7 +39,7 @@ struct ShellRestorationTests {
         let restored = try #require(ShellRestoration.decode(data, for: account))
 
         #expect(restored == original)
-        #expect(restored.tab == .messages)
+        #expect(restored.tab == .notifications)
         #expect(
             restored.tabPaths[.mode(.home)] == [.thread(statusID: "109"), .profile(accountID: "7")])
         #expect(restored.restoredSidebarPaths[.route(.explore)] == [.hashtag("photography")])
@@ -48,7 +48,7 @@ struct ShellRestorationTests {
 
     @Test("Another account's restoration is ignored")
     func otherAccountIsIgnored() throws {
-        let data = try #require(restoration(tabPaths: [.messages: [.hashtag("a")]]).encoded())
+        let data = try #require(restoration(tabPaths: [.notifications: [.hashtag("a")]]).encoded())
         #expect(ShellRestoration.decode(data, for: UUID()) == nil)
     }
 
@@ -61,20 +61,16 @@ struct ShellRestorationTests {
     @Test("Empty stacks are not stored, and deep ones keep only their newest screens")
     func trimming() {
         let deep = (0..<30).map { Route.thread(statusID: String($0)) }
-        let stored = restoration(tabPaths: [.messages: [], .mode(.home): deep])
-        #expect(stored.tabPaths[.messages] == nil)
+        let stored = restoration(tabPaths: [.notifications: [], .mode(.home): deep])
+        #expect(stored.tabPaths[.notifications] == nil)
         #expect(stored.tabPaths[.mode(.home)]?.count == ShellRestoration.maximumDepth)
         #expect(stored.tabPaths[.mode(.home)]?.last == .thread(statusID: "29"))
     }
 
-    @Test("Activities is a tab only while the bar stays within five")
-    func notificationsTabRespectsTheLimit() {
-        // Two feeds or three: feeds, Messages and Activities fit.
-        #expect(ShellTab.showsNotificationsTab(feedCount: 2))
-        #expect(ShellTab.showsNotificationsTab(feedCount: 3))
-        // The default four would make six, and a sixth tab is "More".
-        #expect(!ShellTab.showsNotificationsTab(feedCount: FeedMode.defaultEnabled.count))
-        #expect(!ShellTab.showsNotificationsTab(feedCount: 6))
+    @Test("Every feed and Activities fit the phone's tab bar")
+    func everyFeedAndActivitiesFit() {
+        // A sixth tab would turn the bar into "More".
+        #expect(FeedMode.offered.count + 1 <= ShellTab.phoneTabLimit)
     }
 }
 

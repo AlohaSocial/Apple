@@ -29,9 +29,8 @@ struct SharedComponentsTests {
 
     @Test("An error strip with a retry draws one")
     func retryDrawsButton() {
-        var tapped = 0
-        let view = AlohaErrorStrip(message: "Something failed") { tapped += 1 }
-        #expect(view != nil)
+        let view = AlohaErrorStrip(message: "Something failed") {}
+        #expect(render(view))
     }
 
     // MARK: - Skeleton
@@ -44,7 +43,7 @@ struct SharedComponentsTests {
             let person = SkeletonListRow(person: count)
             let text = SkeletonListRow(text: count)
             let block = SkeletonListRow(block: count)
-            #expect(person != nil && text != nil && block != nil)
+            #expect(render(person) && render(text) && render(block))
         }
     }
 
@@ -56,7 +55,7 @@ struct SharedComponentsTests {
     func glassLevelsHaveFallbacks() {
         for style in [AlohaGlass.regular, .prominent, .subtle] {
             let view = Text("x").alohaGlassFallback(style)
-            #expect(view != nil)
+            #expect(render(view))
         }
     }
 }

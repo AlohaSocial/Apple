@@ -35,7 +35,9 @@ public struct Card: Codable, Sendable, Hashable {
         _authorURL = try c.decode(LenientURL.self, forKey: .authorURL)
         providerName = try c.decodeIfPresent(String.self, forKey: .providerName)
         _providerURL = try c.decode(LenientURL.self, forKey: .providerURL)
-        _image = try c.decode(LenientURL.self, forKey: .image)
+        // The picture is loaded in-app; the link itself opens in a browser and
+        // is left as the server wrote it.
+        _image = try c.decode(LenientURL.self, forKey: .image).securedForLoading()
         blurhash = try c.decodeIfPresent(String.self, forKey: .blurhash)
         width = try c.decodeIfPresent(Int.self, forKey: .width)
         height = try c.decodeIfPresent(Int.self, forKey: .height)

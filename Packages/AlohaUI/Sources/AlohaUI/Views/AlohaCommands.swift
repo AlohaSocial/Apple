@@ -67,26 +67,13 @@ import SwiftUI
                 }
                 .keyboardShortcut("h", modifiers: [.command, .shift])
 
-                Button {
-                    open(.notifications)
-                } label: {
-                    Text("Notifications", comment: "Menu item")
+                // ⌘1… in the sidebar's own order (`ShellPlace`). They used to
+                // be Notifications, Discover and Messages, which matched no
+                // list on screen — ⌘1 was a place the Mac sidebar does not
+                // even show.
+                ForEach(Array(places.enumerated()), id: \.element) { index, place in
+                    placeButton(place, digit: ShellPlace.shortcutDigit(at: index))
                 }
-                .keyboardShortcut("1", modifiers: .command)
-
-                Button {
-                    open(.explore)
-                } label: {
-                    Text("Discover", comment: "Menu item")
-                }
-                .keyboardShortcut("2", modifiers: .command)
-
-                Button {
-                    open(.conversations)
-                } label: {
-                    Text("Messages", comment: "Menu item")
-                }
-                .keyboardShortcut("3", modifiers: .command)
 
                 Button {
                     open(.search(query: nil))
@@ -159,6 +146,29 @@ import SwiftUI
             }
             .timelineKey(key)
             .disabled(timeline?.hasFocusedPost != true)
+        }
+
+        /// The front window's places, or — with no window to ask, every one
+        /// closed on the Mac — the ones every account has.
+        private var places: [ShellPlace] {
+            shell?.places
+                ?? ShellPlace.sidebarOrder(
+                    modes: [.home],
+                    modeTitle: { _ in String(localized: "My Feed", comment: "Mode title") })
+        }
+
+        @ViewBuilder
+        private func placeButton(_ place: ShellPlace, digit: Character?) -> some View {
+            let button = Button {
+                open(place.route)
+            } label: {
+                Text(verbatim: place.title)
+            }
+            if let digit {
+                button.keyboardShortcut(KeyEquivalent(digit), modifiers: .command)
+            } else {
+                button
+            }
         }
 
         private func open(_ route: Route) {

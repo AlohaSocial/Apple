@@ -6,6 +6,14 @@ import Foundation
 /// every configuration in docs/12 §2 can be exercised without a network.
 public protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    /// Forgets every response it kept, which were fetched with somebody's
+    /// token — what signing out asks of it.
+    func removeCachedResponses()
+}
+
+extension HTTPTransport {
+    /// Most transports keep nothing.
+    public func removeCachedResponses() {}
 }
 
 public struct URLSessionTransport: HTTPTransport {
@@ -17,6 +25,10 @@ public struct URLSessionTransport: HTTPTransport {
 
     public init(configuration: URLSessionConfiguration = .aloha) {
         self.init(session: URLSession(configuration: configuration))
+    }
+
+    public func removeCachedResponses() {
+        session.configuration.urlCache?.removeAllCachedResponses()
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {

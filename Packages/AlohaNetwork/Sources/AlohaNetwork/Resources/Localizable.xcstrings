@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "An import is already running. Wait for it to finish, then try again." : {
+      "comment" : "Refusal: an import or move is running",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es läuft schon ein Import. Warte, bis er fertig ist, und versuche es dann noch einmal."
+          }
+        }
+      }
+    },
+    "Bluesky isn't switched on for your server." : {
+      "comment" : "Refusal: Bluesky disabled on the server",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluesky ist für deinen Server nicht eingeschaltet."
+          }
+        }
+      }
+    },
+    "Bluesky's directory can't be reached right now. Try again later." : {
+      "comment" : "Refusal: PLC directory unreachable",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Verzeichnis von Bluesky ist gerade nicht erreichbar. Versuche es später noch einmal."
+          }
+        }
+      }
+    },
     "Cancelled." : {
       "comment" : "Request cancelled",
       "localizations" : {
@@ -23,6 +56,105 @@
         }
       }
     },
+    "Finish the move on your old server." : {
+      "comment" : "Refusal: move can't be finished from here",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließe den Umzug auf deinem alten Server ab."
+          }
+        }
+      }
+    },
+    "No Bluesky account answers to that handle." : {
+      "comment" : "Refusal: Bluesky handle unknown",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unter diesem Namen gibt es kein Bluesky-Konto."
+          }
+        }
+      }
+    },
+    "No account answers to that address." : {
+      "comment" : "Refusal: account not found",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unter dieser Adresse gibt es kein Konto."
+          }
+        }
+      }
+    },
+    "That address isn't a video that can be brought over." : {
+      "comment" : "Refusal: video import of something else",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unter dieser Adresse ist kein Video, das sich übernehmen lässt."
+          }
+        }
+      }
+    },
+    "That file is larger than your server accepts." : {
+      "comment" : "Refusal: upload too large",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei ist größer, als dein Server annimmt."
+          }
+        }
+      }
+    },
+    "That import isn't there any more." : {
+      "comment" : "Refusal: import not found",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Import gibt es nicht mehr."
+          }
+        }
+      }
+    },
+    "That isn't a video address. Copy the address of the video's page." : {
+      "comment" : "Refusal: video import address malformed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist keine Videoadresse. Kopiere die Adresse der Seite des Videos."
+          }
+        }
+      }
+    },
+    "That isn't an account address. Check it and try again." : {
+      "comment" : "Refusal: account address malformed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist keine Kontoadresse. Prüfe sie und versuche es noch einmal."
+          }
+        }
+      }
+    },
+    "That isn't an archive Aloha Social exported. Choose the archive the export made." : {
+      "comment" : "Refusal: wrong archive for an import",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist kein Archiv, das Aloha Social exportiert hat. Wähle das Archiv aus dem Export."
+          }
+        }
+      }
+    },
     "That isn't there any more." : {
       "comment" : "HTTP 404",
       "localizations" : {
@@ -34,6 +166,149 @@
         }
       }
     },
+    "That server only answers servers it can verify, and it couldn't verify yours." : {
+      "comment" : "Refusal: remote server refused an unverifiable fetch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server antwortet nur Servern, die er prüfen kann, und deinen konnte er nicht prüfen."
+          }
+        }
+      }
+    },
+    "That video couldn't be read. Check the address, or try again later." : {
+      "comment" : "Refusal: video import address unreachable",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Video konnte nicht gelesen werden. Prüfe die Adresse oder versuche es später noch einmal."
+          }
+        }
+      }
+    },
+    "That video is on your server already." : {
+      "comment" : "Refusal: video import of a local video",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Video ist schon auf deinem Server."
+          }
+        }
+      }
+    },
+    "That's this account. Enter the other account." : {
+      "comment" : "Refusal: alias or move target is the account itself",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist dieses Konto. Gib das andere Konto ein."
+          }
+        }
+      }
+    },
+    "The file didn't arrive in one piece. Choose it again." : {
+      "comment" : "Refusal: upload missing or unreadable",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei ist nicht vollständig angekommen. Wähle sie noch einmal aus."
+          }
+        }
+      }
+    },
+    "The new account doesn't list this one as an alias yet. Add the alias there first." : {
+      "comment" : "Refusal: move target lacks the alias",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das neue Konto führt dieses noch nicht als Alias. Lege den Alias zuerst dort an."
+          }
+        }
+      }
+    },
+    "The server rejected that." : {
+      "comment" : "HTTP 422 without a reason",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server hat das abgelehnt."
+          }
+        }
+      }
+    },
+    "This account moved recently. It can move again 30 days after the last move." : {
+      "comment" : "Refusal: account move cooldown",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto ist vor Kurzem umgezogen. Es kann 30 Tage nach dem letzten Umzug wieder umziehen."
+          }
+        }
+      }
+    },
+    "Type this account's handle to confirm." : {
+      "comment" : "Refusal: move not confirmed with the handle",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib zur Bestätigung den Namen dieses Kontos ein."
+          }
+        }
+      }
+    },
+    "You already have %lld shorts live. Delete one, or wait for one to expire." : {
+      "comment" : "Refusal: live 24-hour shorts limit, with the limit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast schon %lld Shorts online. Lösche einen oder warte, bis einer abläuft."
+          }
+        }
+      }
+    },
+    "You can feature at most %lld hashtags. Remove one before adding another." : {
+      "comment" : "Refusal: featured hashtag limit, with the limit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du kannst höchstens %lld Hashtags hervorheben. Entferne einen, bevor du einen neuen hinzufügst."
+          }
+        }
+      }
+    },
+    "You can't feature any more hashtags. Remove one before adding another." : {
+      "comment" : "Refusal: featured hashtag limit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du kannst keine weiteren Hashtags hervorheben. Entferne einen, bevor du einen neuen hinzufügst."
+          }
+        }
+      }
+    },
+    "You can't post another short yet. Delete one, or wait for one to expire." : {
+      "comment" : "Refusal: live 24-hour shorts limit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du kannst gerade keinen weiteren Short posten. Lösche einen oder warte, bis einer abläuft."
+          }
+        }
+      }
+    },
     "Your account isn't set up yet. Open Aloha Social in a web browser and choose your username." : {
       "comment" : "HTTP 403, account not set up",
       "localizations" : {
@@ -41,6 +316,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Konto ist noch nicht eingerichtet. Öffne Aloha Social in einem Webbrowser und wähle deinen Benutzernamen."
+          }
+        }
+      }
+    },
+    "Your old server refused. Try again later, or finish the move there." : {
+      "comment" : "Refusal: old server refused a move step",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein alter Server hat abgelehnt. Versuche es später noch einmal oder schließe den Umzug dort ab."
           }
         }
       }

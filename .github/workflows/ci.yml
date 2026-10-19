@@ -6,13 +6,26 @@
 #
 # A pull request that fails any job does not merge. There are no exceptions for
 # "just a small change" (docs/12 §6).
+#
+# Skips are not passes. A job that cannot do its work on this image (an Xcode
+# that cannot open the objectVersion 110 project, no iPhone simulator, a host
+# without FoundationModels.framework) fails, unless the repository variable
+# ALLOW_SKIP is "true" — then it passes with a yellow warning that names what
+# did not run. Set it while the hosted images lag Xcode 27; clear it the day
+# they catch up, so a green tick means the work was done.
 
 name: CI
 
+# Pushes to main only: every other branch is checked through its pull
+# request. Pushing a branch with an open pull request used to start two runs
+# of the same commit, which queued for the same few Xcode 27 runners.
 on:
   push:
-    branches: [main, "fix/**", "feature/**"]
+    branches: [main]
   pull_request:
+
+env:
+  ALLOW_SKIP: ${{ vars.ALLOW_SKIP == 'true' }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -64,13 +77,18 @@ jobs:
             else
               # The one failure that says nothing about this repository: the
               # suite built fine, but the host OS has no
-              # FoundationModels.framework to load at run time. Report it and
-              # move on rather than pointing a red cross at the code.
+              # FoundationModels.framework to load at run time. Allowed as a
+              # skip only while ALLOW_SKIP is set; otherwise the suite did
+              # not run, and that is a failure.
               if grep -q "Library not loaded: .*FoundationModels.framework" "$RUNNER_TEMP/package-tests.log"; then
-                echo "::notice title=$scheme tests skipped::The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded. Run the suite on a macos-26 host to exercise it."
-                echo "::endgroup::"
-                rm -f "$RUNNER_TEMP/package-tests.log"
-                continue
+                message="The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded."
+                if [ "$ALLOW_SKIP" = "true" ]; then
+                  echo "::warning title=$scheme tests skipped::$message"
+                  echo "::endgroup::"
+                  rm -f "$RUNNER_TEMP/package-tests.log"
+                  continue
+                fi
+                echo "::error title=$scheme tests not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
               fi
               failed=1
             fi
@@ -117,8 +135,13 @@ jobs:
                 print(pick)
           ')
           if [ -z "$device" ]; then
-            echo "::notice title=Package tests skipped::No available iPhone simulator on this runner image, so no package suite can be run under an iOS trait environment. The macOS job above exercises the same suites; simulator-only behaviour needs an image with an iPhone simulator."
-            exit 0
+            message="No available iPhone simulator on this runner image, so no package suite can be run under an iOS trait environment."
+            if [ "$ALLOW_SKIP" = "true" ]; then
+              echo "::warning title=Package tests skipped::$message"
+              exit 0
+            fi
+            echo "::error title=Package tests not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
+            exit 1
           fi
           echo "Testing on $device"
           failed=0
@@ -136,10 +159,14 @@ jobs:
               # not, the suite compiled and linked and the bundle could not be
               # loaded — reported rather than pointed at the code.
               if grep -q "Library not loaded: .*FoundationModels.framework" "$RUNNER_TEMP/sim-package-tests.log"; then
-                echo "::notice title=$scheme tests skipped::The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded. Run the suite on a macos-26 host to exercise it."
-                rm -f "$RUNNER_TEMP/sim-package-tests.log"
-                echo "::endgroup::"
-                continue
+                message="The suite compiled and linked, but this runner's host OS predates FoundationModels.framework, so the test bundle cannot be loaded."
+                if [ "$ALLOW_SKIP" = "true" ]; then
+                  echo "::warning title=$scheme tests skipped::$message"
+                  rm -f "$RUNNER_TEMP/sim-package-tests.log"
+                  echo "::endgroup::"
+                  continue
+                fi
+                echo "::error title=$scheme tests not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
               fi
               failed=1
             fi
@@ -148,16 +175,18 @@ jobs:
           done
           exit $failed
 
-  # Every app target, every platform. Signing is off: CI is about the code
-  # compiling, not about a certificate nobody should be committing.
+  # Every app target, every platform, in the Release configuration that
+  # ships, with warnings as errors (docs/12 §1, §6). Signing is off: CI is
+  # about the code compiling, not about a certificate nobody should be
+  # committing. Release also proves the debug-only pieces (MockAPIServer,
+  # MockMode) are not needed by anything that ships.
   #
-  # All four platforms, with signing off: CI is about the code compiling,
-  # not about a certificate nobody should be committing. The runner images
-  # now carry Xcode 27, so this job is real signal — a failure is a failure
-  # about the branch.
+  # xcode-27, not macos-26: the project is objectVersion 110, which no Xcode
+  # on the macos-26 image can open. That image is GitHub's preview of
+  # Xcode 27 on a macOS 27 host (actions/runner-images#14404).
   build:
     name: Build (${{ matrix.name }})
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -175,11 +204,17 @@ jobs:
           - name: watchOS
             scheme: AlohaSocialWatch
             destination: generic/platform=watchOS
+          - name: visionOS
+            scheme: AlohaSocial
+            destination: generic/platform=visionOS
     steps:
       - uses: actions/checkout@v4
-      - name: Select the newest Xcode
+      - name: Select the newest released Xcode
         run: |
-          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          # The image's aliases (Xcode_27.2.app) point at betas, so resolve
+          # each one before leaving the betas out.
+          latest=$(for app in /Applications/Xcode*.app; do (cd "$app" && pwd -P); done \
+            | grep -vi beta | sort -uV | tail -1)
           if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
           sudo xcode-select --switch "$latest/Contents/Developer"
       - name: Build ${{ matrix.name }}
@@ -198,8 +233,13 @@ jobs:
               # which takes the whole script down.
               xcodebuild -version >"$RUNNER_TEMP/xcode-version" 2>&1 || true
               version=$(tr -s ' ' <"$RUNNER_TEMP/xcode-version" | cut -d' ' -f2 | head -1)
-              echo "::notice title=Build skipped::AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format. The project needs Xcode 27; when an image ships it, remove this skip and the build runs for real."
-              exit 0
+              message="AlohaSocial.xcodeproj is objectVersion 110 (Xcode 27) and this image's Xcode $version cannot open that format."
+              if [ "$ALLOW_SKIP" = "true" ]; then
+                echo "::warning title=Build skipped::$message"
+                exit 0
+              fi
+              echo "::error title=Build not run::$message Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
+              exit 1
             fi
             cat "$RUNNER_TEMP/xcode-list" >&2
             exit 1
@@ -207,16 +247,20 @@ jobs:
           # Output goes to a file, never a pipe: xcodebuild aborts with
           # NSFileHandleOperationException (broken pipe) when its stdout's
           # reader disappears, and that abort is indistinguishable from a
-          # build failure in the log.
+          # build failure in the log. The status is taken with `||` because
+          # the step runs under `bash -e`.
+          status=0
           xcodebuild build \
             -project AlohaSocial.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
+            -configuration Release \
             -destination "${{ matrix.destination }}" \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1
-          status=$?
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            GCC_TREAT_WARNINGS_AS_ERRORS=YES \
+            >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1 || status=$?
           cat "$RUNNER_TEMP/build-${{ matrix.name }}.log"
           exit $status
 
@@ -230,22 +274,70 @@ jobs:
   # one script, rather than booting a simulator in one step and failing in the
   # next, which is what a crash mid-job looked like.
   ui:
-    name: UI tours
-    runs-on: macos-26
+    name: UI tours (${{ matrix.shard }})
+    # xcode-27 for the same reason as the build job.
+    runs-on: xcode-27
+    # The whole suite is over half an hour on a fast Mac, too close to an
+    # hour on a hosted runner; four shards run it in parallel. A test class
+    # in no shard would never run, which the first step refuses.
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: accessibility
+            tests: AccessibilityAuditTests
+          - shard: interaction
+            tests: InteractionTourTests
+          - shard: screens
+            tests: AddedScreensTourTests PseudolocalisationTourTests StressTourTests
+          - shard: tours
+            tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
+    env:
+      ALL_SHARDS: >-
+        AccessibilityAuditTests InteractionTourTests AddedScreensTourTests
+        PseudolocalisationTourTests StressTourTests ScreenTourTests ThemeTourTests
+        SidebarTourTests NativeSidebarTests
     steps:
       - uses: actions/checkout@v4
-      - name: Select the newest Xcode
+      - name: Every tour class is in a shard
         run: |
-          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          python3 - <<'PY'
+          import os, pathlib, re
+          sharded = set(os.environ["ALL_SHARDS"].split())
+          found = set()
+          for path in pathlib.Path("AlohaSocialUITests").glob("*.swift"):
+              text = path.read_text()
+              # Mac-only suites do not exist in the iOS test bundle.
+              if "#if os(macOS)" in "\n".join(text.splitlines()[:8]):
+                  continue
+              found |= set(re.findall(r"class (\w+)\s*:\s*XCTestCase", text))
+          missing = sorted(found - sharded)
+          if missing:
+              raise SystemExit(f"UI test classes in no shard: {', '.join(missing)}")
+          PY
+      - name: Select the newest released Xcode
+        run: |
+          latest=$(for app in /Applications/Xcode*.app; do (cd "$app" && pwd -P); done \
+            | grep -vi beta | sort -uV | tail -1)
           if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
           sudo xcode-select --switch "$latest/Contents/Developer"
-      - name: Run the tour suite
+      - name: Run the ${{ matrix.shard }} tours
+        # Short of the job's limit, so the log step below still has time to
+        # say where a stuck run was.
+        timeout-minutes: 45
         env:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
           set -u
-          skip () { echo "::notice title=UI tours skipped::$1"; exit 0; }
+          skip () {
+            if [ "$ALLOW_SKIP" = "true" ]; then
+              echo "::warning title=UI tours skipped::$1"
+              exit 0
+            fi
+            echo "::error title=UI tours not run::$1 Set the repository variable ALLOW_SKIP to true to accept this skip while the runner images lack it."
+            exit 1
+          }
 
           # 1. An Xcode that cannot open the project cannot run its tests.
           if ! xcodebuild -list -quiet -project AlohaSocial.xcodeproj \
@@ -268,20 +360,73 @@ jobs:
           ')
           [ -n "$device" ] || skip "No available iPhone simulator on this runner image, so the tours have nowhere to launch. The package suites above still exercise the logic."
 
-          # 3. Output to a file, never a pipe: xcodebuild aborts with a broken
+          # 3. Booted and settled before the first test: a runner installed
+          #    while the simulator is still starting up is killed before it
+          #    connects, which reads as a crashed test.
+          xcrun simctl boot "$device" 2>/dev/null || true
+          xcrun simctl bootstatus "$device" -b >/dev/null
+
+          # 4. Output to a file, never a pipe: xcodebuild aborts with a broken
           #    pipe when its reader disappears, and that abort is
-          #    indistinguishable from a test failure.
+          #    indistinguishable from a test failure. The step runs under
+          #    `bash -e`, so the status is taken with `||`: a bare failing
+          #    command would end the script before the log is printed
+          #    (the step after this one prints it).
+          #
+          #    Diagnostics collection is off: after a failure it waited ten
+          #    minutes on the simulator and then gave up, so a few failures
+          #    ran the job into its timeout and the log was never printed.
+          #    Each test is capped at five minutes (a test may ask for up to
+          #    ten): every test relaunches the app, which takes 20 to 80
+          #    seconds on these runners. One retry absorbs a runner that dies on
+          #    launch, and the watchdog stops xcodebuild before the job's
+          #    own timeout would, so whatever happened is still printed.
+          #    The watchdog is short of the step's 45 minutes, so xcodebuild
+          #    stops and writes its result bundle before the step is killed.
+          ( sleep 2400; pkill -INT -x xcodebuild ) &
+          watchdog=$!
+          status=0
+          only=()
+          for class in ${{ matrix.tests }}; do
+            only+=("-only-testing:AlohaSocialUITests/$class")
+          done
           xcodebuild test \
             -project AlohaSocial.xcodeproj \
             -scheme AlohaSocialUITests \
             -destination "platform=iOS Simulator,name=$device" \
+            "${only[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/ui-tours.xcresult" \
+            -collect-test-diagnostics never \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
+            -maximum-test-execution-time-allowance 600 \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            >"$RUNNER_TEMP/ui-tours.log" 2>&1
-          status=$?
-          cat "$RUNNER_TEMP/ui-tours.log"
+            >"$RUNNER_TEMP/ui-tours.log" 2>&1 || status=$?
+          kill "$watchdog" 2>/dev/null || true
           exit $status
+      # Also when the step above failed, timed out or was cancelled: a run
+      # that never finished used to leave nothing to say where it stopped.
+      - name: Show the tour log
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/ui-tours.log" ] || { echo "No tour log was written."; exit 0; }
+          grep -E "Test Case .*(passed|failed)|error: |Executed [0-9]+ tests" \
+            "$RUNNER_TEMP/ui-tours.log" || true
+          echo "::group::Full log"
+          cat "$RUNNER_TEMP/ui-tours.log"
+          echo "::endgroup::"
+      - name: Keep the result bundle
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-tours-${{ matrix.shard }}
+          path: ${{ runner.temp }}/ui-tours.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
 
   # A pull request that fails to lint does not merge (docs/12 §6).
   lint:
@@ -318,3 +463,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Every user-facing string has a translator comment
         run: python3 tools/check-localisation.py
+
+  # The other half of docs/12's accessibility gate: every colour role resolves
+  # in light, dark and both high-contrast variants, meets WCAG AA, and keeps
+  # boost / favourite / bookmark apart under the three colour-vision
+  # deficiencies (docs/12 §5). Its own job, so a contrast regression is named
+  # as one rather than buried among the package suites.
+  design-tokens:
+    name: Design tokens (contrast)
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Colour roles meet the contrast floor
+        run: cd Packages/AlohaDesign && swift test

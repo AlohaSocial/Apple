@@ -106,14 +106,13 @@ public struct OAuthService: Sendable {
             "application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        var components = URLComponents()
-        components.queryItems = [
+        let fields: [URLQueryItem] = [
             URLQueryItem(name: "client_name", value: Self.clientName),
             URLQueryItem(name: "redirect_uris", value: redirectURI),
             URLQueryItem(name: "scopes", value: Self.scopes),
             URLQueryItem(name: "website", value: Self.website),
         ]
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(fields)
 
         let (data, response) = try await transport.send(request)
         if let error = APIError.from(
@@ -180,7 +179,21 @@ public struct OAuthService: Sendable {
         guard let components = URLComponents(url: callback, resolvingAgainstBaseURL: false) else {
             throw CallbackError.missingCode
         }
-        let items = components.queryItems ?? []
+        // The parameters belong in the query (RFC 6749 §4.1.2), but a server
+        // answering with `response_mode=fragment`, or one that rewrites the
+        // redirect, puts them after the `#`. The query wins where it has any
+        // of them; otherwise the fragment is read the same way.
+        let names: Set<String> = ["code", "state", "error"]
+        var items = components.queryItems ?? []
+        if !items.contains(where: { names.contains($0.name) }),
+            // The still-encoded form: it is already valid as a query, and the
+            // decoded one would not be for a value holding `&` or `%`.
+            let fragment = components.percentEncodedFragment, !fragment.isEmpty
+        {
+            var fromFragment = URLComponents()
+            fromFragment.percentEncodedQuery = fragment
+            items = fromFragment.queryItems ?? []
+        }
 
         if let error = items.first(where: { $0.name == "error" })?.value {
             throw CallbackError.denied(
@@ -227,9 +240,7 @@ public struct OAuthService: Sendable {
         ]
         if let verifier { items.append(URLQueryItem(name: "code_verifier", value: verifier)) }
 
-        var components = URLComponents()
-        components.queryItems = items
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(items)
 
         let (data, response) = try await transport.send(request)
         if let error = APIError.from(
@@ -254,13 +265,12 @@ public struct OAuthService: Sendable {
         request.setValue(
             "application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
 
-        var components = URLComponents()
-        components.queryItems = [
+        let fields: [URLQueryItem] = [
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "client_secret", value: clientSecret),
             URLQueryItem(name: "token", value: token),
         ]
-        request.httpBody = Data((components.percentEncodedQuery ?? "").utf8)
+        request.httpBody = FormEncoding.body(fields)
 
         let (data, response) = try await transport.send(request)
         if let error = APIError.from(

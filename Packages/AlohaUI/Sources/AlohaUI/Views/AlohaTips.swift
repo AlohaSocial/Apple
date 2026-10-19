@@ -71,8 +71,8 @@ struct TimelineSourceTip: Tip {
 
     var message: Text? {
         Text(
-            "Switch between the people you follow, your server, and everyone it knows.",
-            comment: "Tip detail: the timeline source switch")
+            "Tap the title to switch between the people you follow, your server, and everyone it knows.",
+            comment: "Tip detail: the timeline source menu in the screen title")
     }
 
     var image: Image? { Image(systemName: "person.2") }

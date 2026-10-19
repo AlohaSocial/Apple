@@ -42,6 +42,11 @@ public struct ThreadView: View {
                 if let focused {
                     row(focused, isFocused: true)
                         .id("focused")
+                    PostDetailFooter(status: focused, session: session) { account in
+                        onAction(.openProfile(account))
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowBackground(palette.surfaceRaised)
                 }
 
                 ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
@@ -69,10 +74,11 @@ public struct ThreadView: View {
             .alohaGround(palette)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
             .task {
-                await load()
+                let filling = await load()
                 // The focused status lands in a stable position with its
                 // ancestors already laid out above it — no jump.
                 if !ancestors.isEmpty { proxy.scrollTo("focused", anchor: .top) }
+                await refill(after: filling)
             }
             .refreshable { await load() }
             .toolbar {
@@ -155,8 +161,9 @@ public struct ThreadView: View {
         .accessibilityElement(children: .combine)
     }
 
+    @ViewBuilder
     private func row(_ status: Status, isFocused: Bool) -> some View {
-        StatusRow(
+        let row = StatusRow(
             status: status,
             policy: session.settings.sensitiveMediaPolicy,
             localHost: session.snapshot.instanceHost,
@@ -164,24 +171,39 @@ public struct ThreadView: View {
             // every row was noise.
             showsContextLine: isFocused,
             canReact: session.capabilities.emojiReactions,
+            isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
             showsCounts: session.settings.showPopularityCounts,
+            selectableText: isFocused,
             onAction: onAction
         )
-        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-        // Raised card plus the accent rail the timeline uses for keyboard
-        // focus: `surface` and `background` are the same black in the Black
-        // theme, so the old pair marked nothing there.
-        .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
-        .font(isFocused ? .body : nil)
-        .overlay(alignment: .leading) {
-            if isFocused {
-                Capsule()
-                    .fill(palette.accent)
-                    .frame(width: 3)
-                    .padding(.vertical, 4)
-                    .padding(.leading, -8)
-            }
+        // The post being read keeps its long press for selecting its words;
+        // every other post in the thread answers it as a timeline row does.
+        if isFocused {
+            styled(row, isFocused: true)
+        } else {
+            styled(
+                row.statusRowInteractions(status, session: session, onAction: onAction),
+                isFocused: false)
         }
+    }
+
+    private func styled(_ row: some View, isFocused: Bool) -> some View {
+        row
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+            // Raised card plus the accent rail the timeline uses for keyboard
+            // focus: `surface` and `background` are the same black in the Black
+            // theme, so the old pair marked nothing there.
+            .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
+            .font(isFocused ? .body : nil)
+            .overlay(alignment: .leading) {
+                if isFocused {
+                    Capsule()
+                        .fill(palette.accent)
+                        .frame(width: 3)
+                        .padding(.vertical, 4)
+                        .padding(.leading, -8)
+                }
+            }
     }
 
     private func errorStrip(_ message: String) -> some View {
@@ -237,7 +259,36 @@ public struct ThreadView: View {
         return updated
     }
 
-    private func load() async {
+    /// The conversation's own server, and Bluesky, are read in the background
+    /// when a thread is opened; while that is new the answer says
+    /// `X-Social-Thread-Filling`, and the replies it finds arrive if the app
+    /// asks again. A bounded number of times, then pull to refresh.
+    private func refill(after filling: SocialFilling) async {
+        let policy = FillingRetryPolicy()
+        var attempt = 1
+        var filling = filling
+        while let delay = policy.delay(after: attempt, filling: filling) {
+            do {
+                try await Task.sleep(for: delay)
+                let (context, response) = try await session.client.decodeWithResponse(
+                    StatusContext.self,
+                    from: Endpoint.statuses.context(statusID, includingHidden: true))
+                withAnimation(.easeOut(duration: 0.2)) {
+                    ancestors = context.ancestors
+                    descendants = context.descendants
+                }
+                filling = SocialFilling(response)
+                attempt += 1
+            } catch {
+                // Cancelled by leaving the screen, or a failed extra ask:
+                // what the first answer brought stays on screen either way.
+                return
+            }
+        }
+    }
+
+    @discardableResult
+    private func load() async -> SocialFilling {
         isLoading = true
         defer { isLoading = false }
 
@@ -251,15 +302,18 @@ public struct ThreadView: View {
         do {
             async let statusTask = session.client.decode(
                 Status.self, from: Endpoint.statuses.status(statusID))
-            async let contextTask = session.client.decode(
-                StatusContext.self, from: Endpoint.statuses.context(statusID))
+            // Hidden replies included: the thread shows them collapsed, one tap
+            // from being read, rather than as if they had never been written.
+            async let contextTask = session.client.decodeWithResponse(
+                StatusContext.self,
+                from: Endpoint.statuses.context(statusID, includingHidden: true))
             // Beside the other two, not after them: the card has to be in hand
             // before the first draw or it arrives as a jump.
             async let cardTask = try? await session.client.decode(
                 Card.self, from: Endpoint.statuses.card(statusID))
 
             let status = Self.withCard(try await statusTask, await cardTask)
-            let context = try await contextTask
+            let (context, response) = try await contextTask
             if focused?.id != status.id {
                 ReadingSignals.forSession(session)?.opened(status)
             }
@@ -270,9 +324,11 @@ public struct ThreadView: View {
 
             try? await session.timelineStore.updateStatus(
                 accountID: session.id, status: status)
+            return SocialFilling(response)
         } catch {
             await session.handle(error)
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            return SocialFilling()
         }
     }
 }

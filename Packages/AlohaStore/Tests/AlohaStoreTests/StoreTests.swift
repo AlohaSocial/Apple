@@ -334,6 +334,33 @@ struct NotificationStoreTests {
         #expect(grown[0].groupCount == 40)
     }
 
+    @Test("An account's first fetch is history, not forty notifications at once")
+    func firstFetchIsSeeded() async throws {
+        let (_, support, accounts, _) = makeStore()
+        let base = try #require(URL(string: "https://example.test/"))
+        let account = try await accounts.addAccount(
+            instanceHost: "example.test", apiBase: base,
+            account: Account(id: "1", username: "alice", acct: "alice"),
+            capabilities: .minimal(apiBase: base))
+        let old = (0..<40).map { index in
+            StoredNotification(
+                serverID: "old-\(index)", isGroup: false, kind: .mention,
+                createdAt: Date().addingTimeInterval(-3_600), groupCount: 1, payload: Data(),
+                statusServerID: nil)
+        }
+        // Something that arrived after signing in is still news.
+        let fresh = StoredNotification(
+            serverID: "fresh", isGroup: false, kind: .mention,
+            createdAt: Date().addingTimeInterval(60), groupCount: 1, payload: Data(),
+            statusServerID: nil)
+
+        let announced = try await support.storeNotifications(
+            old + [fresh], accountID: account.id)
+
+        #expect(announced.map(\.serverID) == ["fresh"])
+        #expect(try await support.unannouncedNotifications(accountID: account.id).count == 1)
+    }
+
     @Test("Marking announced stops it being raised twice")
     func markAnnounced() async throws {
         let (_, support, _, accountID) = makeStore()
@@ -343,5 +370,67 @@ struct NotificationStoreTests {
 
         try await support.markAnnounced(accountID: accountID, serverIDs: ["n1"])
         #expect(try await support.unannouncedNotifications(accountID: accountID).isEmpty)
+    }
+
+    @Test("What quiet hours held back is offered on the next poll, though nothing new came")
+    func heldIsOfferedAgain() async throws {
+        let (_, support, _, accountID) = makeStore()
+        let since = Date().addingTimeInterval(-12 * 3600)
+
+        // 23:00: it arrives, quiet hours hold it, nothing is marked announced.
+        let first = try await support.storeNotifications([notification("n1")], accountID: accountID)
+        #expect(first.count == 1)
+
+        // 07:00: the next poll brings nothing new, and the held one is offered.
+        let nothingNew = try await support.storeNotifications(
+            [notification("n1")], accountID: accountID)
+        let offered = try await support.pendingAnnouncements(
+            arrived: nothingNew, accountID: accountID, since: since)
+        #expect(offered.map(\.serverID) == ["n1"])
+
+        // Raised, it is not offered a third time.
+        try await support.markAnnounced(accountID: accountID, serverIDs: ["n1"])
+        let after = try await support.pendingAnnouncements(
+            arrived: [], accountID: accountID, since: since)
+        #expect(after.isEmpty)
+    }
+
+    @Test("A new arrival and a held one are offered once each, newest first")
+    func arrivedAndHeldTogether() async throws {
+        let (_, support, _, accountID) = makeStore()
+        let held = StoredNotification(
+            serverID: "held", isGroup: false, kind: .mention,
+            createdAt: Date().addingTimeInterval(-600), groupCount: 1, payload: Data(),
+            statusServerID: nil)
+        _ = try await support.storeNotifications([held], accountID: accountID)
+        let arrived = try await support.storeNotifications(
+            [notification("new")], accountID: accountID)
+
+        let offered = try await support.pendingAnnouncements(
+            arrived: arrived, accountID: accountID, since: Date().addingTimeInterval(-3600))
+        #expect(offered.map(\.serverID) == ["new", "held"])
+    }
+
+    @Test("Held ones from before the window, and past the limit, are not offered")
+    func windowAndLimit() async throws {
+        let (_, support, _, accountID) = makeStore()
+        let stale = StoredNotification(
+            serverID: "yesterday", isGroup: false, kind: .mention,
+            createdAt: Date().addingTimeInterval(-2 * 86_400), groupCount: 1, payload: Data(),
+            statusServerID: nil)
+        let recent = (0..<30).map { index in
+            StoredNotification(
+                serverID: "r\(index)", isGroup: false, kind: .mention,
+                createdAt: Date().addingTimeInterval(Double(-index * 60)), groupCount: 1,
+                payload: Data(), statusServerID: nil)
+        }
+        _ = try await support.storeNotifications([stale] + recent, accountID: accountID)
+
+        let offered = try await support.pendingAnnouncements(
+            arrived: [], accountID: accountID, since: Date().addingTimeInterval(-12 * 3600),
+            limit: 20)
+        #expect(offered.count == 20)
+        #expect(!offered.contains { $0.serverID == "yesterday" })
+        #expect(offered.first?.serverID == "r0")
     }
 }

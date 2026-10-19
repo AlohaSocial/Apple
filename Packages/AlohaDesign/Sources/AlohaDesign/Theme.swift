@@ -9,7 +9,7 @@ import SwiftUI
 /// Semantic colour roles. View code names a role, never a colour — which is
 /// what makes light, dark and the two increased-contrast variants one change
 /// rather than four (docs/05 §2).
-public struct AlohaPalette: Sendable, Hashable {
+public nonisolated struct AlohaPalette: Sendable, Hashable {
     public var background: Color
     /// The same colour as numbers. `Color` cannot be read back portably, and
     /// the server-accent contrast guard has to measure against the ground it
@@ -32,6 +32,11 @@ public struct AlohaPalette: Sendable, Hashable {
     public var bookmark: Color
     public var mention: Color
     public var hashtag: Color
+    /// Whether the grounds are the platform's own semantic colours. Then a
+    /// `List` or `Form` keeps the system's grouped background rather than
+    /// having it painted over (`alohaGround`), which is what makes Settings
+    /// look like Settings.
+    public var usesSystemGrounds = false
 
     public init(
         background: ServerAccent.RGB, surface: Color, surfaceRaised: Color, separator: Color,
@@ -62,7 +67,7 @@ public struct AlohaPalette: Sendable, Hashable {
     }
 }
 
-public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
+public nonisolated enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
     case system
     case warmLight
     case warmDark
@@ -100,19 +105,10 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
     /// favourite amber, bookmark violet — kept distinct at badge size and
     /// distinguishable under the common colour-vision deficiencies.
     public func palette(for scheme: ColorScheme, increaseContrast: Bool = false) -> AlohaPalette {
-        let resolved: AlohaTheme
         switch self {
         case .system:
-            resolved =
-                scheme == .dark
-                ? (increaseContrast ? .highContrastDark : .warmDark)
-                : (increaseContrast ? .highContrastLight : .warmLight)
-        default:
-            resolved = self
-        }
-
-        switch resolved {
-        case .warmLight, .system:
+            return Self.systemPalette(for: scheme, increaseContrast: increaseContrast)
+        case .warmLight:
             return AlohaPalette(
                 background: ServerAccent.RGB(red: 0.99, green: 0.98, blue: 0.97),
                 surface: .white,
@@ -201,7 +197,81 @@ public enum AlohaTheme: String, CaseIterable, Sendable, Codable, Identifiable {
             return palette
         }
     }
+
+    /// The System theme: the platform's own grounds, surfaces, separators and
+    /// label, so the app sits beside Settings and Mail rather than in a tint
+    /// of its own. The meaning-carrying tints — accent, boost, favourite,
+    /// bookmark, mention — come from the matching warm or high-contrast
+    /// palette, which already reach their contrast floor on white and black.
+    ///
+    /// The secondary and tertiary text roles are the one deliberate departure:
+    /// the system's own `secondaryLabel` is about 3.5:1 on white, and these
+    /// carry handles, timestamps and counts at caption size, which docs/12 §3
+    /// holds to 4.5:1. They are neutral greys in the system's grey family,
+    /// moved just far enough.
+    ///
+    /// tvOS and watchOS have no semantic ground colours, so there System is
+    /// what it always was: the warm palettes.
+    static func systemPalette(for scheme: ColorScheme, increaseContrast: Bool) -> AlohaPalette {
+        let isDark = scheme == .dark
+        let tints: AlohaTheme =
+            isDark
+            ? (increaseContrast ? .highContrastDark : .warmDark)
+            : (increaseContrast ? .highContrastLight : .warmLight)
+        var palette = tints.palette(for: scheme)
+
+        #if os(iOS) || os(visionOS) || os(macOS)
+            palette.background = SystemColours.background
+            palette.backgroundComponents = isDark ? SystemColours.darkGround : .white
+            palette.surface = SystemColours.surface
+            palette.surfaceRaised = SystemColours.surfaceRaised
+            palette.separator = SystemColours.separator
+            palette.label = SystemColours.label
+            switch (isDark, increaseContrast) {
+            case (false, false):
+                palette.secondaryLabel = Color(red: 0.36, green: 0.36, blue: 0.38)
+                palette.tertiaryLabel = Color(red: 0.42, green: 0.42, blue: 0.44)
+            case (false, true):
+                palette.secondaryLabel = Color(white: 0.22)
+                palette.tertiaryLabel = Color(white: 0.32)
+            case (true, false):
+                palette.secondaryLabel = Color(red: 0.70, green: 0.70, blue: 0.73)
+                palette.tertiaryLabel = Color(red: 0.60, green: 0.60, blue: 0.63)
+            case (true, true):
+                palette.secondaryLabel = Color(white: 0.86)
+                palette.tertiaryLabel = Color(white: 0.74)
+            }
+            palette.usesSystemGrounds = true
+        #endif
+        return palette
+    }
 }
+
+#if os(iOS) || os(visionOS) || os(macOS)
+    /// The semantic colours the System theme is built from. Each resolves
+    /// against the view's own appearance — a sheet in dark mode gets the
+    /// elevated ground, Increase Contrast the stronger separator — which a
+    /// fixed palette never could.
+    nonisolated enum SystemColours {
+        #if os(macOS)
+            static let background = Color(nsColor: .textBackgroundColor)
+            static let surface = Color(nsColor: .secondarySystemFill)
+            static let surfaceRaised = Color(nsColor: .tertiarySystemFill)
+            static let separator = Color(nsColor: .separatorColor)
+            static let label = Color(nsColor: .labelColor)
+            /// `textBackgroundColor` in dark mode, as numbers, for the
+            /// server-accent contrast guard.
+            static let darkGround = ServerAccent.RGB(red: 0.118, green: 0.118, blue: 0.118)
+        #else
+            static let background = Color(uiColor: .systemBackground)
+            static let surface = Color(uiColor: .secondarySystemBackground)
+            static let surfaceRaised = Color(uiColor: .tertiarySystemFill)
+            static let separator = Color(uiColor: .separator)
+            static let label = Color(uiColor: .label)
+            static let darkGround = ServerAccent.RGB.black
+        #endif
+    }
+#endif
 
 // MARK: - Environment
 
@@ -212,9 +282,8 @@ extension EnvironmentValues {
 
 /// Spacing, radii and density. All multiples of a 4-point rhythm so a density
 /// change is one number rather than a sweep through every view.
-public struct AlohaMetrics: Sendable, Hashable {
+public nonisolated struct AlohaMetrics: Sendable, Hashable {
     public var density: Density
-    public var textSizeOffset: Int
     public var lineSpacing: Double
     public var useSerifBody: Bool
     public var avatarShape: AvatarShape
@@ -242,12 +311,13 @@ public struct AlohaMetrics: Sendable, Hashable {
         case circle, roundedSquare
     }
 
+    /// There is no text-size setting of the app's own: Dynamic Type is the
+    /// one control for that, and everything here scales with it.
     public init(
-        density: Density = .comfortable, textSizeOffset: Int = 0, lineSpacing: Double = 2,
+        density: Density = .comfortable, lineSpacing: Double = 2,
         useSerifBody: Bool = false, avatarShape: AvatarShape = .circle
     ) {
         self.density = density
-        self.textSizeOffset = textSizeOffset
         self.lineSpacing = lineSpacing
         self.useSerifBody = useSerifBody
         self.avatarShape = avatarShape
@@ -277,16 +347,14 @@ public struct AlohaMetrics: Sendable, Hashable {
 ///
 /// Shorts is a phone-shaped thing: on a regular-width shell it stays a vertical
 /// column in the middle of the window, the way TikTok and Reels do on an iPad,
-/// rather than becoming a letterboxed sprawl across a Mac window. On a phone it
-/// takes the whole screen, which it already does.
+/// rather than becoming a letterboxed sprawl across a Mac window. Under a
+/// phone's tab bar it takes the whole screen, which it already does.
 public enum PlatformBehavior {
-    /// How wide a vertical full-screen surface may grow.
-    public static var shortsColumnWidth: CGFloat? {
-        #if os(iOS)
-            return UIDevice.current.userInterfaceIdiom == .phone ? nil : 460
-        #else
-            return 460
-        #endif
+    /// How wide a vertical full-screen surface may grow. `fullScreen` is the
+    /// phone's tab-bar shell — the shell, not the device, since an unfolded
+    /// iPhone Duo is a phone with the sidebar shell.
+    public static func shortsColumnWidth(fullScreen: Bool) -> CGFloat? {
+        fullScreen ? nil : 460
     }
 }
 
@@ -300,7 +368,7 @@ public struct AlohaThemeModifier: ViewModifier {
 
     /// What the server said about its colour, as hex. Nothing is chosen here:
     /// the app wears the colour of the Nextcloud it is signed in to.
-    public struct ServerTheme: Sendable, Hashable {
+    public nonisolated struct ServerTheme: Sendable, Hashable {
         /// Legible on a light background.
         public var brightHex: String?
         /// Legible on a dark background.
@@ -343,7 +411,7 @@ public struct AlohaThemeModifier: ViewModifier {
     }
 }
 
-extension AlohaThemeModifier.ServerTheme {
+nonisolated extension AlohaThemeModifier.ServerTheme {
     /// The server's colour made legible against `ground`, or `nil` where it
     /// cannot be — the one rule every process applies, so the widgets, the
     /// watch and the TV wear the same colour the app does.
@@ -390,6 +458,20 @@ extension View {
         modifier(AlohaThemeModifier(theme: theme, metrics: metrics, accent: accent))
     }
 
+    /// The ground behind a whole window's content — a reading column's
+    /// margins, a split view's detail. A warm theme paints its own, or the
+    /// margins are the window's cool white; the System theme leaves the
+    /// window's own, so a grouped list is not framed in a colour it does not
+    /// have.
+    @ViewBuilder
+    public func alohaWindowGround(_ palette: AlohaPalette) -> some View {
+        if palette.usesSystemGrounds {
+            self
+        } else {
+            background(palette.background.ignoresSafeArea())
+        }
+    }
+
     /// The app's own ground beneath a scrolling container.
     ///
     /// `List` and `Form` paint the system's grouped background over whatever is
@@ -402,15 +484,23 @@ extension View {
     /// already tracks the scheme, and the one theme where a palette surface
     /// would swallow them (`black`, where surface and ground are both black)
     /// is the one that would break.
+    ///
+    /// Under the System theme it does nothing: there the ground *is* the
+    /// system's, and the grouped background is the look to keep.
+    @ViewBuilder
     public func alohaGround(_ palette: AlohaPalette) -> some View {
-        #if os(tvOS)
-            // tvOS has no `scrollContentBackground`: its lists draw no grouped
-            // ground of their own to hide.
-            background(palette.background)
-        #else
-            scrollContentBackground(.hidden)
-                .background(palette.background)
-        #endif
+        if palette.usesSystemGrounds {
+            self
+        } else {
+            #if os(tvOS)
+                // tvOS has no `scrollContentBackground`: its lists draw no
+                // grouped ground of their own to hide.
+                background(palette.background)
+            #else
+                scrollContentBackground(.hidden)
+                    .background(palette.background)
+            #endif
+        }
     }
 }
 
@@ -420,7 +510,7 @@ extension View {
 /// the three levels a blur can sit at. Naming them keeps the same level in
 /// every place instead of a material chosen by whichever view got there
 /// first.
-public enum AlohaGlass: Sendable {
+public nonisolated enum AlohaGlass: Sendable {
     /// A card, a row, a control sitting on content.
     case regular
     /// A sheet or a toolbar over the screen: the strongest layer.
@@ -500,26 +590,29 @@ extension View {
 /// `hoverEffect(.highlight)` on the platforms that have it, nothing
 /// everywhere else.
 ///
-/// visionOS is the only platform with a hover interaction — a look at a row
-/// lights it up — so this is a no-op by construction everywhere else and the
-/// call sites do not need their own `#if os(visionOS)`.
+/// Two platforms hover: visionOS, where a look at a row lights it up, and the
+/// iPad, where the pointer does — a trackpad, a mouse, a Magic Keyboard. This
+/// was visionOS-only, which left every row on an iPad with a pointer inert
+/// under it. An iPhone has no pointer, so there it costs nothing; the Mac has
+/// its own selection highlight and no `hoverEffect`. The call sites never
+/// need their own `#if`.
 extension View {
     @ViewBuilder
     public func alohaRowHighlight() -> some View {
-        #if os(visionOS)
+        #if os(visionOS) || os(iOS)
             hoverEffect(.highlight)
         #else
             self
         #endif
     }
 
-    /// The same look-to-highlight for a custom control — a plain-style button
-    /// or a tappable card — drawn in the shape the control actually has
-    /// rather than its glyph's bounding box, which is all a plain button
-    /// would otherwise light up.
+    /// The same highlight for a custom control — a plain-style button or a
+    /// tappable card — drawn in the shape the control actually has rather
+    /// than its glyph's bounding box, which is all a plain button would
+    /// otherwise light up.
     @ViewBuilder
     public func alohaHoverTarget(_ shape: some Shape) -> some View {
-        #if os(visionOS)
+        #if os(visionOS) || os(iOS)
             contentShape(.hoverEffect, shape).hoverEffect(.highlight)
         #else
             self

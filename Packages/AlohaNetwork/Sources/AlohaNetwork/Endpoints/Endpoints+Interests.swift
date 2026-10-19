@@ -108,47 +108,6 @@ extension Endpoint {
     }
 }
 
-// MARK: - Subscriptions
-
-extension Endpoint {
-    public enum subscriptions {
-        public static var feeds: Endpoint { Endpoint(path: "api/v1/subscriptions") }
-
-        /// A feed URL, or a YouTube channel link — the server works out which.
-        public static func follow(url: String) -> Endpoint {
-            Endpoint(
-                method: .post, path: "api/v1/subscriptions",
-                body: .form([URLQueryItem(name: "url", value: url)]))
-        }
-
-        public static func unfollow(_ id: String) -> Endpoint {
-            Endpoint(method: .delete, path: "api/v1/subscriptions/\(id)")
-        }
-
-        /// Newest first. `max_id` is the entry id to page below; the route
-        /// sends no `Link` header, so the caller pages by the last row.
-        public static func timeline(limit: Int = 40, maxID: String? = nil) -> Endpoint {
-            Endpoint(
-                path: "api/v1/subscriptions/timeline",
-                query: [URLQueryItem(name: "limit", value: String(limit))]
-                    + .optional("max_id", maxID))
-        }
-
-        /// Google Takeout's `subscriptions.csv`.
-        public static func importTakeout(
-            csv: Data, filename: String = "subscriptions.csv"
-        ) -> Endpoint {
-            Endpoint(
-                method: .post, path: "api/v1/subscriptions/takeout",
-                body: .multipart(
-                    Multipart(parts: [
-                        Multipart.Part(
-                            name: "file", filename: filename, mimeType: "text/csv", data: csv)
-                    ])))
-        }
-    }
-}
-
 // MARK: - Memories
 
 extension Endpoint {
@@ -169,13 +128,18 @@ extension Endpoint {
 // MARK: - Review queue
 
 extension Endpoint {
+    /// Nextcloud session routes (`ReviewController`: `#[NoAdminRequired]`,
+    /// no `#[PublicPage]`), so they carry the app password, not the token.
     public enum review {
         /// Your own posts waiting for a moderator.
-        public static var held: Endpoint { Endpoint(path: "api/v1/review") }
+        public static var held: Endpoint {
+            Endpoint(path: "api/v1/review", authentication: .nextcloudSession)
+        }
 
         /// Withdraws the post: deleted, no moderation record made.
         public static func withdraw(_ id: String) -> Endpoint {
-            Endpoint(method: .delete, path: "api/v1/review/\(id)")
+            Endpoint(
+                method: .delete, path: "api/v1/review/\(id)", authentication: .nextcloudSession)
         }
     }
 }

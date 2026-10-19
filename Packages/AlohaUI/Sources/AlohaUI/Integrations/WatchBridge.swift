@@ -19,6 +19,9 @@ import Foundation
         private var latest: WatchPairing?
         private var hasSent = false
         private var isActivated = false
+        /// The last count handed to the complication, per account, so a poll
+        /// that found nothing new spends none of the daily transfer budget.
+        private var lastSentUnread: (accountID: UUID, count: Int)?
 
         public func activate() {
             guard WCSession.isSupported(), !isActivated else { return }
@@ -32,6 +35,29 @@ import Foundation
             guard pairing != latest || !hasSent else { return }
             latest = pairing
             push()
+        }
+
+        /// The paired account's unread count, for the watch's complications.
+        ///
+        /// `transferCurrentComplicationUserInfo` is the one transfer that
+        /// wakes the watch for a complication, and watchOS grants it about
+        /// fifty times a day — so it goes only while a complication is on the
+        /// face, only when the count moved, and never past the budget.
+        public func sendUnread(_ counts: [UUID: Int]) {
+            guard WCSession.isSupported(), let accountID = latest?.accountID,
+                let count = counts[accountID]
+            else { return }
+            if let last = lastSentUnread, last.accountID == accountID, last.count == count {
+                return
+            }
+            let session = WCSession.default
+            guard session.activationState == .activated, session.isPaired,
+                session.isWatchAppInstalled, session.isComplicationEnabled,
+                session.remainingComplicationUserInfoTransfers > 0
+            else { return }
+            session.transferCurrentComplicationUserInfo(
+                WatchComplicationSnapshot.unreadUserInfo(accountID: accountID, count: count))
+            lastSentUnread = (accountID, count)
         }
 
         private func push() {

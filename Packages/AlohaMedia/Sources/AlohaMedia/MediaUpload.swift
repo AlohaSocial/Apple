@@ -201,9 +201,11 @@ public struct MediaPreparer: Sendable {
     }
 }
 
-/// Progress for a batch of uploads, shared with the Live Activity.
+/// Progress for a batch of uploads, shared with the Live Activity. On the
+/// main actor, where the composer updates it and SwiftUI reads it.
+@MainActor
 @Observable
-public final class UploadProgress: @unchecked Sendable {
+public final class UploadProgress {
     public struct Item: Sendable, Hashable, Identifiable {
         public var id: UUID
         public var filename: String

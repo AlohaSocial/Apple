@@ -38,7 +38,7 @@ public struct CollectionPickerSheet: View {
                     HStack(spacing: AlohaMetrics.space2) {
                         TextField(
                             String(
-                                localized: "New album", comment: "Collection picker placeholder"),
+                                localized: "New album", comment: "Album picker placeholder"),
                             text: $newTitle
                         )
                         .textFieldStyle(.plain)
@@ -54,10 +54,10 @@ public struct CollectionPickerSheet: View {
                         .foregroundStyle(canCreate ? palette.accent : palette.tertiaryLabel)
                         .disabled(!canCreate)
                         .accessibilityLabel(
-                            Text("Create album", comment: "Collection picker action"))
+                            Text("Create album", comment: "Album picker action"))
                     }
                 } header: {
-                    Text("Start a new album with this post", comment: "Collection picker section")
+                    Text("Start a new album with this post", comment: "Album picker section")
                 }
 
                 Section {
@@ -70,12 +70,12 @@ public struct CollectionPickerSheet: View {
                         row(collection)
                     }
                     if collections.isEmpty && !isLoading {
-                        Text("No albums yet.", comment: "Collection picker empty state")
+                        Text("No albums yet.", comment: "Album picker empty state")
                             .font(.footnote)
                             .foregroundStyle(palette.tertiaryLabel)
                     }
                 } header: {
-                    Text("Your albums", comment: "Collection picker section")
+                    Text("Your albums", comment: "Album picker section")
                 }
             }
             .navigationTitle(Text("Add to album", comment: "Screen title"))
