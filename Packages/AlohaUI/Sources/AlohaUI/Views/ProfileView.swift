@@ -467,8 +467,13 @@ public struct ProfileView: View {
 
         return Group {
             if let url = bluesky.url {
-                Link(destination: url) { label }
-                    .buttonStyle(.plain)
+                Link(destination: url) {
+                    label
+                        // A tap target, not a line of caption text: 44pt tall.
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             } else {
                 label
             }
@@ -477,16 +482,23 @@ public struct ProfileView: View {
 
     /// The ring is the same signal it is in Photos: an unseen story is bright,
     /// a seen one is quiet.
+    @ViewBuilder
     private func avatar(_ account: Account) -> some View {
-        let hasStories = !stories.isEmpty
-        let allSeen = stories.allSatisfy(\.seen)
-        return Button {
-            if hasStories { playingStoriesFrom = 0 }
-        } label: {
+        // A button only where there are stories to play. A disabled button
+        // draws its label dimmed, so without stories the picture itself
+        // was shown faded on every profile.
+        if stories.isEmpty {
             AvatarView(account: account, size: 72)
-                .padding(hasStories ? 3 : 0)
-                .overlay {
-                    if hasStories {
+                .accessibilityElement()
+                .accessibilityLabel(Text("Profile picture", comment: "Profile avatar"))
+        } else {
+            let allSeen = stories.allSatisfy(\.seen)
+            Button {
+                playingStoriesFrom = 0
+            } label: {
+                AvatarView(account: account, size: 72)
+                    .padding(3)
+                    .overlay {
                         Circle().strokeBorder(
                             allSeen
                                 ? AnyShapeStyle(palette.separator)
@@ -498,14 +510,11 @@ public struct ProfileView: View {
                                         center: .center)),
                             lineWidth: allSeen ? 1.5 : 3)
                     }
-                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                Text("Play \(account.bestDisplayName)'s stories", comment: "Profile stories ring"))
         }
-        .buttonStyle(.plain)
-        .disabled(!hasStories)
-        .accessibilityLabel(
-            hasStories
-                ? Text("Play \(account.bestDisplayName)'s stories", comment: "Profile stories ring")
-                : Text("Profile picture", comment: "Profile avatar"))
     }
 
     @ViewBuilder
