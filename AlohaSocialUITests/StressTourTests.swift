@@ -74,9 +74,15 @@ import XCTest
             let app = launch([])
             XCTAssertTrue(app.labelled("Test post number 1").waitForExistence(timeout: 20))
 
-            // The mock serves forty posts, twenty to a page: number 35 only
-            // exists once the second page has been fetched and drawn.
-            let deep = app.labelled("Test post number 35")
+            // The mock serves forty posts, twenty to a page: numbers 21 to 40
+            // only exist once the second page has been fetched and drawn. Any
+            // of them will do — a fast swipe can carry one particular post past
+            // between two looks, and the list lets go of rows off screen.
+            let deep = app.descendants(matching: .any).matching(
+                NSPredicate(
+                    format: "label MATCHES %@",
+                    ".*Test post number (2[1-9]|3[0-9]|40)\\b.*")
+            ).firstMatch
             let start = Date()
             var swipes = 0
             while !deep.exists && swipes < 30 {
@@ -86,7 +92,7 @@ import XCTest
             let elapsed = Date().timeIntervalSince(start)
 
             XCTAssertTrue(deep.waitForExistence(timeout: 5), "The older page never arrived")
-            XCTAssertLessThan(swipes, 30, "Thirty swipes did not reach post 35")
+            XCTAssertLessThan(swipes, 30, "Thirty swipes did not reach the second page")
             XCTAssertLessThan(elapsed, 60, "Scrolling two pages took \(Int(elapsed)) s")
             shoot("67-long-scroll")
         }
