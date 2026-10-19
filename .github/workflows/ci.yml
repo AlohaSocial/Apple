@@ -16,9 +16,12 @@
 
 name: CI
 
+# Pushes to main only: every other branch is checked through its pull
+# request. Pushing a branch with an open pull request used to start two runs
+# of the same commit, which queued for the same few Xcode 27 runners.
 on:
   push:
-    branches: [main, "fix/**", "feature/**", "ideas/**", "r2/**"]
+    branches: [main]
   pull_request:
 
 env:
@@ -373,7 +376,9 @@ jobs:
           #    Diagnostics collection is off: after a failure it waited ten
           #    minutes on the simulator and then gave up, so a few failures
           #    ran the job into its timeout and the log was never printed.
-          #    Each test is capped, one retry absorbs a runner that dies on
+          #    Each test is capped at five minutes (a test may ask for up to
+          #    ten): every test relaunches the app, which takes 20 to 80
+          #    seconds on these runners. One retry absorbs a runner that dies on
           #    launch, and the watchdog stops xcodebuild before the job's
           #    own timeout would, so whatever happened is still printed.
           #    The watchdog is short of the step's 45 minutes, so xcodebuild
@@ -393,8 +398,8 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/ui-tours.xcresult" \
             -collect-test-diagnostics never \
             -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 180 \
-            -maximum-test-execution-time-allowance 300 \
+            -default-test-execution-time-allowance 300 \
+            -maximum-test-execution-time-allowance 600 \
             -retry-tests-on-failure \
             -test-iterations 2 \
             -quiet \
