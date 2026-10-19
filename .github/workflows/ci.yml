@@ -244,7 +244,9 @@ jobs:
           # Output goes to a file, never a pipe: xcodebuild aborts with
           # NSFileHandleOperationException (broken pipe) when its stdout's
           # reader disappears, and that abort is indistinguishable from a
-          # build failure in the log.
+          # build failure in the log. The status is taken with `||` because
+          # the step runs under `bash -e`.
+          status=0
           xcodebuild build \
             -project AlohaSocial.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
@@ -255,8 +257,7 @@ jobs:
             DEVELOPMENT_TEAM="" \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             GCC_TREAT_WARNINGS_AS_ERRORS=YES \
-            >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1
-          status=$?
+            >"$RUNNER_TEMP/build-${{ matrix.name }}.log" 2>&1 || status=$?
           cat "$RUNNER_TEMP/build-${{ matrix.name }}.log"
           exit $status
 
@@ -319,7 +320,10 @@ jobs:
 
           # 3. Output to a file, never a pipe: xcodebuild aborts with a broken
           #    pipe when its reader disappears, and that abort is
-          #    indistinguishable from a test failure.
+          #    indistinguishable from a test failure. The step runs under
+          #    `bash -e`, so the status is taken with `||`: a bare failing
+          #    command would end the script before the log is printed.
+          status=0
           xcodebuild test \
             -project AlohaSocial.xcodeproj \
             -scheme AlohaSocialUITests \
@@ -327,8 +331,7 @@ jobs:
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            >"$RUNNER_TEMP/ui-tours.log" 2>&1
-          status=$?
+            >"$RUNNER_TEMP/ui-tours.log" 2>&1 || status=$?
           cat "$RUNNER_TEMP/ui-tours.log"
           exit $status
 
