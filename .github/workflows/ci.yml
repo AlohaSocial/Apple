@@ -318,20 +318,42 @@ jobs:
           ')
           [ -n "$device" ] || skip "No available iPhone simulator on this runner image, so the tours have nowhere to launch. The package suites above still exercise the logic."
 
-          # 3. Output to a file, never a pipe: xcodebuild aborts with a broken
+          # 3. Booted and settled before the first test: a runner installed
+          #    while the simulator is still starting up is killed before it
+          #    connects, which reads as a crashed test.
+          xcrun simctl boot "$device" 2>/dev/null || true
+          xcrun simctl bootstatus "$device" -b >/dev/null
+
+          # 4. Output to a file, never a pipe: xcodebuild aborts with a broken
           #    pipe when its reader disappears, and that abort is
           #    indistinguishable from a test failure. The step runs under
           #    `bash -e`, so the status is taken with `||`: a bare failing
           #    command would end the script before the log is printed.
+          #
+          #    Diagnostics collection is off: after a failure it waited ten
+          #    minutes on the simulator and then gave up, so a few failures
+          #    ran the job into its timeout and the log was never printed.
+          #    Each test is capped, one retry absorbs a runner that dies on
+          #    launch, and the watchdog stops xcodebuild before the job's
+          #    own timeout would, so whatever happened is still printed.
+          ( sleep 2700; pkill -INT -x xcodebuild ) &
+          watchdog=$!
           status=0
           xcodebuild test \
             -project AlohaSocial.xcodeproj \
             -scheme AlohaSocialUITests \
             -destination "platform=iOS Simulator,name=$device" \
+            -collect-test-diagnostics never \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
             -quiet \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
             >"$RUNNER_TEMP/ui-tours.log" 2>&1 || status=$?
+          kill "$watchdog" 2>/dev/null || true
           cat "$RUNNER_TEMP/ui-tours.log"
           exit $status
 
