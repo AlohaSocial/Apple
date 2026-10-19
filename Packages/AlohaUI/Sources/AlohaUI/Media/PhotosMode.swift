@@ -55,7 +55,7 @@ public struct PhotosModeView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .primaryAction) { layoutMenu }
+            ToolbarItem(placement: layoutPlacement) { layoutMenu }
         }
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -75,6 +75,17 @@ public struct PhotosModeView: View {
         ) { start in
             StoryPlayer(stories: stories, startIndex: start.index, session: session)
         }
+    }
+
+    /// Beside the account menu on a phone or iPad: the trailing side already
+    /// holds Search, Direct messages and New post, and a fourth there was
+    /// folded into an overflow menu where nobody would look for it.
+    private var layoutPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+            .topBarLeading
+        #else
+            .primaryAction
+        #endif
     }
 
     /// Layout is a secondary choice; pictures get the space below the toolbar.
