@@ -91,6 +91,9 @@ struct PostDetailFooter: View {
                 Text("Boosted by", comment: "Title of the list of who boosted")
             }
         }
+        // The text is footnote-sized; the target is not.
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
         .buttonStyle(.borderless)
         .foregroundStyle(palette.accent)
     }

@@ -125,8 +125,9 @@ public struct WelcomeView: View {
                         Text("Continue", comment: "Onboarding sign-in action")
                             .frame(maxWidth: .infinity)
                     }
-                    .alohaGlassProminentButtonStyle()
-                    .controlSize(.large)
+                    // Solid accent, not tinted glass: the glass lightened the
+                    // red until white on it measured 4:1.
+                    .buttonStyle(.alohaProminent)
                     // Return continues on a hardware keyboard: on the Mac the
                     // introduction is a window, and a primary action without a
                     // default shortcut is one a keyboard cannot reach.
@@ -191,8 +192,8 @@ public struct WelcomeView: View {
                     Text("Continue", comment: "Onboarding action")
                         .frame(maxWidth: .infinity)
                 }
-                .alohaGlassProminentButtonStyle()
-                .controlSize(.large)
+                // Solid accent, as the sign-in button: see there.
+                .buttonStyle(.alohaProminent)
                 // The tour is keyboard-navigable on iPad and Mac: Return
                 // advances, so the introduction never traps keyboard users.
                 .keyboardShortcut(.defaultAction)

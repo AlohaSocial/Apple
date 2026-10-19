@@ -73,7 +73,54 @@ public enum Monogram {
     public static func colour(for seed: String, lightness: Double) -> Color {
         let hue = hue(for: seed) / 360
         // Saturation stays in a narrow band so no avatar screams next to the
-        // accent colour, and the two lightnesses keep white text legible.
-        return Color(hue: hue, saturation: 0.52, brightness: lightness + 0.28)
+        // accent colour.
+        return Color(
+            hue: hue, saturation: saturation,
+            brightness: legibleBrightness(hue: hue, from: lightness + 0.28))
+    }
+
+    static let saturation = 0.52
+
+    /// WCAG's minimum for text: the white initials against their ground.
+    static let minimumContrast = 4.5
+
+    /// `start`, or as much darker as this hue needs for white initials to keep
+    /// 4.5:1. One brightness does not fit every hue: at the same setting an
+    /// orange or a green is far lighter than a blue, and white on it failed.
+    static func legibleBrightness(hue: Double, from start: Double) -> Double {
+        var brightness = start
+        while brightness > 0.2,
+            contrastWithWhite(hue: hue, brightness: brightness) < minimumContrast
+        {
+            brightness -= 0.01
+        }
+        return brightness
+    }
+
+    /// WCAG contrast of white against this hue at `brightness`.
+    static func contrastWithWhite(hue: Double, brightness: Double) -> Double {
+        1.05 / (relativeLuminance(hue: hue, brightness: brightness) + 0.05)
+    }
+
+    /// WCAG relative luminance of an HSB colour at the monogram's saturation.
+    static func relativeLuminance(hue: Double, brightness: Double) -> Double {
+        let chroma = brightness * saturation
+        let sector = (hue * 6).truncatingRemainder(dividingBy: 6)
+        let second = chroma * (1 - abs(sector.truncatingRemainder(dividingBy: 2) - 1))
+        let (r, g, b): (Double, Double, Double) =
+            switch Int(sector) {
+            case 0: (chroma, second, 0)
+            case 1: (second, chroma, 0)
+            case 2: (0, chroma, second)
+            case 3: (0, second, chroma)
+            case 4: (second, 0, chroma)
+            default: (chroma, 0, second)
+            }
+        let lift = brightness - chroma
+        func linear(_ channel: Double) -> Double {
+            let value = channel + lift
+            return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
     }
 }

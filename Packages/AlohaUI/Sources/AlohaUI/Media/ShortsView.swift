@@ -203,7 +203,7 @@ public struct ShortsView: View {
                         VStack(spacing: 5) {
                             option.title
                                 .font(.body.weight(feed == option ? .bold : .semibold))
-                                .foregroundStyle(.white.opacity(feed == option ? 1 : 0.65))
+                                .foregroundStyle(.white.opacity(feed == option ? 1 : 0.85))
                             Capsule()
                                 .fill(.white)
                                 .frame(width: 28, height: 3)
@@ -363,11 +363,17 @@ public struct ShortsView: View {
             }
 
             // Without scrims, white overlay text vanishes over a bright frame.
+            // The top one holds its depth down past the scope switch, which
+            // used to sit where it had already faded to a quarter.
             LinearGradient(
-                colors: [.black.opacity(0.55), .clear],
+                stops: [
+                    .init(color: .black.opacity(0.6), location: 0),
+                    .init(color: .black.opacity(0.5), location: 0.55),
+                    .init(color: .clear, location: 1),
+                ],
                 startPoint: .top, endPoint: .bottom
             )
-            .frame(height: 160)
+            .frame(height: 200)
             .frame(maxHeight: .infinity, alignment: .top)
             .allowsHitTesting(false)
 
