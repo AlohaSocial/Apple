@@ -271,19 +271,58 @@ jobs:
   # one script, rather than booting a simulator in one step and failing in the
   # next, which is what a crash mid-job looked like.
   ui:
-    name: UI tours
+    name: UI tours (${{ matrix.shard }})
     # xcode-27 for the same reason as the build job.
     runs-on: xcode-27
+    # The whole suite is over half an hour on a fast Mac, too close to an
+    # hour on a hosted runner; four shards run it in parallel. A test class
+    # in no shard would never run, which the first step refuses.
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: accessibility
+            tests: AccessibilityAuditTests
+          - shard: interaction
+            tests: InteractionTourTests
+          - shard: screens
+            tests: AddedScreensTourTests PseudolocalisationTourTests StressTourTests
+          - shard: tours
+            tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
+    env:
+      ALL_SHARDS: >-
+        AccessibilityAuditTests InteractionTourTests AddedScreensTourTests
+        PseudolocalisationTourTests StressTourTests ScreenTourTests ThemeTourTests
+        SidebarTourTests NativeSidebarTests
     steps:
       - uses: actions/checkout@v4
+      - name: Every tour class is in a shard
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re
+          sharded = set(os.environ["ALL_SHARDS"].split())
+          found = set()
+          for path in pathlib.Path("AlohaSocialUITests").glob("*.swift"):
+              text = path.read_text()
+              # Mac-only suites do not exist in the iOS test bundle.
+              if "#if os(macOS)" in "\n".join(text.splitlines()[:8]):
+                  continue
+              found |= set(re.findall(r"class (\w+)\s*:\s*XCTestCase", text))
+          missing = sorted(found - sharded)
+          if missing:
+              raise SystemExit(f"UI test classes in no shard: {', '.join(missing)}")
+          PY
       - name: Select the newest released Xcode
         run: |
           latest=$(for app in /Applications/Xcode*.app; do (cd "$app" && pwd -P); done \
             | grep -vi beta | sort -uV | tail -1)
           if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
           sudo xcode-select --switch "$latest/Contents/Developer"
-      - name: Run the tour suite
+      - name: Run the ${{ matrix.shard }} tours
+        # Short of the job's limit, so the log step below still has time to
+        # say where a stuck run was.
+        timeout-minutes: 45
         env:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
@@ -328,7 +367,8 @@ jobs:
           #    pipe when its reader disappears, and that abort is
           #    indistinguishable from a test failure. The step runs under
           #    `bash -e`, so the status is taken with `||`: a bare failing
-          #    command would end the script before the log is printed.
+          #    command would end the script before the log is printed
+          #    (the step after this one prints it).
           #
           #    Diagnostics collection is off: after a failure it waited ten
           #    minutes on the simulator and then gave up, so a few failures
@@ -336,13 +376,21 @@ jobs:
           #    Each test is capped, one retry absorbs a runner that dies on
           #    launch, and the watchdog stops xcodebuild before the job's
           #    own timeout would, so whatever happened is still printed.
-          ( sleep 2700; pkill -INT -x xcodebuild ) &
+          #    The watchdog is short of the step's 45 minutes, so xcodebuild
+          #    stops and writes its result bundle before the step is killed.
+          ( sleep 2400; pkill -INT -x xcodebuild ) &
           watchdog=$!
           status=0
+          only=()
+          for class in ${{ matrix.tests }}; do
+            only+=("-only-testing:AlohaSocialUITests/$class")
+          done
           xcodebuild test \
             -project AlohaSocial.xcodeproj \
             -scheme AlohaSocialUITests \
             -destination "platform=iOS Simulator,name=$device" \
+            "${only[@]}" \
+            -resultBundlePath "$RUNNER_TEMP/ui-tours.xcresult" \
             -collect-test-diagnostics never \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
@@ -354,8 +402,26 @@ jobs:
             DEVELOPMENT_TEAM="" \
             >"$RUNNER_TEMP/ui-tours.log" 2>&1 || status=$?
           kill "$watchdog" 2>/dev/null || true
-          cat "$RUNNER_TEMP/ui-tours.log"
           exit $status
+      # Also when the step above failed, timed out or was cancelled: a run
+      # that never finished used to leave nothing to say where it stopped.
+      - name: Show the tour log
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/ui-tours.log" ] || { echo "No tour log was written."; exit 0; }
+          grep -E "Test Case .*(passed|failed)|error: |Executed [0-9]+ tests" \
+            "$RUNNER_TEMP/ui-tours.log" || true
+          echo "::group::Full log"
+          cat "$RUNNER_TEMP/ui-tours.log"
+          echo "::endgroup::"
+      - name: Keep the result bundle
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-tours-${{ matrix.shard }}
+          path: ${{ runner.temp }}/ui-tours.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
 
   # A pull request that fails to lint does not merge (docs/12 §6).
   lint:
