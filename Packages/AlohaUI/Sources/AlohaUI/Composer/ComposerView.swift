@@ -206,7 +206,8 @@ public struct ComposerView: View {
                 matching: .any(of: [.images, .videos])
             )
             .onChange(of: pickedItems) { _, items in
-                Task { await ingest(items) }
+                guard !items.isEmpty else { return }
+                Task { await model.uploader.whileFetching { await ingest(items) } }
             }
             .sheet(isPresented: $isShowingPollEditor) {
                 NavigationStack {
@@ -375,7 +376,10 @@ public struct ComposerView: View {
         .onDisappear {
             guard !didFinish else { return }
             UploadActivityController.shared.cancel()
-            Task { await model.saveDraftIfNeeded() }
+            Task {
+                await model.saveDraftIfNeeded()
+                await model.saveDraftWhenUploadsSettle()
+            }
         }
     }
 
@@ -1545,6 +1549,10 @@ public struct ComposerView: View {
         Task {
             await model.saveDraftIfNeeded()
             finish(.cancelled)
+            // A file still going up is not dropped: it joins the draft once
+            // it lands. (A share extension ends with the composer, and its
+            // upload with it.)
+            await model.saveDraftWhenUploadsSettle()
         }
     }
 }

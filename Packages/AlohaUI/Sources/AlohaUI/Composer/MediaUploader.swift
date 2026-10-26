@@ -61,10 +61,49 @@ public final class ComposerUploader {
 
     public var canAddMore: Bool { attachments.count < limits.maxMediaAttachments }
 
+    /// Files on their way up, counted from the moment one is handed over —
+    /// converting a picture can take longer than sending it — until it is
+    /// attached or has failed. An attachment joins `attachments` only once it
+    /// is up, so a post made meanwhile would go without it, and the upload
+    /// finishing after would belong to nothing.
+    public private(set) var activeUploads = 0
+    @ObservationIgnored private var settledWaiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Whether anything is still on its way: a file going up, or a video the
+    /// server is still processing (which Mastodon refuses to attach).
+    public var isBusy: Bool { activeUploads > 0 || !processing.isEmpty }
+
+    /// Returns once every upload under way has landed or failed.
+    public func uploadsSettled() async {
+        guard activeUploads > 0 else { return }
+        await withCheckedContinuation { settledWaiters.append($0) }
+    }
+
+    /// Counts `work` as an upload under way: what a picker does while it is
+    /// still fetching the file it will hand over, which for a picture kept in
+    /// iCloud takes longer than the upload.
+    public func whileFetching(_ work: () async -> Void) async {
+        beginUpload()
+        defer { endUpload() }
+        await work()
+    }
+
+    private func beginUpload() { activeUploads += 1 }
+
+    private func endUpload() {
+        activeUploads -= 1
+        guard activeUploads == 0 else { return }
+        let waiters = settledWaiters
+        settledWaiters = []
+        for waiter in waiters { waiter.resume() }
+    }
+
     /// Concurrency cap of two, as docs/07 §4 prescribes — more than that on a
     /// phone connection makes every upload slower rather than the batch faster.
     public func add(data: Data, filename: String, mimeType: String) async {
         guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
 
         var payload = data
         var type = mimeType
@@ -210,6 +249,8 @@ public final class ComposerUploader {
     /// connection that is the difference between possible and not (docs/07 §6).
     public func addFromNextcloudFiles(path: String, description: String?) async {
         guard session.capabilities.mediaFromNextcloudFiles, canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
 
         let ticket = progress.begin((path as NSString).lastPathComponent)
         do {
@@ -293,6 +334,10 @@ public final class ComposerUploader {
             let previous = filters[attachmentID] ?? .none
             filters[attachmentID] = filter
             guard filter != previous else { return }
+            // The new picture replaces the old one only once it is up; a post
+            // made in between would carry the old one and orphan the new.
+            beginUpload()
+            defer { endUpload() }
 
             // "Original" needs no round trip when it is already what is up
             // there, and a redraw only happens for the rest.

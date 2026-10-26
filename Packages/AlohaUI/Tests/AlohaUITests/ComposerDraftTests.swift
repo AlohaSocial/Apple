@@ -380,6 +380,63 @@ struct SchedulingTests {
     }
 }
 
+@Suite("Posting while an upload is under way")
+@MainActor
+struct UploadInFlightTests {
+    @Test("Nothing posts while a file is still going up")
+    func postWaitsForUpload() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "With a video"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+
+        #expect(model.canPost == false)
+        // `post()` minds the gate itself: a shortcut or an intent never
+        // passes the button.
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        #expect(await transport.posts.isEmpty)
+
+        await transport.releaseUploads()
+        await upload.value
+
+        #expect(model.canPost)
+        #expect(await model.post(skippingAltTextCheck: true))
+        #expect(await transport.posts.count == 1)
+    }
+
+    @Test("Closing mid-upload keeps the file: it joins the same draft once it lands")
+    func closingKeepsUpload() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "Half written"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+
+        // What closing does: save now, then again when the upload settles.
+        await model.saveDraftIfNeeded()
+        let settling = Task { await model.saveDraftWhenUploadsSettle() }
+        await transport.releaseUploads()
+        await upload.value
+        await settling.value
+
+        let drafts = try await session.supportStore.drafts(accountID: session.id)
+        #expect(drafts.count == 1)
+        #expect(drafts.first?.text == "Half written")
+        #expect(drafts.first?.uploadedMediaIDs == ["media-1"])
+    }
+}
+
 // MARK: - Support
 
 @MainActor
@@ -433,10 +490,39 @@ private actor RecordingTransport: HTTPTransport {
         failingPostNumber = nil
     }
 
+    /// Media uploads wait here until released, while uploads are held.
+    private var uploadsHeld = false
+    private var heldUploads: [CheckedContinuation<Void, Never>] = []
+    private var uploadCount = 0
+
+    func holdUploads() { uploadsHeld = true }
+
+    func releaseUploads() {
+        uploadsHeld = false
+        for upload in heldUploads { upload.resume() }
+        heldUploads = []
+    }
+
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let method = request.httpMethod ?? "GET"
         let path = request.url?.path().trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
         log.append("\(method) \(path)")
+
+        // The mock server has no upload route; an upload is answered here,
+        // with a finished attachment, once it is let through.
+        if method == "POST", path == "api/v2/media", let url = request.url {
+            if uploadsHeld { await withCheckedContinuation { heldUploads.append($0) } }
+            uploadCount += 1
+            let body = #"""
+                {"id":"media-\#(uploadCount)","type":"video","url":"https://cloud.example.test/m.mp4",
+                "preview_url":"https://cloud.example.test/m.jpg","remote_url":null,
+                "description":"A wave","blurhash":null,"meta":{}}
+                """#
+            return (
+                Data(body.utf8),
+                HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            )
+        }
 
         if method == "POST", path == "api/v1/statuses" {
             let fields = Self.form(request.httpBody)

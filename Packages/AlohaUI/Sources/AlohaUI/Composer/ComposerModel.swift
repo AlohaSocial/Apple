@@ -88,6 +88,15 @@ public final class ComposerModel {
     /// Attachments that came from the server's GIF library rather than an
     /// upload; they never went through the uploader.
     public private(set) var libraryAttachments: [MediaAttachment] = []
+    /// Library pictures asked for and not yet back.
+    private var libraryAttachmentsInFlight = 0
+
+    /// Whether an attachment is still on its way — an upload, a video the
+    /// server is processing, a library picture — or a reopened draft is still
+    /// looking its uploads up. Posting now would leave it behind.
+    public var isUploading: Bool {
+        uploader.isBusy || libraryAttachmentsInFlight > 0 || !pendingMediaIDs.isEmpty
+    }
     /// Focal points set here, by attachment id, so the strip can show a mark.
     public private(set) var focalPoints: [String: CGPoint] = [:]
 
@@ -373,6 +382,8 @@ public final class ComposerModel {
     /// Attaches a picture from the instance's GIF library.
     public func attachLibraryPicture(_ entry: GIFEntry) async {
         guard canAddMedia else { return }
+        libraryAttachmentsInFlight += 1
+        defer { libraryAttachmentsInFlight -= 1 }
         do {
             let attachment = try await session.client.decode(
                 MediaAttachment.self,
@@ -508,8 +519,10 @@ public final class ComposerModel {
         CharacterCount.remaining(text: text, spoilerText: spoilerText, limits: limits)
     }
 
+    /// The one gate every way of posting goes through — the button, the
+    /// keyboard shortcut, and `post()` itself.
     public var canPost: Bool {
-        guard !isPosting else { return false }
+        guard !isPosting, !isUploading else { return false }
         guard (remainingCharacters ?? 0) >= 0 else { return false }
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return hasText || !attachments.isEmpty || quoting != nil || restoredQuotedID != nil
@@ -971,6 +984,16 @@ public final class ComposerModel {
     /// lets a swipe take the composer away.
     public var hasUnsavedContent: Bool {
         editingStatus == nil ? !draftSnapshot.isEmpty : true
+    }
+
+    /// Saves the draft again once the uploads still going up have landed, so
+    /// a file that finishes after the composer was closed joins the draft it
+    /// was added to instead of going up for nothing. Saving is by the
+    /// composer's draft id, so this replaces the save made on closing.
+    public func saveDraftWhenUploadsSettle() async {
+        guard uploader.activeUploads > 0 else { return }
+        await uploader.uploadsSettled()
+        await saveDraftIfNeeded()
     }
 
     public func saveDraftIfNeeded(queued: Bool = false) async {
