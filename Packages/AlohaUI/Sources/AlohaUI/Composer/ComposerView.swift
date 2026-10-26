@@ -32,6 +32,7 @@ public struct ComposerView: View {
     @State private var isShowingEmojiPicker = false
     @State private var isShowingHeldNotice = false
     @State private var isShowingScheduledNotice = false
+    @State private var didPrefill = false
     @State private var focusingAttachment: MediaAttachment?
     @State private var filteringAttachment: MediaAttachment?
     @State private var trimmingVideoAt: URL?
@@ -348,8 +349,17 @@ public struct ComposerView: View {
                 }
             }
             .task {
+                // Once, though the task runs again whenever the composer
+                // comes back on screen.
+                let isFirstRun = !didPrefill
+                didPrefill = true
+                // Before `prepare()` waits on the network, and only into an
+                // empty box, so nothing typed meanwhile is written over.
+                if isFirstRun, !prefilledText.isEmpty, model.text.isEmpty {
+                    model.text = prefilledText
+                }
                 await model.prepare()
-                if !prefilledText.isEmpty { model.text = prefilledText }
+                guard isFirstRun else { return }
                 for attachment in prefilledAttachments {
                     await model.uploader.add(
                         data: attachment.data, filename: attachment.filename,

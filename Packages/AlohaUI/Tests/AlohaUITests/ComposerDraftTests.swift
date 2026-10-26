@@ -498,6 +498,49 @@ struct BackgroundDraftTests {
     }
 }
 
+@Suite("Opening a reply")
+@MainActor
+struct ReplyPrefillTests {
+    private func reply() -> Status {
+        Status(id: "90", account: Account(id: "2", username: "bob", acct: "bob"))
+    }
+
+    @Test("An empty reply starts with the mentions")
+    func mentionsFillEmptyBox() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session, replyTo: reply())
+
+        await model.prepare()
+
+        #expect(model.text == "@bob ")
+    }
+
+    @Test("What was typed before the composer finished preparing is kept")
+    func typedTextKept() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session, replyTo: reply())
+        model.text = "Already typing"
+
+        await model.prepare()
+
+        #expect(model.text == "Already typing")
+    }
+
+    @Test("Preparing again does not undo what was chosen since")
+    func preparesOnce() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session, replyTo: reply())
+        await model.prepare()
+
+        model.text = ""
+        model.visibility = .direct
+        await model.prepare()
+
+        #expect(model.text.isEmpty)
+        #expect(model.visibility == .direct)
+    }
+}
+
 // MARK: - Support
 
 @MainActor

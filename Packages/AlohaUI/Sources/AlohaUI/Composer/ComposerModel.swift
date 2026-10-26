@@ -241,6 +241,7 @@ public final class ComposerModel {
     /// A reopened draft or a redraft already says what it wants; the account
     /// defaults that `prepare()` applies to a fresh post would overwrite it.
     private var isRestored = false
+    private var isPrepared = false
 
     public init(session: AccountSession, replyTo: Status? = nil, quoting: Status? = nil) {
         self.session = session
@@ -451,7 +452,11 @@ public final class ComposerModel {
     public func prepare() async {
         // An edit already carries everything from `/source`; re-deriving the
         // defaults here would overwrite what the person wrote.
-        guard editingStatus == nil else { return }
+        guard editingStatus == nil, !isPrepared else { return }
+        // Once: a full-screen cover such as the camera takes the composer off
+        // screen and back, which starts its task again, and the defaults
+        // below would undo what the person has chosen since.
+        isPrepared = true
         if isRestored {
             await restoreContext()
             await loadTeams()
@@ -466,14 +471,18 @@ public final class ComposerModel {
 
         showsContentWarningField = session.settings.alwaysShowContentWarningField
         language = session.settings.defaultLanguage
-        await loadTeams()
 
-        if let replyTo {
+        // Before anything waits on the network, and only into an empty box:
+        // by the time the teams answer the person may have started typing,
+        // and the mentions must not land on top of that.
+        if let replyTo, text.isEmpty {
             let handles = replyTo.replyMentions(excluding: session.snapshot.handle)
             if !handles.isEmpty {
                 text = handles.map { "@\($0)" }.joined(separator: " ") + " "
             }
         }
+
+        await loadTeams()
     }
 
     /// Fetches what a restored composer knows only by id: the post it
