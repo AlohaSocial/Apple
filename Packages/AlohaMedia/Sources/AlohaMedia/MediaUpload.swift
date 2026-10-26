@@ -144,7 +144,8 @@ public struct MediaPreparer: Sendable {
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceShouldCacheImmediately: true,
         ]
-        if let maximum = quality.maximumPixelSize ?? (longestSide > 0 ? CGFloat(longestSide) : nil) {
+        if let maximum = quality.maximumPixelSize ?? (longestSide > 0 ? CGFloat(longestSide) : nil)
+        {
             options[kCGImageSourceThumbnailMaxPixelSize] = maximum
         }
 
@@ -338,7 +339,10 @@ public struct MediaPreparer: Sendable {
                     kCGImagePropertyExifLensSerialNumber, kCGImagePropertyExifImageUniqueID,
                 ]
             ),
-            (kCGImagePropertyTIFFDictionary, [kCGImagePropertyTIFFArtist, kCGImagePropertyTIFFHostComputer]),
+            (
+                kCGImagePropertyTIFFDictionary,
+                [kCGImagePropertyTIFFArtist, kCGImagePropertyTIFFHostComputer]
+            ),
             (kCGImagePropertyPNGDictionary, [kCGImagePropertyPNGAuthor]),
         ]
         return (0..<CGImageSourceGetCount(source)).contains { index in
@@ -402,7 +406,8 @@ public struct MediaPreparer: Sendable {
         // dictionary holds its frame timing, and stays.
         if count == 1 { removed[kCGImagePropertyPNGDictionary] = kCFNull as Any }
         for index in 0..<count {
-            CGImageDestinationAddImageFromSource(destination, source, index, removed as CFDictionary)
+            CGImageDestinationAddImageFromSource(
+                destination, source, index, removed as CFDictionary)
         }
         guard CGImageDestinationFinalize(destination) else { return nil }
         return output as Data

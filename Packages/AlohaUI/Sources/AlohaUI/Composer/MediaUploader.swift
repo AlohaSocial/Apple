@@ -273,7 +273,8 @@ public final class ComposerUploader {
     private func add(videoData data: Data, filename: String, mimeType: String) async {
         guard canAddMore else { return }
         let url = FileManager.default.temporaryDirectory
-            .appending(path: "aloha-handover-\(UUID().uuidString).\((filename as NSString).pathExtension)")
+            .appending(
+                path: "aloha-handover-\(UUID().uuidString).\((filename as NSString).pathExtension)")
         defer { try? FileManager.default.removeItem(at: url) }
         do {
             try data.write(to: url)

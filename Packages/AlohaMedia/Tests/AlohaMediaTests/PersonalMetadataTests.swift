@@ -257,7 +257,8 @@ struct ImageMetadataTests {
     @Test("A converted picture has no metadata, and is still the right way up")
     func convertedIsClean() throws {
         let prepared = try #require(
-            MediaPreparer().prepareImage(try picture(.heic), filename: "photo.heic", quality: .original))
+            MediaPreparer().prepareImage(
+                try picture(.heic), filename: "photo.heic", quality: .original))
         let kept = try properties(of: prepared.data)
         #expect(kept[kCGImagePropertyGPSDictionary] == nil)
         #expect(!MediaPreparer.carriesPersonalMetadata(prepared.data))
