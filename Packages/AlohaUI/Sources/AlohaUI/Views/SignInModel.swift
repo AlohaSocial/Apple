@@ -98,14 +98,16 @@ public final class SignInModel {
 
     /// The documented-unsupported escape hatch for an unusual deployment.
     public func useManualBase(environment: AppEnvironment) async {
-        guard var url = URL(string: manualBase.trimmingCharacters(in: .whitespaces)) else { return }
-        if !url.absoluteString.hasSuffix("/") {
-            url = URL(string: url.absoluteString + "/") ?? url
+        guard var typed = URL(string: manualBase.trimmingCharacters(in: .whitespaces)) else { return }
+        if !typed.absoluteString.hasSuffix("/") {
+            typed = URL(string: typed.absoluteString + "/") ?? typed
         }
 
         phase = .probing
         let probe = ServerProbe(transport: environment.transport)
-        guard let instance = await probe.fetchInstance(base: url) else {
+        // The base the instance answered under, not the one typed: a typed
+        // address that redirects would otherwise sign in at the wrong host.
+        guard let resolved = await probe.resolveInstance(base: typed) else {
             phase = .failed(
                 Failure(
                     message: String(
@@ -115,6 +117,7 @@ public final class SignInModel {
             return
         }
 
+        let (url, instance) = (resolved.base, resolved.instance)
         let nodeInfo = await probe.fetchNodeInfo(origin: url.originString)
         let manual = ServerProbe.Outcome(
             apiBase: url, instance: instance, nodeInfo: nodeInfo,
