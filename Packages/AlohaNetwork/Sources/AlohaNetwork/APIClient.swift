@@ -159,7 +159,8 @@ public actor APIClient {
         if let key = endpoint.idempotencyKey {
             request.setValue(key, forHTTPHeaderField: "Idempotency-Key")
         }
-        applyBody(endpoint.body, to: &request)
+        let bodyFile = try applyBody(endpoint.body, to: &request)
+        defer { if let bodyFile { try? FileManager.default.removeItem(at: bodyFile) } }
 
         // Tokens, codes and verifiers never reach a log. OSLog's default for an
         // interpolation is already private; the point here is that the values
@@ -167,7 +168,12 @@ public actor APIClient {
         logger.debug(
             "\(endpoint.method.rawValue, privacy: .public) \(endpoint.path, privacy: .public)")
 
-        let (data, http) = try await transport.send(request)
+        let (data, http) =
+            if let bodyFile {
+                try await transport.upload(request, fromFile: bodyFile)
+            } else {
+                try await transport.send(request)
+            }
 
         if let error = APIError.from(
             status: http.statusCode, data: data, headers: http.allHeaderFields)
@@ -203,19 +209,33 @@ public actor APIClient {
         return components.url ?? url
     }
 
-    private func applyBody(_ body: Endpoint.Body?, to request: inout URLRequest) {
+    /// Sets the body, or for a multipart one writes it to a temporary file
+    /// and returns that: an upload is streamed from disk, on a session that
+    /// gives it longer than an API call, and the caller removes the file.
+    private func applyBody(_ body: Endpoint.Body?, to request: inout URLRequest) throws -> URL? {
         switch body {
         case .none, .empty:
-            return
+            return nil
         case .form(let items):
             request.httpBody = FormEncoding.body(items)
             request.setValue(FormEncoding.contentType, forHTTPHeaderField: "Content-Type")
+            return nil
         case .json(let data):
             request.httpBody = data
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            return nil
         case .multipart(let multipart):
-            request.httpBody = multipart.encoded()
             request.setValue(multipart.contentType, forHTTPHeaderField: "Content-Type")
+            let file = FileManager.default.temporaryDirectory
+                .appending(path: "aloha-upload-\(UUID().uuidString)")
+            do {
+                try multipart.write(to: file)
+            } catch {
+                try? FileManager.default.removeItem(at: file)
+                logger.error("could not write an upload's body to disk")
+                throw APIError.transport(URLError(.cannotCreateFile))
+            }
+            return file
         }
     }
 
