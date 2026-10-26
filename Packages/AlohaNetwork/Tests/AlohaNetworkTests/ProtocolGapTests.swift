@@ -125,7 +125,7 @@ struct DiscoveryTimingTests {
         // The root candidate (rank 1) hangs instead of answering 404.
         let probe = ServerProbe(
             transport: HangingTransport(inner: server) { url in
-                url.path() == "/api/v2/instance" || url.path() == "/api/v1/instance/"
+                url.path() == "/api/v2/instance" || url.path() == "/api/v1/instance"
             },
             perCandidateTimeout: .seconds(30), totalBudget: .milliseconds(500))
         let outcome = try await probe.discover(address)

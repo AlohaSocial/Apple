@@ -70,8 +70,16 @@ public struct WebDAVClient: Sendable {
         case transport(Int)
     }
 
+    /// Each segment is appended as it is and encoded once, by `URL`: one
+    /// encoded here first would arrive as `%25…`, a login name with a space
+    /// or an accent naming a folder that does not exist.
+    ///
+    /// The path wants the Nextcloud user ID, and this is the login name the
+    /// login flow hands back. The two are the same unless the server lets
+    /// people sign in by email address or through LDAP.
     private var filesRoot: URL {
-        credentials.server.appending(path: "remote.php/dav/files/\(encoded(credentials.loginName))")
+        credentials.server.appending(path: "remote.php/dav/files")
+            .appending(component: credentials.loginName)
     }
 
     /// `PROPFIND` with `Depth: 1` — one directory, not the whole tree.
@@ -79,7 +87,7 @@ public struct WebDAVClient: Sendable {
         let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         var url = filesRoot
         for component in trimmed.split(separator: "/") where !component.isEmpty {
-            url = url.appending(path: String(component))
+            url = url.appending(component: String(component))
         }
 
         var request = URLRequest(url: url)
@@ -97,7 +105,11 @@ public struct WebDAVClient: Sendable {
         default: throw WebDAVError.transport(response.statusCode)
         }
 
-        let parsed = try MultiStatusParser.parse(data, rootPath: filesRoot.path())
+        // Decoded, as each `href` is before it is compared with it: Nextcloud
+        // encodes more than `URL` does (`@`, for one), so the encoded forms
+        // need not match even when the paths do.
+        let parsed = try MultiStatusParser.parse(
+            data, rootPath: filesRoot.path(percentEncoded: false))
         // The first entry is the directory itself; a listing of it is the rest.
         return parsed.filter { $0.path != trimmed }
     }
@@ -119,10 +131,6 @@ public struct WebDAVClient: Sendable {
     }
 
     public var authorizationHeader: String { credentials.basicAuthorization }
-
-    private func encoded(_ component: String) -> String {
-        component.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? component
-    }
 
     /// Only the properties the picker draws. Asking for everything makes a
     /// large folder noticeably slower to list.

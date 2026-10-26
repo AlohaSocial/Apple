@@ -187,3 +187,44 @@ struct InstancePayloadTests {
                 == 2048 * 1024 * 1024)
     }
 }
+
+@Suite("OAuth tokens")
+struct OAuthTokenDecodingTests {
+
+    @Test("Mastodon's token response decodes as sent")
+    func mastodonTokenDecodes() throws {
+        let json = Data(
+            #"{"access_token": "abc", "token_type": "Bearer", "scope": "read write", "created_at": 1573979017}"#
+                .utf8)
+        let token = try AlohaJSON.decoder.decode(OAuthToken.self, from: json)
+        #expect(token.accessToken == "abc")
+        #expect(token.tokenType == "Bearer")
+        #expect(token.scope == "read write")
+        #expect(token.createdAt == 1_573_979_017)
+    }
+
+    @Test("A token response without a scope or token type still signs in")
+    func passportTokenWithoutScopeDecodes() throws {
+        // Laravel Passport, as Pixelfed answers: no scope and no created_at.
+        let json = Data(
+            #"{"token_type": "Bearer", "expires_in": 31536000, "access_token": "abc", "refresh_token": "def"}"#
+                .utf8)
+        let token = try AlohaJSON.decoder.decode(OAuthToken.self, from: json)
+        #expect(token.accessToken == "abc")
+        #expect(token.scope == "")
+        #expect(token.createdAt == nil)
+
+        let bare = try AlohaJSON.decoder.decode(
+            OAuthToken.self, from: Data(#"{"access_token": "abc", "scope": null}"#.utf8))
+        #expect(bare.tokenType == "Bearer")
+        #expect(bare.scope == "")
+    }
+
+    @Test("A token response without the token itself is still an error")
+    func missingAccessTokenThrows() {
+        #expect(throws: DecodingError.self) {
+            try AlohaJSON.decoder.decode(
+                OAuthToken.self, from: Data(#"{"token_type": "Bearer", "scope": "read"}"#.utf8))
+        }
+    }
+}

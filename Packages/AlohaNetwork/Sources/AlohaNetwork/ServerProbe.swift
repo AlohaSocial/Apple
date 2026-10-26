@@ -193,7 +193,7 @@ public struct ServerProbe: Sendable {
     /// What a probe task hands back: a candidate's answer, or the moment the
     /// whole probe's time ran out.
     private enum ProbeEvent: Sendable {
-        case answered(Candidate, InstanceDescription?)
+        case answered(Candidate, (base: URL, instance: InstanceDescription)?)
         case outOfTime
     }
 
@@ -220,10 +220,10 @@ public struct ServerProbe: Sendable {
         let winner = await withTaskGroup(of: ProbeEvent.self) { group in
             for candidate in candidates {
                 group.addTask {
-                    let instance = await Self.within(perCandidate) {
-                        await self.fetchInstance(base: candidate.base)
+                    let resolved = await Self.within(perCandidate) {
+                        await self.resolveInstance(base: candidate.base)
                     }
-                    return .answered(candidate, instance)
+                    return .answered(candidate, resolved)
                 }
             }
             group.addTask {
@@ -231,17 +231,17 @@ public struct ServerProbe: Sendable {
                 return .outOfTime
             }
 
-            var best: (Candidate, InstanceDescription)?
+            var best: (Candidate, (base: URL, instance: InstanceDescription))?
             var outstanding = candidates.count
             for await event in group {
-                guard case .answered(let candidate, let instance) = event else {
+                guard case .answered(let candidate, let resolved) = event else {
                     // Out of time: whatever answered so far is the answer.
                     group.cancelAll()
                     break
                 }
                 outstanding -= 1
-                if let instance, best == nil || candidate.rank < best!.0.rank {
-                    best = (candidate, instance)
+                if let resolved, best == nil || candidate.rank < best!.0.rank {
+                    best = (candidate, resolved)
                 }
                 // Rank 1 cannot be beaten, and with every candidate heard
                 // from there is nothing left to wait for.
@@ -261,9 +261,11 @@ public struct ServerProbe: Sendable {
             "resolved API base via candidate \(winner.0.rank, privacy: .public): \(winner.0.explanation, privacy: .public)"
         )
 
+        // Where the instance actually answered, which is the candidate's
+        // own address unless the server redirected it somewhere else.
         return Outcome(
-            apiBase: winner.0.base,
-            instance: winner.1,
+            apiBase: winner.1.base,
+            instance: winner.1.instance,
             nodeInfo: await nodeInfo,
             winningCandidate: winner.0,
             attempted: candidates
@@ -274,15 +276,61 @@ public struct ServerProbe: Sendable {
     /// entity with a non-empty domain. A 200 that is a Nextcloud login page is
     /// not a Mastodon API.
     public func fetchInstance(base: URL) async -> InstanceDescription? {
-        if let v2: InstancePayload.V2 = await get(base.appending(path: "api/v2/instance")) {
-            let described = InstanceDescription(v2: v2)
-            if !described.domain.isEmpty { return described }
+        await resolveInstance(base: base)?.instance
+    }
+
+    /// The instance, and the API base that actually answered for it.
+    ///
+    /// URLSession follows redirects, so a 200 for a candidate may have come
+    /// from somewhere else: `example.com` sending the client on to
+    /// `social.example.com`, or `http://nas.local` to `https://nas.local`.
+    /// The base is read back from where the answer came from, so the token
+    /// request and every API call go there directly rather than through a
+    /// redirect that drops the credential on the way.
+    public func resolveInstance(base: URL) async -> (base: URL, instance: InstanceDescription)? {
+        let v2Route = "api/v2/instance"
+        if let answer: (value: InstancePayload.V2, url: URL) = await fetch(
+            base.appending(path: v2Route)),
+            let resolved = Self.base(answering: v2Route, at: answer.url, requested: base)
+        {
+            let described = InstanceDescription(v2: answer.value)
+            if !described.domain.isEmpty { return (resolved, described) }
         }
-        if let v1: InstancePayload.V1 = await get(base.appending(path: "api/v1/instance/")) {
-            let described = InstanceDescription(v1: v1)
-            if !described.domain.isEmpty { return described }
+        let v1Route = "api/v1/instance"
+        if let answer: (value: InstancePayload.V1, url: URL) = await fetch(
+            base.appending(path: v1Route)),
+            let resolved = Self.base(answering: v1Route, at: answer.url, requested: base)
+        {
+            let described = InstanceDescription(v1: answer.value)
+            if !described.domain.isEmpty { return (resolved, described) }
         }
         return nil
+    }
+
+    /// The API base under which `route` was answered at `url`: the URL with
+    /// the route taken off its end.
+    ///
+    /// Nil when a redirect also rewrote the route itself — nothing then says
+    /// where the API lives — and when it took an https request to plain http
+    /// on a public host, which sign-in never uses on its own (docs/11 §5).
+    static func base(answering route: String, at url: URL, requested: URL) -> URL? {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let host = components.host
+        else { return nil }
+        if components.scheme?.lowercased() == "http", requested.scheme?.lowercased() == "https",
+            !LocalNetwork.isLocal(host: host)
+        {
+            return nil
+        }
+        var path = components.percentEncodedPath
+        // A server may add or take off a trailing slash on the way.
+        if path.hasSuffix("/") { path.removeLast() }
+        let suffix = "/" + route
+        guard path.hasSuffix(suffix) else { return nil }
+        components.percentEncodedPath = String(path.dropLast(suffix.count)) + "/"
+        components.percentEncodedQuery = nil
+        components.fragment = nil
+        return components.url
     }
 
     /// Runs `work`, giving up with nil once `limit` has passed. The work is
@@ -325,6 +373,11 @@ public struct ServerProbe: Sendable {
     }
 
     private func get<T: Decodable & Sendable>(_ url: URL) async -> T? {
+        await fetch(url)?.value
+    }
+
+    /// The decoded answer, and the URL it finally came from after redirects.
+    private func fetch<T: Decodable & Sendable>(_ url: URL) async -> (value: T, url: URL)? {
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = Double(perCandidateTimeout.components.seconds)
@@ -332,7 +385,7 @@ public struct ServerProbe: Sendable {
         do {
             let (data, response) = try await transport.send(request)
             guard (200..<300).contains(response.statusCode) else { return nil }
-            return try AlohaJSON.decoder.decode(T.self, from: data)
+            return (try AlohaJSON.decoder.decode(T.self, from: data), response.url ?? url)
         } catch {
             return nil
         }

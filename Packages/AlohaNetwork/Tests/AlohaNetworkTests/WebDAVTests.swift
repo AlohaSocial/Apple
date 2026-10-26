@@ -119,3 +119,64 @@ struct NextcloudCredentialTests {
         #expect(decoded == "alice:secret")
     }
 }
+
+/// Answers every PROPFIND with one listing, and keeps the requests.
+private actor ListingTransport: HTTPTransport {
+    private(set) var requests: [URLRequest] = []
+    let listing: String
+
+    init(listing: String) { self.listing = listing }
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        requests.append(request)
+        let response = HTTPURLResponse(
+            url: request.url!, statusCode: 207, httpVersion: "HTTP/1.1", headerFields: [:])!
+        return (Data(listing.utf8), response)
+    }
+}
+
+@Suite("WebDAV paths")
+struct WebDAVPathTests {
+
+    /// Nextcloud writes its hrefs with lower-case escapes and encodes more
+    /// than `URL` does; only the decoded paths are the same.
+    private let listing = """
+        <?xml version="1.0"?>
+        <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
+          <d:response>
+            <d:href>/nextcloud/remote.php/dav/files/j%c3%b6rg%20m_1/Fotos%20%26%20Clips/</d:href>
+            <d:propstat><d:prop>
+              <d:resourcetype><d:collection/></d:resourcetype>
+            </d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/nextcloud/remote.php/dav/files/j%c3%b6rg%20m_1/Fotos%20%26%20Clips/%f0%9f%8c%ba%20Strand.jpg</d:href>
+            <d:propstat><d:prop>
+              <d:getcontenttype>image/jpeg</d:getcontenttype>
+              <d:resourcetype/>
+            </d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+          </d:response>
+        </d:multistatus>
+        """
+
+    @Test("The user and every folder are encoded once, and the listing is read back relative")
+    func listEncodesOnce() async throws {
+        let transport = ListingTransport(listing: listing)
+        let client = WebDAVClient(
+            credentials: NextcloudLoginFlow.Credentials(
+                server: URL(string: "https://cloud.example.test/nextcloud/")!,
+                loginName: "jörg m_1", appPassword: "secret"),
+            transport: transport)
+
+        let files = try await client.list(path: "/Fotos & Clips/")
+
+        let url = try #require(await transport.requests.first?.url)
+        #expect(
+            url.path() == "/nextcloud/remote.php/dav/files/j%C3%B6rg%20m_1/Fotos%20&%20Clips")
+        #expect(url.path(percentEncoded: false).contains("%") == false)
+        // The folder itself is left out; the file is relative to the files
+        // root and decoded, as `api/v1/media/from-file` takes it.
+        #expect(files.map(\.path) == ["Fotos & Clips/🌺 Strand.jpg"])
+        #expect(files.first?.name == "🌺 Strand.jpg")
+    }
+}
