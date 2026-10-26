@@ -81,3 +81,22 @@ struct NotificationResponderTests {
         #expect(NotificationResponder.presentationOptions(forCategory: "generic").contains(.list))
     }
 }
+
+/// Every local notification used to be silent: the one line that set a sound
+/// only ever set none.
+@Suite("Notification sound")
+struct NotificationSoundTests {
+    @Test("A mention sounds, as it does in the foreground")
+    func mentionSounds() {
+        #expect(LocalNotifier.sound(for: .mention) != nil)
+        #expect(
+            NotificationResponder.presentationOptions(forCategory: "mention").contains(.sound))
+    }
+
+    @Test("Favourites, boosts and follows arrive silently")
+    func passiveKindsAreSilent() {
+        for kind in [NotificationKind.favourite, .reblog, .follow, .poll] {
+            #expect(LocalNotifier.sound(for: kind) == nil)
+        }
+    }
+}

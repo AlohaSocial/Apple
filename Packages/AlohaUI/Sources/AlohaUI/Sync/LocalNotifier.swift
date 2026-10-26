@@ -291,10 +291,15 @@ public struct LocalNotifier: Sendable {
             "statusID": payload?.statusID ?? "",
             "notificationID": notification.serverID,
         ]
-        if notification.kind != .follow {
-            content.sound = nil
-        }
+        content.sound = Self.sound(for: notification.kind)
         return content
+    }
+
+    /// Somebody talking to you sounds, as it does in the foreground
+    /// (`NotificationResponder.presentationOptions`); everything passive —
+    /// favourites, boosts, follows — arrives silently.
+    nonisolated static func sound(for kind: NotificationKind) -> UNNotificationSound? {
+        kind == .mention ? .default : nil
     }
 
     /// Returns the next digest trigger after now, skipping quiet hours.
