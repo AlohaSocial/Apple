@@ -152,6 +152,9 @@ public final class AppEnvironment {
             // derived from it rather than stored twice.
             let nextcloud = (try? credentials.nextcloudCredentials(for: session.id)) ?? nil
             await session.setNextcloudConnection(nextcloud)
+            if let nextcloud, nextcloud.userID == nil {
+                Task { await completeNextcloudUserID(nextcloud, for: session) }
+            }
             let connected = nextcloud != nil
             if connected, nextcloudRegistration(for: session.id) != nil {
                 await session.setPushActive(true)
@@ -400,6 +403,24 @@ public final class AppEnvironment {
         for session in sessions where session.hasNextcloudConnection {
             await registerForNextcloudPush(session: session)
         }
+    }
+
+    /// A connection made before the user ID was asked for learns it once, so
+    /// Files is browsed under the right name where it is not the login name.
+    /// Written back only if the connection is still the one asked about: a
+    /// disconnect while the request was out must stay a disconnect.
+    private func completeNextcloudUserID(
+        _ nextcloud: NextcloudLoginFlow.Credentials, for session: AccountSession
+    ) async {
+        let flow = NextcloudLoginFlow(transport: transport)
+        guard let userID = await flow.userID(for: nextcloud),
+            let current = (try? credentials.nextcloudCredentials(for: session.id)) ?? nil,
+            current == nextcloud
+        else { return }
+        var completed = current
+        completed.userID = userID
+        try? credentials.setNextcloudCredentials(completed, for: session.id)
+        await session.setNextcloudConnection(completed)
     }
 
     /// Registers through **Nextcloud's own push proxy**, which is what the

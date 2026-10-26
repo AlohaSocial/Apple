@@ -74,12 +74,12 @@ public struct WebDAVClient: Sendable {
     /// encoded here first would arrive as `%25…`, a login name with a space
     /// or an accent naming a folder that does not exist.
     ///
-    /// The path wants the Nextcloud user ID, and this is the login name the
-    /// login flow hands back. The two are the same unless the server lets
-    /// people sign in by email address or through LDAP.
+    /// The path is named by the Nextcloud user ID, not the login name: the
+    /// two differ when the server lets people sign in by email address or
+    /// through LDAP.
     private var filesRoot: URL {
         credentials.server.appending(path: "remote.php/dav/files")
-            .appending(component: credentials.loginName)
+            .appending(component: credentials.filesUserID)
     }
 
     /// `PROPFIND` with `Depth: 1` — one directory, not the whole tree.
