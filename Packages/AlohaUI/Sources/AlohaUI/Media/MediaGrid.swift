@@ -183,3 +183,40 @@ public struct MediaGrid: View {
         .padding(.vertical, AlohaMetrics.space2)
     }
 }
+
+/// One picture standing for a post's media — an album's square, a quote's
+/// strip — under the reading policy `MediaGrid` keeps: covered when the post
+/// is sensitive and the reader has not chosen to see everything, and not
+/// drawn at all, not even its blurhash, under `hide_all`. Nothing reveals it
+/// here; opening the post, where the grid is, is what that takes.
+struct SensitiveThumbnail: View {
+    @Environment(\.alohaPalette) private var palette
+
+    let attachment: MediaAttachment?
+    let isSensitive: Bool
+    let policy: SensitiveMediaPolicy
+
+    private var isCovered: Bool { isSensitive && !policy.allowsAutomaticReveal }
+    private var isWithheld: Bool { isCovered && !policy.drawsAtAll }
+
+    var body: some View {
+        RemoteImage(
+            url: isWithheld ? nil : attachment?.displayImageURL,
+            blurhash: isWithheld ? nil : attachment?.blurhash,
+            accessibilityText: isCovered ? nil : attachment?.description
+        )
+        .overlay {
+            if isCovered {
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    Image(systemName: AlohaSymbol.sensitive)
+                        .font(.title3)
+                        .foregroundStyle(palette.secondaryLabel)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(
+                    Text("Sensitive content", comment: "Cover over sensitive media"))
+            }
+        }
+    }
+}

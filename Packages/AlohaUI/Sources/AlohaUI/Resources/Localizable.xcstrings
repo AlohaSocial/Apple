@@ -10101,6 +10101,17 @@
         }
       }
     },
+    "Quoted post hidden by a filter" : {
+      "comment" : "Quote removed by a hide filter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zitierter Beitrag durch einen Filter ausgeblendet"
+          }
+        }
+      }
+    },
     "Quotes" : {
       "comment" : "Screen title\nStatistics tile",
       "localizations" : {

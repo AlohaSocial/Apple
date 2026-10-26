@@ -32,17 +32,11 @@ public final class TimelineModel {
 
     public let key: TimelineKey
     private let session: AccountSession
-    private var filters: [Filter] = [] {
-        didSet {
-            guard filters != oldValue else { return }
-            filterDecisions = [:]
-            nextFilterExpiry = FilterEvaluator.nextExpiry(of: filters, after: Date())
-        }
-    }
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
     @ObservationIgnored private var statusUpdates: NotificationSubscription?
+    @ObservationIgnored private var statusRemovals: NotificationSubscription?
     /// When the server last confirmed an interaction with a status, per id.
     /// A page fetched *before* that moment carries the older copy and must
     /// not overwrite the confirmation again (see `performRefresh`).
@@ -67,20 +61,16 @@ public final class TimelineModel {
     @ObservationIgnored public var prefetchGeometry = PrefetchGeometry()
 
     /// Each status's filter verdict, decided once per content rather than on
-    /// every evaluation of the row. Cleared when the filters change, and when
-    /// the next filter expiry passes.
-    @ObservationIgnored private var filterDecisions: [FilterCacheKey: FilterEvaluator.Decision] =
-        [:]
-    /// Plain text for keyword matching, parsed off the main actor before a
-    /// page is filtered. Only collected while a keyword filter exists.
-    @ObservationIgnored private var filterTexts: [FilterCacheKey: String] = [:]
-    @ObservationIgnored private var nextFilterExpiry: Date?
+    /// every evaluation of the row — the same object every other list of
+    /// posts filters with, in this timeline's context.
+    let verdicts: FilterVerdicts
 
     private let logger = Logger(subsystem: "social.aloha.app", category: "timeline")
 
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key
         self.session = session
+        verdicts = FilterVerdicts(context: FilterVerdicts.context(for: key.source))
         statusUpdates = Self.observeStatusUpdates { [weak self] update in
             guard let self, update.accountID == self.session.id else { return }
             let now = Date()
@@ -88,6 +78,19 @@ public final class TimelineModel {
             self.confirmations[update.status.id] = now
             self.rows = Self.replacing(update.status, in: self.rows)
             self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
+        }
+        // A post deleted, or its author blocked or muted, leaves the rows
+        // now rather than at the next refresh — and leaves the rows held
+        // behind the new-posts pill, which would otherwise bring it back.
+        statusRemovals = StatusRemovals.observe { [weak self] removal in
+            guard let self, removal.accountID == self.session.id else { return }
+            let kept = Self.removing(removal, from: self.rows)
+            if kept.count != self.rows.count { self.rows = kept }
+            guard !self.pendingRows.isEmpty else { return }
+            self.pendingRows = Self.removing(removal, from: self.pendingRows)
+            let known = Set(self.rows.map(\.id))
+            self.pendingNewCount =
+                self.pendingRows.compactMap(\.status).filter { !known.contains($0.id) }.count
         }
 
         // Load the "caught up" marker for the home timeline.
@@ -213,6 +216,19 @@ public final class TimelineModel {
         }
     }
 
+    /// The rows less every post the removal names: by id, a boost of one of
+    /// them, and for a block or mute everything the person wrote or boosted.
+    /// Gaps and the caught-up divider stay where they are — they mark places
+    /// in the list, not posts.
+    nonisolated static func removing(
+        _ removal: TimelineStatusRemoval, from rows: [TimelineRow]
+    ) -> [TimelineRow] {
+        rows.filter { row in
+            guard let status = row.status else { return true }
+            return !removal.removes(status)
+        }
+    }
+
     /// Interaction confirmations only have to outlive a page that was still
     /// in flight when the confirmation landed, so they are time-boxed and
     /// pruned on every store.
@@ -235,8 +251,8 @@ public final class TimelineModel {
         do {
             let cached = try await session.timelineStore.cachedTimeline(
                 accountID: session.id, timelineKey: storageKey)
-            filters = (try? await session.supportStore.activeFilters(accountID: session.id)) ?? []
-            await warmFilterTexts(cached.compactMap(\.status))
+            await verdicts.load(from: session)
+            await verdicts.warm(cached.compactMap(\.status))
             rows = applyFilters(to: cached)
             ensureCaughtUpDivider()
             let statuses = cached.compactMap(\.status)
@@ -317,7 +333,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
-            await warmFilterTexts(harvest.statuses)
+            await verdicts.warm(harvest.statuses)
             let filtered = applyFilters(to: merged)
 
             // A new-post pill must not hold updated counts on existing rows
@@ -445,7 +461,7 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
-            await warmFilterTexts(harvest.statuses)
+            await verdicts.warm(harvest.statuses)
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
@@ -475,7 +491,7 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
-            await warmFilterTexts(harvest.statuses)
+            await verdicts.warm(harvest.statuses)
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
         } catch {
@@ -663,50 +679,12 @@ public final class TimelineModel {
         }
     }
 
-    private var hasKeywordFilters: Bool {
-        filters.contains { !$0.keywords.isEmpty }
-    }
-
-    /// Parses the text keyword filters search, off the main actor, so the
-    /// verdicts that follow never parse HTML on it. Nothing to do — and
-    /// nothing parsed — while no filter has a keyword.
-    private func warmFilterTexts(_ statuses: [Status]) async {
-        guard hasKeywordFilters else { return }
-        for status in statuses {
-            let key = FilterCacheKey(status)
-            guard filterTexts[key] == nil else { continue }
-            let body = await RichTextCache.shared.plainText(for: status)
-            filterTexts[key] = body + " " + status.displayed.spoilerText
-        }
-    }
-
     private func decision(for status: Status) -> FilterEvaluator.Decision {
-        let now = Date()
-        if let expiry = nextFilterExpiry, now >= expiry {
-            filterDecisions = [:]
-            nextFilterExpiry = FilterEvaluator.nextExpiry(of: filters, after: now)
-        }
-        let key = FilterCacheKey(status)
-        if let cached = filterDecisions[key] { return cached }
-        let decided = FilterEvaluator.decision(
-            for: status, filters: filters, context: filterContext, now: now,
-            text: filterTexts[key])
-        filterDecisions[key] = decided
-        return decided
-    }
-
-    private var filterContext: FilterContext {
-        switch key.source {
-        case .home, .list: .home
-        case .local, .federated, .hashtag, .trending: .public
-        case .account, .profile: .account
-        default: .home
-        }
+        verdicts.decision(for: status)
     }
 
     public func filterWarning(for status: Status) -> String? {
-        guard case .warn(let title) = decision(for: status) else { return nil }
-        return title
+        verdicts.warning(for: status)
     }
 
     // MARK: - Errors

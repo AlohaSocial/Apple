@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// The posts sharing one link (`GET /api/v1/timelines/link`): what a trending
@@ -23,6 +24,13 @@ public struct LinkTimelineView: View {
     @State private var mayHaveMore = false
     @State private var errorMessage: String?
     @State private var loadID = UUID()
+    /// The reader's filters, in the public context: a link's timeline is
+    /// everyone who shared it, as a hashtag's is everyone who used it.
+    @State private var verdicts = FilterVerdicts(context: .public)
+
+    /// Left out at drawing rather than at loading: the next page is asked
+    /// for from the last post the server sent, shown or not.
+    private var shownStatuses: [Status] { verdicts.kept(statuses) }
 
     public init(
         url: URL, title: String?, session: AccountSession,
@@ -65,11 +73,12 @@ public struct LinkTimelineView: View {
                 .listRowBackground(palette.background)
             }
 
-            ForEach(statuses) { status in
+            ForEach(shownStatuses) { status in
                 StatusRow(
                     status: status,
                     policy: session.settings.sensitiveMediaPolicy,
                     localHost: session.snapshot.instanceHost,
+                    filterWarning: verdicts.warning(for: status),
                     canReact: session.capabilities.emojiReactions,
                     isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
                     showsCounts: session.settings.showPopularityCounts,
@@ -79,7 +88,7 @@ public struct LinkTimelineView: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 .listRowBackground(palette.background)
                 .onAppear {
-                    if status.id == statuses.last?.id { Task { await loadMore() } }
+                    if status.id == shownStatuses.last?.id { Task { await loadMore() } }
                 }
             }
 
@@ -97,6 +106,10 @@ public struct LinkTimelineView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
+        .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .navigationTitle(Text("Shared link", comment: "Screen title"))
         .overlay {
             if isLoading && statuses.isEmpty { SkeletonListRow(person: 4) }
@@ -113,6 +126,7 @@ public struct LinkTimelineView: View {
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: .socialExtras.linkTimeline(url), limit: 20)
+            await verdicts.prepare(page.value.elements, session: session)
             guard loadID == request else { return }
             statuses = page.value.elements
             mayHaveMore = page.mayHaveMore
@@ -134,6 +148,7 @@ public struct LinkTimelineView: View {
             let page = try await session.client.page(
                 LossyArray<Status>.self,
                 from: .socialExtras.linkTimeline(url, anchor: .olderThan(last.id)), limit: 20)
+            await verdicts.warm(page.value.elements)
             guard loadID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }

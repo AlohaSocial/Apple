@@ -4,11 +4,13 @@ import AlohaDesign
 import AlohaHTML
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct ThreadView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dismiss) private var dismiss
     @State private var isShowingSummary = false
 
     private let statusID: String
@@ -22,6 +24,11 @@ public struct ThreadView: View {
     @State private var errorMessage: String?
     /// Hidden replies the reader chose to look at anyway, this visit.
     @State private var revealedHidden: Set<String> = []
+    /// The reader's filters, in the thread context. What a hide filter
+    /// matched is left out of the conversation around the post; the post
+    /// itself was asked for by name and stays, behind its warning if it has
+    /// one.
+    @State private var verdicts = FilterVerdicts(context: .thread)
 
     public init(
         statusID: String, session: AccountSession,
@@ -72,6 +79,7 @@ public struct ThreadView: View {
             }
             .listStyle(.plain)
             .alohaGround(palette)
+            .environment(\.filterVerdicts, verdicts)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
             .task {
                 let filling = await load()
@@ -107,6 +115,19 @@ public struct ThreadView: View {
                 else { return }
                 descendants[index] = reply
                 if reply.isHiddenByAuthor { revealedHidden.remove(reply.id) }
+            }
+            .onStatusesRemoved(for: session) { removal in
+                // The post being read, deleted or its author blocked, takes
+                // the screen with it; anything else in the conversation
+                // just leaves it.
+                if let focused, removal.removes(focused) {
+                    dismiss()
+                    return
+                }
+                withAnimation {
+                    ancestors.removeAll { removal.removes($0) }
+                    descendants.removeAll { removal.removes($0) }
+                }
             }
         }
     }
@@ -167,6 +188,7 @@ public struct ThreadView: View {
             status: status,
             policy: session.settings.sensitiveMediaPolicy,
             localHost: session.snapshot.instanceHost,
+            filterWarning: verdicts.warning(for: status),
             // The thread's own shape says "this is a reply"; repeating it on
             // every row was noise.
             showsContextLine: isFocused,
@@ -273,9 +295,10 @@ public struct ThreadView: View {
                 let (context, response) = try await session.client.decodeWithResponse(
                     StatusContext.self,
                     from: Endpoint.statuses.context(statusID, includingHidden: true))
+                await verdicts.warm(context.ancestors + context.descendants)
                 withAnimation(.easeOut(duration: 0.2)) {
-                    ancestors = context.ancestors
-                    descendants = context.descendants
+                    ancestors = verdicts.kept(context.ancestors)
+                    descendants = verdicts.kept(context.descendants)
                 }
                 filling = SocialFilling(response)
                 attempt += 1
@@ -314,12 +337,16 @@ public struct ThreadView: View {
 
             let status = Self.withCard(try await statusTask, await cardTask)
             let (context, response) = try await contextTask
+            // Decided before anything is committed, so the thread arrives
+            // filtered in one update rather than in two.
+            await verdicts.prepare(
+                [status] + context.ancestors + context.descendants, session: session)
             if focused?.id != status.id {
                 ReadingSignals.forSession(session)?.opened(status)
             }
             focused = status
-            ancestors = context.ancestors
-            descendants = context.descendants
+            ancestors = verdicts.kept(context.ancestors)
+            descendants = verdicts.kept(context.descendants)
             errorMessage = nil
 
             try? await session.timelineStore.updateStatus(
