@@ -34,6 +34,9 @@ public final class AudioPlayerCoordinator {
     /// on.
     private var wantsPlayback = false
     private var resumesAfterInterruption = false
+    /// The hold on the speaker, from the first track until playback stops
+    /// or a video with its sound on takes over.
+    private var sessionClaim: AudibleClaim?
     private let remoteCommands = RemoteCommandRegistration(
         centre: SystemRemoteCommandCentre(),
         handlers: AudioPlayerCoordinator.remoteCommandHandlers())
@@ -84,7 +87,7 @@ public final class AudioPlayerCoordinator {
             let url = attachment.url
         else { return }
 
-        configureSession()
+        claimSession()
         teardownPlayer()
 
         let item = AVPlayerItem(url: url)
@@ -119,6 +122,7 @@ public final class AudioPlayerCoordinator {
 
     public func resume() {
         guard let player else { return }
+        claimSession()
         wantsPlayback = true
         player.play()
         isPlaying = true
@@ -139,6 +143,10 @@ public final class AudioPlayerCoordinator {
         duration = 0
         remoteCommands.unregister()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        // Last, once nothing is playing: the session is handed back and the
+        // music this interrupted carries on.
+        if let sessionClaim { AudioSessionCoordinator.shared.release(sessionClaim) }
+        sessionClaim = nil
     }
 
     public func seek(to seconds: Double) {
@@ -169,12 +177,27 @@ public final class AudioPlayerCoordinator {
         }
     }
 
-    private func configureSession() {
-        #if os(iOS) || os(tvOS) || os(visionOS)
-            // `.playback` is what keeps audio going when the screen locks.
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try? AVAudioSession.sharedInstance().setActive(true)
-        #endif
+    /// `.playback`, exclusive and active, is what keeps audio going when the
+    /// screen locks; the coordinator sets it and pauses any video playing
+    /// with its sound on. Held across pauses, so the lock screen keeps its
+    /// controls, and taken again after a video took the speaker away.
+    private func claimSession() {
+        let sessions = AudioSessionCoordinator.shared
+        if let sessionClaim, sessions.holds(sessionClaim) { return }
+        sessionClaim = sessions.claim(owner: ObjectIdentifier(self), kind: .audio) {
+            AudioPlayerCoordinator.shared.preempted()
+        }
+    }
+
+    /// A video's sound was turned on: the track pauses where it is, and the
+    /// mini-player stays so it can be picked up again.
+    private func preempted() {
+        sessionClaim = nil
+        guard let player else { return }
+        wantsPlayback = false
+        player.pause()
+        isPlaying = false
+        updateNowPlaying()
     }
 
     /// Follows the player rather than the buttons: its time for the progress

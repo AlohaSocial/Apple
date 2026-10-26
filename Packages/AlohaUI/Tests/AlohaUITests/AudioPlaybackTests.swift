@@ -117,3 +117,121 @@ struct AudioQueueTests {
         #expect(AudioPlayerCoordinator.track(after: queue[0], in: queue)?.id == "3")
     }
 }
+
+@Suite("Audio session coordination")
+struct AudioSessionCoordinatorTests {
+
+    /// Stands in for `AVAudioSession`, recording what it was told.
+    private final class RecordingBackend: AudioSessionBackend {
+        enum Event: Equatable {
+            case apply(AudioSessionConfiguration)
+            case deactivate
+        }
+        var events: [Event] = []
+
+        func apply(_ configuration: AudioSessionConfiguration) {
+            events.append(.apply(configuration))
+        }
+
+        func deactivate() { events.append(.deactivate) }
+    }
+
+    /// Owners are object identities; any two distinct objects will do.
+    private final class Owner {}
+
+    @Test("A muted video makes the session mixable and never activates it")
+    func silentPlaybackMixes() {
+        let backend = RecordingBackend()
+        let sessions = AudioSessionCoordinator(backend: backend)
+
+        sessions.prepareForSilentPlayback()
+        sessions.prepareForSilentPlayback()
+
+        #expect(backend.events == [.apply(.silent)])
+        #expect(sessions.audibleCount == 0)
+    }
+
+    @Test("Sound takes the session, and the last one out hands it back")
+    func lastReleaseDeactivates() {
+        let backend = RecordingBackend()
+        let sessions = AudioSessionCoordinator(backend: backend)
+        let owner = Owner()
+
+        sessions.prepareForSilentPlayback()
+        let claim = sessions.claim(owner: ObjectIdentifier(owner), kind: .video) {}
+        #expect(backend.events.last == .apply(.audible(.video)))
+
+        sessions.release(claim)
+        #expect(backend.events.last == .deactivate)
+        #expect(sessions.configuration == .silent)
+
+        // Already mixable after the hand-back: nothing more to set.
+        sessions.prepareForSilentPlayback()
+        #expect(backend.events.count == 3)
+    }
+
+    @Test("The session stays active until every claim on it is given back")
+    func countsClaims() {
+        let backend = RecordingBackend()
+        let sessions = AudioSessionCoordinator(backend: backend)
+        let player = Owner()
+
+        // The same player on two surfaces at once.
+        let first = sessions.claim(owner: ObjectIdentifier(player), kind: .video) {}
+        let second = sessions.claim(owner: ObjectIdentifier(player), kind: .video) {}
+        #expect(sessions.audibleCount == 2)
+
+        sessions.release(first)
+        #expect(backend.events.contains(.deactivate) == false)
+        sessions.release(first)
+        #expect(backend.events.contains(.deactivate) == false)
+
+        sessions.release(second)
+        #expect(backend.events.filter { $0 == .deactivate }.count == 1)
+    }
+
+    @Test("Starting a track pauses a video playing with sound, and the other way round")
+    func newClaimPreemptsOthers() {
+        let backend = RecordingBackend()
+        let sessions = AudioSessionCoordinator(backend: backend)
+        let video = Owner()
+        let audio = Owner()
+        var videoPaused = false
+        var audioPaused = false
+
+        let videoClaim = sessions.claim(owner: ObjectIdentifier(video), kind: .video) {
+            videoPaused = true
+        }
+        let audioClaim = sessions.claim(owner: ObjectIdentifier(audio), kind: .audio) {
+            audioPaused = true
+        }
+        #expect(videoPaused)
+        #expect(sessions.holds(videoClaim) == false)
+        #expect(sessions.holds(audioClaim))
+        #expect(sessions.configuration == .audible(.audio))
+        // Switching owners is not a hand-back: other apps stay paused.
+        #expect(backend.events.contains(.deactivate) == false)
+
+        let again = sessions.claim(owner: ObjectIdentifier(video), kind: .video) {}
+        #expect(audioPaused)
+        #expect(sessions.configuration == .audible(.video))
+
+        // The preempted claim is already gone; giving it back changes nothing.
+        sessions.release(videoClaim)
+        #expect(backend.events.contains(.deactivate) == false)
+        sessions.release(again)
+        #expect(backend.events.last == .deactivate)
+    }
+
+    @Test("A muted video starting while sound plays leaves the session alone")
+    func silentPlaybackDoesNotDowngrade() {
+        let backend = RecordingBackend()
+        let sessions = AudioSessionCoordinator(backend: backend)
+        let audio = Owner()
+
+        _ = sessions.claim(owner: ObjectIdentifier(audio), kind: .audio) {}
+        sessions.prepareForSilentPlayback()
+
+        #expect(backend.events == [.apply(.audible(.audio))])
+    }
+}
