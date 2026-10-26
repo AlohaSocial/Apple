@@ -526,6 +526,9 @@ public struct VideoAttachmentPlayer: View {
                 PlaybackLog.logger.notice(
                     "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .public)"
                 )
+                // The first rung that opens is the one: carrying on would open
+                // every rung after it and end on the failure card below.
+                return
             case .rejected(let reason):
                 PlaybackLog.logger.error("video rung rejected: \(reason, privacy: .public)")
             }
