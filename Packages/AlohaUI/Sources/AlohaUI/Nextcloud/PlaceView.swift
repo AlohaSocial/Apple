@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// Public posts from one place: a header with the name and country, then a
@@ -116,6 +117,9 @@ public struct PlaceView: View {
         }
         .background(palette.background)
         .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .overlay {
             if isLoading && statuses.isEmpty { ProgressView() }
         }

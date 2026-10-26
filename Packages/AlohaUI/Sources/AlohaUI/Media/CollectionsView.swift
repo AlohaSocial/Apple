@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// Pixelfed albums, where the server has them. A real reason Photos mode
@@ -315,6 +316,9 @@ public struct CollectionDetailView: View {
         }
         .background(palette.background)
         .navigationTitle(collection.title)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .task {
             statuses =
                 (try? await session.client.decode(

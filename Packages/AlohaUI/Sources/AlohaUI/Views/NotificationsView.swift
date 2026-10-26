@@ -4,6 +4,7 @@ import AlohaDesign
 import AlohaHTML
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct NotificationsView: View {
@@ -119,6 +120,38 @@ public struct NotificationsView: View {
         .navigationTitle(Text("Activities", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
+        .onStatusesRemoved(for: session) { removal in
+            withAnimation {
+                flat.removeAll { Self.isRemoved($0, by: removal) }
+                groups.removeAll { Self.isRemoved($0, statuses: statuses, by: removal) }
+            }
+        }
+    }
+
+    /// An activity goes with its post, and with the person a block or mute
+    /// was for: "Bob mentioned you" from somebody just blocked is them still
+    /// reaching the reader.
+    nonisolated static func isRemoved(
+        _ notification: MastodonNotification, by removal: TimelineStatusRemoval
+    ) -> Bool {
+        if let status = notification.status, removal.removes(status) { return true }
+        return removal.authorID == notification.account.id
+    }
+
+    /// A group goes with its post, or when everybody it names is the person
+    /// blocked; a group with others in it stays, since they still did it.
+    nonisolated static func isRemoved(
+        _ group: NotificationGroup, statuses: [String: Status],
+        by removal: TimelineStatusRemoval
+    ) -> Bool {
+        if let id = group.statusID {
+            if removal.statusIDs.contains(id) { return true }
+            if let status = statuses[id], removal.removes(status) { return true }
+        }
+        guard let authorID = removal.authorID, !group.sampleAccountIDs.isEmpty else {
+            return false
+        }
+        return group.sampleAccountIDs.allSatisfy { $0 == authorID }
     }
 
     private var visibleGroups: [NotificationGroup] {

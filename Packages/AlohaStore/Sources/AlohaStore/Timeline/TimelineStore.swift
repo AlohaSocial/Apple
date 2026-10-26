@@ -150,8 +150,10 @@ public actor TimelineStore {
     }
 
     /// A delete over streaming, or a 404 on refetch: the status goes, and so
-    /// does every timeline entry pointing at it.
+    /// does every timeline entry pointing at it. Lists on screen are told
+    /// even when the cache could not be written: the post is gone either way.
     public func deleteStatus(accountID: UUID, serverID: String) throws {
+        defer { TimelineStatusRemoval(accountID: accountID, statusIDs: [serverID]).post() }
         try modelContext.delete(
             model: StatusRecord.self,
             where: #Predicate { $0.accountID == accountID && $0.serverID == serverID })
@@ -231,10 +233,17 @@ public actor TimelineStore {
     /// Everything by one author, gone from every timeline at once. Blocking
     /// somebody and still seeing them until the next refresh is not blocking.
     public func removeEverything(fromAccount authorID: String, accountID: UUID) throws {
+        var removed: [String] = []
+        // By author as well as by id: lists that do not read the cache hold
+        // posts of theirs it never had.
+        defer {
+            TimelineStatusRemoval(
+                accountID: accountID, statusIDs: Set(removed), authorID: authorID
+            ).post()
+        }
         let records = try modelContext.fetch(
             FetchDescriptor<StatusRecord>(predicate: #Predicate { $0.accountID == accountID }))
 
-        var removed: [String] = []
         for record in records {
             guard let status = record.status else { continue }
             if status.account.id == authorID || status.displayed.account.id == authorID {

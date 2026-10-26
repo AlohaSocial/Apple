@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// For you: the feed Nextcloud Social builds from the hashtags it has learned
@@ -145,6 +146,9 @@ public struct InterestsView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .refreshable { await refresh() }
         .safeAreaInset(edge: .bottom) {
             if undoable != nil { undoBar }

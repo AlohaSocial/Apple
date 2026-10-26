@@ -4,11 +4,13 @@ import AlohaDesign
 import AlohaHTML
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct ThreadView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dismiss) private var dismiss
     @State private var isShowingSummary = false
 
     private let statusID: String
@@ -113,6 +115,19 @@ public struct ThreadView: View {
                 else { return }
                 descendants[index] = reply
                 if reply.isHiddenByAuthor { revealedHidden.remove(reply.id) }
+            }
+            .onStatusesRemoved(for: session) { removal in
+                // The post being read, deleted or its author blocked, takes
+                // the screen with it; anything else in the conversation
+                // just leaves it.
+                if let focused, removal.removes(focused) {
+                    dismiss()
+                    return
+                }
+                withAnimation {
+                    ancestors.removeAll { removal.removes($0) }
+                    descendants.removeAll { removal.removes($0) }
+                }
             }
         }
     }

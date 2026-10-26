@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// The posts quoting a status, newest first (`GET /api/v1/statuses/{id}/quotes`).
@@ -82,6 +83,9 @@ public struct QuotesView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            quotes.removeAll { removal.removes($0) }
+        }
         .overlay {
             if isLoading && quotes.isEmpty {
                 // A first page arriving is a list in progress, not a blank

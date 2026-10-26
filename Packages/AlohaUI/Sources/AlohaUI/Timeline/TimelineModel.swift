@@ -36,6 +36,7 @@ public final class TimelineModel {
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
     @ObservationIgnored private var statusUpdates: NotificationSubscription?
+    @ObservationIgnored private var statusRemovals: NotificationSubscription?
     /// When the server last confirmed an interaction with a status, per id.
     /// A page fetched *before* that moment carries the older copy and must
     /// not overwrite the confirmation again (see `performRefresh`).
@@ -77,6 +78,19 @@ public final class TimelineModel {
             self.confirmations[update.status.id] = now
             self.rows = Self.replacing(update.status, in: self.rows)
             self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
+        }
+        // A post deleted, or its author blocked or muted, leaves the rows
+        // now rather than at the next refresh — and leaves the rows held
+        // behind the new-posts pill, which would otherwise bring it back.
+        statusRemovals = StatusRemovals.observe { [weak self] removal in
+            guard let self, removal.accountID == self.session.id else { return }
+            let kept = Self.removing(removal, from: self.rows)
+            if kept.count != self.rows.count { self.rows = kept }
+            guard !self.pendingRows.isEmpty else { return }
+            self.pendingRows = Self.removing(removal, from: self.pendingRows)
+            let known = Set(self.rows.map(\.id))
+            self.pendingNewCount =
+                self.pendingRows.compactMap(\.status).filter { !known.contains($0.id) }.count
         }
 
         // Load the "caught up" marker for the home timeline.
@@ -199,6 +213,19 @@ public final class TimelineModel {
                 return .status(status)
             }
             return row
+        }
+    }
+
+    /// The rows less every post the removal names: by id, a boost of one of
+    /// them, and for a block or mute everything the person wrote or boosted.
+    /// Gaps and the caught-up divider stay where they are — they mark places
+    /// in the list, not posts.
+    nonisolated static func removing(
+        _ removal: TimelineStatusRemoval, from rows: [TimelineRow]
+    ) -> [TimelineRow] {
+        rows.filter { row in
+            guard let status = row.status else { return true }
+            return !removal.removes(status)
         }
     }
 

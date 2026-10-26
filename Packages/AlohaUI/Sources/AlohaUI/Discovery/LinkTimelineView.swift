@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// The posts sharing one link (`GET /api/v1/timelines/link`): what a trending
@@ -106,6 +107,9 @@ public struct LinkTimelineView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .navigationTitle(Text("Shared link", comment: "Screen title"))
         .overlay {
             if isLoading && statuses.isEmpty { SkeletonListRow(person: 4) }

@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct SearchView: View {
@@ -132,6 +133,9 @@ public struct SearchView: View {
         .listStyle(.plain)
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            results.statuses.removeAll { removal.removes($0) }
+        }
         #if os(iOS)
             .searchable(
                 text: $query, isPresented: $isFieldPresented,
