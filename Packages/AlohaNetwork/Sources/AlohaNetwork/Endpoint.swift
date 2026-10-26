@@ -31,7 +31,10 @@ public struct Endpoint: Sendable, Hashable {
     }
 
     public var method: HTTPMethod
-    /// Relative to the resolved API base, with no leading slash.
+    /// Relative to the resolved API base, with no leading slash. Written as
+    /// it reads, not percent-encoded: `url(base:)` encodes it exactly once,
+    /// so a tag, an emoji or a user name goes in as it is. One encoded here
+    /// first would arrive as `%25…`.
     public var path: String
     public var query: [URLQueryItem]
     public var body: Body?

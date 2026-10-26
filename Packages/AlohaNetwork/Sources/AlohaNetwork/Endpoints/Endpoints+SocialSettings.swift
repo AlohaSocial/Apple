@@ -159,10 +159,7 @@ extension Endpoint {
         /// not attach (`LocalController::attachBluesky`). A public page, so
         /// the bearer token is enough.
         public static func accountInfo(username: String) -> Endpoint {
-            let name =
-                username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? username
-            return Endpoint(
-                path: "api/v1/account/\(name)/info", requiresAuthentication: false)
+            Endpoint(path: "api/v1/account/\(username)/info", requiresAuthentication: false)
         }
     }
 

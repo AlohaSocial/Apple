@@ -468,3 +468,50 @@ struct LocalNetworkTests {
         #expect(attachment.previewURL?.scheme == "http")
     }
 }
+
+// MARK: - Path segments are encoded once
+
+@Suite("Path encoding")
+struct PathEncodingTests {
+
+    private func path(_ endpoint: Endpoint) -> String? {
+        endpoint.url(base: base)?.path()
+    }
+
+    @Test("An announcement reaction names a Unicode emoji, encoded once")
+    func announcementReactionEmoji() throws {
+        #expect(
+            path(Endpoint.announcementsExtra.react("3", emoji: "🌺"))
+                == "/api/v1/announcements/3/reactions/%F0%9F%8C%BA")
+        #expect(
+            path(Endpoint.announcementsExtra.unreact("3", emoji: "👍🏽"))
+                == "/api/v1/announcements/3/reactions/%F0%9F%91%8D%F0%9F%8F%BD")
+        // A custom emoji is its shortcode, underscore and all.
+        #expect(
+            path(Endpoint.announcementsExtra.react("3", emoji: "blob_cat"))
+                == "/api/v1/announcements/3/reactions/blob_cat")
+        // What the server reads back is the emoji itself.
+        let url = try #require(Endpoint.announcementsExtra.react("3", emoji: "🌺").url(base: base))
+        #expect(url.path(percentEncoded: false).hasSuffix("/reactions/🌺"))
+    }
+
+    @Test("An interest's tag is encoded once, whatever its letters")
+    func interestTags() {
+        #expect(path(Endpoint.interests.remove("café")) == "/api/v1/interests/caf%C3%A9")
+        #expect(
+            path(Endpoint.interests.pin("über_alles")) == "/api/v1/interests/%C3%BCber_alles/pin")
+        #expect(
+            path(Endpoint.interests.unpin("two words")) == "/api/v1/interests/two%20words/unpin")
+        #expect(path(Endpoint.interests.move("🌺", to: 2)) == "/api/v1/interests/%F0%9F%8C%BA/move")
+    }
+
+    @Test("A user name in a path is encoded once")
+    func accountInfoUsername() {
+        #expect(
+            path(Endpoint.socialExtras.accountInfo(username: "jörg m_1"))
+                == "/api/v1/account/j%C3%B6rg%20m_1/info")
+        #expect(
+            path(Endpoint.socialExtras.accountInfo(username: "alice"))
+                == "/api/v1/account/alice/info")
+    }
+}
