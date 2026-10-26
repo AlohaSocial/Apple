@@ -70,6 +70,25 @@ public actor TimelineStore {
         }
     }
 
+    /// The newest few posts of a cached timeline, for a surface that shows
+    /// only those — a widget, which has a tight memory budget and no use for
+    /// the other four hundred and ninety.
+    public func latestStatuses(
+        accountID: UUID, timelineKey: String, limit: Int
+    ) throws -> [Status] {
+        guard limit > 0 else { return [] }
+        var descriptor = FetchDescriptor<TimelineEntry>(
+            predicate: #Predicate {
+                $0.accountID == accountID && $0.timelineKey == timelineKey && !$0.isGapMarker
+            },
+            sortBy: [SortDescriptor(\.position, order: .reverse)]
+        )
+        descriptor.fetchLimit = limit
+        let ids = try modelContext.fetch(descriptor).map(\.statusServerID)
+        let resolved = try statuses(accountID: accountID, ids: ids)
+        return ids.compactMap { resolved[$0] }
+    }
+
     // MARK: - Writing
 
     /// Applies a fetched page. Returns the resulting rows so the caller can
@@ -200,21 +219,22 @@ public actor TimelineStore {
     // MARK: - Sweeping
 
     /// Budgeted so it cannot stall a launch (docs/04 §4).
-    public func sweep(now: Date = Date()) throws {
-        let orphanCutoff = now.addingTimeInterval(-CachePolicy.orphanStatusLifetime)
-        let referenced = Set(
-            try modelContext.fetch(FetchDescriptor<TimelineEntry>()).map(\.statusServerID))
-
-        var descriptor = FetchDescriptor<StatusRecord>(
-            predicate: #Predicate { $0.cachedAt < orphanCutoff })
-        descriptor.fetchLimit = CachePolicy.maximumDeletionsPerPass
-
-        var deletions = 0
-        for record in try modelContext.fetch(descriptor) where !referenced.contains(record.serverID)
-        {
-            modelContext.delete(record)
-            deletions += 1
-        }
+    ///
+    /// In order: timelines nobody has added to for a while go, notifications
+    /// past the limit go, and then the statuses nothing points at any more.
+    /// Each step only ever shrinks what the next one has to keep.
+    public func sweep(
+        now: Date = Date(), maximumDeletions: Int = CachePolicy.maximumDeletionsPerPass
+    ) throws {
+        var entries = FetchDescriptor<TimelineEntry>()
+        entries.propertiesToFetch = [
+            \.accountID, \.timelineKey, \.statusServerID, \.insertedAt, \.isGapMarker,
+        ]
+        let (droppedTimelines, keptEntries) = try sweepTimelines(
+            try modelContext.fetch(entries), now: now)
+        let droppedNotifications = try trimNotifications()
+        let droppedStatuses = try sweepStatuses(
+            keptEntries: keptEntries, now: now, budget: maximumDeletions)
 
         let relationshipCutoff = now.addingTimeInterval(-CachePolicy.relationshipLifetime)
         try modelContext.delete(
@@ -225,7 +245,132 @@ public actor TimelineStore {
             model: WatchPositionRecord.self, where: #Predicate { $0.updatedAt < watchCutoff })
 
         try modelContext.save()
-        Self.logger.debug("sweep removed \(deletions, privacy: .public) orphaned statuses")
+        Self.logger.debug(
+            """
+            sweep removed \(droppedTimelines, privacy: .public) timelines, \
+            \(droppedNotifications, privacy: .public) notifications, \
+            \(droppedStatuses, privacy: .public) orphaned statuses
+            """)
+    }
+
+    /// Drops the cached copy of every timeline that may age — a profile, a
+    /// tag, a list — once nothing has been added to it for
+    /// `otherTimelineLifetime`, and beyond the `otherTimelineCount` most
+    /// recently added to per account. Each holds up to two hundred rows, and
+    /// one is made for every profile and tag somebody ever opened; kept
+    /// forever, they were most of the store. Opening one again is a cold
+    /// load, which opening one does anyway.
+    ///
+    /// A timeline's newest `insertedAt` is when it last gained a post. A
+    /// refresh that found nothing new does not count, which is the right
+    /// answer for a profile that has gone quiet.
+    ///
+    /// Returns how many timelines went, and the entries that stay.
+    private func sweepTimelines(
+        _ entries: [TimelineEntry], now: Date
+    ) throws -> (dropped: Int, kept: [TimelineEntry]) {
+        struct Key: Hashable {
+            let accountID: UUID
+            let timelineKey: String
+        }
+        let byTimeline = Dictionary(grouping: entries) {
+            Key(accountID: $0.accountID, timelineKey: $0.timelineKey)
+        }
+        let ageing = byTimeline.compactMap { key, rows in
+            CachePolicy.ages(timelineKey: key.timelineKey)
+                ? (key: key, lastAdded: rows.map(\.insertedAt).max() ?? .distantPast) : nil
+        }
+
+        let cutoff = now.addingTimeInterval(-CachePolicy.otherTimelineLifetime)
+        var dropped = Set<Key>()
+        for (_, timelines) in Dictionary(grouping: ageing, by: \.key.accountID) {
+            let newestFirst = timelines.sorted { $0.lastAdded > $1.lastAdded }
+            for (index, timeline) in newestFirst.enumerated()
+            where index >= CachePolicy.otherTimelineCount || timeline.lastAdded < cutoff {
+                dropped.insert(timeline.key)
+            }
+        }
+
+        // One row at a time rather than a batch delete per timeline: a batch
+        // delete lands only at save, and the statuses these rows point at are
+        // to be freed in this same pass.
+        var kept: [TimelineEntry] = []
+        for (key, rows) in byTimeline {
+            if dropped.contains(key) {
+                for row in rows { modelContext.delete(row) }
+            } else {
+                kept.append(contentsOf: rows)
+            }
+        }
+        return (dropped.count, kept)
+    }
+
+    /// Keeps each account's newest `notificationLimit` notifications. What
+    /// is older has long been announced and scrolled past, and a poll only
+    /// ever asks for the newest forty, so nothing trimmed comes back as news.
+    private func trimNotifications() throws -> Int {
+        var trimmed = 0
+        for accountID in try modelContext.fetch(FetchDescriptor<AccountRecord>()).map(\.id) {
+            var descriptor = FetchDescriptor<NotificationRecord>(
+                predicate: #Predicate { $0.accountID == accountID },
+                sortBy: [
+                    SortDescriptor(\.createdAt, order: .reverse), SortDescriptor(\.serverID),
+                ])
+            descriptor.fetchOffset = CachePolicy.notificationLimit
+            descriptor.propertiesToFetch = [\.createdAt]
+            for record in try modelContext.fetch(descriptor) {
+                modelContext.delete(record)
+                trimmed += 1
+            }
+        }
+        return trimmed
+    }
+
+    /// Statuses cached long ago that no timeline or notification of their
+    /// account points at.
+    ///
+    /// Read oldest first, and as many as there are referenced statuses plus
+    /// the deletion budget: at most that many of them can be ones to keep,
+    /// so every pass deletes either its whole budget or every orphan there
+    /// is. An unsorted read capped at the budget alone could return the same
+    /// still-referenced rows on every pass and delete nothing, ever.
+    private func sweepStatuses(
+        keptEntries: [TimelineEntry], now: Date, budget: Int
+    ) throws -> Int {
+        struct Reference: Hashable {
+            let accountID: UUID
+            let serverID: String
+        }
+        // Per account: two accounts on one server share ids, and each keeps
+        // its own copy of a post.
+        var referenced = Set<Reference>()
+        for entry in keptEntries where !entry.isGapMarker {
+            referenced.insert(Reference(accountID: entry.accountID, serverID: entry.statusServerID))
+        }
+        var notifications = FetchDescriptor<NotificationRecord>(
+            predicate: #Predicate { $0.statusServerID != nil })
+        notifications.propertiesToFetch = [\.accountID, \.statusServerID]
+        for record in try modelContext.fetch(notifications) {
+            guard let serverID = record.statusServerID else { continue }
+            referenced.insert(Reference(accountID: record.accountID, serverID: serverID))
+        }
+
+        let orphanCutoff = now.addingTimeInterval(-CachePolicy.orphanStatusLifetime)
+        var descriptor = FetchDescriptor<StatusRecord>(
+            predicate: #Predicate { $0.cachedAt < orphanCutoff },
+            sortBy: [SortDescriptor(\.cachedAt), SortDescriptor(\.serverID)])
+        descriptor.fetchLimit = referenced.count + budget
+        descriptor.propertiesToFetch = [\.accountID, \.serverID]
+
+        var deletions = 0
+        for record in try modelContext.fetch(descriptor) {
+            guard deletions < budget else { break }
+            let reference = Reference(accountID: record.accountID, serverID: record.serverID)
+            guard !referenced.contains(reference) else { continue }
+            modelContext.delete(record)
+            deletions += 1
+        }
+        return deletions
     }
 
     /// Everything by one author, gone from every timeline at once. Blocking

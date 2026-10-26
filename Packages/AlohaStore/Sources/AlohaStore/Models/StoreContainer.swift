@@ -266,6 +266,10 @@ public enum CachePolicy {
     public static let homeTimelineLimit = 500
     public static let otherTimelineLimit = 200
     public static let notificationLimit = 500
+    /// How long a timeline that ages keeps its rows after its last new post.
+    public static let otherTimelineLifetime: TimeInterval = 7 * 86_400
+    /// How many timelines that age each account keeps, newest first.
+    public static let otherTimelineCount = 30
     public static let orphanStatusLifetime: TimeInterval = 7 * 86_400
     public static let relationshipLifetime: TimeInterval = 86_400
     public static let watchPositionLifetime: TimeInterval = 30 * 86_400
@@ -273,5 +277,17 @@ public enum CachePolicy {
 
     public static func limit(forTimelineKey key: String) -> Int {
         key == "home:home" ? homeTimelineLimit : otherTimelineLimit
+    }
+
+    /// Whether a timeline's cache is dropped once it goes unused.
+    ///
+    /// Each mode's view of the home timeline is kept: there are six of them,
+    /// they are what the app opens on, and the widgets read `home:home`.
+    /// Everything else — a profile, a tag, a list, local and federated —
+    /// ages, because the ones keyed by an id are made for every profile and
+    /// tag somebody opens and would otherwise only ever grow. A key is the
+    /// mode, a colon and the source; a source may contain colons of its own.
+    public static func ages(timelineKey key: String) -> Bool {
+        key.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).last != "home"
     }
 }
