@@ -61,6 +61,10 @@ public final class ComposerModel {
     public var videoLicence = ""
     /// Set after posting when a moderator must look at the post first.
     public private(set) var wasHeldForReview = false
+    /// Set after posting when the server took the post for later rather than
+    /// making it now: the time it says the post will go out, which the
+    /// composer confirms instead of closing as though it had posted.
+    public private(set) var scheduledFor: Date?
     /// The last attempt failed in a way that says nothing about whether the
     /// server made the post — a timeout, a dropped connection, a 5xx. The
     /// server only stores the `Idempotency-Key` once the post exists
@@ -653,6 +657,11 @@ public final class ComposerModel {
             return false
         }
 
+        if scheduledAt != nil, editingStatus == nil, hasThreadSegments {
+            errorMessage = Self.threadCannotBeScheduled
+            return false
+        }
+
         isPosting = true
         defer { isPosting = false }
 
@@ -748,7 +757,20 @@ public final class ComposerModel {
                         // must look first.
                         let response = try await session.client.send(
                             Endpoint.composing.post(draft))
-                        posted = try AlohaJSON.decoder.decode(Status.self, from: response.data)
+                        switch try PostResponse(
+                            decoding: response.data, scheduledAt: draft.scheduledAt)
+                        {
+                        case .scheduled(let scheduled):
+                            // Nothing exists yet to show in a timeline or to
+                            // hand to "posted": the server has the post and
+                            // its time, and that is the whole of the success.
+                            previousAttemptMayHaveLanded = false
+                            scheduledFor = scheduled.scheduledAt
+                            await finishPosting()
+                            return true
+                        case .posted(let status):
+                            posted = status
+                        }
                         let flags = try? AlohaJSON.decoder.decode(
                             ReviewFlags.self, from: response.data)
                         wasHeldForReview = flags?.heldForReview ?? false
@@ -786,15 +808,7 @@ public final class ComposerModel {
                     threadProgress = (position + 1, reply.id)
                 }
             }
-            threadProgress = nil
-
-            try? await session.supportStore.deleteDraft(id: draftID)
-            // Only now: the original goes once its replacement exists.
-            if let redrafting {
-                await StatusActions.delete(redrafting, session: session)
-                self.redrafting = nil
-            }
-            UploadActivityController.shared.posted()
+            await finishPosting()
             return true
         } catch {
             UploadActivityController.shared.postFailed()
@@ -808,6 +822,34 @@ public final class ComposerModel {
             await saveDraftIfNeeded(queued: isTransient)
             return false
         }
+    }
+
+    /// What every success ends with, a post made or a post scheduled: the
+    /// draft goes, and so does the post a redraft started from.
+    private func finishPosting() async {
+        threadProgress = nil
+        try? await session.supportStore.deleteDraft(id: draftID)
+        // Only now: the original goes once its replacement exists — on the
+        // server's schedule, for a scheduled one.
+        if let redrafting {
+            await StatusActions.delete(redrafting, session: session)
+            self.redrafting = nil
+        }
+        UploadActivityController.shared.posted()
+    }
+
+    /// A scheduled post does not exist until its time, so the rest of a
+    /// thread has nothing to reply to yet, and no server schedules a chain.
+    /// Shared with the send queue, which refuses the same draft the same way.
+    nonisolated static var threadCannotBeScheduled: String {
+        String(
+            localized: "A thread can't be scheduled. Post it now, or schedule its first post on its own.",
+            comment: "Composer refusal: scheduled post with thread segments")
+    }
+
+    /// Whether any thread segment has words in it; empty ones are dropped.
+    private var hasThreadSegments: Bool {
+        threadSegments.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     /// The post an attempt that timed out made after all, if it did: the same

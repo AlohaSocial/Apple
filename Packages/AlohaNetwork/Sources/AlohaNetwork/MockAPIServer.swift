@@ -211,6 +211,56 @@
         }
 
         private var nextStatusID = 2000
+        /// Posts sent with a time, which `GET api/v1/scheduled_statuses` lists.
+        private var scheduledFixtures: [[String: Any]] = []
+
+        /// A post sent with a `scheduled_at`, answered as Mastodon answers it:
+        /// a time still to come is not a post yet but a scheduled one — an id,
+        /// the time and the parameters, with no account and no content
+        /// (`REST::ScheduledStatusSerializer`) — and one less than five
+        /// minutes out is refused (`ScheduledStatusValidator`). A time already
+        /// past is posted at once, so that answer is the caller's: nil.
+        ///
+        /// Answering with a status here let the composer read a scheduled post
+        /// as a status, which no real server ever sends.
+        private func scheduledPost(
+            _ fields: [String: String], url: URL
+        ) -> (Data, HTTPURLResponse)? {
+            guard let raw = fields["scheduled_at"], !raw.isEmpty,
+                let date = DateParsing.parse(raw), date > Date()
+            else { return nil }
+            guard date >= Date().addingTimeInterval(5 * 60) else {
+                return respond(
+                    url: url, status: 422,
+                    body:
+                        #"{"error":"Validation failed: Scheduled at The scheduled date must be in the future"}"#
+                )
+            }
+            nextStatusID += 1
+            let reply = fields["in_reply_to_id"].flatMap { $0.isEmpty ? nil : $0 }
+            let params: [String: Any] = [
+                "text": fields["status"] ?? "",
+                "visibility": fields["visibility"] ?? "public",
+                "spoiler_text": fields["spoiler_text"].map { $0 as Any } ?? NSNull(),
+                "sensitive": fields["sensitive"] == "true",
+                "language": fields["language"].map { $0 as Any } ?? NSNull(),
+                "in_reply_to_id": reply.map { $0 as Any } ?? NSNull(),
+                "media_ids": NSNull(),
+                "poll": NSNull(),
+                "scheduled_at": NSNull(),
+                "application_id": 1,
+                "idempotency": NSNull(),
+                "with_rate_limit": false,
+            ]
+            let scheduled: [String: Any] = [
+                "id": String(nextStatusID),
+                "scheduled_at": DateParsing.format(date),
+                "params": params,
+                "media_attachments": [] as [Any],
+            ]
+            scheduledFixtures.append(scheduled)
+            return respond(url: url, status: 200, json: scheduled)
+        }
 
         /// Strips the prefix this configuration serves under. A request to the root
         /// on a no-rewrite server finds nothing, which is the whole point.
@@ -241,6 +291,7 @@
 
             case "api/v1/statuses" where method == "POST":
                 let fields = formFields(body)
+                if let scheduled = scheduledPost(fields, url: url) { return scheduled }
                 var status = Fixtures.status(index: 0, host: host)
                 nextStatusID += 1
                 status["id"] = String(nextStatusID)
@@ -364,7 +415,10 @@
             case "api/v1/bookmarks", "api/v1/favourites", "api/v1/favourites/":
                 return respond(url: url, status: 200, json: Array(statusFixtures.prefix(4)))
 
-            case "api/v1/custom_emojis", "api/v1/announcements", "api/v1/scheduled_statuses",
+            case "api/v1/scheduled_statuses":
+                return respond(url: url, status: 200, json: scheduledFixtures)
+
+            case "api/v1/custom_emojis", "api/v1/announcements",
                 "api/v1/blocks", "api/v1/mutes", "api/v1/domain_blocks",
                 "api/v1/notifications/requests":
                 return respond(url: url, status: 200, body: "[]")

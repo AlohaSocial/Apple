@@ -30,6 +30,7 @@ public struct ComposerView: View {
     @State private var isShowingGIFPicker = false
     @State private var isShowingEmojiPicker = false
     @State private var isShowingHeldNotice = false
+    @State private var isShowingScheduledNotice = false
     @State private var focusingAttachment: MediaAttachment?
     @State private var filteringAttachment: MediaAttachment?
     @State private var trimmingVideoAt: URL?
@@ -259,6 +260,25 @@ public struct ComposerView: View {
                     "Your post is with a moderator and will appear once it has been looked at. You can find it under Settings until then.",
                     comment: "Held for review detail")
             }
+            // A scheduled post is a success with nothing to show for it yet,
+            // so the composer says when it will go out and where to find it
+            // rather than vanishing as if the post were already up.
+            .alert(
+                Text("Scheduled", comment: "Scheduled post confirmation title"),
+                isPresented: $isShowingScheduledNotice
+            ) {
+                Button {
+                    finish(.posted)
+                } label: {
+                    Text("OK", comment: "Scheduled post confirmation action")
+                }
+            } message: {
+                if let date = model.scheduledFor {
+                    Text(
+                        "Your post will go out on \(date.formatted(.dateTime.weekday().day().month().hour().minute())). You can change or cancel it under Scheduled posts in Settings.",
+                        comment: "Scheduled post confirmation detail. The argument is a date and time.")
+                }
+            }
             .sheet(isPresented: $isShowingNextcloudFiles) {
                 if let credentials = nextcloudCredentials {
                     NextcloudFileBrowser(
@@ -372,6 +392,9 @@ public struct ComposerView: View {
         guard await model.post(skippingAltTextCheck: skippingAltTextCheck) else { return }
         if model.wasHeldForReview {
             isShowingHeldNotice = true
+        } else if model.scheduledFor != nil {
+            didSend.toggle()
+            isShowingScheduledNotice = true
         } else {
             didSend.toggle()
             finish(.posted)
@@ -1139,6 +1162,9 @@ public struct ComposerView: View {
                     Image(systemName: "text.append")
                 }
             }
+            // A thread and a time do not go together: a scheduled post has
+            // nothing for the next one to reply to until it is out.
+            .disabled(model.scheduledAt != nil)
             .accessibilityLabel(Text("Add to thread", comment: "Composer action"))
 
             Button {
@@ -1150,6 +1176,7 @@ public struct ComposerView: View {
                     Image(systemName: model.scheduledAt == nil ? "clock" : "clock.fill")
                 }
             }
+            .disabled(model.isThread && model.scheduledAt == nil)
             .accessibilityLabel(Text("Schedule this post", comment: "Composer action"))
 
             if model.capabilities.mediaFromNextcloudFiles {

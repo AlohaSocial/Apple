@@ -282,6 +282,104 @@ struct ComposerRestoreTests {
     }
 }
 
+@Suite("Scheduling a post")
+@MainActor
+struct SchedulingTests {
+    @Test("Mastodon's answer to a scheduled post reads as scheduled, not as a failure")
+    func decodesScheduledAnswer() throws {
+        // Verbatim the shape `REST::ScheduledStatusSerializer` writes: no
+        // account, no content, which no `Status` can be read from.
+        let json = #"""
+            {"id":"3221","scheduled_at":"2026-11-02T09:00:00.000Z","params":{"poll":null,
+            "text":"Later","language":"en","media_ids":null,"sensitive":null,
+            "visibility":"public","idempotency":null,"scheduled_at":null,
+            "spoiler_text":null,"application_id":3,"in_reply_to_id":null,
+            "with_rate_limit":false},"media_attachments":[]}
+            """#
+        let response = try PostResponse(
+            decoding: Data(json.utf8), scheduledAt: Date(timeIntervalSince1970: 1_793_610_000))
+
+        guard case .scheduled(let scheduled) = response else {
+            Issue.record("expected a scheduled post, got \(response)")
+            return
+        }
+        #expect(scheduled.id == "3221")
+        #expect(scheduled.params.text == "Later")
+    }
+
+    @Test("A scheduled post is a success, and leaves no draft behind")
+    func composerSchedules() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "See you tomorrow"
+        let when = Date().addingTimeInterval(24 * 3600)
+        model.scheduledAt = when
+
+        #expect(await model.post(skippingAltTextCheck: true))
+
+        #expect(model.errorMessage == nil)
+        let scheduledFor = try #require(model.scheduledFor)
+        #expect(abs(scheduledFor.timeIntervalSince(when)) < 1)
+        #expect(await transport.posts.count == 1)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+        // It is on the server's list, which is where the person finds it.
+        let listed = try await session.client.decode(
+            [ScheduledStatus].self, from: Endpoint.composing.scheduled)
+        #expect(listed.map(\.params.text) == ["See you tomorrow"])
+    }
+
+    @Test("A time already past posts at once, and that counts as posted too")
+    func pastTimePostsNow() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Late already"
+        model.scheduledAt = Date().addingTimeInterval(-60)
+
+        #expect(await model.post(skippingAltTextCheck: true))
+        #expect(model.scheduledFor == nil)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("The send queue schedules a queued post once and only once")
+    func queueSchedulesOnce() async throws {
+        let (session, transport) = try await makeSession()
+        _ = try await session.supportStore.saveDraft(
+            DraftSnapshot(
+                accountID: session.id, text: "Queued for later",
+                scheduledAt: Date().addingTimeInterval(3600), queuedForSend: true))
+
+        #expect(await SendQueue.drain(session: session) == 1)
+        #expect(await SendQueue.drain(session: session) == 0)
+
+        #expect(await transport.posts.count == 1)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("A thread is not scheduled, from the composer or from the queue")
+    func threadsAreNotScheduled() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "one"
+        model.threadSegments = ["two"]
+        model.scheduledAt = Date().addingTimeInterval(3600)
+
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        #expect(model.errorMessage == ComposerModel.threadCannotBeScheduled)
+
+        let id = try await session.supportStore.saveDraft(
+            DraftSnapshot(
+                accountID: session.id, text: "one",
+                scheduledAt: Date().addingTimeInterval(3600), queuedForSend: true,
+                threadSegments: ["two"]))
+        _ = await SendQueue.drain(session: session)
+
+        #expect(await transport.posts.isEmpty)
+        let kept = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        #expect(kept.id == id)
+        #expect(kept.lastSendError == ComposerModel.threadCannotBeScheduled)
+    }
+}
+
 // MARK: - Support
 
 @MainActor
