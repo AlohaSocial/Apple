@@ -2,6 +2,7 @@
 
 import AVFoundation
 import AlohaDesign
+import AlohaMedia
 import AlohaModels
 import MediaPlayer
 import Observation
@@ -29,6 +30,10 @@ public final class AudioPlayerCoordinator {
     @ObservationIgnored private var trackEnd: NotificationSubscription?
     @ObservationIgnored private var sessionEvents: [NotificationSubscription] = []
     private var queue: [Status] = []
+    /// The account the queue came from; its server is where every track is
+    /// fetched, and its token is sent only there.
+    private var account: AccountSession?
+    @ObservationIgnored private var loading: Task<Void, Never>?
     /// What the person last asked for. An interruption pauses the player but
     /// not this, which is how the end of a phone call knows whether to carry
     /// on.
@@ -81,29 +86,78 @@ public final class AudioPlayerCoordinator {
         #endif
     }
 
-    public func play(_ status: Status, queue: [Status] = []) {
+    public func play(_ status: Status, queue: [Status] = [], session: AccountSession) {
         let target = status.displayed
-        guard let attachment = target.mediaAttachments.first(where: { $0.type == .audio }),
-            let url = attachment.url
+        guard let attachment = target.mediaAttachments.first(where: { $0.type == .audio })
         else { return }
+        let sources = Self.sources(
+            for: attachment, statusID: target.id, apiBase: session.capabilities.apiBase)
+        guard !sources.isEmpty else { return }
 
         claimSession()
+        loading?.cancel()
         teardownPlayer()
 
-        let item = AVPlayerItem(url: url)
-        let player = AVPlayer(playerItem: item)
-        self.player = player
-        self.nowPlaying = target
+        nowPlaying = target
         self.queue = queue
+        account = session
         position = 0
         duration = 0
-        observe(player, item: item)
-
         wantsPlayback = true
-        player.play()
         isPlaying = true
         remoteCommands.register()
         updateNowPlaying()
+
+        loading = Task { await self.open(sources, session: session) }
+    }
+
+    /// Where a track is fetched from: the same ladder the video player uses
+    /// (docs/06 §3). The attachment's `url` is used only when it is on the
+    /// signed-in instance; a federated track that still carries the origin's
+    /// address goes through the instance's proxy route instead. Fetching it
+    /// from the origin told a server the listener never chose to talk to
+    /// their address, and Nextcloud's CSP forbids it anyway.
+    static func sources(
+        for attachment: MediaAttachment, statusID: String, apiBase: URL
+    ) -> [VideoSource] {
+        VideoSourceResolver.sources(
+            for: attachment, statusID: statusID, apiBase: apiBase,
+            isRemote: VideoSourceResolver.isRemote(attachment))
+    }
+
+    /// Opens the first rung that plays, falling to the next when one fails
+    /// while loading, as the video viewer does. The token goes only to a URL
+    /// on the account's own server (`mediaRequestHeaders`).
+    private func open(_ sources: [VideoSource], session: AccountSession) async {
+        for (rung, source) in sources.enumerated() {
+            let headers = await session.client.mediaRequestHeaders(for: source.url)
+            guard !Task.isCancelled else { return }
+            let attempt = await PlaybackReadiness.open(
+                url: source.url, headers: headers, deadline: .zero)
+            switch attempt {
+            case .rejected(let reason):
+                PlaybackLog.logger.error("audio rung \(rung) rejected: \(reason, privacy: .public)")
+            case .playable(let player, let item, _):
+                guard !Task.isCancelled else {
+                    player.replaceCurrentItem(with: nil)
+                    return
+                }
+                self.player = player
+                observe(player, item: item)
+                if wantsPlayback { player.play() }
+
+                for await status in PlaybackReadiness.statuses(item) {
+                    if status == .readyToPlay { return }
+                    if status == .failed { break }
+                }
+                guard !Task.isCancelled else { return }
+                let reason = item.error?.localizedDescription ?? "unknown"
+                PlaybackLog.logger.error("audio rung \(rung) failed: \(reason, privacy: .public)")
+                teardownPlayer()
+            }
+        }
+        guard !Task.isCancelled else { return }
+        stop()
     }
 
     public func togglePlayPause() {
@@ -113,18 +167,18 @@ public final class AudioPlayerCoordinator {
     /// The lock screen sends play and pause as separate commands; mapping
     /// both to a toggle made a Play press on a playing track pause it.
     public func pause() {
-        guard let player else { return }
+        guard nowPlaying != nil else { return }
         wantsPlayback = false
-        player.pause()
+        player?.pause()
         isPlaying = false
         updateNowPlaying()
     }
 
     public func resume() {
-        guard let player else { return }
+        guard nowPlaying != nil else { return }
         claimSession()
         wantsPlayback = true
-        player.play()
+        player?.play()
         isPlaying = true
         updateNowPlaying()
     }
@@ -133,9 +187,12 @@ public final class AudioPlayerCoordinator {
     /// command targets go with the player, so a later track does not find
     /// the old handlers still attached.
     public func stop() {
+        loading?.cancel()
+        loading = nil
         teardownPlayer()
         nowPlaying = nil
         queue = []
+        account = nil
         isPlaying = false
         wantsPlayback = false
         resumesAfterInterruption = false
@@ -159,8 +216,8 @@ public final class AudioPlayerCoordinator {
     }
 
     public func next() {
-        guard let upcoming = Self.track(after: nowPlaying, in: queue) else { return }
-        play(upcoming, queue: queue)
+        guard let account, let upcoming = Self.track(after: nowPlaying, in: queue) else { return }
+        play(upcoming, queue: queue, session: account)
     }
 
     /// The next post in the queue with something to play.
@@ -249,8 +306,8 @@ public final class AudioPlayerCoordinator {
     /// the start of the next; after the last there is nothing left to show.
     private func trackEnded(_ item: ObjectIdentifier) {
         guard let current = player?.currentItem, ObjectIdentifier(current) == item else { return }
-        if let upcoming = Self.track(after: nowPlaying, in: queue) {
-            play(upcoming, queue: queue)
+        if let account, let upcoming = Self.track(after: nowPlaying, in: queue) {
+            play(upcoming, queue: queue, session: account)
         } else {
             stop()
         }
@@ -477,7 +534,7 @@ public struct AudioModeView: View {
                 if isCurrent {
                     coordinator.togglePlayPause()
                 } else {
-                    coordinator.play(status, queue: statuses)
+                    coordinator.play(status, queue: statuses, session: session)
                 }
             } label: {
                 Image(

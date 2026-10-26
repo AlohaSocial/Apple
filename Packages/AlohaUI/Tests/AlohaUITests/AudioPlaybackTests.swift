@@ -235,3 +235,46 @@ struct AudioSessionCoordinatorTests {
         #expect(backend.events == [.apply(.audible(.audio))])
     }
 }
+
+/// docs/06 §3: federated media is never fetched from the origin server.
+@Suite("Audio mode sources")
+struct AudioSourceTests {
+
+    private let base = URL(string: "https://cloud.example/index.php/apps/social/")!
+
+    @Test("A local track plays its file on the instance")
+    func localTrack() {
+        let attachment = MediaAttachment(
+            id: "m", type: .audio, url: URL(string: "https://cloud.example/media/a.mp3"))
+
+        let sources = AudioPlayerCoordinator.sources(
+            for: attachment, statusID: "9", apiBase: base)
+
+        #expect(sources.map(\.url.absoluteString) == ["https://cloud.example/media/a.mp3"])
+    }
+
+    @Test("A federated track cached on the instance plays the instance's copy")
+    func federatedTrackCachedLocally() {
+        let attachment = MediaAttachment(
+            id: "m", type: .audio, url: URL(string: "https://cloud.example/media/b.mp3"),
+            remoteURL: URL(string: "https://music.elsewhere/files/b.mp3"))
+
+        let sources = AudioPlayerCoordinator.sources(
+            for: attachment, statusID: "9", apiBase: base)
+
+        #expect(sources.map(\.url.absoluteString) == ["https://cloud.example/media/b.mp3"])
+    }
+
+    @Test("A federated track whose address is still the origin's never reaches the player")
+    func federatedTrackNeverFromOrigin() {
+        let attachment = MediaAttachment(
+            id: "m", type: .audio, url: URL(string: "https://music.elsewhere/files/c.mp3"),
+            remoteURL: URL(string: "https://music.elsewhere/files/c.mp3"))
+
+        let sources = AudioPlayerCoordinator.sources(
+            for: attachment, statusID: "9", apiBase: base)
+
+        #expect(sources.isEmpty == false)
+        #expect(sources.allSatisfy { $0.url.host() == "cloud.example" })
+    }
+}
