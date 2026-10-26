@@ -25,7 +25,7 @@ extension Endpoint {
             Endpoint(path: "api/v2/instance", requiresAuthentication: false)
         }
         public static var v1: Endpoint {
-            Endpoint(path: "api/v1/instance", requiresAuthentication: false)
+            Endpoint(path: "api/v1/instance/", requiresAuthentication: false)
         }
         public static var rules: Endpoint {
             Endpoint(path: "api/v1/instance/rules", requiresAuthentication: false)
@@ -120,7 +120,7 @@ extension Endpoint {
             case .bookmarks:
                 return Endpoint(path: "api/v1/bookmarks", query: items)
             case .favourites:
-                return Endpoint(path: "api/v1/favourites", query: items)
+                return Endpoint(path: "api/v1/favourites/", query: items)
             case .account(let id, let includeReplies, let onlyMedia):
                 var accountItems = pageItems(limit: limit, anchor: anchor)
                 accountItems += .flag("exclude_replies", !includeReplies)
@@ -164,7 +164,7 @@ extension Endpoint {
                 // has URLSession take the token off the redirected request.
                 let segment = source.pathSegment ?? "home"
                 return Endpoint(
-                    path: "api/v1/timelines/\(segment)", query: items,
+                    path: "api/v1/timelines/\(segment)/", query: items,
                     requiresAuthentication: source.requiresViewer)
             }
         }

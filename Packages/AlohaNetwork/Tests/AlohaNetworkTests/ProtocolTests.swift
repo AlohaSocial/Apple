@@ -117,7 +117,7 @@ struct EndpointTests {
     @Test("Local narrows the public timeline")
     func localNarrowing() {
         let endpoint = Endpoint.timelines.timeline(.local)
-        #expect(endpoint.path == "api/v1/timelines/public")
+        #expect(endpoint.path == "api/v1/timelines/public/")
         #expect(endpoint.query.contains { $0.name == "local" && $0.value == "true" })
     }
 
@@ -177,7 +177,7 @@ struct EndpointTests {
     func urlComposition() throws {
         let base = URL(string: "https://cloud.example/index.php/apps/social/")!
         let url = try #require(Endpoint.timelines.timeline(.home, limit: 20).url(base: base))
-        #expect(url.path() == "/index.php/apps/social/api/v1/timelines/home")
+        #expect(url.path() == "/index.php/apps/social/api/v1/timelines/home/")
         #expect(url.query()?.contains("limit=20") == true)
     }
 }

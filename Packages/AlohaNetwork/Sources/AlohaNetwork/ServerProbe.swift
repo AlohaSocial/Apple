@@ -298,7 +298,7 @@ public struct ServerProbe: Sendable {
         }
         let v1Route = "api/v1/instance"
         if let answer: (value: InstancePayload.V1, url: URL) = await fetch(
-            base.appending(path: v1Route)),
+            base.appending(path: v1Route + "/")),
             let resolved = Self.base(answering: v1Route, at: answer.url, requested: base)
         {
             let described = InstanceDescription(v1: answer.value)
