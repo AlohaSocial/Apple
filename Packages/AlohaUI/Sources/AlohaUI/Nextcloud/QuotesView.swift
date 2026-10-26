@@ -19,6 +19,13 @@ public struct QuotesView: View {
     @State private var errorMessage: String?
     @State private var loadID = UUID()
     @State private var retryOlder = false
+    /// The reader's filters. Who quotes a post is anyone at all, most of
+    /// them people the reader does not follow: the public context.
+    @State private var verdicts = FilterVerdicts(context: .public)
+
+    /// Left out at drawing rather than at loading, so the page cursor still
+    /// counts what the server sent.
+    private var shownQuotes: [Status] { verdicts.kept(quotes) }
 
     public init(
         statusID: String, session: AccountSession,
@@ -35,11 +42,12 @@ public struct QuotesView: View {
                 errorRow(errorMessage)
             }
 
-            ForEach(quotes) { quote in
+            ForEach(shownQuotes) { quote in
                 StatusRow(
                     status: quote,
                     policy: session.settings.sensitiveMediaPolicy,
                     localHost: session.snapshot.instanceHost,
+                    filterWarning: verdicts.warning(for: quote),
                     canReact: session.capabilities.emojiReactions,
                     isOwn: quote.displayed.account.id == session.snapshot.serverAccountID,
                     showsCounts: session.settings.showPopularityCounts,
@@ -50,7 +58,7 @@ public struct QuotesView: View {
                 .listRowBackground(palette.background)
                 .listRowSeparator(.hidden)
                 .onAppear {
-                    if quote.id == quotes.last?.id { Task { await loadMore() } }
+                    if quote.id == shownQuotes.last?.id { Task { await loadMore() } }
                 }
             }
 
@@ -73,6 +81,7 @@ public struct QuotesView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
+        .environment(\.filterVerdicts, verdicts)
         .overlay {
             if isLoading && quotes.isEmpty {
                 // A first page arriving is a list in progress, not a blank
@@ -117,6 +126,7 @@ public struct QuotesView: View {
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.quotes(statusID), limit: 20)
+            await verdicts.prepare(page.value.elements, session: session)
             guard !Task.isCancelled, loadID == request else { return }
             quotes = page.value.elements
             next = page.mayHaveMore ? page.link.next : nil
@@ -140,6 +150,7 @@ public struct QuotesView: View {
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
+            await verdicts.warm(page.value.elements)
             guard !Task.isCancelled, loadID == request else { return }
             let known = Set(quotes.map(\.id))
             quotes += page.value.elements.filter { !known.contains($0.id) }

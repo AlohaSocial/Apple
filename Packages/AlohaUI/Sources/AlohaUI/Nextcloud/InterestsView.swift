@@ -29,9 +29,15 @@ public struct InterestsView: View {
     /// still be taken back.
     @State private var undoable: Status?
     @State private var undoExpiry: Task<Void, Never>?
+    /// The reader's filters. For you is built from public posts by people
+    /// the reader mostly does not follow, so it is read in the public
+    /// context, as the local and federated timelines are.
+    @State private var verdicts = FilterVerdicts(context: .public)
 
+    /// Left out at drawing rather than at loading, so the page cursor still
+    /// counts what the server sent.
     private var visibleStatuses: [Status] {
-        statuses.filter { !hiddenIDs.contains($0.displayed.id) }
+        statuses.filter { !hiddenIDs.contains($0.displayed.id) && !verdicts.isHidden($0) }
     }
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
@@ -84,6 +90,7 @@ public struct InterestsView: View {
                         status: status,
                         policy: session.settings.sensitiveMediaPolicy,
                         localHost: session.snapshot.instanceHost,
+                        filterWarning: verdicts.warning(for: status),
                         canReact: session.capabilities.emojiReactions,
                         isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
                         showsCounts: session.settings.showPopularityCounts,
@@ -137,6 +144,7 @@ public struct InterestsView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
+        .environment(\.filterVerdicts, verdicts)
         .refreshable { await refresh() }
         .safeAreaInset(edge: .bottom) {
             if undoable != nil { undoBar }
@@ -207,6 +215,7 @@ public struct InterestsView: View {
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.interests.timeline(limit: 20), limit: 20)
+            await verdicts.prepare(page.value.elements, session: session)
             guard !Task.isCancelled, refreshID == request else { return }
             statuses = page.value.elements
             nextPage = page.link.next
@@ -241,6 +250,7 @@ public struct InterestsView: View {
             } else {
                 return
             }
+            await verdicts.warm(page.value.elements)
             guard !Task.isCancelled, refreshID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }

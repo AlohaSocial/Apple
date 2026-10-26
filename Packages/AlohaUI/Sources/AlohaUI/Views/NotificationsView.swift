@@ -30,6 +30,10 @@ public struct NotificationsView: View {
     /// notification ID the user had read. When present in the flat list, a
     /// divider is inserted below it.
     @State private var caughtUpNotificationID: String?
+    /// The reader's filters, in the notifications context: an activity
+    /// about a post a hide filter matched is left out, and one a warn filter
+    /// matched names the filter instead of quoting the post.
+    @State private var verdicts = FilterVerdicts(context: .notifications)
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -118,11 +122,36 @@ public struct NotificationsView: View {
     }
 
     private var visibleGroups: [NotificationGroup] {
-        groups.filter { Self.matches($0.type, selected: selectedKinds) }
+        groups.filter { group in
+            Self.matches(group.type, selected: selectedKinds)
+                && group.statusID.flatMap { statuses[$0] }.map { verdicts.isHidden($0) } != true
+        }
     }
 
     private var visibleFlat: [MastodonNotification] {
-        flat.filter { Self.matches($0.type, selected: selectedKinds) }
+        flat.filter { notification in
+            Self.matches(notification.type, selected: selectedKinds)
+                && notification.status.map { verdicts.isHidden($0) } != true
+        }
+    }
+
+    /// What a notification quotes of its post: the words, or only the
+    /// content warning where the post has one — the flat row used to print
+    /// the words regardless — or only the filter's name where a warn filter
+    /// matched it.
+    private func statusPreview(_ status: Status) -> some View {
+        Group {
+            if let warning = verdicts.warning(for: status) {
+                Text("Filtered: \(warning)", comment: "Row hidden by a keyword filter")
+                    .lineLimit(1)
+            } else if status.displayed.spoilerText.isEmpty {
+                StatusPlainPreview(status: status)
+            } else {
+                Text(status.displayed.spoilerText).lineLimit(2)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(palette.secondaryLabel)
     }
 
     /// The flat list with an optional "caught up" divider inserted at the
@@ -270,15 +299,7 @@ public struct NotificationsView: View {
                 }
 
                 if let status {
-                    Group {
-                        if status.displayed.spoilerText.isEmpty {
-                            StatusPlainPreview(status: status)
-                        } else {
-                            Text(status.displayed.spoilerText).lineLimit(2)
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryLabel)
+                    statusPreview(status)
                 }
                 if let date = group.latestPageNotificationAt {
                     activityDate(date)
@@ -375,9 +396,7 @@ public struct NotificationsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let status = notification.status {
-                        StatusPlainPreview(status: status)
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryLabel)
+                        statusPreview(status)
                     }
                     activityDate(notification.createdAt)
                 }
@@ -450,6 +469,7 @@ public struct NotificationsView: View {
                 let results = try await session.client.decode(
                     GroupedNotificationsResults.self,
                     from: Endpoint.notifications.grouped(types: types))
+                await verdicts.prepare(results.statuses, session: session)
                 guard !Task.isCancelled, loadID == requestID else { return }
                 groups = results.notificationGroups
                 accounts = Dictionary(
@@ -460,6 +480,7 @@ public struct NotificationsView: View {
                 let page = try await session.client.decode(
                     LossyArray<MastodonNotification>.self,
                     from: Endpoint.notifications.flat(types: types))
+                await verdicts.prepare(page.elements.compactMap(\.status), session: session)
                 guard !Task.isCancelled, loadID == requestID else { return }
                 flat = page.elements
             }

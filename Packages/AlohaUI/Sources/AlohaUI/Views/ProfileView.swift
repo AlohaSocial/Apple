@@ -1283,6 +1283,7 @@ struct ProfileStatusList: View {
                 .padding(AlohaMetrics.space3)
             }
         }
+        .environment(\.filterVerdicts, model.verdicts)
         .task { await model.appear() }
         .onChange(of: session.lastPosted?.id) { _, _ in
             guard let posted = session.lastPosted else { return }

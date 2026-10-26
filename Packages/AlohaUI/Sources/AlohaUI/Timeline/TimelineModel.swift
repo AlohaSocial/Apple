@@ -32,13 +32,6 @@ public final class TimelineModel {
 
     public let key: TimelineKey
     private let session: AccountSession
-    private var filters: [Filter] = [] {
-        didSet {
-            guard filters != oldValue else { return }
-            filterDecisions = [:]
-            nextFilterExpiry = FilterEvaluator.nextExpiry(of: filters, after: Date())
-        }
-    }
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
@@ -67,20 +60,16 @@ public final class TimelineModel {
     @ObservationIgnored public var prefetchGeometry = PrefetchGeometry()
 
     /// Each status's filter verdict, decided once per content rather than on
-    /// every evaluation of the row. Cleared when the filters change, and when
-    /// the next filter expiry passes.
-    @ObservationIgnored private var filterDecisions: [FilterCacheKey: FilterEvaluator.Decision] =
-        [:]
-    /// Plain text for keyword matching, parsed off the main actor before a
-    /// page is filtered. Only collected while a keyword filter exists.
-    @ObservationIgnored private var filterTexts: [FilterCacheKey: String] = [:]
-    @ObservationIgnored private var nextFilterExpiry: Date?
+    /// every evaluation of the row — the same object every other list of
+    /// posts filters with, in this timeline's context.
+    let verdicts: FilterVerdicts
 
     private let logger = Logger(subsystem: "social.aloha.app", category: "timeline")
 
     public init(key: TimelineKey, session: AccountSession) {
         self.key = key
         self.session = session
+        verdicts = FilterVerdicts(context: FilterVerdicts.context(for: key.source))
         statusUpdates = Self.observeStatusUpdates { [weak self] update in
             guard let self, update.accountID == self.session.id else { return }
             let now = Date()
@@ -235,8 +224,8 @@ public final class TimelineModel {
         do {
             let cached = try await session.timelineStore.cachedTimeline(
                 accountID: session.id, timelineKey: storageKey)
-            filters = (try? await session.supportStore.activeFilters(accountID: session.id)) ?? []
-            await warmFilterTexts(cached.compactMap(\.status))
+            await verdicts.load(from: session)
+            await verdicts.warm(cached.compactMap(\.status))
             rows = applyFilters(to: cached)
             ensureCaughtUpDivider()
             let statuses = cached.compactMap(\.status)
@@ -317,7 +306,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
-            await warmFilterTexts(harvest.statuses)
+            await verdicts.warm(harvest.statuses)
             let filtered = applyFilters(to: merged)
 
             // A new-post pill must not hold updated counts on existing rows
@@ -445,7 +434,7 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
-            await warmFilterTexts(harvest.statuses)
+            await verdicts.warm(harvest.statuses)
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
             nextCursor = harvest.nextCursor
@@ -475,7 +464,7 @@ public final class TimelineModel {
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
-            await warmFilterTexts(harvest.statuses)
+            await verdicts.warm(harvest.statuses)
             rows = applyFilters(to: merged)
             ensureCaughtUpDivider()
         } catch {
@@ -663,50 +652,12 @@ public final class TimelineModel {
         }
     }
 
-    private var hasKeywordFilters: Bool {
-        filters.contains { !$0.keywords.isEmpty }
-    }
-
-    /// Parses the text keyword filters search, off the main actor, so the
-    /// verdicts that follow never parse HTML on it. Nothing to do — and
-    /// nothing parsed — while no filter has a keyword.
-    private func warmFilterTexts(_ statuses: [Status]) async {
-        guard hasKeywordFilters else { return }
-        for status in statuses {
-            let key = FilterCacheKey(status)
-            guard filterTexts[key] == nil else { continue }
-            let body = await RichTextCache.shared.plainText(for: status)
-            filterTexts[key] = body + " " + status.displayed.spoilerText
-        }
-    }
-
     private func decision(for status: Status) -> FilterEvaluator.Decision {
-        let now = Date()
-        if let expiry = nextFilterExpiry, now >= expiry {
-            filterDecisions = [:]
-            nextFilterExpiry = FilterEvaluator.nextExpiry(of: filters, after: now)
-        }
-        let key = FilterCacheKey(status)
-        if let cached = filterDecisions[key] { return cached }
-        let decided = FilterEvaluator.decision(
-            for: status, filters: filters, context: filterContext, now: now,
-            text: filterTexts[key])
-        filterDecisions[key] = decided
-        return decided
-    }
-
-    private var filterContext: FilterContext {
-        switch key.source {
-        case .home, .list: .home
-        case .local, .federated, .hashtag, .trending: .public
-        case .account, .profile: .account
-        default: .home
-        }
+        verdicts.decision(for: status)
     }
 
     public func filterWarning(for status: Status) -> String? {
-        guard case .warn(let title) = decision(for: status) else { return nil }
-        return title
+        verdicts.warning(for: status)
     }
 
     // MARK: - Errors

@@ -24,6 +24,11 @@ public struct SearchView: View {
     /// the server looks elsewhere only when a search is asked for, so a
     /// keystroke cannot make it fetch from another server.
     @State private var resultsResolved = false
+    /// The reader's filters, in the public context: what a search finds is
+    /// anyone's posts, as a public timeline is.
+    @State private var verdicts = FilterVerdicts(context: .public)
+
+    private var shownStatuses: [Status] { verdicts.kept(results.statuses) }
 
     /// A query carried in from somewhere else — the sidebar's field, a deep
     /// link, a shared URL. `Route.search(query:)` has always carried one; this
@@ -82,13 +87,14 @@ public struct SearchView: View {
                     }
                 }
 
-                if !results.statuses.isEmpty {
+                if !shownStatuses.isEmpty {
                     Section {
-                        ForEach(results.statuses) { status in
+                        ForEach(shownStatuses) { status in
                             StatusRow(
                                 status: status,
                                 policy: session.settings.sensitiveMediaPolicy,
                                 localHost: session.snapshot.instanceHost,
+                                filterWarning: verdicts.warning(for: status),
                                 showActions: false,
                                 showsCounts: session.settings.showPopularityCounts,
                                 onAction: onAction
@@ -125,6 +131,7 @@ public struct SearchView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
+        .environment(\.filterVerdicts, verdicts)
         #if os(iOS)
             .searchable(
                 text: $query, isPresented: $isFieldPresented,
@@ -348,6 +355,7 @@ public struct SearchView: View {
             let response = try await session.client.decode(
                 SearchResults.self,
                 from: Endpoint.search.search(trimmed, resolve: resolve, limit: 20))
+            await verdicts.prepare(response.statuses, session: session)
             guard !Task.isCancelled, searchID == id else { return }
             results = response
             resultsResolved = resolve
