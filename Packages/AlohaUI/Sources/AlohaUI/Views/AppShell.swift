@@ -41,6 +41,9 @@ private struct ThemedAppShell: View {
     @State private var tabPaths: [TabSelection: [Route]] = [:]
     /// The same, per sidebar row, for the iPad, Mac and Vision shells.
     @State private var sidebarPaths: [SidebarItem: [Route]] = [:]
+    /// A route opened while the account was being switched, held until the
+    /// shell has reset for the account it belongs to.
+    @State private var accountSwitch = AccountSwitchNavigation()
     /// Where this scene was, rewritten as it changes (`ShellRestoration`).
     @SceneStorage("aloha.shell.restoration") private var storedRestoration: Data?
     /// Nothing is written back until the stored state has been read, or the
@@ -153,7 +156,11 @@ private struct ThemedAppShell: View {
             .onChange(of: restoration) { _, restoration in
                 storedRestoration = restoration?.encoded()
             }
-            .onChange(of: environment.activeSession?.id) { previous, current in
+            .onChange(of: environment.activeSession?.id, initial: true) { previous, current in
+                // A link, a notification or a Spotlight result for this
+                // account, opened as the switch was made, waits for the reset
+                // below rather than being cleared by it.
+                let destination = accountSwitch.didShow(current)
                 // Another account's pushed screens mean nothing on this one:
                 // a thread id from one server is a stranger's post, or none,
                 // on the next.
@@ -166,6 +173,7 @@ private struct ThemedAppShell: View {
                 {
                     selectedSource = .home
                 }
+                if let destination { open(destination) }
             }
             .onChange(of: scenePhase) { _, phase in
                 // A socket closes on background immediately; BGAppRefreshTask
@@ -490,6 +498,11 @@ private struct ThemedAppShell: View {
     }
 
     func open(_ route: Route) {
+        // Mid-switch, the route is for the account arriving, not the one
+        // still on screen; it is opened once the shell has reset for it.
+        guard
+            accountSwitch.shouldOpenNow(route, activeAccountID: environment.activeSession?.id)
+        else { return }
         if case .timeline(let key) = route {
             selectedMode = key.mode
             selectedTab = .mode(key.mode)
