@@ -264,9 +264,15 @@ public final class AppEnvironment {
     /// away but whose row remains is a dead entry that can neither post nor
     /// be removed. Once the rows are gone, everything after is best effort
     /// and runs to the end whatever fails.
+    ///
+    /// Before anything, polling and streaming for it stop: a poll that
+    /// finished after the rows were deleted wrote them back, for an account
+    /// that no longer exists.
     @discardableResult
     public func removeAccount(_ id: UUID) async -> Bool {
         guard let session = sessions.first(where: { $0.id == id }) else { return false }
+
+        await sync.forget(id)
 
         do {
             try await timelines.deleteEverything(forAccount: id)
@@ -274,6 +280,7 @@ public final class AppEnvironment {
             logger.error(
                 "could not delete the account's rows: \(String(describing: error), privacy: .public)"
             )
+            sync.readmit(id)
             return false
         }
 
