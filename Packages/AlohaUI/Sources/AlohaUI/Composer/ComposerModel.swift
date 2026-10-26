@@ -61,6 +61,10 @@ public final class ComposerModel {
     public var videoLicence = ""
     /// Set after posting when a moderator must look at the post first.
     public private(set) var wasHeldForReview = false
+    /// Set after posting when the server took the post for later rather than
+    /// making it now: the time it says the post will go out, which the
+    /// composer confirms instead of closing as though it had posted.
+    public private(set) var scheduledFor: Date?
     /// The last attempt failed in a way that says nothing about whether the
     /// server made the post — a timeout, a dropped connection, a 5xx. The
     /// server only stores the `Idempotency-Key` once the post exists
@@ -84,6 +88,15 @@ public final class ComposerModel {
     /// Attachments that came from the server's GIF library rather than an
     /// upload; they never went through the uploader.
     public private(set) var libraryAttachments: [MediaAttachment] = []
+    /// Library pictures asked for and not yet back.
+    private var libraryAttachmentsInFlight = 0
+
+    /// Whether an attachment is still on its way — an upload, a video the
+    /// server is processing, a library picture — or a reopened draft is still
+    /// looking its uploads up. Posting now would leave it behind.
+    public var isUploading: Bool {
+        uploader.isBusy || libraryAttachmentsInFlight > 0 || !pendingMediaIDs.isEmpty
+    }
     /// Focal points set here, by attachment id, so the strip can show a mark.
     public private(set) var focalPoints: [String: CGPoint] = [:]
 
@@ -199,6 +212,15 @@ public final class ComposerModel {
     /// have loaded.
     private var restoredPostAsHandle: String?
     private var draftID = UUID()
+    /// Set once the post is out (or scheduled): from then on there is no
+    /// draft to save, whatever the composer still shows.
+    private var hasPosted = false
+    /// Whether this composer has saved its draft, so emptying the box and
+    /// leaving takes that draft away again.
+    private var hasSavedDraft = false
+    /// The last attempt failed in a way the send queue will retry, and the
+    /// draft was saved queued; saving it again keeps it so.
+    private var isQueuedForSend = false
     private var completionTask: Task<Void, Never>?
 
     /// The status being edited, where this composer is editing one.
@@ -219,6 +241,7 @@ public final class ComposerModel {
     /// A reopened draft or a redraft already says what it wants; the account
     /// defaults that `prepare()` applies to a fresh post would overwrite it.
     private var isRestored = false
+    private var isPrepared = false
 
     public init(session: AccountSession, replyTo: Status? = nil, quoting: Status? = nil) {
         self.session = session
@@ -369,6 +392,8 @@ public final class ComposerModel {
     /// Attaches a picture from the instance's GIF library.
     public func attachLibraryPicture(_ entry: GIFEntry) async {
         guard canAddMedia else { return }
+        libraryAttachmentsInFlight += 1
+        defer { libraryAttachmentsInFlight -= 1 }
         do {
             let attachment = try await session.client.decode(
                 MediaAttachment.self,
@@ -427,7 +452,11 @@ public final class ComposerModel {
     public func prepare() async {
         // An edit already carries everything from `/source`; re-deriving the
         // defaults here would overwrite what the person wrote.
-        guard editingStatus == nil else { return }
+        guard editingStatus == nil, !isPrepared else { return }
+        // Once: a full-screen cover such as the camera takes the composer off
+        // screen and back, which starts its task again, and the defaults
+        // below would undo what the person has chosen since.
+        isPrepared = true
         if isRestored {
             await restoreContext()
             await loadTeams()
@@ -442,14 +471,18 @@ public final class ComposerModel {
 
         showsContentWarningField = session.settings.alwaysShowContentWarningField
         language = session.settings.defaultLanguage
-        await loadTeams()
 
-        if let replyTo {
+        // Before anything waits on the network, and only into an empty box:
+        // by the time the teams answer the person may have started typing,
+        // and the mentions must not land on top of that.
+        if let replyTo, text.isEmpty {
             let handles = replyTo.replyMentions(excluding: session.snapshot.handle)
             if !handles.isEmpty {
                 text = handles.map { "@\($0)" }.joined(separator: " ") + " "
             }
         }
+
+        await loadTeams()
     }
 
     /// Fetches what a restored composer knows only by id: the post it
@@ -504,8 +537,10 @@ public final class ComposerModel {
         CharacterCount.remaining(text: text, spoilerText: spoilerText, limits: limits)
     }
 
+    /// The one gate every way of posting goes through — the button, the
+    /// keyboard shortcut, and `post()` itself.
     public var canPost: Bool {
-        guard !isPosting else { return false }
+        guard !isPosting, !isUploading else { return false }
         guard (remainingCharacters ?? 0) >= 0 else { return false }
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return hasText || !attachments.isEmpty || quoting != nil || restoredQuotedID != nil
@@ -653,6 +688,11 @@ public final class ComposerModel {
             return false
         }
 
+        if scheduledAt != nil, editingStatus == nil, hasThreadSegments {
+            errorMessage = Self.threadCannotBeScheduled
+            return false
+        }
+
         isPosting = true
         defer { isPosting = false }
 
@@ -748,7 +788,20 @@ public final class ComposerModel {
                         // must look first.
                         let response = try await session.client.send(
                             Endpoint.composing.post(draft))
-                        posted = try AlohaJSON.decoder.decode(Status.self, from: response.data)
+                        switch try PostResponse(
+                            decoding: response.data, scheduledAt: draft.scheduledAt)
+                        {
+                        case .scheduled(let scheduled):
+                            // Nothing exists yet to show in a timeline or to
+                            // hand to "posted": the server has the post and
+                            // its time, and that is the whole of the success.
+                            previousAttemptMayHaveLanded = false
+                            scheduledFor = scheduled.scheduledAt
+                            await finishPosting()
+                            return true
+                        case .posted(let status):
+                            posted = status
+                        }
                         let flags = try? AlohaJSON.decoder.decode(
                             ReviewFlags.self, from: response.data)
                         wasHeldForReview = flags?.heldForReview ?? false
@@ -786,15 +839,7 @@ public final class ComposerModel {
                     threadProgress = (position + 1, reply.id)
                 }
             }
-            threadProgress = nil
-
-            try? await session.supportStore.deleteDraft(id: draftID)
-            // Only now: the original goes once its replacement exists.
-            if let redrafting {
-                await StatusActions.delete(redrafting, session: session)
-                self.redrafting = nil
-            }
-            UploadActivityController.shared.posted()
+            await finishPosting()
             return true
         } catch {
             UploadActivityController.shared.postFailed()
@@ -805,9 +850,40 @@ public final class ComposerModel {
             // The composer keeps everything intact so the person can retry.
             let isTransient = (error as? APIError)?.isTransient ?? false
             if editingStatus == nil, isTransient { previousAttemptMayHaveLanded = true }
+            isQueuedForSend = isTransient
             await saveDraftIfNeeded(queued: isTransient)
             return false
         }
+    }
+
+    /// What every success ends with, a post made or a post scheduled: the
+    /// draft goes, and so does the post a redraft started from.
+    private func finishPosting() async {
+        hasPosted = true
+        isQueuedForSend = false
+        threadProgress = nil
+        try? await session.supportStore.deleteDraft(id: draftID)
+        // Only now: the original goes once its replacement exists — on the
+        // server's schedule, for a scheduled one.
+        if let redrafting {
+            await StatusActions.delete(redrafting, session: session)
+            self.redrafting = nil
+        }
+        UploadActivityController.shared.posted()
+    }
+
+    /// A scheduled post does not exist until its time, so the rest of a
+    /// thread has nothing to reply to yet, and no server schedules a chain.
+    /// Shared with the send queue, which refuses the same draft the same way.
+    nonisolated static var threadCannotBeScheduled: String {
+        String(
+            localized: "A thread can't be scheduled. Post it now, or schedule its first post on its own.",
+            comment: "Composer refusal: scheduled post with thread segments")
+    }
+
+    /// Whether any thread segment has words in it; empty ones are dropped.
+    private var hasThreadSegments: Bool {
+        threadSegments.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     /// The post an attempt that timed out made after all, if it did: the same
@@ -931,14 +1007,47 @@ public final class ComposerModel {
         editingStatus == nil ? !draftSnapshot.isEmpty : true
     }
 
+    /// Saves the draft again once the uploads still going up have landed, so
+    /// a file that finishes after the composer was closed joins the draft it
+    /// was added to instead of going up for nothing. Saving is by the
+    /// composer's draft id, so this replaces the save made on closing.
+    public func saveDraftWhenUploadsSettle() async {
+        guard uploader.activeUploads > 0 else { return }
+        await uploader.uploadsSettled()
+        await saveDraftIfNeeded()
+    }
+
     public func saveDraftIfNeeded(queued: Bool = false) async {
         // An edit is not a draft: the post exists, and a "draft" of it would
-        // post a second copy when reopened.
-        guard editingStatus == nil else { return }
+        // post a second copy when reopened. Nor is a post that went out.
+        guard editingStatus == nil, !hasPosted else { return }
         var snapshot = draftSnapshot
         snapshot.queuedForSend = queued
 
-        guard !snapshot.isEmpty else { return }
+        guard !snapshot.isEmpty else {
+            // Emptied since this composer saved it — on the way to the
+            // background, say: the draft that save left goes too.
+            if hasSavedDraft {
+                try? await session.supportStore.deleteDraft(id: draftID)
+                hasSavedDraft = false
+            }
+            return
+        }
         _ = try? await session.supportStore.saveDraft(snapshot)
+        hasSavedDraft = true
+    }
+
+    /// Saves what is in the composer as it stands, for when the app may get
+    /// no other chance: iOS can end an app in the background without a word,
+    /// and nothing after that runs. By the composer's own draft id, so the
+    /// save made on closing later replaces this one rather than adding a
+    /// second. A post that failed for want of a network stays queued, as the
+    /// failure left it.
+    ///
+    /// Not while a post is on its way: it either lands, and must leave no
+    /// draft, or fails, and saves its own.
+    public func preserveDraft() async {
+        guard !isPosting else { return }
+        await saveDraftIfNeeded(queued: isQueuedForSend)
     }
 }

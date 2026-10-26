@@ -18,6 +18,7 @@ public struct ComposerView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
     @Environment(\.composerHost) private var host
+    @Environment(\.scenePhase) private var scenePhase
     @State private var didSend = false
     @State private var showsCardOptions = false
     @State private var isShowingPollEditor = false
@@ -30,6 +31,8 @@ public struct ComposerView: View {
     @State private var isShowingGIFPicker = false
     @State private var isShowingEmojiPicker = false
     @State private var isShowingHeldNotice = false
+    @State private var isShowingScheduledNotice = false
+    @State private var didPrefill = false
     @State private var focusingAttachment: MediaAttachment?
     @State private var filteringAttachment: MediaAttachment?
     @State private var trimmingVideoAt: URL?
@@ -52,15 +55,29 @@ public struct ComposerView: View {
     private let prefilledText: String
     private let prefilledAttachments: [PrefilledAttachment]
 
-    /// Bytes handed over by the share extension, uploaded once the composer
-    /// appears so the sheet is on screen while they go up.
+    /// A file handed over by the share extension, uploaded once the composer
+    /// appears so the sheet is on screen while it goes up.
     public struct PrefilledAttachment: Sendable, Hashable {
-        public var data: Data
+        /// Where the bytes are: in memory, for a picture, or in a file of the
+        /// composer's own to delete once it has gone up — a video, which can
+        /// be larger than everything a share extension may hold.
+        public enum Source: Sendable, Hashable {
+            case data(Data)
+            case file(URL)
+        }
+
+        public var source: Source
         public var filename: String
         public var mimeType: String
 
         public init(data: Data, filename: String, mimeType: String) {
-            self.data = data
+            self.source = .data(data)
+            self.filename = filename
+            self.mimeType = mimeType
+        }
+
+        public init(fileURL: URL, filename: String, mimeType: String) {
+            self.source = .file(fileURL)
             self.filename = filename
             self.mimeType = mimeType
         }
@@ -205,7 +222,8 @@ public struct ComposerView: View {
                 matching: .any(of: [.images, .videos])
             )
             .onChange(of: pickedItems) { _, items in
-                Task { await ingest(items) }
+                guard !items.isEmpty else { return }
+                Task { await model.uploader.whileFetching { await ingest(items) } }
             }
             .sheet(isPresented: $isShowingPollEditor) {
                 NavigationStack {
@@ -258,6 +276,25 @@ public struct ComposerView: View {
                 Text(
                     "Your post is with a moderator and will appear once it has been looked at. You can find it under Settings until then.",
                     comment: "Held for review detail")
+            }
+            // A scheduled post is a success with nothing to show for it yet,
+            // so the composer says when it will go out and where to find it
+            // rather than vanishing as if the post were already up.
+            .alert(
+                Text("Scheduled", comment: "Scheduled post confirmation title"),
+                isPresented: $isShowingScheduledNotice
+            ) {
+                Button {
+                    finish(.posted)
+                } label: {
+                    Text("OK", comment: "Scheduled post confirmation action")
+                }
+            } message: {
+                if let date = model.scheduledFor {
+                    Text(
+                        "Your post will go out on \(date.formatted(.dateTime.weekday().day().month().hour().minute())). You can change or cancel it under Scheduled posts in Settings.",
+                        comment: "Scheduled post confirmation detail. The argument is a date and time.")
+                }
             }
             .sheet(isPresented: $isShowingNextcloudFiles) {
                 if let credentials = nextcloudCredentials {
@@ -326,12 +363,31 @@ public struct ComposerView: View {
                 }
             }
             .task {
+                // Once, though the task runs again whenever the composer
+                // comes back on screen.
+                let isFirstRun = !didPrefill
+                didPrefill = true
+                // Before `prepare()` waits on the network, and only into an
+                // empty box, so nothing typed meanwhile is written over.
+                if isFirstRun, !prefilledText.isEmpty, model.text.isEmpty {
+                    model.text = prefilledText
+                }
                 await model.prepare()
-                if !prefilledText.isEmpty { model.text = prefilledText }
+                guard isFirstRun else { return }
                 for attachment in prefilledAttachments {
-                    await model.uploader.add(
-                        data: attachment.data, filename: attachment.filename,
-                        mimeType: attachment.mimeType)
+                    switch attachment.source {
+                    case .data(let data):
+                        await model.uploader.add(
+                            data: data, filename: attachment.filename,
+                            mimeType: attachment.mimeType)
+                    case .file(let url):
+                        await model.uploader.add(
+                            fileAt: url, filename: attachment.filename,
+                            mimeType: attachment.mimeType)
+                        // The hand-over copy; the server has its own now, or
+                        // the upload has said why not.
+                        try? FileManager.default.removeItem(at: url)
+                    }
                 }
             }
             .onAppear { isEditorFocused = true }
@@ -349,13 +405,24 @@ public struct ComposerView: View {
             }
         }
         .interactiveDismissDisabled(dismissal.isGuarded && !didFinish)
+        // iOS can end an app it has put in the background without another
+        // word, and then `onDisappear` never comes. What was written is saved
+        // on the way out instead — already at inactive, which leaves time for
+        // the store to write — and closing normally later replaces that save.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase != .active, !didFinish else { return }
+            Task { await model.preserveDraft() }
+        }
         // Every way out that is not Post or Cancel — the shell replacing the
         // sheet, the account changing underneath it, a window closing — still
         // keeps what was written.
         .onDisappear {
             guard !didFinish else { return }
             UploadActivityController.shared.cancel()
-            Task { await model.saveDraftIfNeeded() }
+            Task {
+                await model.saveDraftIfNeeded()
+                await model.saveDraftWhenUploadsSettle()
+            }
         }
     }
 
@@ -372,6 +439,9 @@ public struct ComposerView: View {
         guard await model.post(skippingAltTextCheck: skippingAltTextCheck) else { return }
         if model.wasHeldForReview {
             isShowingHeldNotice = true
+        } else if model.scheduledFor != nil {
+            didSend.toggle()
+            isShowingScheduledNotice = true
         } else {
             didSend.toggle()
             finish(.posted)
@@ -1139,6 +1209,9 @@ public struct ComposerView: View {
                     Image(systemName: "text.append")
                 }
             }
+            // A thread and a time do not go together: a scheduled post has
+            // nothing for the next one to reply to until it is out.
+            .disabled(model.scheduledAt != nil)
             .accessibilityLabel(Text("Add to thread", comment: "Composer action"))
 
             Button {
@@ -1150,6 +1223,7 @@ public struct ComposerView: View {
                     Image(systemName: model.scheduledAt == nil ? "clock" : "clock.fill")
                 }
             }
+            .disabled(model.isThread && model.scheduledAt == nil)
             .accessibilityLabel(Text("Schedule this post", comment: "Composer action"))
 
             if model.capabilities.mediaFromNextcloudFiles {
@@ -1518,6 +1592,10 @@ public struct ComposerView: View {
         Task {
             await model.saveDraftIfNeeded()
             finish(.cancelled)
+            // A file still going up is not dropped: it joins the draft once
+            // it lands. (A share extension ends with the composer, and its
+            // upload with it.)
+            await model.saveDraftWhenUploadsSettle()
         }
     }
 }

@@ -61,10 +61,49 @@ public final class ComposerUploader {
 
     public var canAddMore: Bool { attachments.count < limits.maxMediaAttachments }
 
+    /// Files on their way up, counted from the moment one is handed over —
+    /// converting a picture can take longer than sending it — until it is
+    /// attached or has failed. An attachment joins `attachments` only once it
+    /// is up, so a post made meanwhile would go without it, and the upload
+    /// finishing after would belong to nothing.
+    public private(set) var activeUploads = 0
+    @ObservationIgnored private var settledWaiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Whether anything is still on its way: a file going up, or a video the
+    /// server is still processing (which Mastodon refuses to attach).
+    public var isBusy: Bool { activeUploads > 0 || !processing.isEmpty }
+
+    /// Returns once every upload under way has landed or failed.
+    public func uploadsSettled() async {
+        guard activeUploads > 0 else { return }
+        await withCheckedContinuation { settledWaiters.append($0) }
+    }
+
+    /// Counts `work` as an upload under way: what a picker does while it is
+    /// still fetching the file it will hand over, which for a picture kept in
+    /// iCloud takes longer than the upload.
+    public func whileFetching(_ work: () async -> Void) async {
+        beginUpload()
+        defer { endUpload() }
+        await work()
+    }
+
+    private func beginUpload() { activeUploads += 1 }
+
+    private func endUpload() {
+        activeUploads -= 1
+        guard activeUploads == 0 else { return }
+        let waiters = settledWaiters
+        settledWaiters = []
+        for waiter in waiters { waiter.resume() }
+    }
+
     /// Concurrency cap of two, as docs/07 §4 prescribes — more than that on a
     /// phone connection makes every upload slower rather than the batch faster.
     public func add(data: Data, filename: String, mimeType: String) async {
         guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
 
         var payload = data
         var type = mimeType
@@ -116,6 +155,59 @@ public final class ComposerUploader {
             return
         }
 
+        await send(payload, filename: name, mimeType: type)
+    }
+
+    /// A file handed over on disk rather than in memory — the share
+    /// extension's video, which can be larger than everything the extension
+    /// is allowed to hold. Checked by its size on disk and read mapped, so
+    /// its pages come from the file as the request is built and can be let
+    /// go again under pressure, instead of all being copied in first.
+    ///
+    /// A picture goes the way of `add(data:)`: it is small next to a video,
+    /// and converting or shrinking it needs its bytes anyway.
+    public func add(fileAt url: URL, filename: String, mimeType: String) async {
+        guard !mimeType.hasPrefix("image/") else {
+            guard let data = try? Data(contentsOf: url) else {
+                errorMessage = String(
+                    localized: "That upload didn't finish.", comment: "Upload failure")
+                return
+            }
+            await add(data: data, filename: filename, mimeType: mimeType)
+            return
+        }
+        guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
+
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        switch UploadPreflight.check(fileSize: size, mimeType: mimeType, limits: limits) {
+        case .ready:
+            break
+        case .needsTranscode(_, let target):
+            errorMessage = String(
+                localized: "That file has to be \(target) for your server.",
+                comment: "Upload needs a conversion this app cannot do")
+            return
+        case .tooLarge(let size, let limit, let isVideo):
+            errorMessage = UploadPreflight.explanation(
+                for: .tooLarge(size: size, limit: limit, isVideo: isVideo))
+            return
+        case .unsupported(let mimeType):
+            errorMessage = UploadPreflight.explanation(for: .unsupported(mimeType: mimeType))
+            return
+        }
+
+        guard let mapped = try? Data(contentsOf: url, options: .alwaysMapped) else {
+            errorMessage = String(
+                localized: "That upload didn't finish.", comment: "Upload failure")
+            return
+        }
+        await send(mapped, filename: filename, mimeType: mimeType)
+    }
+
+    /// Uploads what has passed the checks, and attaches it.
+    private func send(_ payload: Data, filename name: String, mimeType type: String) async {
         let ticket = progress.begin(name)
         if UploadActivityController.isWorthShowing(
             totalBytes: payload.count, containsVideo: type.hasPrefix("video/"))
@@ -210,6 +302,8 @@ public final class ComposerUploader {
     /// connection that is the difference between possible and not (docs/07 §6).
     public func addFromNextcloudFiles(path: String, description: String?) async {
         guard session.capabilities.mediaFromNextcloudFiles, canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
 
         let ticket = progress.begin((path as NSString).lastPathComponent)
         do {
@@ -293,6 +387,10 @@ public final class ComposerUploader {
             let previous = filters[attachmentID] ?? .none
             filters[attachmentID] = filter
             guard filter != previous else { return }
+            // The new picture replaces the old one only once it is up; a post
+            // made in between would carry the old one and orphan the new.
+            beginUpload()
+            defer { endUpload() }
 
             // "Original" needs no round trip when it is already what is up
             // there, and a redraw only happens for the rest.
