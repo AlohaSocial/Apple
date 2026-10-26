@@ -22,6 +22,9 @@ public struct VideoTrimView: View {
     @State private var range: ClosedRange<Double> = 0...1
     @State private var quality: MediaPreparer.Quality = .high
     @State private var isExporting = false
+    /// The export under way, stopped when the sheet goes: a cancelled video
+    /// must not turn up in the post a moment later.
+    @State private var exporting: Task<Void, Never>?
     @State private var errorMessage: String?
 
     private let preparer = MediaPreparer()
@@ -84,6 +87,7 @@ public struct VideoTrimView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
+                        exporting?.cancel()
                         dismiss()
                     } label: {
                         Text("Cancel", comment: "Sheet action")
@@ -91,7 +95,7 @@ public struct VideoTrimView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        Task { await export() }
+                        exporting = Task { await export() }
                     } label: {
                         if isExporting {
                             ProgressView()
@@ -103,7 +107,10 @@ public struct VideoTrimView: View {
                 }
             }
             .task { await load() }
-            .onDisappear { player?.pause() }
+            .onDisappear {
+                player?.pause()
+                exporting?.cancel()
+            }
         }
     }
 
@@ -162,6 +169,7 @@ public struct VideoTrimView: View {
         do {
             let prepared = try await preparer.prepareVideo(
                 at: url, trim: range, quality: quality)
+            guard !Task.isCancelled else { return }
 
             guard prepared.data.count <= limits.videoSizeLimit else {
                 errorMessage = UploadPreflight.explanation(
@@ -173,6 +181,7 @@ public struct VideoTrimView: View {
             onReady(prepared)
             dismiss()
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = String(
                 localized: "That video couldn't be prepared.", comment: "Video export failure")
         }
