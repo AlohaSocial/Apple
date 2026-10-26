@@ -14,18 +14,69 @@ public final class AudioPlayerCoordinator {
     public static let shared = AudioPlayerCoordinator()
 
     public private(set) var nowPlaying: Status?
+    /// Whether sound is coming out, read back from the player rather than
+    /// kept by hand. A track that ends, a phone call or unplugged headphones
+    /// stop the player without asking, and a flag only the buttons flipped
+    /// went on saying "playing" — so the next press did the opposite of what
+    /// it showed.
     public private(set) var isPlaying = false
     public fileprivate(set) var position: Double = 0
     public fileprivate(set) var duration: Double = 0
 
     private var player: AVPlayer?
     private var timeObserver: Any?
+    @ObservationIgnored private var playbackState: NSKeyValueObservation?
+    @ObservationIgnored private var trackEnd: NotificationSubscription?
+    @ObservationIgnored private var sessionEvents: [NotificationSubscription] = []
     private var queue: [Status] = []
+    /// What the person last asked for. An interruption pauses the player but
+    /// not this, which is how the end of a phone call knows whether to carry
+    /// on.
+    private var wantsPlayback = false
+    private var resumesAfterInterruption = false
     private let remoteCommands = RemoteCommandRegistration(
         centre: SystemRemoteCommandCentre(),
         handlers: AudioPlayerCoordinator.remoteCommandHandlers())
 
-    private init() {}
+    private init() {
+        #if os(iOS) || os(tvOS) || os(visionOS)
+            // The system posts these on a queue of its own; the blocks only
+            // read the notification and hop to the main actor with plain
+            // values.
+            sessionEvents = [
+                // iOS 27 splits the old interruption notification in two: the
+                // session going inactive, and later a word on whether to carry
+                // on. Only a deactivation by the system is an interruption;
+                // the app's own (the speaker handed back) is not.
+                NotificationSubscription(name: AVAudioSession.didBecomeInactiveNotification) {
+                    notification in
+                    let context =
+                        notification.userInfo?[AVAudioSession.deactivationContextKey]
+                        as? AVAudioSession.DeactivationContext
+                    guard context?.source == .system else { return }
+                    Task { @MainActor in AudioPlayerCoordinator.shared.interruptionBegan() }
+                },
+                NotificationSubscription(
+                    name: AVAudioSession.resumptionRecommendationNotification
+                ) { notification in
+                    let context =
+                        notification.userInfo?[AVAudioSession.resumptionContextKey]
+                        as? AVAudioSession.ResumptionContext
+                    let shouldResume = context?.recommendation == .shouldResume
+                    Task { @MainActor in
+                        AudioPlayerCoordinator.shared.interruptionEnded(shouldResume: shouldResume)
+                    }
+                },
+                NotificationSubscription(name: AVAudioSession.routeChangeNotification) {
+                    notification in
+                    let reason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+                    guard reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue
+                    else { return }
+                    Task { @MainActor in AudioPlayerCoordinator.shared.outputWentAway() }
+                },
+            ]
+        #endif
+    }
 
     public func play(_ status: Status, queue: [Status] = []) {
         let target = status.displayed
@@ -34,27 +85,18 @@ public final class AudioPlayerCoordinator {
         else { return }
 
         configureSession()
-        teardownObserver()
+        teardownPlayer()
 
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)
         self.player = player
         self.nowPlaying = target
         self.queue = queue
+        position = 0
+        duration = 0
+        observe(player, item: item)
 
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main
-        ) { time in
-            let seconds = time.seconds
-            let total = item.duration.seconds
-            Task { @MainActor in
-                let coordinator = AudioPlayerCoordinator.shared
-                coordinator.position = seconds
-                coordinator.duration = total.isFinite ? total : 0
-                coordinator.updateNowPlaying()
-            }
-        }
-
+        wantsPlayback = true
         player.play()
         isPlaying = true
         remoteCommands.register()
@@ -68,14 +110,16 @@ public final class AudioPlayerCoordinator {
     /// The lock screen sends play and pause as separate commands; mapping
     /// both to a toggle made a Play press on a playing track pause it.
     public func pause() {
-        guard let player, isPlaying else { return }
+        guard let player else { return }
+        wantsPlayback = false
         player.pause()
         isPlaying = false
         updateNowPlaying()
     }
 
     public func resume() {
-        guard let player, !isPlaying else { return }
+        guard let player else { return }
+        wantsPlayback = true
         player.play()
         isPlaying = true
         updateNowPlaying()
@@ -85,25 +129,44 @@ public final class AudioPlayerCoordinator {
     /// command targets go with the player, so a later track does not find
     /// the old handlers still attached.
     public func stop() {
-        player?.pause()
-        teardownObserver()
-        player = nil
+        teardownPlayer()
         nowPlaying = nil
+        queue = []
         isPlaying = false
+        wantsPlayback = false
+        resumesAfterInterruption = false
+        position = 0
+        duration = 0
         remoteCommands.unregister()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
     public func seek(to seconds: Double) {
-        player?.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
+        guard let player else { return }
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
+        // Now Playing extrapolates from the last elapsed time it was given,
+        // so a seek it is not told about leaves the lock screen elsewhere.
+        position = seconds
+        updateNowPlaying()
     }
 
     public func next() {
-        guard let current = nowPlaying,
-            let index = queue.firstIndex(where: { $0.id == current.id }),
-            queue.indices.contains(index + 1)
-        else { return }
-        play(queue[index + 1], queue: queue)
+        guard let upcoming = Self.track(after: nowPlaying, in: queue) else { return }
+        play(upcoming, queue: queue)
+    }
+
+    /// The next post in the queue with something to play.
+    ///
+    /// The queue holds the list's rows, boosts included, while `nowPlaying`
+    /// is the post a boost carries; the match is on what each row displays,
+    /// or a boosted track was the end of the queue.
+    static func track(after current: Status?, in queue: [Status]) -> Status? {
+        guard let current,
+            let index = queue.firstIndex(where: { $0.displayed.id == current.id })
+        else { return nil }
+        return queue[(index + 1)...].first { candidate in
+            candidate.displayed.mediaAttachments.contains { $0.type == .audio }
+        }
     }
 
     private func configureSession() {
@@ -114,9 +177,94 @@ public final class AudioPlayerCoordinator {
         #endif
     }
 
-    private func teardownObserver() {
+    /// Follows the player rather than the buttons: its time for the progress
+    /// bar, its `timeControlStatus` for whether it is playing, and the end of
+    /// its item for what comes next.
+    private func observe(_ player: AVPlayer, item: AVPlayerItem) {
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main
+        ) { time in
+            let seconds = time.seconds
+            let total = item.duration.seconds
+            Task { @MainActor in
+                let coordinator = AudioPlayerCoordinator.shared
+                coordinator.position = seconds
+                let known = total.isFinite ? total : 0
+                // Now Playing runs its own clock from the elapsed time and
+                // rate; it only needs telling when the duration arrives.
+                if known != coordinator.duration {
+                    coordinator.duration = known
+                    coordinator.updateNowPlaying()
+                }
+            }
+        }
+
+        playbackState = player.observe(\.timeControlStatus, options: [.new]) {
+            @Sendable _, _ in
+            Task { @MainActor in AudioPlayerCoordinator.shared.playerStateChanged() }
+        }
+
+        let finished = ObjectIdentifier(item)
+        trackEnd = NotificationSubscription(name: AVPlayerItem.didPlayToEndTimeNotification) {
+            notification in
+            guard let object = notification.object,
+                ObjectIdentifier(object as AnyObject) == finished
+            else { return }
+            Task { @MainActor in AudioPlayerCoordinator.shared.trackEnded(finished) }
+        }
+    }
+
+    private func playerStateChanged() {
+        guard let player else { return }
+        let seconds = player.currentTime().seconds
+        if seconds.isFinite { position = seconds }
+        isPlaying = player.timeControlStatus != .paused
+        updateNowPlaying()
+    }
+
+    /// The queue is the visible list (docs/06 §7), so the end of one track is
+    /// the start of the next; after the last there is nothing left to show.
+    private func trackEnded(_ item: ObjectIdentifier) {
+        guard let current = player?.currentItem, ObjectIdentifier(current) == item else { return }
+        if let upcoming = Self.track(after: nowPlaying, in: queue) {
+            play(upcoming, queue: queue)
+        } else {
+            stop()
+        }
+    }
+
+    /// A phone call or a timer: paused while it lasts, and carried on after
+    /// only if the system says so and the person had not paused first.
+    private func interruptionBegan() {
+        guard let player else { return }
+        resumesAfterInterruption = wantsPlayback
+        wantsPlayback = false
+        player.pause()
+        isPlaying = false
+        updateNowPlaying()
+    }
+
+    private func interruptionEnded(shouldResume: Bool) {
+        let resumes = resumesAfterInterruption && shouldResume
+        resumesAfterInterruption = false
+        if resumes { resume() }
+    }
+
+    /// Headphones pulled out: the player has already paused itself, and it
+    /// stays paused after the next interruption too.
+    private func outputWentAway() {
+        wantsPlayback = false
+        resumesAfterInterruption = false
+    }
+
+    private func teardownPlayer() {
+        player?.pause()
         if let timeObserver { player?.removeTimeObserver(timeObserver) }
         timeObserver = nil
+        playbackState?.invalidate()
+        playbackState = nil
+        trackEnd = nil
+        player = nil
     }
 
     /// Remote command handlers are invoked on a background thread, so they

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaModels
 import Foundation
 import MediaPlayer
 import Testing
@@ -75,5 +76,44 @@ struct RemoteCommandTests {
                 continuation.resume()
             }
         }
+    }
+}
+
+@Suite("Audio mode queue")
+struct AudioQueueTests {
+
+    private let account = Account(id: "a", username: "alice", acct: "alice")
+
+    private func track(_ id: String) -> Status {
+        Status(
+            id: id, account: account,
+            mediaAttachments: [
+                MediaAttachment(
+                    id: "m\(id)", type: .audio,
+                    url: URL(string: "https://cloud.example/media/\(id).mp3"))
+            ])
+    }
+
+    @Test("The end of a track is the start of the next one in the list")
+    func advancesInOrder() {
+        let queue = [track("1"), track("2"), track("3")]
+        #expect(AudioPlayerCoordinator.track(after: queue[0], in: queue)?.id == "2")
+        #expect(AudioPlayerCoordinator.track(after: queue[2], in: queue) == nil)
+    }
+
+    /// `nowPlaying` is the post a boost carries, while the queue holds the
+    /// boost itself; matching on the row's own id ended the queue there.
+    @Test("A boosted track is found in the queue and followed by the next")
+    func boostedTrackAdvances() {
+        let boost = Status(id: "boost", account: account, reblog: Box(track("1")))
+        let queue = [boost, track("2")]
+        #expect(AudioPlayerCoordinator.track(after: boost.displayed, in: queue)?.id == "2")
+    }
+
+    @Test("A post with nothing to play is skipped rather than ending the queue")
+    func skipsSilentPosts() {
+        let silent = Status(id: "text", account: account)
+        let queue = [track("1"), silent, track("3")]
+        #expect(AudioPlayerCoordinator.track(after: queue[0], in: queue)?.id == "3")
     }
 }
