@@ -21,6 +21,9 @@ public final class AudioPlayerCoordinator {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var queue: [Status] = []
+    private let remoteCommands = RemoteCommandRegistration(
+        centre: SystemRemoteCommandCentre(),
+        handlers: AudioPlayerCoordinator.remoteCommandHandlers())
 
     private init() {}
 
@@ -54,23 +57,40 @@ public final class AudioPlayerCoordinator {
 
         player.play()
         isPlaying = true
-        registerRemoteCommands()
+        remoteCommands.register()
         updateNowPlaying()
     }
 
     public func togglePlayPause() {
-        guard let player else { return }
-        if isPlaying { player.pause() } else { player.play() }
-        isPlaying.toggle()
+        if isPlaying { pause() } else { resume() }
+    }
+
+    /// The lock screen sends play and pause as separate commands; mapping
+    /// both to a toggle made a Play press on a playing track pause it.
+    public func pause() {
+        guard let player, isPlaying else { return }
+        player.pause()
+        isPlaying = false
         updateNowPlaying()
     }
 
+    public func resume() {
+        guard let player, !isPlaying else { return }
+        player.play()
+        isPlaying = true
+        updateNowPlaying()
+    }
+
+    /// Ends playback and takes the app off the lock screen: the remote
+    /// command targets go with the player, so a later track does not find
+    /// the old handlers still attached.
     public func stop() {
         player?.pause()
         teardownObserver()
         player = nil
         nowPlaying = nil
         isPlaying = false
+        remoteCommands.unregister()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
@@ -101,22 +121,28 @@ public final class AudioPlayerCoordinator {
 
     /// Remote command handlers are invoked on a background thread, so they
     /// must **hop** to the main actor rather than assume they are already on
-    /// it: `assumeIsolated` from another thread traps the process.
-    private func registerRemoteCommands() {
-        let centre = MPRemoteCommandCenter.shared()
-
-        centre.playCommand.addTarget { _ in
-            Task { @MainActor in AudioPlayerCoordinator.shared.togglePlayPause() }
-            return .success
-        }
-        centre.pauseCommand.addTarget { _ in
-            Task { @MainActor in AudioPlayerCoordinator.shared.togglePlayPause() }
-            return .success
-        }
-        centre.nextTrackCommand.addTarget { _ in
-            Task { @MainActor in AudioPlayerCoordinator.shared.next() }
-            return .success
-        }
+    /// it: `assumeIsolated` from another thread traps the process. They are
+    /// made in a `nonisolated` function and typed `@Sendable`, so none of
+    /// them can be inferred main-actor-isolated (docs/14 §6).
+    nonisolated static func remoteCommandHandlers() -> [RemoteCommand: RemoteCommandHandler] {
+        [
+            .play: {
+                Task { @MainActor in AudioPlayerCoordinator.shared.resume() }
+                return .success
+            },
+            .pause: {
+                Task { @MainActor in AudioPlayerCoordinator.shared.pause() }
+                return .success
+            },
+            .togglePlayPause: {
+                Task { @MainActor in AudioPlayerCoordinator.shared.togglePlayPause() }
+                return .success
+            },
+            .nextTrack: {
+                Task { @MainActor in AudioPlayerCoordinator.shared.next() }
+                return .success
+            },
+        ]
     }
 
     /// Title from the post's first line, artist from the author — the only
@@ -135,6 +161,82 @@ public final class AudioPlayerCoordinator {
         ]
         if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+}
+
+/// A lock-screen button the Audio mode answers.
+nonisolated enum RemoteCommand: CaseIterable, Sendable {
+    case play, pause, togglePlayPause, nextTrack
+}
+
+/// What runs when a lock-screen button is pressed. The system calls it on a
+/// queue of its own, never the main actor, which is why it is `@Sendable`.
+/// None of the Audio mode's buttons needs the event itself.
+typealias RemoteCommandHandler = @Sendable () -> MPRemoteCommandHandlerStatus
+
+/// Where handlers are attached: the system's command centre in the app, a
+/// recorder in the tests.
+protocol RemoteCommandCentre: AnyObject {
+    func addTarget(for command: RemoteCommand, handler: @escaping RemoteCommandHandler) -> Any
+    func removeTarget(_ target: Any, for command: RemoteCommand)
+}
+
+/// `nonisolated`, so the closure handed to `addTarget` is formed outside the
+/// main actor and cannot be inferred isolated to it.
+nonisolated final class SystemRemoteCommandCentre: RemoteCommandCentre {
+    func addTarget(for command: RemoteCommand, handler: @escaping RemoteCommandHandler) -> Any {
+        let target: @Sendable (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus = { _ in
+            handler()
+        }
+        return self.command(command).addTarget(handler: target)
+    }
+
+    func removeTarget(_ target: Any, for command: RemoteCommand) {
+        self.command(command).removeTarget(target)
+    }
+
+    private func command(_ command: RemoteCommand) -> MPRemoteCommand {
+        let centre = MPRemoteCommandCenter.shared()
+        switch command {
+        case .play: return centre.playCommand
+        case .pause: return centre.pauseCommand
+        case .togglePlayPause: return centre.togglePlayPauseCommand
+        case .nextTrack: return centre.nextTrackCommand
+        }
+    }
+}
+
+/// The lock-screen handlers, attached once.
+///
+/// `addTarget` adds; it never replaces. Registering on every `play()` left
+/// one more handler behind with each track, so after two tracks a single
+/// Pause press toggled twice and nothing appeared to happen. The targets are
+/// kept here and taken off again when playback stops.
+final class RemoteCommandRegistration {
+    private let centre: any RemoteCommandCentre
+    private let handlers: [RemoteCommand: RemoteCommandHandler]
+    private var targets: [(command: RemoteCommand, target: Any)] = []
+
+    init(centre: any RemoteCommandCentre, handlers: [RemoteCommand: RemoteCommandHandler]) {
+        self.centre = centre
+        self.handlers = handlers
+    }
+
+    var isRegistered: Bool { !targets.isEmpty }
+
+    func register() {
+        guard targets.isEmpty else { return }
+        for command in RemoteCommand.allCases {
+            guard let handler = handlers[command] else { continue }
+            targets.append((command, centre.addTarget(for: command, handler: handler)))
+        }
+    }
+
+    func unregister() {
+        for (command, target) in targets {
+            centre.removeTarget(target, for: command)
+        }
+        targets = []
     }
 }
 
