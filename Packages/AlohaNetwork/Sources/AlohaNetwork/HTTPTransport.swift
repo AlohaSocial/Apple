@@ -54,13 +54,18 @@ public struct URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        try await answer { try await session.data(for: request) }
+        try await answer {
+            try await session.data(for: request, delegate: SameOriginRedirects.shared)
+        }
     }
 
     public func upload(
         _ request: URLRequest, fromFile file: URL
     ) async throws -> (Data, HTTPURLResponse) {
-        try await answer { try await uploadSession.upload(for: request, fromFile: file) }
+        try await answer {
+            try await uploadSession.upload(
+                for: request, fromFile: file, delegate: SameOriginRedirects.shared)
+        }
     }
 
     private func answer(
@@ -74,6 +79,41 @@ public struct URLSessionTransport: HTTPTransport {
             if error.code == .cancelled { throw APIError.cancelled }
             throw APIError.transport(error)
         }
+    }
+}
+
+/// URLSession takes `Authorization` off every redirected request, the same
+/// server's included, so a server that redirects `…/home/` to `…/home`, or
+/// http to https on the same host, answered a signed-in request as though
+/// nobody were signed in. The credential is put back when the redirect stays
+/// on the original request's origin, or moves it from http to https on the
+/// same host; to anywhere else it is never sent.
+final class SameOriginRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    static let shared = SameOriginRedirects()
+
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest
+    ) async -> URLRequest? {
+        guard let original = task.originalRequest else { return request }
+        return Self.redirect(request, from: original)
+    }
+
+    /// The redirected request, with the original's credential where it may go.
+    static func redirect(_ request: URLRequest, from original: URLRequest) -> URLRequest {
+        var request = request
+        guard let from = original.url, let to = request.url,
+            to.isSameOriginOrSecureUpgrade(of: from)
+        else {
+            request.setValue(nil, forHTTPHeaderField: "Authorization")
+            return request
+        }
+        if request.value(forHTTPHeaderField: "Authorization") == nil,
+            let credential = original.value(forHTTPHeaderField: "Authorization")
+        {
+            request.setValue(credential, forHTTPHeaderField: "Authorization")
+        }
+        return request
     }
 }
 

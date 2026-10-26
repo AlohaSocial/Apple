@@ -327,6 +327,18 @@ extension URL {
         return Self.normalisedPort(lhs) == Self.normalisedPort(rhs)
     }
 
+    /// The same origin as `other`, or `other`'s http host on its default port
+    /// reached over https on its default port: the same server asking for
+    /// TLS. Never the reverse, and never another host.
+    public func isSameOriginOrSecureUpgrade(of other: URL) -> Bool {
+        if isSameOrigin(as: other) { return true }
+        guard scheme?.lowercased() == "https", other.scheme?.lowercased() == "http",
+            let host = host()?.lowercased(), !host.isEmpty,
+            host == other.host()?.lowercased()
+        else { return false }
+        return Self.normalisedPort(other) == 80 && Self.normalisedPort(self) == 443
+    }
+
     /// The port to compare: the explicit one, or the scheme default.
     private static func normalisedPort(_ url: URL) -> Int? {
         if let port = url.port { return port }
