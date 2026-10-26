@@ -212,6 +212,15 @@ public final class ComposerModel {
     /// have loaded.
     private var restoredPostAsHandle: String?
     private var draftID = UUID()
+    /// Set once the post is out (or scheduled): from then on there is no
+    /// draft to save, whatever the composer still shows.
+    private var hasPosted = false
+    /// Whether this composer has saved its draft, so emptying the box and
+    /// leaving takes that draft away again.
+    private var hasSavedDraft = false
+    /// The last attempt failed in a way the send queue will retry, and the
+    /// draft was saved queued; saving it again keeps it so.
+    private var isQueuedForSend = false
     private var completionTask: Task<Void, Never>?
 
     /// The status being edited, where this composer is editing one.
@@ -832,6 +841,7 @@ public final class ComposerModel {
             // The composer keeps everything intact so the person can retry.
             let isTransient = (error as? APIError)?.isTransient ?? false
             if editingStatus == nil, isTransient { previousAttemptMayHaveLanded = true }
+            isQueuedForSend = isTransient
             await saveDraftIfNeeded(queued: isTransient)
             return false
         }
@@ -840,6 +850,8 @@ public final class ComposerModel {
     /// What every success ends with, a post made or a post scheduled: the
     /// draft goes, and so does the post a redraft started from.
     private func finishPosting() async {
+        hasPosted = true
+        isQueuedForSend = false
         threadProgress = nil
         try? await session.supportStore.deleteDraft(id: draftID)
         // Only now: the original goes once its replacement exists — on the
@@ -998,12 +1010,35 @@ public final class ComposerModel {
 
     public func saveDraftIfNeeded(queued: Bool = false) async {
         // An edit is not a draft: the post exists, and a "draft" of it would
-        // post a second copy when reopened.
-        guard editingStatus == nil else { return }
+        // post a second copy when reopened. Nor is a post that went out.
+        guard editingStatus == nil, !hasPosted else { return }
         var snapshot = draftSnapshot
         snapshot.queuedForSend = queued
 
-        guard !snapshot.isEmpty else { return }
+        guard !snapshot.isEmpty else {
+            // Emptied since this composer saved it — on the way to the
+            // background, say: the draft that save left goes too.
+            if hasSavedDraft {
+                try? await session.supportStore.deleteDraft(id: draftID)
+                hasSavedDraft = false
+            }
+            return
+        }
         _ = try? await session.supportStore.saveDraft(snapshot)
+        hasSavedDraft = true
+    }
+
+    /// Saves what is in the composer as it stands, for when the app may get
+    /// no other chance: iOS can end an app in the background without a word,
+    /// and nothing after that runs. By the composer's own draft id, so the
+    /// save made on closing later replaces this one rather than adding a
+    /// second. A post that failed for want of a network stays queued, as the
+    /// failure left it.
+    ///
+    /// Not while a post is on its way: it either lands, and must leave no
+    /// draft, or fails, and saves its own.
+    public func preserveDraft() async {
+        guard !isPosting else { return }
+        await saveDraftIfNeeded(queued: isQueuedForSend)
     }
 }

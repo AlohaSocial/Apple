@@ -437,6 +437,67 @@ struct UploadInFlightTests {
     }
 }
 
+@Suite("Saving the draft on the way to the background")
+@MainActor
+struct BackgroundDraftTests {
+    @Test("A save on the way out and the one on closing are the same draft")
+    func oneDraft() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Before the call"
+
+        await model.preserveDraft()
+        model.text = "Before the call, and after"
+        await model.saveDraftIfNeeded()
+
+        let drafts = try await session.supportStore.drafts(accountID: session.id)
+        #expect(drafts.map(\.text) == ["Before the call, and after"])
+    }
+
+    @Test("A post that went out leaves no draft, whatever is saved after it")
+    func postedLeavesNothing() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Out it goes"
+        await model.preserveDraft()
+
+        #expect(await model.post(skippingAltTextCheck: true))
+        // The held-for-review notice keeps the composer up, and the app can
+        // go to the background under it.
+        await model.preserveDraft()
+        await model.saveDraftIfNeeded()
+
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("Emptying the box after a save takes that draft away")
+    func emptiedDraftGoes() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Second thoughts"
+        await model.preserveDraft()
+
+        model.text = ""
+        await model.saveDraftIfNeeded()
+
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("A post waiting for the network stays queued when saved again")
+    func queuedStaysQueued() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.failPosts(with: .transport(URLError(.notConnectedToInternet)))
+        let model = ComposerModel(session: session)
+        model.text = "From the tunnel"
+
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        await model.preserveDraft()
+
+        let queued = try await session.supportStore.queuedDrafts(accountID: session.id)
+        #expect(queued.map(\.text) == ["From the tunnel"])
+    }
+}
+
 // MARK: - Support
 
 @MainActor

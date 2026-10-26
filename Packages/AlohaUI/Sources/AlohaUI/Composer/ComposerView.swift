@@ -18,6 +18,7 @@ public struct ComposerView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
     @Environment(\.composerHost) private var host
+    @Environment(\.scenePhase) private var scenePhase
     @State private var didSend = false
     @State private var showsCardOptions = false
     @State private var isShowingPollEditor = false
@@ -370,6 +371,14 @@ public struct ComposerView: View {
             }
         }
         .interactiveDismissDisabled(dismissal.isGuarded && !didFinish)
+        // iOS can end an app it has put in the background without another
+        // word, and then `onDisappear` never comes. What was written is saved
+        // on the way out instead — already at inactive, which leaves time for
+        // the store to write — and closing normally later replaces that save.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase != .active, !didFinish else { return }
+            Task { await model.preserveDraft() }
+        }
         // Every way out that is not Post or Cancel — the shell replacing the
         // sheet, the account changing underneath it, a window closing — still
         // keeps what was written.
