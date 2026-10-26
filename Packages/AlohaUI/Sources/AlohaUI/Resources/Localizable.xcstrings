@@ -15496,7 +15496,7 @@
       }
     },
     "Your post will go out on %@. You can change or cancel it under Scheduled posts in Settings." : {
-      "comment" : "Scheduled post confirmation detail. The argument is a date and time.",
+      "comment" : "Scheduled post confirmation. The argument is a date and time.",
       "localizations" : {
         "de" : {
           "stringUnit" : {

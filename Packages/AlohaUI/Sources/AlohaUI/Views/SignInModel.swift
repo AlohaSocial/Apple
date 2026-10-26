@@ -98,7 +98,9 @@ public final class SignInModel {
 
     /// The documented-unsupported escape hatch for an unusual deployment.
     public func useManualBase(environment: AppEnvironment) async {
-        guard var typed = URL(string: manualBase.trimmingCharacters(in: .whitespaces)) else { return }
+        guard var typed = URL(string: manualBase.trimmingCharacters(in: .whitespaces)) else {
+            return
+        }
         if !typed.absoluteString.hasSuffix("/") {
             typed = URL(string: typed.absoluteString + "/") ?? typed
         }

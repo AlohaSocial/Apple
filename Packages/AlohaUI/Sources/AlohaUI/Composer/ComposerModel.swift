@@ -877,7 +877,10 @@ public final class ComposerModel {
     /// Shared with the send queue, which refuses the same draft the same way.
     nonisolated static var threadCannotBeScheduled: String {
         String(
-            localized: "A thread can't be scheduled. Post it now, or schedule its first post on its own.",
+            localized: """
+                A thread can't be scheduled. \
+                Post it now, or schedule its first post on its own.
+                """,
             comment: "Composer refusal: scheduled post with thread segments")
     }
 

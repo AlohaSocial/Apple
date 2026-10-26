@@ -229,7 +229,8 @@ extension NSItemProvider {
             let upload = SharedItemType.upload(for: type)
             if preferred == SharedItemType.uploadableMovies {
                 if let file = await loadFile(type) {
-                    return .init(fileURL: file, filename: upload.filename, mimeType: upload.mimeType)
+                    return .init(
+                        fileURL: file, filename: upload.filename, mimeType: upload.mimeType)
                 }
             } else if let data = await loadData(type) {
                 return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)

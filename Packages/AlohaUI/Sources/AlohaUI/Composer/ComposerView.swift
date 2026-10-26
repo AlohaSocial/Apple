@@ -292,8 +292,12 @@ public struct ComposerView: View {
             } message: {
                 if let date = model.scheduledFor {
                     Text(
-                        "Your post will go out on \(date.formatted(.dateTime.weekday().day().month().hour().minute())). You can change or cancel it under Scheduled posts in Settings.",
-                        comment: "Scheduled post confirmation detail. The argument is a date and time.")
+                        """
+                        Your post will go out on \
+                        \(date.formatted(.dateTime.weekday().day().month().hour().minute())). \
+                        You can change or cancel it under Scheduled posts in Settings.
+                        """,
+                        comment: "Scheduled post confirmation. The argument is a date and time.")
                 }
             }
             .sheet(isPresented: $isShowingNextcloudFiles) {
