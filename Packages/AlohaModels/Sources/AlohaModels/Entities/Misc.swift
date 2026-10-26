@@ -176,7 +176,11 @@ public struct OAuthApplication: Codable, Sendable, Hashable {
 
 public struct OAuthToken: Codable, Sendable, Hashable {
     public var accessToken: String
+    /// `Bearer` when the server leaves it out.
     public var tokenType: String
+    /// What was granted, space-separated; empty when the server does not say.
+    /// Mastodon always says, but Pixelfed's Laravel Passport answers a token
+    /// request without a `scope` at all, and that must not fail the sign-in.
     public var scope: String
     public var createdAt: TimeInterval?
 
@@ -195,6 +199,16 @@ public struct OAuthToken: Codable, Sendable, Hashable {
         self.tokenType = tokenType
         self.scope = scope
         self.createdAt = createdAt
+    }
+
+    /// Only the token itself is required: a missing or null `token_type` or
+    /// `scope` falls back, and so does a `created_at` in an unexpected shape.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        accessToken = try c.decode(String.self, forKey: .accessToken)
+        tokenType = try c.decodeIfPresent(String.self, forKey: .tokenType) ?? "Bearer"
+        scope = try c.decodeIfPresent(String.self, forKey: .scope) ?? ""
+        createdAt = try? c.decodeIfPresent(TimeInterval.self, forKey: .createdAt)
     }
 }
 
