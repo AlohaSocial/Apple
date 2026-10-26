@@ -64,6 +64,48 @@ struct TimelineStorePersistenceTests {
         #expect(cached.compactMap(\.status).map(\.id) == ["9", "8", "7", "3", "2", "1"])
     }
 
+    /// What a reviewer saw: forty posts filled into the gap a full refresh
+    /// left, read back by position, came out as 62, 61, 60, 59, 20, 58, 19…
+    /// The merge's own answer was in order; only the stored one was not, so
+    /// this reads the timeline back the way a launch does.
+    @Test("Filling a gap a page at a time keeps the stored order")
+    func gapFillKeepsStoredOrder() async throws {
+        let (timelines, _, _, accountID) = makeStore()
+        let key = "home:home"
+        func page(_ ids: ClosedRange<Int>) -> [Status] { ids.reversed().map { status("\($0)") } }
+        func stored() async throws -> [TimelineMerge.Slot] {
+            try await timelines.slots(accountID: accountID, timelineKey: key)
+        }
+        func gapID() async throws -> String {
+            let gap = try await stored().first { $0.isGapMarker }
+            return try #require(gap).statusID
+        }
+
+        _ = try await timelines.apply(
+            page: page(1...20), accountID: accountID, timelineKey: key,
+            direction: .cold, pageWasFull: false)
+        _ = try await timelines.apply(
+            page: page(201...240), accountID: accountID, timelineKey: key,
+            direction: .newer, pageWasFull: true)
+
+        // Three full pages walk the gap down; each one has less room than
+        // the last, and the third has none.
+        for range in [161...200, 121...160, 81...120] {
+            _ = try await timelines.apply(
+                page: page(range), accountID: accountID, timelineKey: key,
+                direction: .fillingGap(id: try await gapID()), pageWasFull: true)
+            #expect(TimelineMerge.isWellFormed(try await stored()))
+        }
+        _ = try await timelines.apply(
+            page: page(21...80), accountID: accountID, timelineKey: key,
+            direction: .fillingGap(id: try await gapID()), pageWasFull: false)
+
+        #expect(TimelineMerge.isWellFormed(try await stored()))
+        let cached = try await timelines.cachedTimeline(accountID: accountID, timelineKey: key)
+        #expect(cached.allSatisfy { $0.status != nil })
+        #expect(cached.compactMap(\.status).map(\.id) == (1...240).reversed().map { "\($0)" })
+    }
+
     @Test("A status is stored once and shared by two timelines")
     func statusesAreShared() async throws {
         let (timelines, _, _, accountID) = makeStore()
