@@ -55,15 +55,29 @@ public struct ComposerView: View {
     private let prefilledText: String
     private let prefilledAttachments: [PrefilledAttachment]
 
-    /// Bytes handed over by the share extension, uploaded once the composer
-    /// appears so the sheet is on screen while they go up.
+    /// A file handed over by the share extension, uploaded once the composer
+    /// appears so the sheet is on screen while it goes up.
     public struct PrefilledAttachment: Sendable, Hashable {
-        public var data: Data
+        /// Where the bytes are: in memory, for a picture, or in a file of the
+        /// composer's own to delete once it has gone up — a video, which can
+        /// be larger than everything a share extension may hold.
+        public enum Source: Sendable, Hashable {
+            case data(Data)
+            case file(URL)
+        }
+
+        public var source: Source
         public var filename: String
         public var mimeType: String
 
         public init(data: Data, filename: String, mimeType: String) {
-            self.data = data
+            self.source = .data(data)
+            self.filename = filename
+            self.mimeType = mimeType
+        }
+
+        public init(fileURL: URL, filename: String, mimeType: String) {
+            self.source = .file(fileURL)
             self.filename = filename
             self.mimeType = mimeType
         }
@@ -361,9 +375,19 @@ public struct ComposerView: View {
                 await model.prepare()
                 guard isFirstRun else { return }
                 for attachment in prefilledAttachments {
-                    await model.uploader.add(
-                        data: attachment.data, filename: attachment.filename,
-                        mimeType: attachment.mimeType)
+                    switch attachment.source {
+                    case .data(let data):
+                        await model.uploader.add(
+                            data: data, filename: attachment.filename,
+                            mimeType: attachment.mimeType)
+                    case .file(let url):
+                        await model.uploader.add(
+                            fileAt: url, filename: attachment.filename,
+                            mimeType: attachment.mimeType)
+                        // The hand-over copy; the server has its own now, or
+                        // the upload has said why not.
+                        try? FileManager.default.removeItem(at: url)
+                    }
                 }
             }
             .onAppear { isEditorFocused = true }

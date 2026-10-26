@@ -155,6 +155,59 @@ public final class ComposerUploader {
             return
         }
 
+        await send(payload, filename: name, mimeType: type)
+    }
+
+    /// A file handed over on disk rather than in memory — the share
+    /// extension's video, which can be larger than everything the extension
+    /// is allowed to hold. Checked by its size on disk and read mapped, so
+    /// its pages come from the file as the request is built and can be let
+    /// go again under pressure, instead of all being copied in first.
+    ///
+    /// A picture goes the way of `add(data:)`: it is small next to a video,
+    /// and converting or shrinking it needs its bytes anyway.
+    public func add(fileAt url: URL, filename: String, mimeType: String) async {
+        guard !mimeType.hasPrefix("image/") else {
+            guard let data = try? Data(contentsOf: url) else {
+                errorMessage = String(
+                    localized: "That upload didn't finish.", comment: "Upload failure")
+                return
+            }
+            await add(data: data, filename: filename, mimeType: mimeType)
+            return
+        }
+        guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
+
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        switch UploadPreflight.check(fileSize: size, mimeType: mimeType, limits: limits) {
+        case .ready:
+            break
+        case .needsTranscode(_, let target):
+            errorMessage = String(
+                localized: "That file has to be \(target) for your server.",
+                comment: "Upload needs a conversion this app cannot do")
+            return
+        case .tooLarge(let size, let limit, let isVideo):
+            errorMessage = UploadPreflight.explanation(
+                for: .tooLarge(size: size, limit: limit, isVideo: isVideo))
+            return
+        case .unsupported(let mimeType):
+            errorMessage = UploadPreflight.explanation(for: .unsupported(mimeType: mimeType))
+            return
+        }
+
+        guard let mapped = try? Data(contentsOf: url, options: .alwaysMapped) else {
+            errorMessage = String(
+                localized: "That upload didn't finish.", comment: "Upload failure")
+            return
+        }
+        await send(mapped, filename: filename, mimeType: mimeType)
+    }
+
+    /// Uploads what has passed the checks, and attaches it.
+    private func send(_ payload: Data, filename name: String, mimeType type: String) async {
         let ticket = progress.begin(name)
         if UploadActivityController.isWorthShowing(
             totalBytes: payload.count, containsVideo: type.hasPrefix("video/"))

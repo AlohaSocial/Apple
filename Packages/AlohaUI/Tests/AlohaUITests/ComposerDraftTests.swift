@@ -437,6 +437,48 @@ struct UploadInFlightTests {
     }
 }
 
+@Suite("A shared movie handed over as a file")
+@MainActor
+struct FileUploadTests {
+    private func file(size: UInt64) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "shared-test-\(UUID().uuidString).mp4")
+        #expect(FileManager.default.createFile(atPath: url.path(), contents: Data("wave".utf8)))
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: size)
+        try handle.close()
+        return url
+    }
+
+    @Test("It goes up from the file and is attached")
+    func uploadsFromFile() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        let url = try file(size: 1024)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        await model.uploader.add(fileAt: url, filename: "wave.mp4", mimeType: "video/mp4")
+
+        #expect(model.uploader.attachments.map(\.id) == ["media-1"])
+        #expect(await transport.log.contains("POST api/v2/media"))
+    }
+
+    @Test("One over the server's limit is refused by its size on disk, before any upload")
+    func refusesBySize() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        // Sparse: the size is on disk without the bytes being written.
+        let url = try file(size: 200 * 1024 * 1024)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        await model.uploader.add(fileAt: url, filename: "long.mp4", mimeType: "video/mp4")
+
+        #expect(model.uploader.attachments.isEmpty)
+        #expect(model.uploader.errorMessage != nil)
+        #expect(await transport.log.contains("POST api/v2/media") == false)
+    }
+}
+
 @Suite("Saving the draft on the way to the background")
 @MainActor
 struct BackgroundDraftTests {
