@@ -231,6 +231,22 @@ struct ComposerRestoreTests {
         #expect(saved.idempotencyKey == "kept")
     }
 
+    @Test("A reopened draft can post before its uploads are looked up, and keeps them")
+    func postBeforeLookups() async throws {
+        let (session, transport) = try await makeSession()
+        let draft = DraftSnapshot(
+            accountID: session.id, text: "", uploadedMediaIDs: ["m1", "m2"])
+        let model = ComposerModel(session: session, draft: draft)
+
+        // Offline, the lookups `prepare()` makes take minutes to give up.
+        #expect(model.isUploading == false)
+        #expect(model.canPost)
+        #expect(model.draftSnapshot.uploadedMediaIDs == ["m1", "m2"])
+
+        _ = await model.post(skippingAltTextCheck: true)
+        #expect(await transport.posts.last?.mediaIDs == ["m1", "m2"])
+    }
+
     @Test("Editing a reopened draft gives it a new key")
     func editedDraftNewKey() async throws {
         let (session, _) = try await makeSession()
@@ -704,6 +720,7 @@ private actor RecordingTransport: HTTPTransport {
         var text: String?
         var inReplyToID: String?
         var idempotencyKey: String?
+        var mediaIDs: [String] = []
     }
 
     let server: MockAPIServer
@@ -769,12 +786,21 @@ private actor RecordingTransport: HTTPTransport {
             posts.append(
                 Post(
                     text: fields["status"], inReplyToID: fields["in_reply_to_id"],
-                    idempotencyKey: request.value(forHTTPHeaderField: "Idempotency-Key")))
+                    idempotencyKey: request.value(forHTTPHeaderField: "Idempotency-Key"),
+                    mediaIDs: Self.mediaIDs(request.httpBody)))
             if let postFailure, failingPostNumber == nil || failingPostNumber == posts.count {
                 throw postFailure
             }
         }
         return try await server.send(request)
+    }
+
+    private static func mediaIDs(_ body: Data?) -> [String] {
+        guard let body, let string = String(data: body, encoding: .utf8) else { return [] }
+        var components = URLComponents()
+        components.percentEncodedQuery = string
+        return (components.queryItems ?? []).filter { $0.name == "media_ids[]" }
+            .compactMap(\.value)
     }
 
     private static func form(_ body: Data?) -> [String: String] {

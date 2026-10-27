@@ -92,10 +92,11 @@ public final class ComposerModel {
     private var libraryAttachmentsInFlight = 0
 
     /// Whether an attachment is still on its way — an upload, a video the
-    /// server is processing, a library picture — or a reopened draft is still
-    /// looking its uploads up. Posting now would leave it behind.
+    /// server is processing, a library picture. Posting now would leave it
+    /// behind. A reopened draft still looking its uploads up does not count:
+    /// those go out by id, and offline the lookups can take minutes to fail.
     public var isUploading: Bool {
-        uploader.isBusy || libraryAttachmentsInFlight > 0 || !pendingMediaIDs.isEmpty
+        uploader.isBusy || libraryAttachmentsInFlight > 0
     }
     /// Focal points set here, by attachment id, so the strip can show a mark.
     public private(set) var focalPoints: [String: CGPoint] = [:]
@@ -546,7 +547,14 @@ public final class ComposerModel {
         guard !isPosting, !isUploading else { return false }
         guard (remainingCharacters ?? 0) >= 0 else { return false }
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return hasText || !attachments.isEmpty || quoting != nil || restoredQuotedID != nil
+        return hasText || !attachmentIDs.isEmpty || quoting != nil || restoredQuotedID != nil
+    }
+
+    /// Every attachment the post carries: those on show, and a reopened
+    /// draft's uploads known only by id — not yet looked up, or not found
+    /// for want of a network.
+    private var attachmentIDs: [String] {
+        attachments.map(\.id) + unresolvedMediaIDs + pendingMediaIDs
     }
 
     public var visibilitySymbol: String {
@@ -733,7 +741,7 @@ public final class ComposerModel {
             sensitive: !spoilerText.isEmpty || session.settings.defaultSensitive,
             language: language ?? session.settings.defaultLanguage,
             inReplyToID: replyTo?.id ?? restoredReplyToID,
-            mediaIDs: cardAttachmentID.map { [$0] } ?? attachments.map(\.id) + unresolvedMediaIDs,
+            mediaIDs: cardAttachmentID.map { [$0] } ?? attachmentIDs,
             pollOptions: pollOptions.filter { !$0.isEmpty },
             pollMultiple: pollMultiple,
             scheduledAt: scheduledAt,
@@ -975,7 +983,7 @@ public final class ComposerModel {
             inReplyToID: replyTo?.id ?? restoredReplyToID,
             // Library pictures are attachments like any other once made, so
             // their ids travel too.
-            uploadedMediaIDs: attachments.map(\.id) + unresolvedMediaIDs,
+            uploadedMediaIDs: attachmentIDs,
             pollOptions: pollOptions.filter { !$0.isEmpty }, pollMultiple: pollMultiple,
             scheduledAt: scheduledAt, idempotencyKey: idempotencyKey,
             quotedID: quoting?.id ?? restoredQuotedID,
