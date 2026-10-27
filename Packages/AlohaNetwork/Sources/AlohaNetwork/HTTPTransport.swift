@@ -137,9 +137,14 @@ extension URLSessionConfiguration {
     /// all, and two minutes without a byte either way, which also covers a
     /// server that transcodes before it answers (`api/v1/media`). A stalled
     /// upload still fails within those two minutes.
+    ///
+    /// It does not wait for a network that is not there. Waiting counts only
+    /// against the hour, so an upload started offline would spin, and keep
+    /// Post disabled, for that long; failing at once lets the person see why
+    /// and try again.
     public static var alohaUploads: URLSessionConfiguration {
         let configuration = URLSessionConfiguration.default
-        configuration.waitsForConnectivity = true
+        configuration.waitsForConnectivity = false
         configuration.timeoutIntervalForRequest = 120
         configuration.timeoutIntervalForResource = 60 * 60
         configuration.httpAdditionalHeaders = ["User-Agent": AlohaUserAgent.value]

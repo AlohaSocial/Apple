@@ -101,6 +101,12 @@ struct UploadTests {
         #expect(
             URLSessionTransport.uploads.configuration.timeoutIntervalForResource == 3600)
     }
+
+    @Test("An upload started offline fails at once instead of waiting out the hour")
+    func uploadsDoNotWait() {
+        #expect(URLSessionConfiguration.alohaUploads.waitsForConnectivity == false)
+        #expect(URLSessionConfiguration.aloha.waitsForConnectivity)
+    }
 }
 
 /// A server inside URLSession: a path with a trailing slash is redirected to
