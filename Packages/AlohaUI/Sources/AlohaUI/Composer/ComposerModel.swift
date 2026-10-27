@@ -696,6 +696,10 @@ public final class ComposerModel {
         isPosting = true
         defer { isPosting = false }
 
+        // Sent from the queue while the composer stayed open: the post is
+        // out, and Post only closes.
+        if await sendQueueTookDraft() { return true }
+
         // The games are played here, once, and what travels is their result.
         // Rolling in the view would re-roll on every redraw; rolling on the
         // server would let the same post say two different things.
@@ -1024,6 +1028,7 @@ public final class ComposerModel {
         // An edit is not a draft: the post exists, and a "draft" of it would
         // post a second copy when reopened. Nor is a post that went out.
         guard editingStatus == nil, !hasPosted else { return }
+        guard await !sendQueueTookDraft() else { return }
         var snapshot = draftSnapshot
         snapshot.queuedForSend = queued
 
@@ -1038,6 +1043,23 @@ public final class ComposerModel {
         }
         _ = try? await session.supportStore.saveDraft(snapshot)
         hasSavedDraft = true
+    }
+
+    /// Whether the send queue has dealt with this composer's queued draft
+    /// since it was saved: sent it, so the draft is gone, or sent the start
+    /// of its thread, so the draft has moved on to what is left. Either way
+    /// the composer's copy is out of date, and saving or posting it would
+    /// send again what already went out. From then on the queue's draft is
+    /// the post, and this composer has nothing left to save.
+    private func sendQueueTookDraft() async -> Bool {
+        guard isQueuedForSend, hasSavedDraft else { return false }
+        // A store that cannot be read says nothing about the draft.
+        let stored: DraftSnapshot?
+        do { stored = try await session.supportStore.draft(id: draftID) } catch { return false }
+        if let stored, stored.threadPosition <= draftSnapshot.threadPosition { return false }
+        hasPosted = true
+        isQueuedForSend = false
+        return true
     }
 
     /// Saves what is in the composer as it stands, for when the app may get

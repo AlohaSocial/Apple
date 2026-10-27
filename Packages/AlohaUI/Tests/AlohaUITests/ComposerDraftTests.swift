@@ -538,6 +538,45 @@ struct BackgroundDraftTests {
         let queued = try await session.supportStore.queuedDrafts(accountID: session.id)
         #expect(queued.map(\.text) == ["From the tunnel"])
     }
+
+    @Test("A post the queue sent while the composer stayed open is not queued again")
+    func queueSentItOnce() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.failPosts(with: .transport(URLError(.notConnectedToInternet)))
+        let model = ComposerModel(session: session)
+        model.text = "From the tunnel"
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+
+        // Back online: the queue sends it, and the composer is still up.
+        await transport.stopFailing()
+        #expect(await SendQueue.drain(session: session) == 1)
+        let attempts = await transport.posts.count
+
+        // The app goes to the background under it and comes back.
+        await model.preserveDraft()
+        #expect(await SendQueue.drain(session: session) == 0)
+        #expect(await transport.posts.count == attempts)
+
+        // And closing leaves no draft of what went out.
+        await model.saveDraftIfNeeded()
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("Post after the queue sent it closes the composer without posting again")
+    func postAfterQueueSent() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.failPosts(with: .transport(URLError(.notConnectedToInternet)))
+        let model = ComposerModel(session: session)
+        model.text = "From the tunnel"
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+
+        await transport.stopFailing()
+        #expect(await SendQueue.drain(session: session) == 1)
+        let attempts = await transport.posts.count
+
+        #expect(await model.post(skippingAltTextCheck: true))
+        #expect(await transport.posts.count == attempts)
+    }
 }
 
 @Suite("Opening a reply")
