@@ -379,6 +379,13 @@ public final class AppEnvironment {
         else { return }
 
         guard outcome.apiBase != session.capabilities.apiBase else { return }
+        guard
+            ServerProbe.mayAdopt(
+                apiBase: outcome.apiBase, replacing: session.capabilities.apiBase)
+        else {
+            logger.notice("API base answered from another host; keeping the stored one")
+            return
+        }
         logger.notice("API base moved; adopting the new one")
 
         var capabilities = session.capabilities

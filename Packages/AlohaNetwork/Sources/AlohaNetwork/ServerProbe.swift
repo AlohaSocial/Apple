@@ -406,6 +406,21 @@ extension ServerProbe {
         guard let lastAttempt else { return true }
         return now.timeIntervalSince(lastAttempt) >= reprobeInterval
     }
+
+    /// Whether a signed-in account may follow a re-probe to `found`.
+    ///
+    /// The account's token was issued by the server at `stored`, and every
+    /// request carries it. A re-probe follows redirects, so it can end on
+    /// another host — a misconfigured or hijacked redirect — and adopting
+    /// that would hand the token to whoever answers there. Only a move on
+    /// the same host is followed: a rewrite added or removed, a port, or
+    /// plain http becoming https. Going the other way, to http, is not.
+    public static func mayAdopt(apiBase found: URL, replacing stored: URL) -> Bool {
+        guard let foundHost = found.host()?.lowercased(),
+            foundHost == stored.host()?.lowercased()
+        else { return false }
+        return !(stored.scheme?.lowercased() == "https" && found.scheme?.lowercased() != "https")
+    }
 }
 
 extension ServerProbe {
