@@ -18,6 +18,10 @@ public struct ThreadView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var focused: Status?
+    /// Whether the screen is showing, rather than under one pushed over it.
+    @State private var isOnScreen = false
+    /// The post being read went while another screen covered this one.
+    @State private var focusedWasRemoved = false
     @State private var ancestors: [Status] = []
     @State private var descendants: [Status] = []
     @State private var isLoading = true
@@ -121,7 +125,10 @@ public struct ThreadView: View {
                 // the screen with it; anything else in the conversation
                 // just leaves it.
                 if let focused, removal.removes(focused) {
-                    dismiss()
+                    // Under a pushed screen — the author's profile, where the
+                    // block was made — closing now would close that too. It
+                    // waits for the way back.
+                    if isOnScreen { dismiss() } else { focusedWasRemoved = true }
                     return
                 }
                 withAnimation {
@@ -129,6 +136,11 @@ public struct ThreadView: View {
                     descendants.removeAll { removal.removes($0) }
                 }
             }
+            .onAppear {
+                isOnScreen = true
+                if focusedWasRemoved { dismiss() }
+            }
+            .onDisappear { isOnScreen = false }
         }
     }
 

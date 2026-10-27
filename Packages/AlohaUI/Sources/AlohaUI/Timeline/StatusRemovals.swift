@@ -23,33 +23,56 @@ enum StatusRemovals {
             Task { @MainActor in receive(removal) }
         }
     }
-
-    /// For a view: removals as a sequence, ending when the task that reads it
-    /// is cancelled.
-    nonisolated static func stream() -> AsyncStream<TimelineStatusRemoval> {
-        AsyncStream { continuation in
-            let subscription = NotificationSubscription(
-                name: TimelineStatusRemoval.notification
-            ) { notification in
-                guard let removal = notification.object as? TimelineStatusRemoval else { return }
-                continuation.yield(removal)
-            }
-            continuation.onTermination = { _ in withExtendedLifetime(subscription) {} }
-        }
-    }
 }
 
 extension View {
-    /// Runs `perform` for every removal on this account while the view is
-    /// on screen, so a list holding its own copies of posts can drop them.
+    /// Runs `perform` for every removal on this account for as long as the
+    /// view exists, so a list holding its own copies of posts can drop them.
+    ///
+    /// Also while another screen is pushed over it: blocking somebody from
+    /// the profile opened from a list must leave the list without them when
+    /// the person goes back. A `.task` would end as the list disappeared
+    /// under the profile, and miss exactly that.
     func onStatusesRemoved(
         for session: AccountSession,
         perform: @escaping (TimelineStatusRemoval) -> Void
     ) -> some View {
-        task(id: session.id) {
-            for await removal in StatusRemovals.stream() where removal.accountID == session.id {
-                perform(removal)
+        modifier(StatusRemovalListener(accountID: session.id, perform: perform))
+    }
+}
+
+/// Holds the subscription in view state, which lives as long as the view's
+/// identity rather than only while it is on screen.
+private struct StatusRemovalListener: ViewModifier {
+    let accountID: UUID
+    let perform: (TimelineStatusRemoval) -> Void
+    @State private var listener = Listener()
+
+    func body(content: Content) -> some View {
+        // Handed over on every update, so a removal always reaches the view
+        // as it is now.
+        let _ = listener.update(accountID: accountID, perform: perform)
+        content
+    }
+
+    @MainActor
+    private final class Listener {
+        private var accountID: UUID?
+        private var perform: ((TimelineStatusRemoval) -> Void)?
+        private var subscription: NotificationSubscription?
+
+        func update(accountID: UUID, perform: @escaping (TimelineStatusRemoval) -> Void) {
+            self.accountID = accountID
+            self.perform = perform
+            guard subscription == nil else { return }
+            subscription = StatusRemovals.observe { [weak self] removal in
+                self?.receive(removal)
             }
+        }
+
+        private func receive(_ removal: TimelineStatusRemoval) {
+            guard removal.accountID == accountID else { return }
+            perform?(removal)
         }
     }
 }
