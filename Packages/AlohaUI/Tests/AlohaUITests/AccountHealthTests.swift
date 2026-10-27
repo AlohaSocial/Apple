@@ -4,6 +4,7 @@ import AlohaModels
 import AlohaNetwork
 import AlohaStore
 import Foundation
+import SwiftData
 import Testing
 
 @testable import AlohaUI
@@ -112,6 +113,55 @@ struct AccountLifecycleTests {
         try await Task.sleep(for: .milliseconds(20))
         #expect(await transport.cacheCleared)
     }
+
+    /// A poll that was out when the account was removed used to come back
+    /// and write its notifications into the store the removal had emptied,
+    /// for an account that no longer existed — and put its count in the
+    /// badge.
+    @Test("A poll under way when its account is removed writes nothing")
+    func removalStopsPolling() async throws {
+        let transport = SlowPollTransport()
+        let environment = AppEnvironment(
+            container: StoreContainer.make(inMemory: true), transport: transport,
+            credentials: CredentialStore(inMemory: true))
+        environment.sync.attach(to: environment)
+        let session = try await signIn(environment, token: "t")
+        let id = session.id
+
+        let poll = Task { await environment.sync.poll(session) }
+        // Long enough for the poll to be waiting on the server.
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(await environment.removeAccount(id))
+
+        #expect(await poll.value == 0)
+        #expect(environment.sync.unreadCounts[id] == nil)
+        // And a poll that starts afterwards does not go out at all.
+        let before = await transport.unreadRequests
+        #expect(await environment.sync.poll(session) == 0)
+        #expect(await transport.unreadRequests == before)
+
+        let context = ModelContext(environment.container)
+        let notifications = try context.fetchCount(
+            FetchDescriptor<NotificationRecord>(predicate: #Predicate { $0.accountID == id }))
+        #expect(notifications == 0)
+    }
+}
+
+/// Holds the unread-count request long enough for an account to be removed
+/// while it is out.
+private actor SlowPollTransport: HTTPTransport {
+    let server = MockAPIServer(configuration: .mastodon43, statusCount: 1)
+    private(set) var unreadRequests = 0
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        if request.url?.path().hasSuffix("notifications/unread_count") == true {
+            unreadRequests += 1
+            try? await Task.sleep(for: .milliseconds(300))
+        }
+        return try await server.send(request)
+    }
+
+    nonisolated func removeCachedResponses() {}
 }
 
 @Suite("When a sign-in really has expired")

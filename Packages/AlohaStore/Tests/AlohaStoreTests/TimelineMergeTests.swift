@@ -159,6 +159,51 @@ struct TimelineMergeTests {
         #expect(current.map(\.statusID) == ["9", "8", "7", "6", "5", "4", "3", "2", "1"])
     }
 
+    /// Neighbours one position apart, the way a gap that has moved down a few
+    /// times ends up: forty posts cannot fit between them, and stepping past
+    /// the lower one interleaved the page with the rows below.
+    @Test("A page too big for the room around its gap renumbers rather than colliding")
+    func crowdedGapRenumbers() {
+        let existing = [
+            Slot(statusID: "100", position: 12), Slot.gap(below: "100", position: 11),
+            Slot(statusID: "20", position: 10), Slot(statusID: "19", position: 9),
+            Slot(statusID: "18", position: 8),
+        ]
+        let page = (60...99).reversed().map(String.init)
+
+        let plan = TimelineMerge.plan(
+            existing: existing, page: page, direction: .fillingGap(id: "gap:100"),
+            pageWasFull: true)
+
+        let ids = plan.slots.filter { !$0.isGapMarker }.map(\.statusID)
+        #expect(ids == ["100"] + page + ["20", "19", "18"])
+        #expect(plan.slots.filter(\.isGapMarker).map(\.statusID) == ["gap:60"])
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+        // The top keeps its place, so the next refresh still lands above it.
+        #expect(plan.slots.first?.position == 12)
+    }
+
+    @Test("A full refresh leaves room for a page between itself and the old top")
+    func fullRefreshLeavesRoom() throws {
+        let existing = slots(["3", "2", "1"])
+        let page = (10...49).reversed().map(String.init)
+        let refreshed = TimelineMerge.plan(
+            existing: existing, page: page, direction: .newer, pageWasFull: true)
+        let gap = try #require(refreshed.slots.first { $0.isGapMarker })
+
+        let filled = TimelineMerge.plan(
+            existing: refreshed.slots, page: (4...9).reversed().map(String.init),
+            direction: .fillingGap(id: gap.statusID), pageWasFull: false)
+
+        #expect(TimelineMerge.isWellFormed(filled.slots))
+        // Filled in place: the rows around the gap kept their positions.
+        let before = Dictionary(
+            uniqueKeysWithValues: refreshed.slots.map { ($0.statusID, $0.position) })
+        for slot in filled.slots where before[slot.statusID] != nil {
+            #expect(before[slot.statusID] == slot.position)
+        }
+    }
+
     @Test("A deletion removes the row and leaves the rest ordered")
     func deletion() {
         let existing = slots(["5", "4", "3"])

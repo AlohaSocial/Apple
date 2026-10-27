@@ -20,21 +20,21 @@ extension Endpoint {
         }
 
         public static func remove(_ tag: String) -> Endpoint {
-            Endpoint(method: .delete, path: "api/v1/interests/\(encoded(tag))")
+            Endpoint(method: .delete, path: "api/v1/interests/\(tag)")
         }
 
         public static func move(_ tag: String, to position: Int) -> Endpoint {
             Endpoint(
-                method: .post, path: "api/v1/interests/\(encoded(tag))/move",
+                method: .post, path: "api/v1/interests/\(tag)/move",
                 body: .form([URLQueryItem(name: "position", value: String(position))]))
         }
 
         public static func pin(_ tag: String) -> Endpoint {
-            Endpoint(method: .post, path: "api/v1/interests/\(encoded(tag))/pin")
+            Endpoint(method: .post, path: "api/v1/interests/\(tag)/pin")
         }
 
         public static func unpin(_ tag: String) -> Endpoint {
-            Endpoint(method: .post, path: "api/v1/interests/\(encoded(tag))/unpin")
+            Endpoint(method: .post, path: "api/v1/interests/\(tag)/unpin")
         }
 
         public static var reset: Endpoint {
@@ -101,10 +101,6 @@ extension Endpoint {
             Endpoint(
                 path: "api/v1/timelines/interests", query: pageItems(limit: limit, anchor: anchor))
         }
-
-        private static func encoded(_ tag: String) -> String {
-            tag.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? tag
-        }
     }
 }
 
@@ -156,17 +152,12 @@ extension Endpoint {
         }
 
         public static func react(_ id: String, emoji: String) -> Endpoint {
-            Endpoint(method: .put, path: "api/v1/announcements/\(id)/reactions/\(encoded(emoji))")
+            Endpoint(method: .put, path: "api/v1/announcements/\(id)/reactions/\(emoji)")
         }
 
         public static func unreact(_ id: String, emoji: String) -> Endpoint {
             Endpoint(
-                method: .delete, path: "api/v1/announcements/\(id)/reactions/\(encoded(emoji))")
-        }
-
-        /// An emoji in a path has to be percent-encoded to survive the trip.
-        private static func encoded(_ emoji: String) -> String {
-            emoji.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? emoji
+                method: .delete, path: "api/v1/announcements/\(id)/reactions/\(emoji)")
         }
     }
 }

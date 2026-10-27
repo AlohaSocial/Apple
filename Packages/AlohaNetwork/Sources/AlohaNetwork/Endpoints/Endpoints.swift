@@ -157,6 +157,11 @@ extension Endpoint {
                         + pageItems(limit: limit, anchor: anchor),
                     authentication: .nextcloudSession)
             default:
+                // Without the trailing slash Nextcloud Social declares its
+                // route with: that is Mastodon's own spelling, Nextcloud's
+                // router adds the slash when a path does not match without
+                // it, and a server that redirects one spelling to the other
+                // has URLSession take the token off the redirected request.
                 let segment = source.pathSegment ?? "home"
                 return Endpoint(
                     path: "api/v1/timelines/\(segment)/", query: items,

@@ -31,7 +31,10 @@ public struct Endpoint: Sendable, Hashable {
     }
 
     public var method: HTTPMethod
-    /// Relative to the resolved API base, with no leading slash.
+    /// Relative to the resolved API base, with no leading slash. Written as
+    /// it reads, not percent-encoded: `url(base:)` encodes it exactly once,
+    /// so a tag, an emoji or a user name goes in as it is. One encoded here
+    /// first would arrive as `%25…`.
     public var path: String
     public var query: [URLQueryItem]
     public var body: Body?
@@ -124,20 +127,36 @@ public struct Multipart: Sendable, Hashable {
 
     public func encoded() -> Data {
         var data = Data()
+        forEachChunk { data.append($0) }
+        return data
+    }
+
+    /// The same bytes as `encoded()`, written to `file` a part at a time. What
+    /// an upload streams from: a video is already in memory once, as its
+    /// part's data, and the body is never assembled into a second copy.
+    public func write(to file: URL) throws {
+        guard FileManager.default.createFile(atPath: file.path(), contents: nil) else {
+            throw CocoaError(.fileWriteUnknown, userInfo: [NSURLErrorKey: file])
+        }
+        let handle = try FileHandle(forWritingTo: file)
+        defer { try? handle.close() }
+        try forEachChunk { try handle.write(contentsOf: $0) }
+    }
+
+    private func forEachChunk(_ body: (Data) throws -> Void) rethrows {
         for part in parts {
-            data.append(Data("--\(boundary)\r\n".utf8))
+            try body(Data("--\(boundary)\r\n".utf8))
             var disposition = "Content-Disposition: form-data; name=\"\(part.name)\""
             if let filename = part.filename { disposition += "; filename=\"\(filename)\"" }
-            data.append(Data("\(disposition)\r\n".utf8))
+            try body(Data("\(disposition)\r\n".utf8))
             if let mimeType = part.mimeType {
-                data.append(Data("Content-Type: \(mimeType)\r\n".utf8))
+                try body(Data("Content-Type: \(mimeType)\r\n".utf8))
             }
-            data.append(Data("\r\n".utf8))
-            data.append(part.data)
-            data.append(Data("\r\n".utf8))
+            try body(Data("\r\n".utf8))
+            try body(part.data)
+            try body(Data("\r\n".utf8))
         }
-        data.append(Data("--\(boundary)--\r\n".utf8))
-        return data
+        try body(Data("--\(boundary)--\r\n".utf8))
     }
 }
 

@@ -231,6 +231,22 @@ struct ComposerRestoreTests {
         #expect(saved.idempotencyKey == "kept")
     }
 
+    @Test("A reopened draft can post before its uploads are looked up, and keeps them")
+    func postBeforeLookups() async throws {
+        let (session, transport) = try await makeSession()
+        let draft = DraftSnapshot(
+            accountID: session.id, text: "", uploadedMediaIDs: ["m1", "m2"])
+        let model = ComposerModel(session: session, draft: draft)
+
+        // Offline, the lookups `prepare()` makes take minutes to give up.
+        #expect(model.isUploading == false)
+        #expect(model.canPost)
+        #expect(model.draftSnapshot.uploadedMediaIDs == ["m1", "m2"])
+
+        _ = await model.post(skippingAltTextCheck: true)
+        #expect(await transport.posts.last?.mediaIDs == ["m1", "m2"])
+    }
+
     @Test("Editing a reopened draft gives it a new key")
     func editedDraftNewKey() async throws {
         let (session, _) = try await makeSession()
@@ -282,6 +298,401 @@ struct ComposerRestoreTests {
     }
 }
 
+@Suite("Scheduling a post")
+@MainActor
+struct SchedulingTests {
+    @Test("Mastodon's answer to a scheduled post reads as scheduled, not as a failure")
+    func decodesScheduledAnswer() throws {
+        // Verbatim the shape `REST::ScheduledStatusSerializer` writes: no
+        // account, no content, which no `Status` can be read from.
+        let json = #"""
+            {"id":"3221","scheduled_at":"2026-11-02T09:00:00.000Z","params":{"poll":null,
+            "text":"Later","language":"en","media_ids":null,"sensitive":null,
+            "visibility":"public","idempotency":null,"scheduled_at":null,
+            "spoiler_text":null,"application_id":3,"in_reply_to_id":null,
+            "with_rate_limit":false},"media_attachments":[]}
+            """#
+        let response = try PostResponse(
+            decoding: Data(json.utf8), scheduledAt: Date(timeIntervalSince1970: 1_793_610_000))
+
+        guard case .scheduled(let scheduled) = response else {
+            Issue.record("expected a scheduled post, got \(response)")
+            return
+        }
+        #expect(scheduled.id == "3221")
+        #expect(scheduled.params.text == "Later")
+    }
+
+    @Test("A scheduled post is a success, and leaves no draft behind")
+    func composerSchedules() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "See you tomorrow"
+        let when = Date().addingTimeInterval(24 * 3600)
+        model.scheduledAt = when
+
+        #expect(await model.post(skippingAltTextCheck: true))
+
+        #expect(model.errorMessage == nil)
+        let scheduledFor = try #require(model.scheduledFor)
+        #expect(abs(scheduledFor.timeIntervalSince(when)) < 1)
+        #expect(await transport.posts.count == 1)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+        // It is on the server's list, which is where the person finds it.
+        let listed = try await session.client.decode(
+            [ScheduledStatus].self, from: Endpoint.composing.scheduled)
+        #expect(listed.map(\.params.text) == ["See you tomorrow"])
+    }
+
+    @Test("A time already past posts at once, and that counts as posted too")
+    func pastTimePostsNow() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Late already"
+        model.scheduledAt = Date().addingTimeInterval(-60)
+
+        #expect(await model.post(skippingAltTextCheck: true))
+        #expect(model.scheduledFor == nil)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("The send queue schedules a queued post once and only once")
+    func queueSchedulesOnce() async throws {
+        let (session, transport) = try await makeSession()
+        _ = try await session.supportStore.saveDraft(
+            DraftSnapshot(
+                accountID: session.id, text: "Queued for later",
+                scheduledAt: Date().addingTimeInterval(3600), queuedForSend: true))
+
+        #expect(await SendQueue.drain(session: session) == 1)
+        #expect(await SendQueue.drain(session: session) == 0)
+
+        #expect(await transport.posts.count == 1)
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("A thread is not scheduled, from the composer or from the queue")
+    func threadsAreNotScheduled() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "one"
+        model.threadSegments = ["two"]
+        model.scheduledAt = Date().addingTimeInterval(3600)
+
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        #expect(model.errorMessage == ComposerModel.threadCannotBeScheduled)
+
+        let id = try await session.supportStore.saveDraft(
+            DraftSnapshot(
+                accountID: session.id, text: "one",
+                scheduledAt: Date().addingTimeInterval(3600), queuedForSend: true,
+                threadSegments: ["two"]))
+        _ = await SendQueue.drain(session: session)
+
+        #expect(await transport.posts.isEmpty)
+        let kept = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        #expect(kept.id == id)
+        #expect(kept.lastSendError == ComposerModel.threadCannotBeScheduled)
+    }
+}
+
+@Suite("Posting while an upload is under way")
+@MainActor
+struct UploadInFlightTests {
+    @Test("Nothing posts while a file is still going up")
+    func postWaitsForUpload() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "With a video"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+
+        #expect(model.canPost == false)
+        // `post()` minds the gate itself: a shortcut or an intent never
+        // passes the button.
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        #expect(await transport.posts.isEmpty)
+
+        await transport.releaseUploads()
+        await upload.value
+
+        #expect(model.canPost)
+        #expect(await model.post(skippingAltTextCheck: true))
+        #expect(await transport.posts.count == 1)
+    }
+
+    @Test("Closing mid-upload keeps the file: it joins the same draft once it lands")
+    func closingKeepsUpload() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "Half written"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+
+        // What closing does: save now, then again when the upload settles.
+        await model.saveDraftIfNeeded()
+        let settling = Task { await model.saveDraftWhenUploadsSettle() }
+        await transport.releaseUploads()
+        await upload.value
+        await settling.value
+
+        let drafts = try await session.supportStore.drafts(accountID: session.id)
+        #expect(drafts.count == 1)
+        #expect(drafts.first?.text == "Half written")
+        #expect(drafts.first?.uploadedMediaIDs == ["media-1"])
+    }
+
+    @Test("A late save after closing never undoes the same draft reopened and edited")
+    func lateSaveYields() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "Half written"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+        await model.saveDraftIfNeeded()
+        let settling = Task { await model.saveDraftWhenUploadsSettle() }
+
+        // Reopened from Drafts while the file is still going up, and finished.
+        let saved = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        let reopened = ComposerModel(session: session, draft: saved)
+        reopened.text = "Fully written"
+        await reopened.saveDraftIfNeeded()
+
+        await transport.releaseUploads()
+        await upload.value
+        await settling.value
+
+        let drafts = try await session.supportStore.drafts(accountID: session.id)
+        #expect(drafts.map(\.text) == ["Fully written"])
+    }
+
+    @Test("A late save after closing never brings back a draft posted since")
+    func lateSaveAfterPost() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "Half written"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+        await model.saveDraftIfNeeded()
+        let settling = Task { await model.saveDraftWhenUploadsSettle() }
+
+        let saved = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        let reopened = ComposerModel(session: session, draft: saved)
+        #expect(await reopened.post(skippingAltTextCheck: true))
+
+        await transport.releaseUploads()
+        await upload.value
+        await settling.value
+
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+}
+
+@Suite("A shared movie handed over as a file")
+@MainActor
+struct FileUploadTests {
+    private func file(size: UInt64) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "shared-test-\(UUID().uuidString).mp4")
+        #expect(FileManager.default.createFile(atPath: url.path(), contents: Data("wave".utf8)))
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: size)
+        try handle.close()
+        return url
+    }
+
+    @Test("It goes up from the file and is attached")
+    func uploadsFromFile() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        let url = try file(size: 1024)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        await model.uploader.add(fileAt: url, filename: "wave.mp4", mimeType: "video/mp4")
+
+        #expect(model.uploader.attachments.map(\.id) == ["media-1"])
+        #expect(await transport.log.contains("POST api/v2/media"))
+    }
+
+    @Test("One over the server's limit is refused by its size on disk, before any upload")
+    func refusesBySize() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        // Sparse: the size is on disk without the bytes being written.
+        let url = try file(size: 200 * 1024 * 1024)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        await model.uploader.add(fileAt: url, filename: "long.mp4", mimeType: "video/mp4")
+
+        #expect(model.uploader.attachments.isEmpty)
+        #expect(model.uploader.errorMessage != nil)
+        #expect(await transport.log.contains("POST api/v2/media") == false)
+    }
+}
+
+@Suite("Saving the draft on the way to the background")
+@MainActor
+struct BackgroundDraftTests {
+    @Test("A save on the way out and the one on closing are the same draft")
+    func oneDraft() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Before the call"
+
+        await model.preserveDraft()
+        model.text = "Before the call, and after"
+        await model.saveDraftIfNeeded()
+
+        let drafts = try await session.supportStore.drafts(accountID: session.id)
+        #expect(drafts.map(\.text) == ["Before the call, and after"])
+    }
+
+    @Test("A post that went out leaves no draft, whatever is saved after it")
+    func postedLeavesNothing() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Out it goes"
+        await model.preserveDraft()
+
+        #expect(await model.post(skippingAltTextCheck: true))
+        // The held-for-review notice keeps the composer up, and the app can
+        // go to the background under it.
+        await model.preserveDraft()
+        await model.saveDraftIfNeeded()
+
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("Emptying the box after a save takes that draft away")
+    func emptiedDraftGoes() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session)
+        model.text = "Second thoughts"
+        await model.preserveDraft()
+
+        model.text = ""
+        await model.saveDraftIfNeeded()
+
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("A post waiting for the network stays queued when saved again")
+    func queuedStaysQueued() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.failPosts(with: .transport(URLError(.notConnectedToInternet)))
+        let model = ComposerModel(session: session)
+        model.text = "From the tunnel"
+
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+        await model.preserveDraft()
+
+        let queued = try await session.supportStore.queuedDrafts(accountID: session.id)
+        #expect(queued.map(\.text) == ["From the tunnel"])
+    }
+
+    @Test("A post the queue sent while the composer stayed open is not queued again")
+    func queueSentItOnce() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.failPosts(with: .transport(URLError(.notConnectedToInternet)))
+        let model = ComposerModel(session: session)
+        model.text = "From the tunnel"
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+
+        // Back online: the queue sends it, and the composer is still up.
+        await transport.stopFailing()
+        #expect(await SendQueue.drain(session: session) == 1)
+        let attempts = await transport.posts.count
+
+        // The app goes to the background under it and comes back.
+        await model.preserveDraft()
+        #expect(await SendQueue.drain(session: session) == 0)
+        #expect(await transport.posts.count == attempts)
+
+        // And closing leaves no draft of what went out.
+        await model.saveDraftIfNeeded()
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
+
+    @Test("Post after the queue sent it closes the composer without posting again")
+    func postAfterQueueSent() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.failPosts(with: .transport(URLError(.notConnectedToInternet)))
+        let model = ComposerModel(session: session)
+        model.text = "From the tunnel"
+        #expect(await model.post(skippingAltTextCheck: true) == false)
+
+        await transport.stopFailing()
+        #expect(await SendQueue.drain(session: session) == 1)
+        let attempts = await transport.posts.count
+
+        #expect(await model.post(skippingAltTextCheck: true))
+        #expect(await transport.posts.count == attempts)
+    }
+}
+
+@Suite("Opening a reply")
+@MainActor
+struct ReplyPrefillTests {
+    private func reply() -> Status {
+        Status(id: "90", account: Account(id: "2", username: "bob", acct: "bob"))
+    }
+
+    @Test("An empty reply starts with the mentions")
+    func mentionsFillEmptyBox() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session, replyTo: reply())
+
+        await model.prepare()
+
+        #expect(model.text == "@bob ")
+    }
+
+    @Test("What was typed before the composer finished preparing is kept")
+    func typedTextKept() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session, replyTo: reply())
+        model.text = "Already typing"
+
+        await model.prepare()
+
+        #expect(model.text == "Already typing")
+    }
+
+    @Test("Preparing again does not undo what was chosen since")
+    func preparesOnce() async throws {
+        let (session, _) = try await makeSession()
+        let model = ComposerModel(session: session, replyTo: reply())
+        await model.prepare()
+
+        model.text = ""
+        model.visibility = .direct
+        await model.prepare()
+
+        #expect(model.text.isEmpty)
+        #expect(model.visibility == .direct)
+    }
+}
+
 // MARK: - Support
 
 @MainActor
@@ -309,6 +720,7 @@ private actor RecordingTransport: HTTPTransport {
         var text: String?
         var inReplyToID: String?
         var idempotencyKey: String?
+        var mediaIDs: [String] = []
     }
 
     let server: MockAPIServer
@@ -335,22 +747,60 @@ private actor RecordingTransport: HTTPTransport {
         failingPostNumber = nil
     }
 
+    /// Media uploads wait here until released, while uploads are held.
+    private var uploadsHeld = false
+    private var heldUploads: [CheckedContinuation<Void, Never>] = []
+    private var uploadCount = 0
+
+    func holdUploads() { uploadsHeld = true }
+
+    func releaseUploads() {
+        uploadsHeld = false
+        for upload in heldUploads { upload.resume() }
+        heldUploads = []
+    }
+
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let method = request.httpMethod ?? "GET"
         let path = request.url?.path().trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
         log.append("\(method) \(path)")
+
+        // The mock server has no upload route; an upload is answered here,
+        // with a finished attachment, once it is let through.
+        if method == "POST", path == "api/v2/media", let url = request.url {
+            if uploadsHeld { await withCheckedContinuation { heldUploads.append($0) } }
+            uploadCount += 1
+            let body = #"""
+                {"id":"media-\#(uploadCount)","type":"video","url":"https://cloud.example.test/m.mp4",
+                "preview_url":"https://cloud.example.test/m.jpg","remote_url":null,
+                "description":"A wave","blurhash":null,"meta":{}}
+                """#
+            return (
+                Data(body.utf8),
+                HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            )
+        }
 
         if method == "POST", path == "api/v1/statuses" {
             let fields = Self.form(request.httpBody)
             posts.append(
                 Post(
                     text: fields["status"], inReplyToID: fields["in_reply_to_id"],
-                    idempotencyKey: request.value(forHTTPHeaderField: "Idempotency-Key")))
+                    idempotencyKey: request.value(forHTTPHeaderField: "Idempotency-Key"),
+                    mediaIDs: Self.mediaIDs(request.httpBody)))
             if let postFailure, failingPostNumber == nil || failingPostNumber == posts.count {
                 throw postFailure
             }
         }
         return try await server.send(request)
+    }
+
+    private static func mediaIDs(_ body: Data?) -> [String] {
+        guard let body, let string = String(data: body, encoding: .utf8) else { return [] }
+        var components = URLComponents()
+        components.percentEncodedQuery = string
+        return (components.queryItems ?? []).filter { $0.name == "media_ids[]" }
+            .compactMap(\.value)
     }
 
     private static func form(_ body: Data?) -> [String: String] {

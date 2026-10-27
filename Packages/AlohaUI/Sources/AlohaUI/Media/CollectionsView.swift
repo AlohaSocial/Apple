@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// Pixelfed albums, where the server has them. A real reason Photos mode
@@ -267,12 +268,18 @@ public struct CollectionDetailView: View {
                     Button {
                         onAction(.openMedia(status: status.displayed, index: 0))
                     } label: {
-                        RemoteImage(
-                            url: status.displayed.mediaAttachments.first?.displayImageURL,
-                            blurhash: status.displayed.mediaAttachments.first?.blurhash,
-                            accessibilityText: status.displayed.mediaAttachments.first?.description
+                        // An album is somebody's pictures, and a sensitive one
+                        // is covered here as in the timeline. A grid has no
+                        // room for a content warning, so a picture behind one
+                        // is covered too rather than shown without it.
+                        SensitiveThumbnail(
+                            attachment: status.displayed.mediaAttachments.first,
+                            isSensitive: status.displayed.sensitive
+                                || status.displayed.hasContentWarning,
+                            policy: session.settings.sensitiveMediaPolicy
                         )
                         .aspectRatio(1, contentMode: .fill)
+                        .clipped()
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
@@ -309,6 +316,9 @@ public struct CollectionDetailView: View {
         }
         .background(palette.background)
         .navigationTitle(collection.title)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .task {
             statuses =
                 (try? await session.client.decode(

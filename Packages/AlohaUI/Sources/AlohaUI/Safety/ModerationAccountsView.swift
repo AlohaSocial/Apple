@@ -525,12 +525,11 @@ public struct ModerationTrendsView: View {
         guard !decidingIDs.contains(id) else { return }
         decidingIDs.insert(id)
         defer { decidingIDs.remove(id) }
-        let encoded =
-            id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
+        // Raw: the path is percent-encoded once, when the URL is built.
         let endpoint =
             approve
-            ? Endpoint.moderation.approveTrend(kind, id: encoded)
-            : Endpoint.moderation.rejectTrend(kind, id: encoded)
+            ? Endpoint.moderation.approveTrend(kind, id: id)
+            : Endpoint.moderation.rejectTrend(kind, id: id)
         do {
             _ = try await session.client.send(endpoint)
             decided.insert(id)

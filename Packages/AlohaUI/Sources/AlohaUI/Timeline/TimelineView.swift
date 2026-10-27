@@ -229,6 +229,7 @@ public struct TimelineView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(palette.background)
+        .environment(\.filterVerdicts, model.verdicts)
         // A rotor to move post by post, and one to land on the posts that
         // carry links, without walking every action inside each row
         // (docs/12 §3).

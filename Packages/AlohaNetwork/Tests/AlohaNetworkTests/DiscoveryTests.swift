@@ -154,6 +154,95 @@ struct ProbeIntegrationTests {
     }
 }
 
+/// Follows a redirect the way URLSession does: the request is answered at
+/// wherever `redirect` sends it, and the response names that final URL.
+private struct RedirectingTransport: HTTPTransport {
+    let inner: MockAPIServer
+    let redirect: @Sendable (URL) -> URL
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        var request = request
+        if let url = request.url { request.url = redirect(url) }
+        return try await inner.send(request)
+    }
+}
+
+/// `url` with its scheme and host replaced.
+private func moved(_ url: URL, scheme: String? = nil, host: String? = nil) -> URL {
+    var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+    if let scheme { components.scheme = scheme }
+    if let host { components.host = host }
+    return components.url!
+}
+
+@Suite("Discovery through redirects")
+struct ProbeRedirectTests {
+
+    @Test("A domain that redirects to its server signs in at the server")
+    func apexRedirectsToSubdomain() async throws {
+        let server = MockAPIServer(
+            configuration: .nextcloudSocialWithRewrite, host: "social.example.test")
+        let probe = ServerProbe(
+            transport: RedirectingTransport(inner: server) { url in
+                url.host() == "example.test" ? moved(url, host: "social.example.test") : url
+            })
+        let outcome = try await probe.discover(.init(host: "example.test"))
+
+        #expect(outcome.apiBase.absoluteString == "https://social.example.test/")
+        #expect(outcome.winningCandidate.rank == 1)
+    }
+
+    @Test("A local server that redirects to https keeps https, and its path")
+    func localUpgradeToHTTPS() async throws {
+        let server = MockAPIServer(
+            configuration: .nextcloudSocialWithoutRewrite, host: "nas.local")
+        let probe = ServerProbe(
+            transport: RedirectingTransport(inner: server) { url in
+                url.scheme == "http" ? moved(url, scheme: "https") : url
+            })
+        let address = try #require(ServerProbe.ServerAddress(typed: "http://nas.local"))
+        let outcome = try await probe.discover(address)
+
+        #expect(outcome.apiBase.absoluteString == "https://nas.local/index.php/apps/social/")
+    }
+
+    @Test("Without a redirect the candidate's own address is kept")
+    func noRedirectKeepsCandidate() async throws {
+        let server = MockAPIServer(configuration: .nextcloudSocialWithoutRewrite)
+        let resolved = try #require(
+            await ServerProbe(transport: server).resolveInstance(
+                base: URL(string: "https://cloud.example.test/index.php/apps/social/")!))
+        #expect(
+            resolved.base.absoluteString == "https://cloud.example.test/index.php/apps/social/")
+    }
+
+    @Test(
+        "The base is the answering URL less the route; a rewritten route or a downgrade is no base")
+    func baseFromAnsweringURL() {
+        let https = URL(string: "https://example.test/")!
+        func base(_ answered: String, requested: URL = https) -> String? {
+            ServerProbe.base(
+                answering: "api/v2/instance", at: URL(string: answered)!, requested: requested)?
+                .absoluteString
+        }
+        #expect(
+            base("https://social.example.test/api/v2/instance") == "https://social.example.test/")
+        #expect(
+            base("https://example.test:8443/social/api/v2/instance/")
+                == "https://example.test:8443/social/")
+        #expect(base("https://social.example.test/login") == nil)
+        // https sent on to plain http on a public host is not adopted; on the
+        // local network, or when http was asked for, it is what was asked.
+        #expect(base("http://example.test/api/v2/instance") == nil)
+        #expect(base("http://nas.local/api/v2/instance") == "http://nas.local/")
+        #expect(
+            base(
+                "http://example.test/api/v2/instance",
+                requested: URL(string: "http://example.test/")!)
+                == "http://example.test/")
+    }
+}
+
 @Suite("Capability detection")
 struct CapabilityDetectionTests {
 
