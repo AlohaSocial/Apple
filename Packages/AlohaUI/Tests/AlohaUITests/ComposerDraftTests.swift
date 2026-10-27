@@ -435,6 +435,61 @@ struct UploadInFlightTests {
         #expect(drafts.first?.text == "Half written")
         #expect(drafts.first?.uploadedMediaIDs == ["media-1"])
     }
+
+    @Test("A late save after closing never undoes the same draft reopened and edited")
+    func lateSaveYields() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "Half written"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+        await model.saveDraftIfNeeded()
+        let settling = Task { await model.saveDraftWhenUploadsSettle() }
+
+        // Reopened from Drafts while the file is still going up, and finished.
+        let saved = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        let reopened = ComposerModel(session: session, draft: saved)
+        reopened.text = "Fully written"
+        await reopened.saveDraftIfNeeded()
+
+        await transport.releaseUploads()
+        await upload.value
+        await settling.value
+
+        let drafts = try await session.supportStore.drafts(accountID: session.id)
+        #expect(drafts.map(\.text) == ["Fully written"])
+    }
+
+    @Test("A late save after closing never brings back a draft posted since")
+    func lateSaveAfterPost() async throws {
+        let (session, transport) = try await makeSession()
+        await transport.holdUploads()
+        let model = ComposerModel(session: session)
+        model.text = "Half written"
+
+        let upload = Task {
+            await model.uploader.add(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+        }
+        while model.uploader.activeUploads == 0 { await Task.yield() }
+        await model.saveDraftIfNeeded()
+        let settling = Task { await model.saveDraftWhenUploadsSettle() }
+
+        let saved = try #require(try await session.supportStore.drafts(accountID: session.id).first)
+        let reopened = ComposerModel(session: session, draft: saved)
+        #expect(await reopened.post(skippingAltTextCheck: true))
+
+        await transport.releaseUploads()
+        await upload.value
+        await settling.value
+
+        #expect(try await session.supportStore.drafts(accountID: session.id).isEmpty)
+    }
 }
 
 @Suite("A shared movie handed over as a file")

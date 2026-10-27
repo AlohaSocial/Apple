@@ -218,6 +218,9 @@ public final class ComposerModel {
     /// Whether this composer has saved its draft, so emptying the box and
     /// leaving takes that draft away again.
     private var hasSavedDraft = false
+    /// When the store recorded this composer's last save, to tell whether the
+    /// draft has been saved, posted or deleted elsewhere since.
+    private var savedAt: Date?
     /// The last attempt failed in a way the send queue will retry, and the
     /// draft was saved queued; saving it again keeps it so.
     private var isQueuedForSend = false
@@ -1021,6 +1024,9 @@ public final class ComposerModel {
     public func saveDraftWhenUploadsSettle() async {
         guard uploader.activeUploads > 0 else { return }
         await uploader.uploadsSettled()
+        // The draft may have been reopened from Drafts in the meantime, and
+        // edited or posted there: that composer's version stands.
+        guard await !draftChangedElsewhere() else { return }
         await saveDraftIfNeeded()
     }
 
@@ -1041,22 +1047,33 @@ public final class ComposerModel {
             }
             return
         }
-        _ = try? await session.supportStore.saveDraft(snapshot)
+        guard (try? await session.supportStore.saveDraft(snapshot)) != nil else { return }
         hasSavedDraft = true
+        savedAt = (try? await session.supportStore.draft(id: draftID))?.updatedAt
+    }
+
+    /// Whether the stored draft is no longer the one this composer last
+    /// saved: gone — sent by the send queue, posted from another composer,
+    /// deleted from Drafts — or saved since by something else, such as the
+    /// queue keeping what is left of a thread or the same draft reopened and
+    /// edited. This composer's copy is then out of date, and saving it would
+    /// undo that.
+    private func draftChangedElsewhere() async -> Bool {
+        guard hasSavedDraft, let savedAt else { return false }
+        // A store that cannot be read says nothing about the draft.
+        let stored: DraftSnapshot?
+        do { stored = try await session.supportStore.draft(id: draftID) } catch { return false }
+        return stored?.updatedAt != savedAt
     }
 
     /// Whether the send queue has dealt with this composer's queued draft
     /// since it was saved: sent it, so the draft is gone, or sent the start
     /// of its thread, so the draft has moved on to what is left. Either way
-    /// the composer's copy is out of date, and saving or posting it would
-    /// send again what already went out. From then on the queue's draft is
-    /// the post, and this composer has nothing left to save.
+    /// saving or posting the composer's copy would send again what already
+    /// went out. From then on the queue's draft is the post, and this
+    /// composer has nothing left to save.
     private func sendQueueTookDraft() async -> Bool {
-        guard isQueuedForSend, hasSavedDraft else { return false }
-        // A store that cannot be read says nothing about the draft.
-        let stored: DraftSnapshot?
-        do { stored = try await session.supportStore.draft(id: draftID) } catch { return false }
-        if let stored, stored.threadPosition <= draftSnapshot.threadPosition { return false }
+        guard isQueuedForSend, await draftChangedElsewhere() else { return false }
         hasPosted = true
         isQueuedForSend = false
         return true
