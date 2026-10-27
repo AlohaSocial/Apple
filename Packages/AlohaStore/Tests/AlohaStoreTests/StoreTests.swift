@@ -295,14 +295,18 @@ struct SweepTests {
         #expect(survivors.map(\.serverID) == ["n5"])
     }
 
-    @Test("A profile or tag nobody has added to for a week is dropped; home is kept")
+    @Test(
+        "A profile or tag nobody has added to for a week is dropped; home, DMs, favourites and bookmarks are kept"
+    )
     func idleTimelinesAge() async throws {
         let container = StoreContainer.make(inMemory: true)
         let timelines = TimelineStore(modelContainer: container)
         let accountID = UUID()
         // A hashtag called #home is still a tag, not the home timeline.
-        let kept = ["home:home", "photos:home"]
-        let ageing = ["home:tag:home", "home:profile:9:::::"]
+        let kept = [
+            "home:home", "photos:home", "home:direct", "home:favourites", "photos:bookmarks",
+        ]
+        let ageing = ["home:tag:home", "home:tag:bookmarks", "home:profile:9:::::"]
         for key in kept + ageing {
             _ = try await timelines.apply(
                 page: [status("shared"), status(key)], accountID: accountID,

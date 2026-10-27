@@ -281,13 +281,21 @@ public enum CachePolicy {
 
     /// Whether a timeline's cache is dropped once it goes unused.
     ///
-    /// Each mode's view of the home timeline is kept: there are six of them,
-    /// they are what the app opens on, and the widgets read `home:home`.
-    /// Everything else — a profile, a tag, a list, local and federated —
-    /// ages, because the ones keyed by an id are made for every profile and
-    /// tag somebody opens and would otherwise only ever grow. A key is the
-    /// mode, a colon and the source; a source may contain colons of its own.
+    /// Each mode's view of the home timeline is kept: they are what the app
+    /// opens on, and the widgets read `home:home`. So are the person's own
+    /// lists — direct messages, favourites and bookmarks — which gain a post
+    /// only when the person adds one, so going a week without one says
+    /// nothing about whether they are still read. Everything else — a
+    /// profile, a tag, a list, local and federated — ages, because the ones
+    /// keyed by an id are made for every profile and tag somebody opens and
+    /// would otherwise only ever grow. A key is the mode, a colon and the
+    /// source; a source may contain colons of its own.
     public static func ages(timelineKey key: String) -> Bool {
-        key.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).last != "home"
+        let source = key.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            .last
+        return !keptSources.contains(source.map(String.init) ?? "")
     }
+
+    /// The sources whose timelines never age, in every mode.
+    private static let keptSources: Set<String> = ["home", "direct", "favourites", "bookmarks"]
 }
