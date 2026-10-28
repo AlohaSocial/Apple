@@ -160,6 +160,11 @@ public final class AccountSession: Identifiable {
             // So verify against the one endpoint that is authoritative before
             // believing it: if the token still works, the 401 belonged to that
             // route and nothing else changes.
+            //
+            // Already marked, there is nothing left to learn: only a fresh
+            // sign-in clears it, and a 401 that arrives after the shared check
+            // has ended would otherwise ask again.
+            guard !snapshot.needsReauthentication else { return }
             guard await isTokenRefused() else { return }
             await markNeedsReauthentication()
         }
