@@ -26,17 +26,23 @@ public struct LocalNotifier: Sendable {
             options: [],
             textInputButtonTitle: String(localized: "Send", comment: "Notification action"),
             textInputPlaceholder: "")
+        // Acting as the account from the Lock Screen asks for the device to
+        // be unlocked first, so whoever picks the phone up cannot boost or
+        // mute in its owner's name. Reply stays open, as the system's own
+        // messaging does.
         let favourite = UNNotificationAction(
             identifier: "favourite",
-            title: String(localized: "Favourite", comment: "Notification action"), options: [])
+            title: String(localized: "Favourite", comment: "Notification action"),
+            options: [.authenticationRequired])
         let boost = UNNotificationAction(
             identifier: "boost",
-            title: String(localized: "Boost", comment: "Notification action"), options: [])
+            title: String(localized: "Boost", comment: "Notification action"),
+            options: [.authenticationRequired])
         // "Mute conversation" on mention/reply notifications (Issue #3).
         let muteConversation = UNNotificationAction(
             identifier: "muteConversation",
             title: String(localized: "Mute conversation", comment: "Notification action"),
-            options: [.destructive])
+            options: [.destructive, .authenticationRequired])
 
         // One category, because a reply is a mention: Mastodon's API has no
         // "reply" kind, so every notification that can be replied to arrives
@@ -285,10 +291,15 @@ public struct LocalNotifier: Sendable {
             "statusID": payload?.statusID ?? "",
             "notificationID": notification.serverID,
         ]
-        if notification.kind != .follow {
-            content.sound = nil
-        }
+        content.sound = Self.sound(for: notification.kind)
         return content
+    }
+
+    /// Somebody talking to you sounds, as it does in the foreground
+    /// (`NotificationResponder.presentationOptions`); everything passive —
+    /// favourites, boosts, follows — arrives silently.
+    nonisolated static func sound(for kind: NotificationKind) -> UNNotificationSound? {
+        kind == .mention ? .default : nil
     }
 
     /// Returns the next digest trigger after now, skipping quiet hours.

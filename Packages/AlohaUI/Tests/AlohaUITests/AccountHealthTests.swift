@@ -194,8 +194,12 @@ struct ReauthenticationCheckTests {
         let (environment, transport) = makeEnvironment()
         let session = try await signIn(environment, token: "t")
         // Signing in refreshes the profile in the background, which asks
-        // too; that one is not what is counted.
-        try await Task.sleep(for: .milliseconds(300))
+        // too; that one is not what is counted. Waited for rather than slept
+        // past: on a busy runner it landed after 300 ms and was counted.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while await transport.verifyCount == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         let before = await transport.verifyCount
         await transport.failVerification(with: .unauthorised(message: nil))
 

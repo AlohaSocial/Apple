@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 
+import AVFoundation
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
+import CoreVideo
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 
 @testable import AlohaUI
 
@@ -408,7 +413,9 @@ struct UploadInFlightTests {
 
         let upload = Task {
             await model.uploader.add(
-                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+                prepared: .init(
+                    data: Data(repeating: 1, count: 64), filename: "wave.mp4",
+                    mimeType: "video/mp4"))
         }
         while model.uploader.activeUploads == 0 { await Task.yield() }
 
@@ -435,7 +442,9 @@ struct UploadInFlightTests {
 
         let upload = Task {
             await model.uploader.add(
-                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4")
+                prepared: .init(
+                    data: Data(repeating: 1, count: 64), filename: "wave.mp4",
+                    mimeType: "video/mp4"))
         }
         while model.uploader.activeUploads == 0 { await Task.yield() }
 
@@ -525,13 +534,86 @@ struct FileUploadTests {
     func uploadsFromFile() async throws {
         let (session, transport) = try await makeSession()
         let model = ComposerModel(session: session)
+        let url = try await videoWithLocation()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        await model.uploader.add(fileAt: url, filename: "wave.mov", mimeType: "video/quicktime")
+
+        #expect(model.uploader.attachments.map(\.id) == ["media-1"])
+        #expect(await transport.log.contains("POST api/v2/media"))
+    }
+
+    @Test("It goes up without the place it was filmed or the name of who filmed it")
+    func uploadsWithoutLocation() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        let url = try await videoWithLocation()
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(try Data(contentsOf: url).range(of: Data(filmedAt.utf8)) != nil)
+
+        await model.uploader.add(fileAt: url, filename: "wave.mov", mimeType: "video/quicktime")
+
+        let body = try #require(await transport.uploadBodies.first)
+        #expect(body.range(of: Data(filmedAt.utf8)) == nil)
+        #expect(body.range(of: Data("Jane Appleseed".utf8)) == nil)
+        // Still the video it was, in the container it came in.
+        #expect(body.range(of: Data("moov".utf8)) != nil)
+        #expect(body.range(of: Data("filename=\"wave.mov\"".utf8)) != nil)
+        // The hand-over file is the composer's to delete; only the copy goes.
+        #expect(FileManager.default.fileExists(atPath: url.path()))
+    }
+
+    @Test("A video in memory goes up without its location too")
+    func dataUploadsWithoutLocation() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        let url = try await videoWithLocation()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        await model.uploader.add(
+            data: try Data(contentsOf: url), filename: "wave.mov", mimeType: "video/quicktime")
+
+        #expect(model.uploader.attachments.map(\.id) == ["media-1"])
+        let body = try #require(await transport.uploadBodies.first)
+        #expect(body.range(of: Data(filmedAt.utf8)) == nil)
+    }
+
+    @Test("A file that cannot be read as a video is not sent as it is")
+    func unreadableIsRefused() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
         let url = try file(size: 1024)
         defer { try? FileManager.default.removeItem(at: url) }
 
         await model.uploader.add(fileAt: url, filename: "wave.mp4", mimeType: "video/mp4")
 
+        #expect(model.uploader.attachments.isEmpty)
+        #expect(model.uploader.errorMessage != nil)
+        #expect(model.uploader.progress.items.allSatisfy { $0.failed })
+        #expect(await transport.log.contains("POST api/v2/media") == false)
+    }
+
+    @Test("A picture goes up without its location or its owner's name")
+    func pictureUploadsWithoutLocation() async throws {
+        let (session, transport) = try await makeSession()
+        let model = ComposerModel(session: session)
+        let picture = try photoWithLocation()
+
+        await model.uploader.add(data: picture, filename: "photo.jpg", mimeType: "image/jpeg")
+
         #expect(model.uploader.attachments.map(\.id) == ["media-1"])
-        #expect(await transport.log.contains("POST api/v2/media"))
+        let body = try #require(await transport.uploadBodies.first)
+        #expect(body.range(of: Data("Jane Appleseed".utf8)) == nil)
+        #expect(body.range(of: Data("Cupertino".utf8)) == nil)
+        // The picture itself, from its start marker to its end marker.
+        let start = try #require(body.range(of: Data([0xFF, 0xD8, 0xFF])))
+        let end = try #require(body.range(of: Data([0xFF, 0xD9]), options: .backwards))
+        let sent = body[start.lowerBound..<end.upperBound]
+        let source = try #require(CGImageSourceCreateWithData(sent as CFData, nil))
+        let properties = try #require(
+            CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        #expect(properties[kCGImagePropertyGPSDictionary] == nil)
+        #expect(properties[kCGImagePropertyPixelWidth] as? Int == 16)
     }
 
     @Test("One over the server's limit is refused by its size on disk, before any upload")
@@ -725,6 +807,8 @@ private actor RecordingTransport: HTTPTransport {
 
     let server: MockAPIServer
     private(set) var posts: [Post] = []
+    /// The multipart body of every media upload, as it would have gone out.
+    private(set) var uploadBodies: [Data] = []
     private(set) var log: [String] = []
     private var postFailure: APIError?
     /// Only this post (1-based, counting every attempt) fails, when set.
@@ -770,6 +854,7 @@ private actor RecordingTransport: HTTPTransport {
         if method == "POST", path == "api/v2/media", let url = request.url {
             if uploadsHeld { await withCheckedContinuation { heldUploads.append($0) } }
             uploadCount += 1
+            uploadBodies.append(request.httpBody ?? Data())
             let body = #"""
                 {"id":"media-\#(uploadCount)","type":"video","url":"https://cloud.example.test/m.mp4",
                 "preview_url":"https://cloud.example.test/m.jpg","remote_url":null,
@@ -811,4 +896,68 @@ private actor RecordingTransport: HTTPTransport {
         for item in components.queryItems ?? [] { fields[item.name] = item.value }
         return fields
     }
+}
+
+/// Where the test video was filmed, as an iPhone writes it.
+private let filmedAt = "+37.3349-122.0090+010.000/"
+
+/// A few frames of QuickTime video with a location and an author in it, in
+/// both places the camera puts a location.
+private func videoWithLocation() async throws -> URL {
+    let url = FileManager.default.temporaryDirectory
+        .appending(path: "shared-test-\(UUID().uuidString).mov")
+    let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
+    writer.metadata = [
+        (AVMetadataIdentifier.quickTimeMetadataLocationISO6709, filmedAt),
+        (.quickTimeUserDataLocationISO6709, filmedAt),
+        (.quickTimeMetadataAuthor, "Jane Appleseed"),
+    ].map { identifier, value in
+        let item = AVMutableMetadataItem()
+        item.identifier = identifier
+        item.value = value as NSString
+        item.dataType = kCMMetadataBaseDataType_UTF8 as String
+        return item
+    }
+    let input = AVAssetWriterInput(
+        mediaType: .video,
+        outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 64, AVVideoHeightKey: 64,
+        ])
+    let attributes = CVPixelBufferCreationAttributes(
+        pixelFormatType: CVPixelFormatType(rawValue: kCVPixelFormatType_32BGRA),
+        size: CVImageSize(width: 64, height: 64))
+    let receiver = writer.inputPixelBufferReceiver(for: input, pixelBufferAttributes: attributes)
+    try writer.start()
+    writer.startSession(atSourceTime: .zero)
+    for frame in 0..<5 {
+        try await receiver.append(
+            CVReadOnlyPixelBuffer(try CVMutablePixelBuffer(attributes)),
+            with: CMTime(value: CMTimeValue(frame), timescale: 10))
+    }
+    receiver.finish()
+    await writer.finishWriting()
+    return url
+}
+
+/// A small JPEG with a location, a city and its owner's name in it.
+private func photoWithLocation() throws -> Data {
+    let context = try #require(
+        CGContext(
+            data: nil, width: 16, height: 16, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    let image = try #require(context.makeImage())
+    let output = NSMutableData()
+    let destination = try #require(
+        CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil))
+    let properties: [CFString: Any] = [
+        kCGImagePropertyGPSDictionary: [
+            kCGImagePropertyGPSLatitude: 37.3349, kCGImagePropertyGPSLatitudeRef: "N",
+        ],
+        kCGImagePropertyExifDictionary: [kCGImagePropertyExifCameraOwnerName: "Jane Appleseed"],
+        kCGImagePropertyIPTCDictionary: [kCGImagePropertyIPTCCity: "Cupertino"],
+    ]
+    CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+    #expect(CGImageDestinationFinalize(destination))
+    return output as Data
 }

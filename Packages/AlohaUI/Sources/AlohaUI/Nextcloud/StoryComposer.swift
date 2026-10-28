@@ -585,8 +585,9 @@ public struct StoryComposerSheet: View {
     /// The picker hands back whatever the camera recorded — usually QuickTime,
     /// which a server configured for MP4 refuses with a 422 after the bytes
     /// have already been sent. Asking first turns that into a local decision:
-    /// the file goes out as-is when it fits, through the exporter when it does
-    /// not, and never at all when it is over the ceiling.
+    /// the file goes out in its own container when it fits, through the
+    /// exporter when it does not, and never at all when it is over the
+    /// ceiling. Either way it goes without its location.
     private func prepareStoryVideo(at url: URL) async throws -> MediaPreparer.Prepared {
         let mimeType = preparer.mimeType(for: url)
         let size =
@@ -597,7 +598,13 @@ public struct StoryComposerSheet: View {
             fileSize: size, mimeType: mimeType, limits: session.capabilities.limits)
         {
         case .ready:
-            let data = try Data(contentsOf: url)
+            // Copied rather than re-encoded, only to leave out where it was
+            // taken and who took it; the copy is read mapped, so the video is
+            // never in memory all at once.
+            let cleaned = try await preparer.removingPersonalMetadata(
+                fromVideoAt: url, mimeType: mimeType)
+            defer { try? FileManager.default.removeItem(at: cleaned) }
+            let data = try Data(contentsOf: cleaned, options: .alwaysMapped)
             return MediaPreparer.Prepared(
                 data: data, filename: url.lastPathComponent, mimeType: mimeType)
 
