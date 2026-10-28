@@ -788,6 +788,10 @@ struct ShortPlayer: View {
                     .foregroundStyle(.primary)
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    // One element, the card: under the page's play/pause tap
+                    // the message alone counts as a control, a line of text
+                    // high — too small to hit. Activating it tries again.
+                    .accessibilityElement(children: .combine)
                 } else {
                     ProgressView().tint(.white)
                 }
