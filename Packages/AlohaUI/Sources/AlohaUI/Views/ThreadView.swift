@@ -46,29 +46,45 @@ public struct ThreadView: View {
     public var body: some View {
         ScrollViewReader { proxy in
             List {
-                ForEach(ancestors) { status in
-                    row(status, isFocused: false)
+                if !ancestors.isEmpty {
+                    Section {
+                        ForEach(ancestors) { status in
+                            row(status, isFocused: false)
+                        }
+                    } header: {
+                        Text("Conversation so far", comment: "Thread ancestors section header")
+                    }
                 }
 
                 if let focused {
-                    row(focused, isFocused: true)
-                        .id("focused")
-                    PostDetailFooter(status: focused, session: session) { account in
-                        onAction(.openProfile(account))
+                    Section {
+                        row(focused, isFocused: true)
+                            .id("focused")
+                            .listRowSeparator(.hidden)
+                        PostDetailFooter(status: focused, session: session) { account in
+                            onAction(.openProfile(account))
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(palette.surfaceRaised)
+                        .listRowSeparator(.hidden)
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowBackground(palette.surfaceRaised)
                 }
 
-                ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
-                    Group {
-                        if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
-                            hiddenReplyRow(status)
-                        } else {
-                            row(status, isFocused: false)
+                if !descendants.isEmpty {
+                    Section {
+                        ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
+                            Group {
+                                if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
+                                    hiddenReplyRow(status)
+                                } else {
+                                    row(status, isFocused: false)
+                                }
+                            }
+                            .padding(.leading, indent(for: status))
                         }
+                    } header: {
+                        Text("Replies", comment: "Thread replies section header")
                     }
-                    .padding(.leading, indent(for: status))
                 }
 
                 if isLoading {
@@ -223,19 +239,21 @@ public struct ThreadView: View {
 
     private func styled(_ row: some View, isFocused: Bool) -> some View {
         row
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+            .listRowInsets(
+                EdgeInsets(
+                    top: isFocused ? 8 : 0, leading: 16, bottom: isFocused ? 0 : 0,
+                    trailing: 16))
             // Raised card plus the accent rail the timeline uses for keyboard
             // focus: `surface` and `background` are the same black in the Black
-            // theme, so the old pair marked nothing there.
+            // theme, so the old pair marked nothing there. The rail stays
+            // inside the row bounds: List clips negative leading padding.
             .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
-            .font(isFocused ? .body : nil)
             .overlay(alignment: .leading) {
                 if isFocused {
                     Capsule()
                         .fill(palette.accent)
                         .frame(width: 3)
-                        .padding(.vertical, 4)
-                        .padding(.leading, -8)
+                        .padding(.vertical, 12)
                 }
             }
     }
@@ -248,16 +266,28 @@ public struct ThreadView: View {
     }
 
     /// Indentation is capped at five levels; anything deeper reads as a flat
-    /// list rather than a staircase.
+    /// list rather than a staircase. Ancestors and the focused post count as
+    /// the chain, not only already-loaded descendants, so a reply whose
+    /// parent is above the focused post does not indent past it.
     private func indent(for status: Status) -> Double {
+        var byID: [String: Status] = [:]
+        for known in ancestors + (focused.map { [$0] } ?? []) + descendants {
+            byID[known.id] = known
+        }
         var depth = 0
         var current: String? = status.inReplyToID
         var seen = Set<String>()
 
         while let parent = current, depth < 5, seen.insert(parent).inserted {
             if parent == statusID { break }
-            current = descendants.first { $0.id == parent }?.inReplyToID
-            depth += 1
+            guard let known = byID[parent] else { break }
+            current = known.inReplyToID
+            // Only steps below the focused post indent; ancestors stay flat.
+            if descendants.contains(where: { $0.id == known.id }) {
+                depth += 1
+            } else {
+                break
+            }
         }
         return Double(depth) * 12
     }

@@ -908,7 +908,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -972,7 +971,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -1004,7 +1002,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocial.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -1065,7 +1062,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocial.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -1124,7 +1120,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaShareExtension-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1153,7 +1148,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaShareExtension-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1181,7 +1175,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1209,7 +1202,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1235,7 +1227,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1262,7 +1253,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaSocialWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1290,7 +1280,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1315,7 +1304,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaSocialTV-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1340,7 +1328,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaNotificationService-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1365,7 +1352,6 @@
 				REGISTER_APP_GROUPS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaNotificationService-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1388,7 +1374,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -1410,7 +1395,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -1433,7 +1417,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWatchWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaWatchWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1459,7 +1442,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaWatchWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaWatchWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1485,7 +1467,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaSocialMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaSocialMac-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1511,7 +1492,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaSocialMac-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1536,7 +1516,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaTopShelf.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaTopShelf-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
@@ -1561,7 +1540,6 @@
 				CODE_SIGN_ENTITLEMENTS = Supporting/AlohaTopShelf.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BDQ9D3Z2ZP;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Supporting/AlohaTopShelf-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Aloha Social";
