@@ -77,24 +77,36 @@ public enum TimelineMerge {
             return Plan(slots: existing, insertedStatusIDs: [], closedGapIDs: [], openedGapIDs: [])
         }
 
+        var plan: Plan
         switch direction {
         case .cold:
             let slots = numbered(page, from: 0)
-            return Plan(
+            plan = Plan(
                 slots: slots, insertedStatusIDs: page,
                 closedGapIDs: existing.filter(\.isGapMarker).map(\.statusID),
                 openedGapIDs: [])
 
         case .newer:
-            return planNewer(existing: existing, page: page, pageWasFull: pageWasFull)
+            plan = planNewer(existing: existing, page: page, pageWasFull: pageWasFull)
 
         case .older:
-            return planOlder(existing: existing, page: page)
+            plan = planOlder(existing: existing, page: page)
 
         case .fillingGap(let id):
-            return planGapFill(existing: existing, page: page, gapID: id, pageWasFull: pageWasFull)
+            plan = planGapFill(existing: existing, page: page, gapID: id, pageWasFull: pageWasFull)
         }
+
+        // The store reads a timeline back sorted by position, so an order the
+        // positions do not agree with is the order somebody sees next launch.
+        // Every plan above keeps them descending; this is the net under that,
+        // and costs one pass over a list that is about to be written anyway.
+        if !positionsDescend(plan.slots) { plan.slots = renumbered(plan.slots) }
+        return plan
     }
+
+    /// Room left between a new page and the rows it may not touch, so the
+    /// gap between them can be filled a page at a time without renumbering.
+    static let gapReserve: Int64 = 1_024
 
     // MARK: - Newer
 
@@ -106,13 +118,19 @@ public enum TimelineMerge {
         }
 
         let topPosition = existing.first?.position ?? 0
-        var slots = numbered(fresh, from: topPosition + Int64(fresh.count) + 1, descending: true)
+        let opensGap = pageWasFull && !existing.isEmpty
+        // What fills the gap later lands between the page and the old top,
+        // so the page goes in well above it. Packed directly on top, as it
+        // once was, the first fill had one position for forty posts.
+        let reserve = opensGap ? gapReserve : 0
+        var slots = numbered(
+            fresh, from: topPosition + reserve + Int64(fresh.count) + 1, descending: true)
         var opened: [String] = []
 
         // A full page from a min_id fetch means there may be more between what
         // arrived and what was cached. Insert a gap rather than joining two
         // ranges that may not touch.
-        if pageWasFull, let anchor = fresh.last, !existing.isEmpty {
+        if opensGap, let anchor = fresh.last {
             let gap = Slot.gap(below: anchor, position: (slots.last?.position ?? 0) - 1)
             slots.append(gap)
             opened.append(gap.statusID)
@@ -159,10 +177,16 @@ public enum TimelineMerge {
         // gap moves down rather than disappearing.
         let gapSurvives = pageWasFull && !fresh.isEmpty
 
+        // Rows between the two neighbours: the page, and the gap if it moves.
+        let needed = Int64(fresh.count + (gapSurvives ? 1 : 0))
         let upper = above.last?.position ?? 0
-        let lower = below.first?.position ?? (upper - Int64(fresh.count) - 2)
-        let span = max(1, upper - lower)
-        let step = max(1, span / Int64(fresh.count + (gapSurvives ? 2 : 1)))
+        let lower = below.first?.position ?? (upper - needed - 1)
+        // When the neighbours are too close for the page — a gap that has
+        // already moved down a few times, say — nothing fits between them
+        // without landing on, or below, the rows underneath. The page goes in
+        // at a step of one and the whole timeline is renumbered instead.
+        let fits = upper - lower - 1 >= needed
+        let step = fits ? max(1, (upper - lower) / (needed + 1)) : 1
 
         var filled: [Slot] = []
         var cursor = upper
@@ -179,8 +203,9 @@ public enum TimelineMerge {
             opened.append(gap.statusID)
         }
 
+        let slots = above + filled + below
         return Plan(
-            slots: above + filled + below,
+            slots: fits ? slots : renumbered(slots),
             insertedStatusIDs: fresh,
             closedGapIDs: [gapID],
             openedGapIDs: opened
@@ -195,6 +220,25 @@ public enum TimelineMerge {
         ids.enumerated().map { offset, id in
             Slot(statusID: id, position: descending ? start - Int64(offset) : start + Int64(offset))
         }
+    }
+
+    /// The same order, spaced `gapReserve` apart from the top row down.
+    ///
+    /// The top keeps its position, so a later refresh still lands above it;
+    /// the spacing leaves the next few gap fills room of their own. It
+    /// rewrites every row's position, which is why it is the exception
+    /// rather than the way every merge numbers.
+    static func renumbered(_ slots: [Slot]) -> [Slot] {
+        let top = slots.first?.position ?? 0
+        return slots.enumerated().map { offset, slot in
+            var slot = slot
+            slot.position = top - Int64(offset) * gapReserve
+            return slot
+        }
+    }
+
+    private static func positionsDescend(_ slots: [Slot]) -> Bool {
+        zip(slots, slots.dropFirst()).allSatisfy { $0.position > $1.position }
     }
 
     /// Removes a status from a timeline, which is what a delete over streaming

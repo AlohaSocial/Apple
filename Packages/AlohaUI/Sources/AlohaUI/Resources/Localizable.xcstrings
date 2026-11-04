@@ -978,6 +978,17 @@
         }
       }
     },
+    "A thread can't be scheduled. Post it now, or schedule its first post on its own." : {
+      "comment" : "Composer refusal: scheduled post with thread segments",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Thread kann nicht geplant werden. Veröffentliche ihn jetzt oder plane nur seinen ersten Beitrag."
+          }
+        }
+      }
+    },
     "A year" : {
       "comment" : "Statistics window",
       "localizations" : {
@@ -8425,7 +8436,7 @@
       }
     },
     "OK" : {
-      "comment" : "Action failure dismiss\nHeld for review action",
+      "comment" : "Action failure dismiss\nHeld for review action\nScheduled post confirmation action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10090,6 +10101,17 @@
         }
       }
     },
+    "Quoted post hidden by a filter" : {
+      "comment" : "Quote removed by a hide filter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zitierter Beitrag durch einen Filter ausgeblendet"
+          }
+        }
+      }
+    },
     "Quotes" : {
       "comment" : "Screen title\nStatistics tile",
       "localizations" : {
@@ -10975,7 +10997,7 @@
       }
     },
     "Scheduled" : {
-      "comment" : "Screen title",
+      "comment" : "Scheduled post confirmation title\nScreen title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15469,6 +15491,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Beitrag liegt bei der Moderation und erscheint, sobald er geprüft wurde. Bis dahin findest du ihn in den Einstellungen."
+          }
+        }
+      }
+    },
+    "Your post will go out on %@. You can change or cancel it under Scheduled posts in Settings." : {
+      "comment" : "Scheduled post confirmation. The argument is a date and time.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Beitrag erscheint am %@. In den Einstellungen unter „Geplante Beiträge“ kannst du ihn ändern oder absagen."
           }
         }
       }

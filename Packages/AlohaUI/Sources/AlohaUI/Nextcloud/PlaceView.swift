@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// Public posts from one place: a header with the name and country, then a
@@ -22,6 +23,9 @@ public struct PlaceView: View {
     @State private var errorMessage: String?
     @State private var loadID = UUID()
     @State private var retryOlder = false
+    /// The reader's filters, in the public context: a place's posts are
+    /// anyone's who was there.
+    @State private var verdicts = FilterVerdicts(context: .public)
 
     public init(
         id: String, session: AccountSession,
@@ -32,8 +36,11 @@ public struct PlaceView: View {
         self.onAction = onAction
     }
 
-    private var withMedia: [Status] { statuses.filter { $0.displayed.hasMedia } }
-    private var withoutMedia: [Status] { statuses.filter { !$0.displayed.hasMedia } }
+    /// Left out at drawing rather than at loading, so the page cursor still
+    /// counts what the server sent.
+    private var shown: [Status] { verdicts.kept(statuses) }
+    private var withMedia: [Status] { shown.filter { $0.displayed.hasMedia } }
+    private var withoutMedia: [Status] { shown.filter { !$0.displayed.hasMedia } }
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 1.5), count: 3)
 
@@ -67,7 +74,7 @@ public struct PlaceView: View {
                         ForEach(withMedia) { status in
                             cell(status)
                                 .onAppear {
-                                    if status.id == statuses.last?.id { Task { await loadMore() } }
+                                    if status.id == shown.last?.id { Task { await loadMore() } }
                                 }
                         }
                     }
@@ -79,6 +86,7 @@ public struct PlaceView: View {
                             status: status,
                             policy: session.settings.sensitiveMediaPolicy,
                             localHost: session.snapshot.instanceHost,
+                            filterWarning: verdicts.warning(for: status),
                             canReact: session.capabilities.emojiReactions,
                             showsCounts: session.settings.showPopularityCounts,
                             onAction: onAction
@@ -86,7 +94,7 @@ public struct PlaceView: View {
                         .padding(.horizontal, AlohaMetrics.space4)
                         .statusRowInteractions(status, session: session, onAction: onAction)
                         .onAppear {
-                            if status.id == statuses.last?.id { Task { await loadMore() } }
+                            if status.id == shown.last?.id { Task { await loadMore() } }
                         }
                         Divider().padding(.leading, AlohaMetrics.space4)
                     }
@@ -108,6 +116,10 @@ public struct PlaceView: View {
             }
         }
         .background(palette.background)
+        .environment(\.filterVerdicts, verdicts)
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .overlay {
             if isLoading && statuses.isEmpty { ProgressView() }
         }
@@ -154,9 +166,12 @@ public struct PlaceView: View {
 
     private func cell(_ status: Status) -> some View {
         let first = status.displayed.mediaAttachments.first
+        // A square has no room for a filter's warning, so a post one matched
+        // is covered as a sensitive one is; opening it shows both.
         let isCovered =
-            status.displayed.sensitive
-            && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal
+            (status.displayed.sensitive
+                && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal)
+            || verdicts.warning(for: status) != nil
         return Button {
             onAction(.openMedia(status: status.displayed, index: 0))
         } label: {
@@ -195,6 +210,7 @@ public struct PlaceView: View {
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, from: Endpoint.statusExtras.placeStatuses(id), limit: 20)
+            await verdicts.prepare(page.value.elements, session: session)
             guard !Task.isCancelled, loadID == request else { return }
             statuses = page.value.elements
             next = page.mayHaveMore ? page.link.next : nil
@@ -222,6 +238,7 @@ public struct PlaceView: View {
         do {
             let page = try await session.client.page(
                 LossyArray<Status>.self, following: next, limit: 20)
+            await verdicts.warm(page.value.elements)
             guard !Task.isCancelled, loadID == request else { return }
             let known = Set(statuses.map(\.id))
             statuses += page.value.elements.filter { !known.contains($0.id) }

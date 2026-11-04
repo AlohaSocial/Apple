@@ -64,6 +64,48 @@ struct TimelineStorePersistenceTests {
         #expect(cached.compactMap(\.status).map(\.id) == ["9", "8", "7", "3", "2", "1"])
     }
 
+    /// What a reviewer saw: forty posts filled into the gap a full refresh
+    /// left, read back by position, came out as 62, 61, 60, 59, 20, 58, 19…
+    /// The merge's own answer was in order; only the stored one was not, so
+    /// this reads the timeline back the way a launch does.
+    @Test("Filling a gap a page at a time keeps the stored order")
+    func gapFillKeepsStoredOrder() async throws {
+        let (timelines, _, _, accountID) = makeStore()
+        let key = "home:home"
+        func page(_ ids: ClosedRange<Int>) -> [Status] { ids.reversed().map { status("\($0)") } }
+        func stored() async throws -> [TimelineMerge.Slot] {
+            try await timelines.slots(accountID: accountID, timelineKey: key)
+        }
+        func gapID() async throws -> String {
+            let gap = try await stored().first { $0.isGapMarker }
+            return try #require(gap).statusID
+        }
+
+        _ = try await timelines.apply(
+            page: page(1...20), accountID: accountID, timelineKey: key,
+            direction: .cold, pageWasFull: false)
+        _ = try await timelines.apply(
+            page: page(201...240), accountID: accountID, timelineKey: key,
+            direction: .newer, pageWasFull: true)
+
+        // Three full pages walk the gap down; each one has less room than
+        // the last, and the third has none.
+        for range in [161...200, 121...160, 81...120] {
+            _ = try await timelines.apply(
+                page: page(range), accountID: accountID, timelineKey: key,
+                direction: .fillingGap(id: try await gapID()), pageWasFull: true)
+            #expect(TimelineMerge.isWellFormed(try await stored()))
+        }
+        _ = try await timelines.apply(
+            page: page(21...80), accountID: accountID, timelineKey: key,
+            direction: .fillingGap(id: try await gapID()), pageWasFull: false)
+
+        #expect(TimelineMerge.isWellFormed(try await stored()))
+        let cached = try await timelines.cachedTimeline(accountID: accountID, timelineKey: key)
+        #expect(cached.allSatisfy { $0.status != nil })
+        #expect(cached.compactMap(\.status).map(\.id) == (1...240).reversed().map { "\($0)" })
+    }
+
     @Test("A status is stored once and shared by two timelines")
     func statusesAreShared() async throws {
         let (timelines, _, _, accountID) = makeStore()
@@ -146,6 +188,188 @@ struct TimelineStorePersistenceTests {
             try await timelines.cachedTimeline(
                 accountID: snapshot.id, timelineKey: "home:home"
             ).isEmpty)
+    }
+}
+
+@Suite("Sweeping the cache")
+struct SweepTests {
+    /// Past every lifetime the sweep applies, so age alone never keeps a row.
+    private let later = Date().addingTimeInterval(30 * 86_400)
+
+    private func count<Model: PersistentModel>(
+        _ type: Model.Type, in container: ModelContainer,
+        where predicate: Predicate<Model>? = nil
+    ) throws -> Int {
+        try ModelContext(container).fetchCount(FetchDescriptor<Model>(predicate: predicate))
+    }
+
+    /// The bug: a pass read its budget's worth of old statuses in no order
+    /// and only then skipped the referenced ones. With the oldest rows all
+    /// still on screen, every pass read the same rows and deleted nothing.
+    @Test("Each pass makes progress, even when the oldest posts are all still shown")
+    func sweepMakesProgress() async throws {
+        let container = StoreContainer.make(inMemory: true)
+        let timelines = TimelineStore(modelContainer: container)
+        let support = SupportStore(modelContainer: container)
+        let accountID = UUID()
+
+        // Shown, and cached first: the oldest rows in the store.
+        let shown = (0..<10).map { status("a\($0)") }
+        _ = try await timelines.apply(
+            page: shown, accountID: accountID, timelineKey: "home:home",
+            direction: .cold, pageWasFull: false)
+        // Pointed at by a notification only.
+        try await timelines.updateStatus(accountID: accountID, status: status("b0"))
+        _ = try await support.storeNotifications(
+            [
+                StoredNotification(
+                    serverID: "n1", isGroup: false, kind: .mention, createdAt: Date(),
+                    groupCount: 1, payload: Data(), statusServerID: "b0")
+            ], accountID: accountID)
+        // Shown nowhere.
+        let orphans = (0..<10).map { "c\($0)" }
+        for id in orphans {
+            try await timelines.updateStatus(accountID: accountID, status: status(id))
+        }
+
+        try await timelines.sweep(now: later, maximumDeletions: 4)
+        #expect(try count(StatusRecord.self, in: container) == 21 - 4)
+        try await timelines.sweep(now: later, maximumDeletions: 4)
+        try await timelines.sweep(now: later, maximumDeletions: 4)
+        #expect(try count(StatusRecord.self, in: container) == 11)
+
+        let kept = shown.map(\.id) + ["b0"]
+        let left = try await timelines.statuses(accountID: accountID, ids: kept + orphans)
+        #expect(Set(left.keys) == Set(kept))
+    }
+
+    @Test("Another account's copy of a post does not keep this one's")
+    func referencesArePerAccount() async throws {
+        let container = StoreContainer.make(inMemory: true)
+        let timelines = TimelineStore(modelContainer: container)
+        let (shows, forgot) = (UUID(), UUID())
+        _ = try await timelines.apply(
+            page: [status("1")], accountID: shows, timelineKey: "home:home",
+            direction: .cold, pageWasFull: false)
+        try await timelines.updateStatus(accountID: forgot, status: status("1"))
+
+        try await timelines.sweep(now: later)
+
+        #expect(try await timelines.statuses(accountID: shows, ids: ["1"]).count == 1)
+        #expect(try await timelines.statuses(accountID: forgot, ids: ["1"]).isEmpty)
+    }
+
+    @Test("Notifications past the limit go, oldest first")
+    func notificationsAreTrimmed() async throws {
+        let container = StoreContainer.make(inMemory: true)
+        let timelines = TimelineStore(modelContainer: container)
+        let support = SupportStore(modelContainer: container)
+        let base = URL(string: "https://cloud.test/")!
+        let accountID = try await AccountStore(modelContainer: container).addAccount(
+            instanceHost: "cloud.test", apiBase: base,
+            account: Account(id: "1", username: "alice", acct: "alice"),
+            capabilities: .minimal(apiBase: base)
+        ).id
+        let limit = CachePolicy.notificationLimit
+        let start = Date()
+        let notifications = (0..<(limit + 5)).map { index in
+            StoredNotification(
+                serverID: "n\(index)", isGroup: false, kind: .favourite,
+                createdAt: start.addingTimeInterval(TimeInterval(index)), groupCount: 1,
+                payload: Data(), statusServerID: nil)
+        }
+        _ = try await support.storeNotifications(notifications, accountID: accountID)
+        // Another account's, which this account's limit does not touch.
+        _ = try await support.storeNotifications([notifications[0]], accountID: UUID())
+
+        try await timelines.sweep()
+
+        let mine = #Predicate<NotificationRecord> { $0.accountID == accountID }
+        #expect(try count(NotificationRecord.self, in: container, where: mine) == limit)
+        #expect(try count(NotificationRecord.self, in: container) == limit + 1)
+        // n0 to n4 were the five oldest; n5 is the oldest one kept.
+        let edge = ["n0", "n4", "n5"]
+        let survivors = try ModelContext(container).fetch(
+            FetchDescriptor<NotificationRecord>(
+                predicate: #Predicate { $0.accountID == accountID && edge.contains($0.serverID) }))
+        #expect(survivors.map(\.serverID) == ["n5"])
+    }
+
+    @Test(
+        "A profile or tag nobody has added to for a week is dropped; home, DMs, favourites and bookmarks are kept"
+    )
+    func idleTimelinesAge() async throws {
+        let container = StoreContainer.make(inMemory: true)
+        let timelines = TimelineStore(modelContainer: container)
+        let accountID = UUID()
+        // A hashtag called #home is still a tag, not the home timeline.
+        let kept = [
+            "home:home", "photos:home", "home:direct", "home:favourites", "photos:bookmarks",
+        ]
+        let ageing = ["home:tag:home", "home:tag:bookmarks", "home:profile:9:::::"]
+        for key in kept + ageing {
+            _ = try await timelines.apply(
+                page: [status("shared"), status(key)], accountID: accountID,
+                timelineKey: key, direction: .cold, pageWasFull: false)
+        }
+
+        // A day on, nothing is old enough to go.
+        try await timelines.sweep(now: Date().addingTimeInterval(86_400))
+        let tag = try await timelines.cachedTimeline(
+            accountID: accountID, timelineKey: "home:tag:home")
+        #expect(tag.count == 2)
+
+        try await timelines.sweep(now: later)
+
+        for key in kept {
+            let rows = try await timelines.cachedTimeline(accountID: accountID, timelineKey: key)
+            #expect(rows.count == 2)
+        }
+        for key in ageing {
+            let rows = try await timelines.cachedTimeline(accountID: accountID, timelineKey: key)
+            #expect(rows.isEmpty)
+        }
+        // What only the dropped timelines showed goes in the same pass; what
+        // home shows too stays.
+        let left = try await timelines.statuses(
+            accountID: accountID, ids: ["shared"] + kept + ageing)
+        #expect(Set(left.keys) == Set(["shared"] + kept))
+    }
+
+    @Test("Each account keeps only its most recently added-to profiles and tags")
+    func idleTimelinesAreCapped() async throws {
+        let (timelines, _, _, accountID) = makeStore()
+        let keys = (0...CachePolicy.otherTimelineCount).map { "home:tag:t\($0)" }
+        for key in keys {
+            _ = try await timelines.apply(
+                page: [status(key)], accountID: accountID, timelineKey: key,
+                direction: .cold, pageWasFull: false)
+        }
+
+        try await timelines.sweep()
+
+        let oldest = try await timelines.cachedTimeline(
+            accountID: accountID, timelineKey: keys[0])
+        #expect(oldest.isEmpty)
+        for key in keys.dropFirst() {
+            let rows = try await timelines.cachedTimeline(accountID: accountID, timelineKey: key)
+            #expect(rows.count == 1)
+        }
+    }
+
+    @Test("A widget reads only the newest posts it shows, past any gap")
+    func latestStatusesSkipGaps() async throws {
+        let (timelines, _, _, accountID) = makeStore()
+        _ = try await timelines.apply(
+            page: ["3", "2", "1"].map { status($0) }, accountID: accountID,
+            timelineKey: "home:home", direction: .cold, pageWasFull: false)
+        _ = try await timelines.apply(
+            page: ["9", "8"].map { status($0) }, accountID: accountID,
+            timelineKey: "home:home", direction: .newer, pageWasFull: true)
+
+        let latest = try await timelines.latestStatuses(
+            accountID: accountID, timelineKey: "home:home", limit: 3)
+        #expect(latest.map(\.id) == ["9", "8", "3"])
     }
 }
 

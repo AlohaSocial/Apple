@@ -47,6 +47,7 @@ let package = Package(
             name: "AlohaUITests",
             dependencies: [
                 "AlohaUI",
+                .product(name: "AlohaMedia", package: "AlohaMedia"),
                 .product(name: "AlohaModels", package: "AlohaModels"),
                 .product(name: "AlohaNetwork", package: "AlohaNetwork"),
             ],

@@ -215,7 +215,9 @@ public enum StatusActions {
 
     /// Blocking and muting both take effect locally at once — a person who has
     /// just blocked somebody should not keep seeing them while a refresh
-    /// happens (docs/11 §1.3).
+    /// happens (docs/11 §1.3). The store announces what it removed, and every
+    /// list on screen drops those rows (`StatusRemovals`); a deletion goes
+    /// the same way.
     ///
     /// - Returns: nil when it took effect, otherwise what to tell the person.
     ///   A block that failed without a word leaves somebody able to reach a

@@ -57,20 +57,111 @@ public final class ComposerUploader {
         preparer.prepareImage(data, filename: filename, quality: quality)
     }
 
+    /// Off the main actor for the same reason: a picture that is not a JPEG
+    /// is redrawn to lose its metadata.
+    @concurrent
+    private static func removingPersonalMetadata(
+        from data: Data, filename: String, mimeType: String, with preparer: MediaPreparer
+    ) async -> MediaPreparer.Prepared? {
+        preparer.removingPersonalMetadata(fromImage: data, filename: filename, mimeType: mimeType)
+    }
+
     private var limits: ServerLimits { session.capabilities.limits }
 
     public var canAddMore: Bool { attachments.count < limits.maxMediaAttachments }
 
+    /// Files on their way up, counted from the moment one is handed over —
+    /// converting a picture can take longer than sending it — until it is
+    /// attached or has failed. An attachment joins `attachments` only once it
+    /// is up, so a post made meanwhile would go without it, and the upload
+    /// finishing after would belong to nothing.
+    public private(set) var activeUploads = 0
+    @ObservationIgnored private var settledWaiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Whether anything is still on its way: a file going up, or a video the
+    /// server is still processing (which Mastodon refuses to attach).
+    public var isBusy: Bool { activeUploads > 0 || !processing.isEmpty }
+
+    /// Returns once every upload under way has landed or failed.
+    public func uploadsSettled() async {
+        guard activeUploads > 0 else { return }
+        await withCheckedContinuation { settledWaiters.append($0) }
+    }
+
+    /// Counts `work` as an upload under way: what a picker does while it is
+    /// still fetching the file it will hand over, which for a picture kept in
+    /// iCloud takes longer than the upload.
+    public func whileFetching(_ work: () async -> Void) async {
+        beginUpload()
+        defer { endUpload() }
+        await work()
+    }
+
+    private func beginUpload() { activeUploads += 1 }
+
+    private func endUpload() {
+        activeUploads -= 1
+        guard activeUploads == 0 else { return }
+        let waiters = settledWaiters
+        settledWaiters = []
+        for waiter in waiters { waiter.resume() }
+    }
+
     /// Concurrency cap of two, as docs/07 §4 prescribes — more than that on a
     /// phone connection makes every upload slower rather than the batch faster.
+    ///
+    /// Nothing goes up with the place it was taken or the name of the person
+    /// who took it: a picture loses its GPS, IPTC and identifying EXIF here,
+    /// a video in `add(fileAt:)`, and one converted on the way loses all of
+    /// it anyway. There is no setting to keep them: a place is shared by
+    /// adding one to the post, where the person can see it.
     public func add(data: Data, filename: String, mimeType: String) async {
+        // The metadata comes off a video file to file, which is how it goes.
+        guard !mimeType.hasPrefix("video/") else {
+            await add(videoData: data, filename: filename, mimeType: mimeType)
+            return
+        }
         guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
 
         var payload = data
         var type = mimeType
         var name = filename
 
         switch UploadPreflight.check(fileSize: data.count, mimeType: mimeType, limits: limits) {
+        case .ready where mimeType.hasPrefix("image/"):
+            guard
+                let cleaned = await Self.removingPersonalMetadata(
+                    from: data, filename: filename, mimeType: mimeType, with: preparer)
+            else {
+                errorMessage = String(
+                    localized: "That image couldn't be converted.", comment: "Upload failure")
+                return
+            }
+            if cleaned.data.count <= limits.imageSizeLimit {
+                payload = cleaned.data
+                type = cleaned.mimeType
+                name = cleaned.filename
+            } else {
+                // A redrawn picture can come out a little larger than it went
+                // in; it gets the one attempt an oversized picture gets.
+                guard
+                    let prepared = await Self.prepare(
+                        data, filename: filename, quality: .high, with: preparer),
+                    prepared.data.count <= limits.imageSizeLimit
+                else {
+                    errorMessage = UploadPreflight.explanation(
+                        for: .tooLarge(
+                            size: cleaned.data.count, limit: limits.imageSizeLimit,
+                            isVideo: false))
+                    return
+                }
+                payload = prepared.data
+                type = prepared.mimeType
+                name = prepared.filename
+            }
+
         case .ready:
             break
 
@@ -116,7 +207,111 @@ public final class ComposerUploader {
             return
         }
 
-        let ticket = progress.begin(name)
+        await send(payload, filename: name, mimeType: type)
+    }
+
+    /// A file handed over on disk rather than in memory — the share
+    /// extension's video, which can be larger than everything the extension
+    /// is allowed to hold. Checked by its size on disk, copied file to file
+    /// without its location and other personal metadata, and the copy read
+    /// mapped, so its pages come from the file as the request is built and
+    /// can be let go again under pressure, instead of all being copied in
+    /// first.
+    ///
+    /// A picture goes the way of `add(data:)`: it is small next to a video,
+    /// and converting or shrinking it needs its bytes anyway.
+    public func add(fileAt url: URL, filename: String, mimeType: String) async {
+        guard !mimeType.hasPrefix("image/") else {
+            guard let data = try? Data(contentsOf: url) else {
+                errorMessage = String(
+                    localized: "That upload didn't finish.", comment: "Upload failure")
+                return
+            }
+            await add(data: data, filename: filename, mimeType: mimeType)
+            return
+        }
+        guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
+
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard admitsVideo(size: size, mimeType: mimeType) else { return }
+
+        // The row appears now rather than once the copy is made: on a long
+        // video the copy takes a moment, and is the first half of the bar.
+        let ticket = progress.begin(filename)
+        let cleaned: URL
+        do {
+            cleaned = try await preparer.removingPersonalMetadata(
+                fromVideoAt: url, mimeType: mimeType
+            ) { [progress] fraction in
+                Task { @MainActor in progress.update(ticket, fraction: fraction / 2) }
+            }
+        } catch {
+            progress.finish(ticket, failed: true)
+            // Cancelled with the composer: there is no one to tell.
+            if !Task.isCancelled {
+                errorMessage = String(
+                    localized: "That video couldn't be prepared.",
+                    comment: "Video export failure")
+            }
+            return
+        }
+        defer { try? FileManager.default.removeItem(at: cleaned) }
+
+        guard let mapped = try? Data(contentsOf: cleaned, options: .alwaysMapped) else {
+            progress.finish(ticket, failed: true)
+            errorMessage = String(
+                localized: "That upload didn't finish.", comment: "Upload failure")
+            return
+        }
+        await send(mapped, filename: filename, mimeType: mimeType, ticket: ticket)
+    }
+
+    /// A video in memory, written out so its metadata can come off the way a
+    /// file's does.
+    private func add(videoData data: Data, filename: String, mimeType: String) async {
+        guard canAddMore else { return }
+        let url = FileManager.default.temporaryDirectory
+            .appending(
+                path: "aloha-handover-\(UUID().uuidString).\((filename as NSString).pathExtension)")
+        defer { try? FileManager.default.removeItem(at: url) }
+        do {
+            try data.write(to: url)
+        } catch {
+            errorMessage = String(
+                localized: "That upload didn't finish.", comment: "Upload failure")
+            return
+        }
+        await add(fileAt: url, filename: filename, mimeType: mimeType)
+    }
+
+    /// Whether a video passes the server's checks, saying why not when not.
+    /// Nothing here converts a video; the trim sheet does that before.
+    private func admitsVideo(size: Int, mimeType: String) -> Bool {
+        switch UploadPreflight.check(fileSize: size, mimeType: mimeType, limits: limits) {
+        case .ready:
+            return true
+        case .needsTranscode(_, let target):
+            errorMessage = String(
+                localized: "That file has to be \(target) for your server.",
+                comment: "Upload needs a conversion this app cannot do")
+        case .tooLarge(let size, let limit, let isVideo):
+            errorMessage = UploadPreflight.explanation(
+                for: .tooLarge(size: size, limit: limit, isVideo: isVideo))
+        case .unsupported(let mimeType):
+            errorMessage = UploadPreflight.explanation(for: .unsupported(mimeType: mimeType))
+        }
+        return false
+    }
+
+    /// Uploads what has passed the checks, and attaches it.
+    /// `ticket` is the progress row, when one was begun before the bytes
+    /// were ready.
+    private func send(
+        _ payload: Data, filename name: String, mimeType type: String, ticket: UUID? = nil
+    ) async {
+        let ticket = ticket ?? progress.begin(name)
         if UploadActivityController.isWorthShowing(
             totalBytes: payload.count, containsVideo: type.hasPrefix("video/"))
         {
@@ -210,6 +405,8 @@ public final class ComposerUploader {
     /// connection that is the difference between possible and not (docs/07 §6).
     public func addFromNextcloudFiles(path: String, description: String?) async {
         guard session.capabilities.mediaFromNextcloudFiles, canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
 
         let ticket = progress.begin((path as NSString).lastPathComponent)
         do {
@@ -293,6 +490,10 @@ public final class ComposerUploader {
             let previous = filters[attachmentID] ?? .none
             filters[attachmentID] = filter
             guard filter != previous else { return }
+            // The new picture replaces the old one only once it is up; a post
+            // made in between would carry the old one and orphan the new.
+            beginUpload()
+            defer { endUpload() }
 
             // "Original" needs no round trip when it is already what is up
             // there, and a redraw only happens for the rest.
@@ -388,9 +589,20 @@ public final class ComposerUploader {
 
     /// Adds an already-prepared file — what the trim sheet and the camera hand
     /// back, having done their own size check.
+    ///
+    /// A prepared video has been through the exporter, which left its
+    /// metadata out already, so it goes up as it is.
     public func add(prepared: MediaPreparer.Prepared) async {
-        await add(
-            data: prepared.data, filename: prepared.filename, mimeType: prepared.mimeType)
+        guard prepared.mimeType.hasPrefix("video/") else {
+            await add(
+                data: prepared.data, filename: prepared.filename, mimeType: prepared.mimeType)
+            return
+        }
+        guard canAddMore else { return }
+        beginUpload()
+        defer { endUpload() }
+        guard admitsVideo(size: prepared.data.count, mimeType: prepared.mimeType) else { return }
+        await send(prepared.data, filename: prepared.filename, mimeType: prepared.mimeType)
     }
 
     public func reset() {

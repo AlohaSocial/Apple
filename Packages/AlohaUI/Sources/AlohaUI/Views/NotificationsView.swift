@@ -4,6 +4,7 @@ import AlohaDesign
 import AlohaHTML
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct NotificationsView: View {
@@ -30,6 +31,10 @@ public struct NotificationsView: View {
     /// notification ID the user had read. When present in the flat list, a
     /// divider is inserted below it.
     @State private var caughtUpNotificationID: String?
+    /// The reader's filters, in the notifications context: an activity
+    /// about a post a hide filter matched is left out, and one a warn filter
+    /// matched names the filter instead of quoting the post.
+    @State private var verdicts = FilterVerdicts(context: .notifications)
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -115,14 +120,71 @@ public struct NotificationsView: View {
         .navigationTitle(Text("Activities", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
+        .onStatusesRemoved(for: session) { removal in
+            withAnimation {
+                flat.removeAll { Self.isRemoved($0, by: removal) }
+                groups.removeAll { Self.isRemoved($0, statuses: statuses, by: removal) }
+            }
+        }
+    }
+
+    /// An activity goes with its post, and with the person a block or mute
+    /// was for: "Bob mentioned you" from somebody just blocked is them still
+    /// reaching the reader.
+    nonisolated static func isRemoved(
+        _ notification: MastodonNotification, by removal: TimelineStatusRemoval
+    ) -> Bool {
+        if let status = notification.status, removal.removes(status) { return true }
+        return removal.authorID == notification.account.id
+    }
+
+    /// A group goes with its post, or when everybody it names is the person
+    /// blocked; a group with others in it stays, since they still did it.
+    nonisolated static func isRemoved(
+        _ group: NotificationGroup, statuses: [String: Status],
+        by removal: TimelineStatusRemoval
+    ) -> Bool {
+        if let id = group.statusID {
+            if removal.statusIDs.contains(id) { return true }
+            if let status = statuses[id], removal.removes(status) { return true }
+        }
+        guard let authorID = removal.authorID, !group.sampleAccountIDs.isEmpty else {
+            return false
+        }
+        return group.sampleAccountIDs.allSatisfy { $0 == authorID }
     }
 
     private var visibleGroups: [NotificationGroup] {
-        groups.filter { Self.matches($0.type, selected: selectedKinds) }
+        groups.filter { group in
+            Self.matches(group.type, selected: selectedKinds)
+                && group.statusID.flatMap { statuses[$0] }.map { verdicts.isHidden($0) } != true
+        }
     }
 
     private var visibleFlat: [MastodonNotification] {
-        flat.filter { Self.matches($0.type, selected: selectedKinds) }
+        flat.filter { notification in
+            Self.matches(notification.type, selected: selectedKinds)
+                && notification.status.map { verdicts.isHidden($0) } != true
+        }
+    }
+
+    /// What a notification quotes of its post: the words, or only the
+    /// content warning where the post has one — the flat row used to print
+    /// the words regardless — or only the filter's name where a warn filter
+    /// matched it.
+    private func statusPreview(_ status: Status) -> some View {
+        Group {
+            if let warning = verdicts.warning(for: status) {
+                Text("Filtered: \(warning)", comment: "Row hidden by a keyword filter")
+                    .lineLimit(1)
+            } else if status.displayed.spoilerText.isEmpty {
+                StatusPlainPreview(status: status)
+            } else {
+                Text(status.displayed.spoilerText).lineLimit(2)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(palette.secondaryLabel)
     }
 
     /// The flat list with an optional "caught up" divider inserted at the
@@ -270,15 +332,7 @@ public struct NotificationsView: View {
                 }
 
                 if let status {
-                    Group {
-                        if status.displayed.spoilerText.isEmpty {
-                            StatusPlainPreview(status: status)
-                        } else {
-                            Text(status.displayed.spoilerText).lineLimit(2)
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(palette.secondaryLabel)
+                    statusPreview(status)
                 }
                 if let date = group.latestPageNotificationAt {
                     activityDate(date)
@@ -375,9 +429,7 @@ public struct NotificationsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let status = notification.status {
-                        StatusPlainPreview(status: status)
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryLabel)
+                        statusPreview(status)
                     }
                     activityDate(notification.createdAt)
                 }
@@ -450,6 +502,7 @@ public struct NotificationsView: View {
                 let results = try await session.client.decode(
                     GroupedNotificationsResults.self,
                     from: Endpoint.notifications.grouped(types: types))
+                await verdicts.prepare(results.statuses, session: session)
                 guard !Task.isCancelled, loadID == requestID else { return }
                 groups = results.notificationGroups
                 accounts = Dictionary(
@@ -460,6 +513,7 @@ public struct NotificationsView: View {
                 let page = try await session.client.decode(
                     LossyArray<MastodonNotification>.self,
                     from: Endpoint.notifications.flat(types: types))
+                await verdicts.prepare(page.elements.compactMap(\.status), session: session)
                 guard !Task.isCancelled, loadID == requestID else { return }
                 flat = page.elements
             }

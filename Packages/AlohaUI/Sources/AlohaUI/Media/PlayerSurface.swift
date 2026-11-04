@@ -33,44 +33,55 @@ struct PlayerSurface: View {
             #endif
         }
         // AVPlayer's mute control is independent from the system audio
-        // session. Activate audible playback only when sound is requested;
-        // silent previews must not interrupt somebody else's music.
+        // session. A player with its sound on and playing holds a claim on
+        // the speaker until it is muted or this surface goes; silent previews
+        // never claim, so they do not interrupt somebody else's music.
         .task(id: ObjectIdentifier(player)) {
-            var wasMuted: Bool?
-            for await muted in Self.mutedStates(of: player) where muted != wasMuted {
-                wasMuted = muted
-                if !muted { PlaybackAudioSession.activate() }
+            let sessions = AudioSessionCoordinator.shared
+            sessions.prepareForSilentPlayback()
+            var claim: AudibleClaim?
+            for await _ in Self.soundChanges(of: player) {
+                if player.isMuted {
+                    if let held = claim { sessions.release(held) }
+                    claim = nil
+                } else if player.timeControlStatus != .paused,
+                    claim.map(sessions.holds) != true
+                {
+                    // Taken again after being preempted only when the person
+                    // presses play on this video once more. Holding the
+                    // player here is no leak: the claim ends with the
+                    // surface, or with its Picture in Picture window.
+                    claim = sessions.claim(owner: ObjectIdentifier(player), kind: .video) {
+                        player.pause()
+                    }
+                }
+            }
+            // The surface is gone. A video floating in Picture in Picture is
+            // still playing, so its claim lasts until the window closes.
+            if let held = claim {
+                PictureInPicture.release(player) { AudioSessionCoordinator.shared.release(held) }
             }
         }
     }
 
-    /// The player's `isMuted`, now and on every change, by key-value
-    /// observation — what Combine's KVO publisher did, without Combine
-    /// (docs/12 §1). The observation ends with the stream.
-    private static func mutedStates(of player: AVPlayer) -> AsyncStream<Bool> {
+    /// Every change to the player's `isMuted` or `timeControlStatus`, by
+    /// key-value observation — what Combine's KVO publisher did, without
+    /// Combine (docs/12 §1). The handlers only signal; the surface reads the
+    /// player itself on the main actor. The observations end with the stream.
+    private static func soundChanges(of player: AVPlayer) -> AsyncStream<Void> {
         AsyncStream { continuation in
-            let observation = player.observe(\.isMuted, options: [.initial, .new]) { player, _ in
-                continuation.yield(player.isMuted)
+            let muted = player.observe(\.isMuted, options: [.initial, .new]) { @Sendable _, _ in
+                continuation.yield()
             }
-            continuation.onTermination = { _ in observation.invalidate() }
+            let status = player.observe(\.timeControlStatus, options: [.new]) {
+                @Sendable _, _ in
+                continuation.yield()
+            }
+            continuation.onTermination = { _ in
+                muted.invalidate()
+                status.invalidate()
+            }
         }
-    }
-}
-
-@MainActor
-enum PlaybackAudioSession {
-    static func activate() {
-        #if os(iOS) || os(tvOS) || os(visionOS)
-            do {
-                let session = AVAudioSession.sharedInstance()
-                try session.setCategory(.playback, mode: .moviePlayback)
-                try session.setActive(true)
-            } catch {
-                PlaybackLog.logger.error(
-                    "Audio session activation failed: \(error.localizedDescription, privacy: .public)"
-                )
-            }
-        #endif
     }
 }
 
@@ -122,6 +133,9 @@ enum PlaybackReadiness {
         url: URL, headers: [String: String],
         deadline: Duration = PlaybackReadiness.verdictDeadline
     ) async -> PlaybackAttempt {
+        // Before anything can play: with nobody audible the session is made
+        // mixable, so a muted autoplay never stops the person's music.
+        AudioSessionCoordinator.shared.prepareForSilentPlayback()
         let asset = AVURLAsset(
             url: url,
             options: headers.isEmpty ? nil : ["AVURLAssetHTTPHeaderFieldsKey": headers])
@@ -242,7 +256,9 @@ enum PlaybackReadiness {
 @MainActor
 enum PictureInPicture {
     private static var floating: [ObjectIdentifier: AnyObject] = [:]
-    private static var pendingRelease: [ObjectIdentifier: () -> Void] = [:]
+    /// Several parts may be waiting on the same window: the viewer releasing
+    /// its player and the surface giving back its claim on the speaker.
+    private static var pendingRelease: [ObjectIdentifier: [() -> Void]] = [:]
 
     static func isFloating(_ player: AVPlayer) -> Bool {
         floating[ObjectIdentifier(player)] != nil
@@ -257,14 +273,14 @@ enum PictureInPicture {
         guard let player else { return }
         let key = ObjectIdentifier(player)
         floating[key] = nil
-        pendingRelease.removeValue(forKey: key)?()
+        for release in pendingRelease.removeValue(forKey: key) ?? [] { release() }
     }
 
     /// Runs `release` now, or when the floating window closes if the player
     /// is in one.
     static func release(_ player: AVPlayer, _ release: @escaping () -> Void) {
         if isFloating(player) {
-            pendingRelease[ObjectIdentifier(player)] = release
+            pendingRelease[ObjectIdentifier(player), default: []].append(release)
         } else {
             release()
         }

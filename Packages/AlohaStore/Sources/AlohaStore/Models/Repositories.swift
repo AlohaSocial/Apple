@@ -180,6 +180,13 @@ public actor SupportStore {
         return record.id
     }
 
+    /// One draft as the store has it now, or nil once it is gone — sent by
+    /// the queue, or deleted from Drafts.
+    public func draft(id: UUID) throws -> DraftSnapshot? {
+        try modelContext.fetch(FetchDescriptor<DraftRecord>(predicate: #Predicate { $0.id == id }))
+            .first.map(DraftSnapshot.init)
+    }
+
     public func deleteDraft(id: UUID) throws {
         try modelContext.delete(model: DraftRecord.self, where: #Predicate { $0.id == id })
         try modelContext.save()
