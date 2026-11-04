@@ -103,34 +103,36 @@ struct PostDetailFooter: View {
     /// One line, the way every app a reader already uses says it: replies, then
     /// the people who passed the post on, then the people who kept it. Only
     /// what is not zero, so a quiet post stays quiet.
+    ///
+    /// It flows rather than sitting in a fixed row: at the accessibility text
+    /// sizes the four numbers are wider than a phone, and an `HStack` would clip
+    /// them instead of putting the last one on a second line. The gaps carry the
+    /// separation, so an ellipsis dot never lands at the start of a line.
     @ViewBuilder
     private var statistics: some View {
         if showsCounts, hasStatistics {
-            HStack(spacing: AlohaMetrics.space2) {
+            FlowLayout(spacing: AlohaMetrics.space3) {
                 statistic(displayed.repliesCount) {
                     replyCountText(displayed.repliesCount)
                 }
-                if displayed.favouritesCount > 0 {
-                    statisticGap
-                    favouriteCount
-                }
-                if displayed.reblogsCount > 0 {
-                    statisticGap
-                    boostCount
-                }
+                if displayed.favouritesCount > 0 { favouriteCount }
+                if displayed.reblogsCount > 0 { boostCount }
                 if let quotes = displayed.quotesCount, quotes > 0 {
-                    statisticGap
                     NavigationLink(value: Route.quotes(statusID: displayed.id)) {
                         quoteCountText(quotes)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(palette.secondaryLabel)
+                    .accessibilityHint(
+                        Text(
+                            "Shows the posts quoting this one",
+                            comment: "Hint for the quotes number"))
                 }
                 if isOwn, let views = displayed.viewCount, views > 0 {
-                    statisticGap
                     statistic(views) { viewCountText(views) }
                 }
-                Spacer(minLength: 0)
             }
             .font(.subheadline)
             .foregroundStyle(palette.secondaryLabel)
@@ -141,13 +143,6 @@ struct PostDetailFooter: View {
         displayed.repliesCount > 0 || displayed.favouritesCount > 0
             || displayed.reblogsCount > 0 || (displayed.quotesCount ?? 0) > 0
             || (isOwn && (displayed.viewCount ?? 0) > 0)
-    }
-
-    /// A separator between numbers, not a word: it leaves the reading order and
-    /// VoiceOver's alone.
-    private var statisticGap: some View {
-        Text(verbatim: "·")
-            .accessibilityHidden(true)
     }
 
     /// A number nobody can open stays a number.
@@ -166,7 +161,7 @@ struct PostDetailFooter: View {
             interactions = .favourites
         } label: {
             favouriteCountText(displayed.favouritesCount)
-                .frame(minHeight: 32)
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -179,7 +174,7 @@ struct PostDetailFooter: View {
             interactions = .boosts
         } label: {
             boostCountText(displayed.reblogsCount)
-                .frame(minHeight: 32)
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -227,17 +222,17 @@ struct PostDetailFooter: View {
     /// The exact moment, the app it came from, and any later edit — the three
     /// things a timeline row has no room for and an opened post is the place
     /// for.
+    /// Flows for the same reason the numbers do: a long app name next to an
+    /// exact moment is wider than a narrow phone in a large text size.
     private var provenance: some View {
-        HStack(spacing: AlohaMetrics.space1) {
+        FlowLayout(spacing: AlohaMetrics.space2) {
             Text(verbatim: PostAge.absolute(displayed.createdAt))
 
             if let application = displayed.application {
-                provenanceGap
                 applicationLabel(application)
             }
 
             if let editedAt = displayed.editedAt {
-                provenanceGap
                 Text(
                     "Edited \(PostAge.absolute(editedAt))",
                     comment: "When the focused post was last edited")
@@ -245,11 +240,6 @@ struct PostDetailFooter: View {
         }
         .font(.footnote)
         .foregroundStyle(palette.tertiaryLabel)
-    }
-
-    private var provenanceGap: some View {
-        Text(verbatim: "·")
-            .accessibilityHidden(true)
     }
 
     @ViewBuilder
