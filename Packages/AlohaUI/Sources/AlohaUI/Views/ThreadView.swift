@@ -242,7 +242,8 @@ public struct ThreadView: View {
             .listRowInsets(
                 EdgeInsets(
                     top: isFocused ? 8 : 0, leading: 16, bottom: isFocused ? 0 : 0,
-                    trailing: 16))
+                    trailing: 16)
+            )
             // Raised card plus the accent rail the timeline uses for keyboard
             // focus: `surface` and `background` are the same black in the Black
             // theme, so the old pair marked nothing there. The rail stays
