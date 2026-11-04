@@ -125,6 +125,7 @@ public struct ThreadView: View {
                                 Image(systemName: AlohaSymbol.share)
                             }
                         }
+                        .alohaGlassButtonStyle()
                     }
                 }
                 if canSummarise {
@@ -138,6 +139,7 @@ public struct ThreadView: View {
                                 Image(systemName: AlohaSymbol.sparkles)
                             }
                         }
+                        .alohaGlassButtonStyle()
                     }
                 }
             }

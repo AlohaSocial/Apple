@@ -44,12 +44,11 @@ struct PostDetailFooter: View {
                 .foregroundStyle(palette.tertiaryLabel)
             }
 
-            HStack(spacing: AlohaMetrics.space4) {
+            HStack(spacing: AlohaMetrics.space2) {
                 interactionButton(.favourites, count: displayed.favouritesCount)
                 interactionButton(.boosts, count: displayed.reblogsCount)
                 Spacer(minLength: 0)
             }
-            .font(.footnote.weight(.medium))
         }
         .padding(.vertical, AlohaMetrics.space2)
         .sheet(item: $interactions) { kind in
@@ -73,7 +72,8 @@ struct PostDetailFooter: View {
         }
     }
 
-    /// With "Show numbers" off the link stays, without the crowd's size.
+    /// Native glass buttons: the counts visibly open the people behind them.
+    /// With "Show numbers" off the button stays, without the crowd's size.
     private func interactionButton(
         _ kind: InteractionAccountsSheet.Kind, count: Int
     ) -> some View {
@@ -91,10 +91,7 @@ struct PostDetailFooter: View {
                 Text("Boosted by", comment: "Title of the list of who boosted")
             }
         }
-        // The text is footnote-sized; the target is not.
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
-        .buttonStyle(.borderless)
-        .foregroundStyle(palette.accent)
+        .alohaGlassButtonStyle()
+        .controlSize(.regular)
     }
 }
