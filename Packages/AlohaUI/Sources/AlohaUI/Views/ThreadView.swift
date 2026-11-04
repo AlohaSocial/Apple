@@ -101,6 +101,9 @@ public struct ThreadView: View {
             .alohaGround(palette)
             .environment(\.filterVerdicts, verdicts)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
             .task {
                 let filling = await load()
                 // The focused status lands in a stable position with its
@@ -110,6 +113,20 @@ public struct ThreadView: View {
             }
             .refreshable { await load() }
             .toolbar {
+                // The opened post hands its link to the system share sheet,
+                // like every timeline row's menu does. A post without a URL
+                // draws nothing.
+                if let focused {
+                    ToolbarItem(placement: .primaryAction) {
+                        StatusShareLink(status: focused) {
+                            Label {
+                                Text("Share post", comment: "Thread share action")
+                            } icon: {
+                                Image(systemName: AlohaSymbol.share)
+                            }
+                        }
+                    }
+                }
                 if canSummarise {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
