@@ -27,6 +27,7 @@ public struct StatusRow: View {
     private let isOwn: Bool
     private let showsCounts: Bool
     private let selectableText: Bool
+    private let showsTimestamp: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var isSpoilerRevealed = false
@@ -54,6 +55,10 @@ public struct StatusRow: View {
         /// The focused post of a thread, whose words can be selected and
         /// copied; a timeline row's tap opens the post instead.
         selectableText: Bool = false,
+        /// Whether the row carries its age beside the name. An opened post
+        /// says the exact moment underneath instead, so the relative age in
+        /// the header only repeats it.
+        showsTimestamp: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -66,6 +71,7 @@ public struct StatusRow: View {
         self.isOwn = isOwn
         self.showsCounts = showsCounts
         self.selectableText = selectableText
+        self.showsTimestamp = showsTimestamp
         self.onAction = onAction
     }
 
@@ -277,10 +283,12 @@ public struct StatusRow: View {
 
             Spacer(minLength: AlohaMetrics.space2)
 
-            PostAgeText(displayed.createdAt)
-                .font(AlohaType.meta)
-                .foregroundStyle(palette.tertiaryLabel)
-                .lineLimit(1)
+            if showsTimestamp {
+                PostAgeText(displayed.createdAt)
+                    .font(AlohaType.meta)
+                    .foregroundStyle(palette.tertiaryLabel)
+                    .lineLimit(1)
+            }
 
             if displayed.isEdited {
                 Image(systemName: AlohaSymbol.edit)

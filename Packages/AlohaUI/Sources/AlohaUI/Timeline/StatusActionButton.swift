@@ -19,6 +19,13 @@ struct StatusActionButton: View {
     let isOn: Bool
     let style: Style
     let label: Text
+
+    /// Where the button sits. A timeline row packs five controls and their
+    /// numbers into the width next to an avatar, so they are small and read
+    /// left-aligned. An opened post has the whole width for the same five, so
+    /// they are evenly spread, centred and drawn at the size of a tap target.
+    var prominence: Prominence = .row
+
     let action: () -> Void
 
     enum Style {
@@ -28,6 +35,11 @@ struct StatusActionButton: View {
         case spin
         /// Nothing beyond the tint. Reply.
         case plain
+    }
+
+    enum Prominence {
+        case row
+        case detail
     }
 
     /// Counted rather than toggled, so only turning an action *on* moves
@@ -40,7 +52,7 @@ struct StatusActionButton: View {
             HStack(spacing: AlohaMetrics.space1) {
                 ZStack {
                     Image(systemName: symbol)
-                        .font(.footnote)
+                        .font(prominence == .row ? .footnote : .body)
                         // Differentiate Without Colour: the state changes weight
                         // as well as tint (docs/12 §3).
                         .fontWeight(isOn ? .bold : .regular)
@@ -58,7 +70,9 @@ struct StatusActionButton: View {
                         SparkBurst(trigger: burst, tint: tint)
                     }
                 }
-                .frame(width: 18, height: 18)
+                .frame(
+                    width: prominence == .row ? 18 : 24,
+                    height: prominence == .row ? 18 : 24)
 
                 if let count, count > 0 {
                     Text(count, format: .number.notation(.compactName))
@@ -72,12 +86,17 @@ struct StatusActionButton: View {
                         .contentTransition(.numericText())
                 }
             }
+            .frame(
+                minWidth: prominence == .row ? 52 : 44,
+                maxWidth: prominence == .row ? nil : .infinity,
+                minHeight: prominence == .row ? 32 : 44,
+                alignment: prominence == .row ? .leading : .center
+            )
             .foregroundStyle(isOn ? tint : palette.secondaryLabel)
-            .frame(minWidth: 52, minHeight: 32, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .alohaHoverTarget(Capsule())
+        .alohaHoverTarget(prominence == .row ? AnyShape(Capsule()) : AnyShape(Circle()))
         .accessibilityLabel(label)
         .alohaLargeContentViewer(symbol: symbol, label: label)
         .onChange(of: isOn) { _, new in

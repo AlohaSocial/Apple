@@ -51,8 +51,6 @@ public struct ThreadView: View {
                         ForEach(ancestors) { status in
                             row(status, isFocused: false)
                         }
-                    } header: {
-                        Text("Conversation so far", comment: "Thread ancestors section header")
                     }
                 }
 
@@ -61,11 +59,15 @@ public struct ThreadView: View {
                         row(focused, isFocused: true)
                             .id("focused")
                             .listRowSeparator(.hidden)
-                        PostDetailFooter(status: focused, session: session) { account in
-                            onAction(.openProfile(account))
-                        }
+                        PostDetailFooter(
+                            status: focused, session: session,
+                            onAction: onAction,
+                            onOpenProfile: { account in
+                                onAction(.openProfile(account))
+                            }
+                        )
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
-                        .listRowBackground(palette.surfaceRaised)
+                        .listRowBackground(palette.background)
                         .listRowSeparator(.hidden)
                     }
                 }
@@ -82,8 +84,6 @@ public struct ThreadView: View {
                             }
                             .padding(.leading, indent(for: status))
                         }
-                    } header: {
-                        Text("Replies", comment: "Thread replies section header")
                     }
                 }
 
@@ -113,21 +113,12 @@ public struct ThreadView: View {
             }
             .refreshable { await load() }
             .toolbar {
-                // The opened post hands its link to the system share sheet,
-                // like every timeline row's menu does. A post without a URL
-                // draws nothing.
-                if let focused {
-                    ToolbarItem(placement: .primaryAction) {
-                        StatusShareLink(status: focused) {
-                            Label {
-                                Text("Share post", comment: "Thread share action")
-                            } icon: {
-                                Image(systemName: AlohaSymbol.share)
-                            }
-                        }
-                        .alohaGlassButtonStyle()
-                    }
-                }
+                // The bar is the system's own material and draws its own
+                // controls; asking for a second layer of glass inside it is
+                // exactly the nesting the platform warns against. The post's
+                // link is shared from the action row under it, the way every
+                // app a reader already uses does it, so the bar carries only
+                // the one action the page itself has.
                 if canSummarise {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -139,7 +130,6 @@ public struct ThreadView: View {
                                 Image(systemName: AlohaSymbol.sparkles)
                             }
                         }
-                        .alohaGlassButtonStyle()
                     }
                 }
             }
@@ -236,6 +226,10 @@ public struct ThreadView: View {
             policy: session.settings.sensitiveMediaPolicy,
             localHost: session.snapshot.instanceHost,
             filterWarning: verdicts.warning(for: status),
+            // The opened post's actions are the bar under it, spread across the
+            // width where a thumb reaches them — not a second, squeezed row of
+            // the same five inside the text column.
+            showActions: !isFocused,
             // The thread's own shape says "this is a reply"; repeating it on
             // every row was noise.
             showsContextLine: isFocused,
@@ -243,6 +237,8 @@ public struct ThreadView: View {
             isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
             showsCounts: session.settings.showPopularityCounts,
             selectableText: isFocused,
+            // The exact moment is under the post, with what it came from.
+            showsTimestamp: !isFocused,
             onAction: onAction
         )
         // The post being read keeps its long press for selecting its words;
@@ -260,22 +256,15 @@ public struct ThreadView: View {
         row
             .listRowInsets(
                 EdgeInsets(
-                    top: isFocused ? 8 : 0, leading: 16, bottom: isFocused ? 0 : 0,
+                    top: isFocused ? 12 : 0, leading: 16, bottom: isFocused ? 4 : 0,
                     trailing: 16)
             )
-            // Raised card plus the accent rail the timeline uses for keyboard
-            // focus: `surface` and `background` are the same black in the Black
-            // theme, so the old pair marked nothing there. The rail stays
-            // inside the row bounds: List clips negative leading padding.
-            .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
-            .overlay(alignment: .leading) {
-                if isFocused {
-                    Capsule()
-                        .fill(palette.accent)
-                        .frame(width: 3)
-                        .padding(.vertical, 12)
-                }
-            }
+            // The opened post sits on the page rather than in a card: an opened
+            // post is not one item among others, it is the screen, and a raised
+            // block with a painted rail down its edge read as a selected row
+            // that never got selected. What marks it out is its size and the
+            // chrome underneath it.
+            .listRowBackground(palette.background)
     }
 
     private func errorStrip(_ message: String) -> some View {
