@@ -96,7 +96,7 @@ public struct NotificationsView: View {
                         comment: "Notification filter empty state guidance")
                 } actions: {
                     Button("Show all") { selectedKinds = [] }
-                        .alohaGlassButtonStyle()
+                        .buttonStyle(.bordered)
                 }
                 .listRowSeparator(.hidden)
                 .listRowBackground(palette.background)

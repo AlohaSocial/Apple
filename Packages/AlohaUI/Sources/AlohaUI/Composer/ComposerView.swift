@@ -486,7 +486,7 @@ public struct ComposerView: View {
                     .font(.subheadline.weight(.semibold))
             }
         }
-        .alohaGlassProminentButtonStyle()
+        .buttonStyle(.borderedProminent)
         .tint(palette.accent)
         .disabled(!model.canPost)
         .keyboardShortcut(.return, modifiers: .command)

@@ -284,7 +284,7 @@ public struct SignInView: View {
                 Link(destination: setupURL) {
                     Text("Open in browser", comment: "Account setup action")
                 }
-                .alohaGlassProminentButtonStyle()
+                .buttonStyle(.borderedProminent)
             }
 
             if !failure.attempted.isEmpty {

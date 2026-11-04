@@ -217,7 +217,7 @@ struct FollowableAccountRow: View {
                 // One style for both relationship states: the label already
                 // says which it is, and glass keeps the button legible over
                 // the list scrolling behind it.
-                followButton.alohaGlassButtonStyle()
+                followButton.buttonStyle(.bordered)
             }
         }
         .padding(.vertical, AlohaMetrics.space1)

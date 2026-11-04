@@ -432,7 +432,7 @@ struct InterestsSettingsView: View {
                         Text("Retry", comment: "Interests retry action")
                     }
                     .font(.footnote.weight(.semibold))
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
                     .disabled(isWorking || isLoadingState)
                 }
                 .foregroundStyle(palette.destructive)
@@ -555,7 +555,7 @@ struct InterestsSettingsView: View {
                             .font(.title2)
                             .frame(width: 44, height: 44)
                     }
-                    .alohaGlassProminentButtonStyle()
+                    .buttonStyle(.borderedProminent)
                     .disabled(!canAdd || isAdding)
                     .accessibilityLabel(Text("Add interest", comment: "Interests add action"))
                 }
@@ -573,7 +573,7 @@ struct InterestsSettingsView: View {
                                             .padding(.horizontal, AlohaMetrics.space3)
                                             .frame(minHeight: 32)
                                     }
-                                    .alohaGlassButtonStyle()
+                                    .buttonStyle(.bordered)
                                 }
                             }
                         }
@@ -656,7 +656,7 @@ struct InterestsSettingsView: View {
                         .font(.title2)
                         .frame(width: 44, height: 44)
                 }
-                .alohaGlassProminentButtonStyle()
+                .buttonStyle(.borderedProminent)
                 .disabled(!isLanguageDraftValid)
                 .accessibilityLabel(Text("Add language", comment: "Interests language add action"))
             }
@@ -939,7 +939,7 @@ struct InterestChips: View {
                         .padding(.horizontal, AlohaMetrics.space3)
                         .frame(minHeight: 36)
                     }
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
                     .accessibilityLabel(
                         Text("Add \(tag.tag)", comment: "Interest candidate action"))
                 }

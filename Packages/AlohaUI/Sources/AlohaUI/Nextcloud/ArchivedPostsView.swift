@@ -114,7 +114,7 @@ public struct ArchivedPostsView: View {
                 Text("Retry", comment: "Archived posts retry action")
             }
             .font(.footnote.weight(.semibold))
-            .alohaGlassButtonStyle()
+            .buttonStyle(.bordered)
             .disabled(isLoading || !restoring.isEmpty)
         }
         .padding(.vertical, AlohaMetrics.space2)

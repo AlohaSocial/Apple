@@ -113,7 +113,7 @@ public struct QuotesView: View {
                 Text("Retry", comment: "Quotes retry action")
             }
             .font(.footnote.weight(.semibold))
-            .alohaGlassButtonStyle()
+            .buttonStyle(.bordered)
             .disabled(isLoading)
         }
         .padding(.vertical, AlohaMetrics.space2)

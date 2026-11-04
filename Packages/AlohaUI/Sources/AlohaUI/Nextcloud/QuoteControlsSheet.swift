@@ -74,7 +74,7 @@ public struct QuoteControlsSheet: View {
                             .font(.footnote)
                             .foregroundStyle(palette.destructive)
                         Button("Try again") { retry() }
-                            .alohaGlassButtonStyle()
+                            .buttonStyle(.bordered)
                             .disabled(isLoading || isSaving || !revoking.isEmpty)
                     }
                     ForEach(quotes) { quote in
@@ -130,7 +130,7 @@ public struct QuoteControlsSheet: View {
                     .font(.footnote.weight(.semibold))
                     .frame(minHeight: 44)
             }
-            .alohaGlassButtonStyle()
+            .buttonStyle(.bordered)
             .disabled(isLoading || isSaving || revoking.contains(quote.id))
             .accessibilityLabel(
                 Text(
