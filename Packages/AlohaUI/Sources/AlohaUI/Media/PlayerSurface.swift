@@ -125,6 +125,12 @@ enum PlaybackReadiness {
     /// the poster stops pretending.
     static let verdictDeadline = Duration.seconds(5)
 
+    /// How long a rung that was handed over may sit without a frame before it
+    /// counts as a dead end. Longer than any reply a healthy server takes to
+    /// say "ready", short enough that a person waiting for the video to start
+    /// sees the next rung rather than a poster that never changes.
+    static let stallDeadline = Duration.seconds(12)
+
     /// The poll interval. Far below anything a person can see, and cheap
     /// enough that a rung sitting on the deadline costs nothing.
     static let pollInterval = Duration.milliseconds(40)

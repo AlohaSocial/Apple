@@ -289,8 +289,13 @@ jobs:
             tests: AccessibilityAuditTests
           - shard: interaction
             tests: InteractionTourTests
+          # Two shards, not one: these three classes take longer together than
+          # the step's 45 minutes, and a run cut off at the limit reports the
+          # same as a hung one.
           - shard: screens
-            tests: AddedScreensTourTests PseudolocalisationTourTests StressTourTests
+            tests: AddedScreensTourTests PseudolocalisationTourTests
+          - shard: stress
+            tests: StressTourTests
           - shard: tours
             tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
     env:
