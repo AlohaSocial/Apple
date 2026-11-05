@@ -334,6 +334,15 @@ public struct VideoAttachmentPlayer: View {
     @State private var player: AVPlayer?
     @State private var sourceIndex = 0
     @State private var playbackError: String?
+    /// What the last rung that was given up on said — the host and the
+    /// player's own words. Shown under the error, because "could not be
+    /// played" never told anybody whether the file, the network or the
+    /// account was at fault.
+    @State private var playbackDetail: String?
+    /// The rungs this attempt will try, in the order it will try them. A
+    /// property of the attempt rather than of the attachment, because the
+    /// order depends on whether the media needs the account's token.
+    @State private var ladder: [VideoSource] = []
     @State private var retryCount = 0
     @State private var ticker: Any?
     @State private var watcher: Task<Void, Never>?
@@ -392,6 +401,12 @@ public struct VideoAttachmentPlayer: View {
                     Text(playbackError)
                         .font(.callout)
                         .multilineTextAlignment(.center)
+                    if let playbackDetail {
+                        Text(playbackDetail)
+                            .font(.caption)
+                            .foregroundStyle(palette.tertiaryLabel)
+                            .multilineTextAlignment(.center)
+                    }
                     Button {
                         sourceIndex = 0
                         retryCount += 1
@@ -500,10 +515,12 @@ public struct VideoAttachmentPlayer: View {
         releasePlayer()
         isRevealed = false
         playbackError = nil
+        playbackDetail = nil
 
-        for index in sourceIndex..<sources.count {
+        ladder = await rungs()
+        for index in sourceIndex..<ladder.count {
             guard !Task.isCancelled else { return }
-            let source = sources[index]
+            let source = ladder[index]
             let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
             PlaybackLog.logger.info(
                 "opening video rung \(index) \(source.url.absoluteString, privacy: .public)")
@@ -526,8 +543,12 @@ public struct VideoAttachmentPlayer: View {
                 PlaybackLog.logger.notice(
                     "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .public)"
                 )
+                // The first rung that opens is the one: carrying on would open
+                // every rung after it and end on the failure card below.
+                return
             case .rejected(let reason):
                 PlaybackLog.logger.error("video rung rejected: \(reason, privacy: .public)")
+                playbackDetail = reason
             }
         }
 
@@ -537,36 +558,85 @@ public struct VideoAttachmentPlayer: View {
             comment: "Video playback failure")
     }
 
+    /// The rungs, in the order this attempt should try them.
+    ///
+    /// A media file that needs the account's token is played as a plain file
+    /// first. `AVURLAssetHTTPHeaderFieldsKey` is honoured for a file, but the
+    /// HLS loader fetches the playlist and then every segment itself, without
+    /// the header — so an authenticated ladder answers 200 to the master
+    /// playlist and 401 to the first segment, which reaches the reader as
+    /// "this video could not be played" even though the file behind it plays.
+    /// The ladder is still tried when the file is refused too.
+    private func rungs() async -> [VideoSource] {
+        let all = sources
+        guard all.contains(where: { $0.kind != .progressive }), let session,
+            await !session.client.mediaRequestHeaders(for: all[0].url).isEmpty
+        else { return all }
+        return all.filter { $0.kind == .progressive } + all.filter { $0.kind != .progressive }
+    }
+
     /// A rung that opens can still collapse later — a master playlist that
     /// answers 200 and a variant that then 404s — so the ladder keeps its
     /// place and moves on rather than freezing on a poster. The same stream
     /// is what lifts the poster the moment there is a frame to show.
     private func watch(_ item: AVPlayerItem, at rung: Int) {
         watcher = Task { @MainActor in
+            // A rung that never answers is not a rung. A file AVFoundation
+            // refuses reports `.failed`, but a playlist whose segments are
+            // refused — or a host that never replies — can leave the item
+            // saying `.unknown` for as long as the poster stays up, which
+            // from the outside is "the video does not appear".
+            let watchdog = Task { @MainActor in
+                try? await Task.sleep(for: PlaybackReadiness.stallDeadline)
+                guard !Task.isCancelled, !isRevealed else { return }
+                PlaybackLog.logger.error(
+                    "video rung stalled rung=\(rung) \(urlOf(rung).absoluteString, privacy: .public)"
+                )
+                giveUp(
+                    on: rung,
+                    because: PlaybackReadiness.describe(url: urlOf(rung), error: item.error))
+            }
+            defer { watchdog.cancel() }
+
             for await status in PlaybackReadiness.statuses(item) {
                 guard !Task.isCancelled else { return }
                 switch status {
                 case .readyToPlay:
                     isRevealed = true
+                    return
                 case .failed:
                     PlaybackLog.logger.error(
                         "video failed after opening: \(item.error?.localizedDescription ?? "unknown", privacy: .public)"
                     )
-                    releasePlayer()
-                    isRevealed = false
-                    if rung + 1 < sources.count {
-                        sourceIndex = rung + 1
-                    } else {
-                        playbackError =
-                            String(
-                                localized: "This video could not be played.",
-                                comment: "Video playback failure")
-                    }
+                    giveUp(
+                        on: rung,
+                        because: PlaybackReadiness.describe(url: urlOf(rung), error: item.error))
                     return
                 default:
                     break
                 }
             }
+        }
+    }
+
+    /// The URL of a rung, for a log line or an error, without an index that
+    /// could be out of range.
+    private func urlOf(_ rung: Int) -> URL {
+        ladder.indices.contains(rung) ? ladder[rung].url : apiBase
+    }
+
+    /// This rung is not one. Move to the next, or say so on the last.
+    private func giveUp(on rung: Int, because reason: String) {
+        playbackDetail = reason
+        releasePlayer()
+        isRevealed = false
+        if rung + 1 < ladder.count {
+            sourceIndex = rung + 1
+        } else {
+            playbackError =
+                String(
+                    localized: "This video could not be played.",
+                    comment: "Video playback failure")
         }
     }
 

@@ -86,3 +86,48 @@ on iPad Pro 13-inch; Black/Warm Light canvas in portrait and landscape; iPhone
 17e account switching and navigation to Discover and lists; iPad deep navigation
 through profile, publishing, search, settings and the photo viewer; 100 UI package tests.
 Smaller iPads, window resizing and large text remain open runtime checks.
+
+## The opened post, and where glass belongs (2026-11-04)
+
+An opened post now reads like the post screens a reader already uses (X,
+Threads, Instagram): the name and handle at the top, the words and media at
+reading size, then one line saying the exact moment and what it was written
+with, a hairline, one row of five evenly spread actions (reply, boost,
+favourite, bookmark, share), and one line of numbers (**12** replies ·
+**40** boosts · **128** favourites). Tapping a number opens the people behind
+it. Nothing is drawn twice.
+
+What changed, and why:
+
+- The raised card and the accent rail around the opened post are gone. A card
+  with a painted edge reads as a selected row; an opened post is the screen.
+- The two glass pills ("12 favourites", "40 boosts") are gone. They repeated
+  the counts the action row had already shown, and they sat between a glass
+  navigation bar and the content: glass inside glass.
+- The actions moved out of the row's text column, where they were squeezed to
+  footnote size beside the avatar, into the full width underneath at tap-target
+  size, centred. The timeline keeps its compact row.
+- The relative age left the header; the exact moment is stated once,
+  underneath.
+- The numbers are one row separated by dots, not a wrapping flow. A flow put
+  "1 reply" on a line of its own, hanging to the left of "1 favourite ·
+  1 boost" underneath it, and the two lines read as unrelated facts. At the
+  accessibility text sizes `ViewThatFits` swaps in a column, one number per
+  line, all against the same edge.
+- A thread draws no accent rule beside the reader's own posts. The rule sits
+  outside the row's inset, so an opened post and each of its replies by the
+  same author grew a blue stripe against the screen's edge that looked like a
+  selection that had gone wrong. Timelines keep it.
+
+The rule this settles, and the rest of the app now follows it:
+
+- **Glass is for controls that float over content** — the media viewer, the
+  short player, the photo viewer. Those keep `.alohaGlassButtonStyle()`.
+- **Everything inside content — sheets, lists, forms, error strips, empty
+  states — uses the system's standard button styles** (`.bordered`,
+  `.borderedProminent`). A sheet is already a layer of material; a glass button
+  inside it is the nesting the platform warns about.
+- **A control is custom only where the system cannot do it**: the favourite and
+  boost celebrations (spring, sparks, symbol effects), the Large Content Viewer
+  on fixed-size glyphs, and the thread's inline reply indentation. Everything
+  else is a system control.

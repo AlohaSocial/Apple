@@ -198,7 +198,7 @@ public struct EditProfileView: View {
                         }
                     }
                     .font(.footnote)
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
                 }
             }
             .padding(.vertical, AlohaMetrics.space1)
@@ -241,7 +241,7 @@ public struct EditProfileView: View {
                     }
                 }
                 .font(.footnote)
-                .alohaGlassButtonStyle()
+                .buttonStyle(.bordered)
             }
             .padding(.vertical, AlohaMetrics.space1)
         } header: {

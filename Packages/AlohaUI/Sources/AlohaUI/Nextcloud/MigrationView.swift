@@ -187,7 +187,7 @@ public struct MigrationView: View {
                     }
                     .font(.footnote.weight(.semibold))
                 }
-                .alohaGlassButtonStyle()
+                .buttonStyle(.bordered)
                 .controlSize(.small)
             } else {
                 Button {
@@ -196,7 +196,7 @@ public struct MigrationView: View {
                     Text("Prepare", comment: "Migration export action")
                         .font(.footnote.weight(.semibold))
                 }
-                .alohaGlassButtonStyle()
+                .buttonStyle(.bordered)
                 .controlSize(.small)
             }
         }
@@ -506,7 +506,7 @@ public struct MigrationView: View {
                             .font(.footnote.weight(.semibold))
                     }
                 }
-                .alohaGlassButtonStyle()
+                .buttonStyle(.bordered)
                 .controlSize(.small)
                 .disabled(
                     busy.contains("alias") || busy.contains("alias-load") || !newAlias.contains("@")
@@ -976,7 +976,7 @@ public struct MigrationView: View {
 
             if !instagramHandles.isEmpty && !didLookup && !busy.contains("find") {
                 Button("Try again") { Task { await findPeople() } }
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
             }
             if !instagramHandles.isEmpty && didLookup && !lookup.contains(where: { $0.found })
                 && !busy.contains("find")

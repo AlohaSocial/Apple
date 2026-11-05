@@ -16,8 +16,11 @@ import UniformTypeIdentifiers
 /// iPhone, iPad and the Mac; only the controller that hosts the SwiftUI root
 /// differs.
 ///
-/// The extension has a tight memory budget, so it builds only the account
-/// list it needs and hands the rest to the same views the app uses.
+/// The extension has a tight memory budget. It builds the app's own
+/// `AppEnvironment`, whose services (sync, notifications) stay idle until
+/// something starts them, which nothing here does; loading it reads the
+/// account list and refreshes each account's server state, as the app does.
+/// Shared movies stay on disk (`loadFile`) for the memory budget's sake.
 @MainActor
 enum ShareExtensionRoot {
     /// The composer for the active account, or the no-account screen. `end`
@@ -182,15 +185,56 @@ extension NSItemProvider {
         }
     }
 
+    /// The item as a file of the extension's own, never read into memory.
+    ///
+    /// The URL the provider hands over is only good inside its callback, so
+    /// the file is moved (or, where that is refused, copied) out there, into
+    /// the extension's temporary directory — the upload runs in this process,
+    /// so that is where it has to be.
+    func loadFile(_ type: UTType) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = loadFileRepresentation(forTypeIdentifier: type.identifier) { url, _ in
+                guard let url else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                let ext = type.preferredFilenameExtension ?? url.pathExtension
+                let kept = FileManager.default.temporaryDirectory
+                    .appending(path: "shared-\(UUID().uuidString).\(ext)")
+                do {
+                    do {
+                        try FileManager.default.moveItem(at: url, to: kept)
+                    } catch {
+                        try FileManager.default.copyItem(at: url, to: kept)
+                    }
+                    continuation.resume(returning: kept)
+                } catch {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
     /// The item in the first representation a server takes, named and typed
     /// for what it is. An image offered only in a type no server stores (a
     /// Mac's TIFF) is re-encoded as JPEG; anything else unusable is skipped.
-    func loadUpload(preferring preferred: [UTType]) async -> SharePayload.Attachment? {
-        if let type = SharedItemType.pick(from: registeredTypeIdentifiers, preferring: preferred),
-            let data = await loadData(type)
-        {
+    ///
+    /// A movie stays a file all the way to the upload: a phone video is
+    /// easily larger than the whole of the extension's memory allowance
+    /// (around 120 MB), and reading it in ended the extension mid-share.
+    func loadUpload(
+        preferring preferred: [UTType]
+    ) async -> ComposerView.PrefilledAttachment? {
+        if let type = SharedItemType.pick(from: registeredTypeIdentifiers, preferring: preferred) {
             let upload = SharedItemType.upload(for: type)
-            return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)
+            if preferred == SharedItemType.uploadableMovies {
+                if let file = await loadFile(type) {
+                    return .init(
+                        fileURL: file, filename: upload.filename, mimeType: upload.mimeType)
+                }
+            } else if let data = await loadData(type) {
+                return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)
+            }
         }
         guard preferred == SharedItemType.uploadableImages,
             let data = await loadData(.image),
@@ -215,21 +259,10 @@ extension NSItemProvider {
 /// What arrived in the share sheet.
 public struct SharePayload: Sendable {
     public var text: String
-    public var attachments: [Attachment]
+    /// In the composer's own terms: bytes for a picture, a file for a movie.
+    public var attachments: [ComposerView.PrefilledAttachment]
 
-    public struct Attachment: Sendable {
-        public var data: Data
-        public var filename: String
-        public var mimeType: String
-
-        public init(data: Data, filename: String, mimeType: String) {
-            self.data = data
-            self.filename = filename
-            self.mimeType = mimeType
-        }
-    }
-
-    public init(text: String = "", attachments: [Attachment] = []) {
+    public init(text: String = "", attachments: [ComposerView.PrefilledAttachment] = []) {
         self.text = text
         self.attachments = attachments
     }
@@ -240,7 +273,7 @@ public struct SharePayload: Sendable {
         }
 
         var text = ""
-        var attachments: [Attachment] = []
+        var attachments: [ComposerView.PrefilledAttachment] = []
 
         func append(_ line: String) {
             guard !line.isEmpty else { return }
@@ -301,10 +334,7 @@ public struct ShareComposerView: View {
         ComposerView(
             session: session,
             prefilledText: payload.text,
-            prefilledAttachments: payload.attachments.map {
-                ComposerView.PrefilledAttachment(
-                    data: $0.data, filename: $0.filename, mimeType: $0.mimeType)
-            }
+            prefilledAttachments: payload.attachments
         )
         // At the root of a hosting controller there is no sheet to dismiss:
         // the composer's ending is the extension's.

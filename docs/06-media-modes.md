@@ -82,6 +82,21 @@ platforms where it suffices), with:
      and always sends `Accept-Ranges: bytes`, so seeking works). **For a
      federated video this is only used when the URL is on the instance
      itself** (the signed-in instance); otherwise the proxy playlist is used.
+- **Authenticated media plays its file first.** `AVURLAssetHTTPHeaderFieldsKey`
+  is honoured for a file, but the HLS loader fetches the playlist and then every
+  segment itself, without the header: an authenticated ladder answers 200 to the
+  master playlist and 401 to the first segment, which reaches the reader as
+  "this video could not be played" although the file behind it plays. When the
+  media needs the account's token, the plain file is therefore tried first and
+  the ladder after it. Nothing changes for a public instance, where the ladder
+  keeps its place.
+- **A rung that never answers is not a rung.** `AVPlayerItem` reports `failed`
+  for a file it refuses, but a playlist whose segments are refused, or a host
+  that never replies, can leave it saying `.unknown` under the poster for as
+  long as the screen is open. A rung that has not become ready within 12 s is
+  given up on, the next one is tried at the current position, and the last one
+  reports what it saw — the host and AVFoundation's own words — under the
+  message, so Console and the person looking at the screen agree.
 - **Fallback is mandatory**: a 404 on the master playlist means no ladder
   exists, and the correct response is to play `url`. A ladder that fails to load
   mid-stream falls back to `url` at the current position.

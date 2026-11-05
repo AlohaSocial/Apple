@@ -92,7 +92,7 @@ public struct ListMembershipSheet: View {
                             } label: {
                                 Text("Add", comment: "New list action")
                             }
-                            .alohaGlassButtonStyle()
+                            .buttonStyle(.bordered)
                             .disabled(
                                 isSaving
                                     || newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)

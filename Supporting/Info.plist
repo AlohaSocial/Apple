@@ -2,8 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Standalone personal signing: no shared container or keychain group,
+	     so any Apple ID (including a free one) can run this target. The app
+	     keeps its store and tokens in its own container (Supporting/README.md). -->
 	<key>AlohaAppGroupEnabled</key>
-	<true/>
+	<false/>
+	<key>AlohaKeychainSharingEnabled</key>
+	<false/>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>social.aloha.app.refresh</string>

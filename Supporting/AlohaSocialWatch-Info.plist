@@ -4,8 +4,12 @@
 <dict>
 	<!-- The watch app and its complications share the snapshot they draw
 	     from and the pairing's token (Supporting/README.md). -->
+	<!-- Standalone personal signing: no shared container or keychain group
+	     (Supporting/README.md). -->
 	<key>AlohaAppGroupEnabled</key>
-	<true/>
+	<false/>
+	<key>AlohaKeychainSharingEnabled</key>
+	<false/>
 	<!-- A tapped complication opens the app on alohasocial://watch/… -->
 	<key>CFBundleURLTypes</key>
 	<array>

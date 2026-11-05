@@ -108,7 +108,7 @@ public struct HeldPostsView: View {
                             .frame(minHeight: 44)
                     }
                 }
-                .alohaGlassButtonStyle()
+                .buttonStyle(.bordered)
                 .disabled(isLoading || pendingWithdrawal != nil)
             }
 
@@ -155,7 +155,7 @@ public struct HeldPostsView: View {
                 Text("Retry", comment: "Held posts retry action")
             }
             .font(.footnote.weight(.semibold))
-            .alohaGlassButtonStyle()
+            .buttonStyle(.bordered)
             .disabled(isLoading || pendingWithdrawal != nil)
         }
         .padding(.vertical, AlohaMetrics.space2)

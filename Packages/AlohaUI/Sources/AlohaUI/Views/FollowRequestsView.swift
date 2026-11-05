@@ -67,7 +67,7 @@ public struct FollowRequestsView: View {
                     } label: {
                         Text("Accept", comment: "Follow request action")
                     }
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
                     .controlSize(.regular)
 
                     Button(role: .destructive) {
@@ -75,7 +75,7 @@ public struct FollowRequestsView: View {
                     } label: {
                         Text("Decline", comment: "Follow request action")
                     }
-                    .alohaGlassButtonStyle()
+                    .buttonStyle(.bordered)
                     .controlSize(.regular)
                 }
                 .padding(.vertical, AlohaMetrics.space1)

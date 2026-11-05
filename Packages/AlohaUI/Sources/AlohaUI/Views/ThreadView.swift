@@ -4,11 +4,13 @@ import AlohaDesign
 import AlohaHTML
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 public struct ThreadView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.dismiss) private var dismiss
     @State private var isShowingSummary = false
 
     private let statusID: String
@@ -16,12 +18,21 @@ public struct ThreadView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var focused: Status?
+    /// Whether the screen is showing, rather than under one pushed over it.
+    @State private var isOnScreen = false
+    /// The post being read went while another screen covered this one.
+    @State private var focusedWasRemoved = false
     @State private var ancestors: [Status] = []
     @State private var descendants: [Status] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     /// Hidden replies the reader chose to look at anyway, this visit.
     @State private var revealedHidden: Set<String> = []
+    /// The reader's filters, in the thread context. What a hide filter
+    /// matched is left out of the conversation around the post; the post
+    /// itself was asked for by name and stays, behind its warning if it has
+    /// one.
+    @State private var verdicts = FilterVerdicts(context: .thread)
 
     public init(
         statusID: String, session: AccountSession,
@@ -35,29 +46,45 @@ public struct ThreadView: View {
     public var body: some View {
         ScrollViewReader { proxy in
             List {
-                ForEach(ancestors) { status in
-                    row(status, isFocused: false)
-                }
-
-                if let focused {
-                    row(focused, isFocused: true)
-                        .id("focused")
-                    PostDetailFooter(status: focused, session: session) { account in
-                        onAction(.openProfile(account))
-                    }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowBackground(palette.surfaceRaised)
-                }
-
-                ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
-                    Group {
-                        if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
-                            hiddenReplyRow(status)
-                        } else {
+                if !ancestors.isEmpty {
+                    Section {
+                        ForEach(ancestors) { status in
                             row(status, isFocused: false)
                         }
                     }
-                    .padding(.leading, indent(for: status))
+                }
+
+                if let focused {
+                    Section {
+                        row(focused, isFocused: true)
+                            .id("focused")
+                            .listRowSeparator(.hidden)
+                        PostDetailFooter(
+                            status: focused, session: session,
+                            onAction: onAction,
+                            onOpenProfile: { account in
+                                onAction(.openProfile(account))
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(palette.background)
+                        .listRowSeparator(.hidden)
+                    }
+                }
+
+                if !descendants.isEmpty {
+                    Section {
+                        ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
+                            Group {
+                                if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
+                                    hiddenReplyRow(status)
+                                } else {
+                                    row(status, isFocused: false)
+                                }
+                            }
+                            .padding(.leading, indent(for: status))
+                        }
+                    }
                 }
 
                 if isLoading {
@@ -72,7 +99,11 @@ public struct ThreadView: View {
             }
             .listStyle(.plain)
             .alohaGround(palette)
+            .environment(\.filterVerdicts, verdicts)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
+            #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+            #endif
             .task {
                 let filling = await load()
                 // The focused status lands in a stable position with its
@@ -82,6 +113,12 @@ public struct ThreadView: View {
             }
             .refreshable { await load() }
             .toolbar {
+                // The bar is the system's own material and draws its own
+                // controls; asking for a second layer of glass inside it is
+                // exactly the nesting the platform warns against. The post's
+                // link is shared from the action row under it, the way every
+                // app a reader already uses does it, so the bar carries only
+                // the one action the page itself has.
                 if canSummarise {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -108,6 +145,27 @@ public struct ThreadView: View {
                 descendants[index] = reply
                 if reply.isHiddenByAuthor { revealedHidden.remove(reply.id) }
             }
+            .onStatusesRemoved(for: session) { removal in
+                // The post being read, deleted or its author blocked, takes
+                // the screen with it; anything else in the conversation
+                // just leaves it.
+                if let focused, removal.removes(focused) {
+                    // Under a pushed screen — the author's profile, where the
+                    // block was made — closing now would close that too. It
+                    // waits for the way back.
+                    if isOnScreen { dismiss() } else { focusedWasRemoved = true }
+                    return
+                }
+                withAnimation {
+                    ancestors.removeAll { removal.removes($0) }
+                    descendants.removeAll { removal.removes($0) }
+                }
+            }
+            .onAppear {
+                isOnScreen = true
+                if focusedWasRemoved { dismiss() }
+            }
+            .onDisappear { isOnScreen = false }
         }
     }
 
@@ -167,6 +225,11 @@ public struct ThreadView: View {
             status: status,
             policy: session.settings.sensitiveMediaPolicy,
             localHost: session.snapshot.instanceHost,
+            filterWarning: verdicts.warning(for: status),
+            // The opened post's actions are the bar under it, spread across the
+            // width where a thumb reaches them — not a second, squeezed row of
+            // the same five inside the text column.
+            showActions: !isFocused,
             // The thread's own shape says "this is a reply"; repeating it on
             // every row was noise.
             showsContextLine: isFocused,
@@ -174,6 +237,12 @@ public struct ThreadView: View {
             isOwn: status.displayed.account.id == session.snapshot.serverAccountID,
             showsCounts: session.settings.showPopularityCounts,
             selectableText: isFocused,
+            // The exact moment is under the post, with what it came from.
+            showsTimestamp: !isFocused,
+            // No accent rule in a thread: it is drawn outside the row's inset
+            // and reads as a stripe on the screen's edge, not as "this is
+            // yours".
+            showsOwnMarker: false,
             onAction: onAction
         )
         // The post being read keeps its long press for selecting its words;
@@ -189,21 +258,17 @@ public struct ThreadView: View {
 
     private func styled(_ row: some View, isFocused: Bool) -> some View {
         row
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-            // Raised card plus the accent rail the timeline uses for keyboard
-            // focus: `surface` and `background` are the same black in the Black
-            // theme, so the old pair marked nothing there.
-            .listRowBackground(isFocused ? palette.surfaceRaised : palette.background)
-            .font(isFocused ? .body : nil)
-            .overlay(alignment: .leading) {
-                if isFocused {
-                    Capsule()
-                        .fill(palette.accent)
-                        .frame(width: 3)
-                        .padding(.vertical, 4)
-                        .padding(.leading, -8)
-                }
-            }
+            .listRowInsets(
+                EdgeInsets(
+                    top: isFocused ? 12 : 0, leading: 16, bottom: isFocused ? 4 : 0,
+                    trailing: 16)
+            )
+            // The opened post sits on the page rather than in a card: an opened
+            // post is not one item among others, it is the screen, and a raised
+            // block with a painted rail down its edge read as a selected row
+            // that never got selected. What marks it out is its size and the
+            // chrome underneath it.
+            .listRowBackground(palette.background)
     }
 
     private func errorStrip(_ message: String) -> some View {
@@ -214,16 +279,28 @@ public struct ThreadView: View {
     }
 
     /// Indentation is capped at five levels; anything deeper reads as a flat
-    /// list rather than a staircase.
+    /// list rather than a staircase. Ancestors and the focused post count as
+    /// the chain, not only already-loaded descendants, so a reply whose
+    /// parent is above the focused post does not indent past it.
     private func indent(for status: Status) -> Double {
+        var byID: [String: Status] = [:]
+        for known in ancestors + (focused.map { [$0] } ?? []) + descendants {
+            byID[known.id] = known
+        }
         var depth = 0
         var current: String? = status.inReplyToID
         var seen = Set<String>()
 
         while let parent = current, depth < 5, seen.insert(parent).inserted {
             if parent == statusID { break }
-            current = descendants.first { $0.id == parent }?.inReplyToID
-            depth += 1
+            guard let known = byID[parent] else { break }
+            current = known.inReplyToID
+            // Only steps below the focused post indent; ancestors stay flat.
+            if descendants.contains(where: { $0.id == known.id }) {
+                depth += 1
+            } else {
+                break
+            }
         }
         return Double(depth) * 12
     }
@@ -273,9 +350,10 @@ public struct ThreadView: View {
                 let (context, response) = try await session.client.decodeWithResponse(
                     StatusContext.self,
                     from: Endpoint.statuses.context(statusID, includingHidden: true))
+                await verdicts.warm(context.ancestors + context.descendants)
                 withAnimation(.easeOut(duration: 0.2)) {
-                    ancestors = context.ancestors
-                    descendants = context.descendants
+                    ancestors = verdicts.kept(context.ancestors)
+                    descendants = verdicts.kept(context.descendants)
                 }
                 filling = SocialFilling(response)
                 attempt += 1
@@ -314,12 +392,16 @@ public struct ThreadView: View {
 
             let status = Self.withCard(try await statusTask, await cardTask)
             let (context, response) = try await contextTask
+            // Decided before anything is committed, so the thread arrives
+            // filtered in one update rather than in two.
+            await verdicts.prepare(
+                [status] + context.ancestors + context.descendants, session: session)
             if focused?.id != status.id {
                 ReadingSignals.forSession(session)?.opened(status)
             }
             focused = status
-            ancestors = context.ancestors
-            descendants = context.descendants
+            ancestors = verdicts.kept(context.ancestors)
+            descendants = verdicts.kept(context.descendants)
             errorMessage = nil
 
             try? await session.timelineStore.updateStatus(

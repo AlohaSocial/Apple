@@ -3,6 +3,7 @@
 import AlohaDesign
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import SwiftUI
 
 /// Your archived posts: off the profile and out of every timeline, but not
@@ -96,6 +97,9 @@ public struct ArchivedPostsView: View {
         }
         .navigationTitle(Text("Archived posts", comment: "Screen title"))
         .task { await load() }
+        .onStatusesRemoved(for: session) { removal in
+            statuses.removeAll { removal.removes($0) }
+        }
         .refreshable { await load() }
     }
 
@@ -110,7 +114,7 @@ public struct ArchivedPostsView: View {
                 Text("Retry", comment: "Archived posts retry action")
             }
             .font(.footnote.weight(.semibold))
-            .alohaGlassButtonStyle()
+            .buttonStyle(.bordered)
             .disabled(isLoading || !restoring.isEmpty)
         }
         .padding(.vertical, AlohaMetrics.space2)

@@ -101,15 +101,32 @@ public final class SendQueue {
     /// replying to the last post that made it. The first post is never sent
     /// twice.
     static func send(_ draft: DraftSnapshot, session: AccountSession) async -> Outcome {
+        // Refused before anything goes out, where the composer refuses it too:
+        // scheduling the first post would leave the rest nothing to reply to.
+        if draft.scheduledAt != nil, !draft.threadSegments.isEmpty {
+            return .refused(ComposerModel.threadCannotBeScheduled)
+        }
+
         var current = draft
         var posted = 0
         do {
             while true {
-                let status = try await session.client.decode(
-                    Status.self,
-                    from: Endpoint.composing.post(
+                let response = try await session.client.send(
+                    Endpoint.composing.post(
                         try await current.statusPost(
                             session: session, total: draft.threadTotal)))
+                let status: Status
+                switch try PostResponse(decoding: response.data, scheduledAt: current.scheduledAt)
+                {
+                case .scheduled:
+                    // The server has it and will post it at its time: sent, as
+                    // far as the queue is concerned. Reading this as a failure
+                    // would schedule it again on every pass.
+                    try? await session.supportStore.deleteDraft(id: draft.id)
+                    return .sent
+                case .posted(let made):
+                    status = made
+                }
                 session.notePosted(status)
                 try? await session.timelineStore.updateStatus(
                     accountID: session.id, status: status)

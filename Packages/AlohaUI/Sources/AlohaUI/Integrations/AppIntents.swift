@@ -12,6 +12,9 @@ public struct PostStatusIntent: AppIntent {
     public static let title: LocalizedStringResource = "Post to Aloha Social"
     public static let description = IntentDescription("Posts a status from Aloha Social.")
     public static let openAppWhenRun = false
+    /// Posting as someone takes their unlocked phone, not their voice: a
+    /// spoken "yes" to the confirmation is no proof of who said it.
+    public static let authenticationPolicy = IntentAuthenticationPolicy.requiresAuthentication
 
     @Parameter(title: "Text")
     public var text: String
@@ -95,6 +98,9 @@ public struct OpenTimelineIntent: AppIntent {
 public struct LatestMentionsIntent: AppIntent {
     public static let title: LocalizedStringResource = "Show my Aloha mentions"
     public static let openAppWhenRun = false
+    /// Mentions include direct messages, which a locked phone must not read
+    /// aloud to whoever is holding it.
+    public static let authenticationPolicy = IntentAuthenticationPolicy.requiresAuthentication
 
     @Parameter(title: "How many", default: 5)
     public var count: Int
