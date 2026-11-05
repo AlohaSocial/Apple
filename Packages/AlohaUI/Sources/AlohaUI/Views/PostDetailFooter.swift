@@ -38,15 +38,24 @@ struct PostDetailFooter: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+        // The gaps are written out rather than shared: the rule sits halfway
+        // between the moment and the actions, and the numbers hang directly
+        // under the actions they belong to. A single `spacing` made the numbers
+        // look like a caption for the replies below, twenty points away from
+        // the row that produced them.
+        VStack(alignment: .leading, spacing: 0) {
             provenance
             Rectangle()
                 .fill(palette.separator)
                 .frame(height: 0.5)
+                .padding(.top, AlohaMetrics.space2)
+                .padding(.bottom, AlohaMetrics.space2)
             actions
             statistics
+                .padding(.top, AlohaMetrics.space1)
         }
         .padding(.top, AlohaMetrics.space2)
+        .padding(.bottom, -AlohaMetrics.space2)
         .sheet(item: $interactions) { kind in
             InteractionAccountsSheet(
                 statusID: displayed.id, session: session, onOpenProfile: onOpenProfile,
@@ -100,43 +109,68 @@ struct PostDetailFooter: View {
 
     // MARK: - Numbers
 
-    /// One line, the way every app a reader already uses says it: replies, then
-    /// the people who passed the post on, then the people who kept it. Only
-    /// what is not zero, so a quiet post stays quiet.
+    /// One line, the way Threads and X say it: replies, then the people who
+    /// passed the post on, then the people who kept it, separated by dots.
+    /// Only what is not zero, so a quiet post stays quiet.
     ///
-    /// It flows rather than sitting in a fixed row: at the accessibility text
-    /// sizes the four numbers are wider than a phone, and an `HStack` would clip
-    /// them instead of putting the last one on a second line. The gaps carry the
-    /// separation, so an ellipsis dot never lands at the start of a line.
+    /// A row, not a wrapping flow: a wrapped flow put "1 reply" on a line of
+    /// its own, hanging to the left of "1 favourite · 1 boost" underneath it,
+    /// which read as three unrelated facts. At the accessibility text sizes
+    /// the row is wider than a phone, so `ViewThatFits` swaps in a column of
+    /// the same numbers, all against the same edge — one line, or one number
+    /// per line, never a fragment of a sentence.
     @ViewBuilder
     private var statistics: some View {
         if showsCounts, hasStatistics {
-            FlowLayout(spacing: AlohaMetrics.space3) {
-                statistic(displayed.repliesCount) {
-                    replyCountText(displayed.repliesCount)
-                }
-                if displayed.favouritesCount > 0 { favouriteCount }
-                if displayed.reblogsCount > 0 { boostCount }
-                if let quotes = displayed.quotesCount, quotes > 0 {
-                    NavigationLink(value: Route.quotes(statusID: displayed.id)) {
-                        quoteCountText(quotes)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(palette.secondaryLabel)
-                    .accessibilityHint(
-                        Text(
-                            "Shows the posts quoting this one",
-                            comment: "Hint for the quotes number"))
-                }
-                if isOwn, let views = displayed.viewCount, views > 0 {
-                    statistic(views) { viewCountText(views) }
-                }
+            ViewThatFits(in: .horizontal) {
+                statisticsRow
+                statisticsColumn
             }
             .font(.subheadline)
             .foregroundStyle(palette.secondaryLabel)
         }
+    }
+
+    private var statisticsRow: some View {
+        HStack(spacing: AlohaMetrics.space2) {
+            replyCount
+            if displayed.favouritesCount > 0 {
+                separator
+                favouriteCount
+            }
+            if displayed.reblogsCount > 0 {
+                separator
+                boostCount
+            }
+            if let quotes = displayed.quotesCount, quotes > 0 {
+                separator
+                quoteCount(quotes)
+            }
+            if isOwn, let views = displayed.viewCount, views > 0 {
+                separator
+                viewCount(views)
+            }
+        }
+    }
+
+    /// The same numbers when they no longer fit side by side, one per line and
+    /// all against the leading edge, so nothing looks indented by accident.
+    private var statisticsColumn: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+            replyCount
+            if displayed.favouritesCount > 0 { favouriteCount }
+            if displayed.reblogsCount > 0 { boostCount }
+            if let quotes = displayed.quotesCount, quotes > 0 { quoteCount(quotes) }
+            if isOwn, let views = displayed.viewCount, views > 0 { viewCount(views) }
+        }
+    }
+
+    /// A dot rather than a gap: at a glance the numbers are one sentence, and
+    /// separated they stay legible as separate counts.
+    private var separator: some View {
+        Text(verbatim: "·")
+            .foregroundStyle(palette.tertiaryLabel)
+            .accessibilityHidden(true)
     }
 
     private var hasStatistics: Bool {
@@ -146,11 +180,26 @@ struct PostDetailFooter: View {
     }
 
     /// A number nobody can open stays a number.
-    @ViewBuilder
-    private func statistic<Content: View>(
-        _ value: Int, @ViewBuilder text: () -> Content
-    ) -> some View {
-        if value > 0 { text() }
+    private var replyCount: some View {
+        replyCountText(displayed.repliesCount)
+            .frame(minHeight: 44)
+    }
+
+    private func quoteCount(_ count: Int) -> some View {
+        NavigationLink(value: Route.quotes(statusID: displayed.id)) {
+            quoteCountText(count)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(palette.secondaryLabel)
+        .accessibilityHint(
+            Text("Shows the posts quoting this one", comment: "Hint for the quotes number"))
+    }
+
+    private func viewCount(_ count: Int) -> some View {
+        viewCountText(count)
+            .frame(minHeight: 44)
     }
 
     /// The people who kept the post. A text button rather than a pill: the line

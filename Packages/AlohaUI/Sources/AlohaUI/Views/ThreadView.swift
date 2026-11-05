@@ -239,6 +239,10 @@ public struct ThreadView: View {
             selectableText: isFocused,
             // The exact moment is under the post, with what it came from.
             showsTimestamp: !isFocused,
+            // No accent rule in a thread: it is drawn outside the row's inset
+            // and reads as a stripe on the screen's edge, not as "this is
+            // yours".
+            showsOwnMarker: false,
             onAction: onAction
         )
         // The post being read keeps its long press for selecting its words;

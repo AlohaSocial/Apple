@@ -109,6 +109,15 @@ What changed, and why:
   size, centred. The timeline keeps its compact row.
 - The relative age left the header; the exact moment is stated once,
   underneath.
+- The numbers are one row separated by dots, not a wrapping flow. A flow put
+  "1 reply" on a line of its own, hanging to the left of "1 favourite ·
+  1 boost" underneath it, and the two lines read as unrelated facts. At the
+  accessibility text sizes `ViewThatFits` swaps in a column, one number per
+  line, all against the same edge.
+- A thread draws no accent rule beside the reader's own posts. The rule sits
+  outside the row's inset, so an opened post and each of its replies by the
+  same author grew a blue stripe against the screen's edge that looked like a
+  selection that had gone wrong. Timelines keep it.
 
 The rule this settles, and the rest of the app now follows it:
 

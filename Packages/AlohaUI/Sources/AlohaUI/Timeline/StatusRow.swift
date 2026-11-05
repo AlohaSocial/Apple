@@ -28,6 +28,12 @@ public struct StatusRow: View {
     private let showsCounts: Bool
     private let selectableText: Bool
     private let showsTimestamp: Bool
+    /// Whether a post of the reader's own carries the accent rule down its
+    /// leading edge. A thread leaves it out: the rule sits outside the row's
+    /// inset, so an opened post and each of its replies by the same author grew
+    /// a blue stripe against the edge of the screen, which looked like a
+    /// selection that had gone wrong rather than a way to find yourself.
+    private let showsOwnMarker: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var isSpoilerRevealed = false
@@ -59,6 +65,7 @@ public struct StatusRow: View {
         /// says the exact moment underneath instead, so the relative age in
         /// the header only repeats it.
         showsTimestamp: Bool = true,
+        showsOwnMarker: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -72,6 +79,7 @@ public struct StatusRow: View {
         self.showsCounts = showsCounts
         self.selectableText = selectableText
         self.showsTimestamp = showsTimestamp
+        self.showsOwnMarker = showsOwnMarker
         self.onAction = onAction
     }
 
@@ -146,7 +154,7 @@ public struct StatusRow: View {
         // Your own posts carry a rule in the accent down their leading edge —
         // enough to find yourself in a timeline, not enough to shout.
         .overlay(alignment: .leading) {
-            if isOwn {
+            if isOwn, showsOwnMarker {
                 Capsule()
                     .fill(palette.accent.opacity(0.55))
                     .frame(width: 3)
