@@ -289,6 +289,11 @@ jobs:
             tests: AccessibilityAuditTests
           - shard: interaction
             tests: InteractionTourTests
+          # Playback is its own shard: the tests play a real file through a
+          # loopback socket and wait for the picture to move, so they take
+          # their own minutes rather than crowding a tour shard.
+          - shard: playback
+            tests: VideoPlaybackTests
           # Two shards, not one: these three classes take longer together than
           # the step's 45 minutes, and a run cut off at the limit reports the
           # same as a hung one.
@@ -300,9 +305,9 @@ jobs:
             tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
     env:
       ALL_SHARDS: >-
-        AccessibilityAuditTests InteractionTourTests AddedScreensTourTests
-        PseudolocalisationTourTests StressTourTests ScreenTourTests ThemeTourTests
-        SidebarTourTests NativeSidebarTests
+        AccessibilityAuditTests InteractionTourTests VideoPlaybackTests
+        AddedScreensTourTests PseudolocalisationTourTests StressTourTests
+        ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
     steps:
       - uses: actions/checkout@v4
       - name: Every tour class is in a shard
