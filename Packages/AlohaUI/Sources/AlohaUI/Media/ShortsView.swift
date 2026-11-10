@@ -574,16 +574,16 @@ public struct ShortsView: View {
             ) { onAction(.favourite(status)) }
 
             railButton(
-                symbol: AlohaSymbol.reply, tint: .white,
-                count: session.settings.showPopularityCounts ? displayed.repliesCount : nil,
-                label: Text("Reply", comment: "Shorts action")
-            ) { onAction(.open(status)) }
-
-            railButton(
                 symbol: AlohaSymbol.boost, tint: displayed.reblogged ? palette.boost : .white,
                 count: session.settings.showPopularityCounts ? displayed.reblogsCount : nil,
                 label: Text("Boost", comment: "Shorts action")
             ) { onAction(.boost(status)) }
+
+            railButton(
+                symbol: AlohaSymbol.reply, tint: .white,
+                count: session.settings.showPopularityCounts ? displayed.repliesCount : nil,
+                label: Text("Reply", comment: "Shorts action")
+            ) { onAction(.open(status)) }
 
             railButton(
                 symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,

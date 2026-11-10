@@ -384,7 +384,9 @@ public struct NotificationsView: View {
         .buttonStyle(.plain)
     }
 
-    /// The grouped list with the catch-up divider in it.
+    /// The grouped list with day headings in it, so a long list reads as
+    /// days rather than one undifferentiated column, and the catch-up
+    /// divider below the one the reader had already seen.
     ///
     /// A group is placed below the divider when every notification it contains
     /// is older than the marker: the group's `most_recent_notification_id` is
@@ -394,15 +396,10 @@ public struct NotificationsView: View {
     /// group's own timestamp, and the id only decides whether a group *is* the
     /// marker's.
     private var groupedRowsWithMarker: some View {
-        let groups = visibleGroups
-        let markerID = caughtUpNotificationID
-        let markerIndex = markerID.flatMap { id in
-            groups.firstIndex { $0.mostRecentNotificationID == id }
-        }
-        return ForEach(
-            ActivityListRow.rows(groups, dividerAfter: markerIndex, markerID: markerID)
-        ) { row in
+        ForEach(activityRows) { row in
             switch row {
+            case .day(let date):
+                activityDayHeader(date)
             case .item(let group):
                 groupRow(group)
                     .listRowBackground(palette.background)
@@ -411,6 +408,56 @@ public struct NotificationsView: View {
                     .listRowBackground(palette.background)
             }
         }
+    }
+
+    /// Groups in server order, with a heading wherever the day changes.
+    private var activityRows: [ActivityDisplayRow] {
+        let groups = visibleGroups
+        let markerID = caughtUpNotificationID
+        let markerIndex = markerID.flatMap { id in
+            groups.firstIndex { $0.mostRecentNotificationID == id }
+        }
+        var rows: [ActivityDisplayRow] = []
+        var day: Date?
+        for row in ActivityListRow.rows(groups, dividerAfter: markerIndex, markerID: markerID) {
+            switch row {
+            case .item(let group):
+                if let date = group.latestPageNotificationAt {
+                    let start = Calendar.current.startOfDay(for: date)
+                    if start != day {
+                        rows.append(.day(start))
+                        day = start
+                    }
+                }
+                rows.append(.item(group))
+            case .caughtUp(let after):
+                rows.append(.caughtUp(after))
+            }
+        }
+        return rows
+    }
+
+    /// "Today" and "Yesterday" first, then the date: a heading is read to
+    /// find where a day starts, not to learn a calendar.
+    private func activityDayHeader(_ date: Date) -> some View {
+        let calendar = Calendar.current
+        let title: String
+        if calendar.isDateInToday(date) {
+            title = String(localized: "Today", comment: "Activity day heading")
+        } else if calendar.isDateInYesterday(date) {
+            title = String(localized: "Yesterday", comment: "Activity day heading")
+        } else {
+            title = date.formatted(.dateTime.weekday(.wide).day().month(.wide))
+        }
+        return Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(palette.tertiaryLabel)
+            .padding(.top, AlohaMetrics.space3)
+            .padding(.bottom, AlohaMetrics.space1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowBackground(palette.background)
+            .listRowSeparator(.hidden)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private func flatRow(_ notification: MastodonNotification) -> some View {
@@ -708,5 +755,20 @@ public struct NotificationsView: View {
         .padding(.vertical, AlohaMetrics.space3)
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
+    }
+}
+
+/// A day heading, a notification group, or the catch-up divider.
+private enum ActivityDisplayRow: Identifiable {
+    case day(Date)
+    case item(NotificationGroup)
+    case caughtUp(String)
+
+    var id: String {
+        switch self {
+        case .day(let date): "day-\(date.timeIntervalSinceReferenceDate)"
+        case .item(let group): "item-\(group.id)"
+        case .caughtUp(let after): "caughtUp-\(after)"
+        }
     }
 }
