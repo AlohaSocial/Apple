@@ -145,6 +145,19 @@ public struct ThreadView: View {
                 descendants[index] = reply
                 if reply.isHiddenByAuthor { revealedHidden.remove(reply.id) }
             }
+            // The post being read keeps up with what has just happened to it:
+            // a favourite, a boost, a bookmark, an edit, a vote. The actions
+            // under an opened post write to the store, and without this the
+            // counts beside their glyphs — and the filled heart itself —
+            // stayed as they were when the screen loaded.
+            .onReceive(
+                NotificationCenter.default.publisher(for: TimelineStatusUpdate.notification)
+            ) { note in
+                guard let update = note.object as? TimelineStatusUpdate,
+                    update.accountID == session.id
+                else { return }
+                apply(update.status)
+            }
             .onStatusesRemoved(for: session) { removal in
                 // The post being read, deleted or its author blocked, takes
                 // the screen with it; anything else in the conversation
@@ -166,6 +179,35 @@ public struct ThreadView: View {
                 if focusedWasRemoved { dismiss() }
             }
             .onDisappear { isOnScreen = false }
+        }
+    }
+
+    /// Puts a newer copy of one post where this screen holds it — the focused
+    /// post, the ancestors above it, or the replies below — keeping a boost's
+    /// wrapper around the post it boosts.
+    private func apply(_ updated: Status) {
+        if let current = focused,
+            current.id == updated.id || current.reblog?.value.id == updated.id
+        {
+            var next = current
+            if next.id == updated.id {
+                next = updated
+            } else {
+                next.reblog = Box(updated)
+            }
+            focused = next
+        }
+        ancestors = Self.replacing(updated, in: ancestors)
+        descendants = Self.replacing(updated, in: descendants)
+    }
+
+    private static func replacing(_ updated: Status, in statuses: [Status]) -> [Status] {
+        statuses.map { status in
+            if status.id == updated.id { return updated }
+            guard status.reblog?.value.id == updated.id else { return status }
+            var wrapper = status
+            wrapper.reblog = Box(updated)
+            return wrapper
         }
     }
 

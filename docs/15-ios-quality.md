@@ -91,11 +91,13 @@ Smaller iPads, window resizing and large text remain open runtime checks.
 
 An opened post now reads like the post screens a reader already uses (X,
 Threads, Instagram): the name and handle at the top, the words and media at
-reading size, then one line saying the exact moment and what it was written
-with, a hairline, one row of five evenly spread actions (reply, boost,
-favourite, bookmark, share), and one line of numbers (**12** replies ·
-**40** boosts · **128** favourites). Tapping a number opens the people behind
-it. Nothing is drawn twice.
+reading size, then one line saying the exact moment, what it was written with
+and how far it got, a hairline, and one row of five evenly spread actions
+(reply, boost, favourite, bookmark, share) with each count beside its glyph
+(**12** replies, **40** boosts, **128** favourites). Tapping a glyph acts on
+the post; tapping its number opens the people behind it. The post's own menu
+sits at the end of the provenance line, so translate, report, edit and delete
+are reachable where they were missing. Nothing is drawn twice.
 
 What changed, and why:
 
@@ -106,14 +108,24 @@ What changed, and why:
   navigation bar and the content: glass inside glass.
 - The actions moved out of the row's text column, where they were squeezed to
   footnote size beside the avatar, into the full width underneath at tap-target
-  size, centred. The timeline keeps its compact row.
+  size, centred, with their counts. The timeline keeps its compact row.
+- A thread follows the store while it is open: favouriting or boosting the
+  post being read updates its counts, its glyphs and the same post in the
+  replies around it at once, instead of only after the screen was loaded
+  again.
 - The relative age left the header; the exact moment is stated once,
   underneath.
-- The numbers are one row separated by dots, not a wrapping flow. A flow put
-  "1 reply" on a line of its own, hanging to the left of "1 favourite ·
-  1 boost" underneath it, and the two lines read as unrelated facts. At the
-  accessibility text sizes `ViewThatFits` swaps in a column, one number per
-  line, all against the same edge.
+- The numbers sit beside their glyphs, not on a line of their own under
+  them. A separate "**1** reply · **1** favourite · **1** boost" line was a
+  second place to look for the same fact, twenty points below the controls it
+  described, and at the accessibility text sizes it wrapped into a stack that
+  read as three unrelated sentences. Counts nobody can act on from here —
+  quotes, views on the reader's own post, a federated video's dislikes — stay
+  on the provenance line, where they describe the post rather than being
+  something to do to it.
+- A count is its own control: the glyph performs the action, the number opens
+  the sheet of who favourited or boosted. It is the one number on the screen
+  that was always asking to be tapped.
 - A thread draws no accent rule beside the reader's own posts. The rule sits
   outside the row's inset, so an opened post and each of its replies by the
   same author grew a blue stripe against the screen's edge that looked like a

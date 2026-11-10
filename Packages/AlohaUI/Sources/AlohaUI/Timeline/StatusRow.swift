@@ -431,8 +431,7 @@ public struct StatusRow: View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                 HStack(spacing: 0) {
-                    primaryActions
-                    Spacer(minLength: 0)
+                    actions
                     moreMenu
                 }
                 HStack(spacing: 0) { countMetrics }
@@ -444,9 +443,8 @@ public struct StatusRow: View {
             .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
         } else {
             HStack(spacing: 0) {
-                primaryActions
+                actions
                 countMetrics
-                Spacer(minLength: 0)
                 moreMenu
             }
             .padding(.top, AlohaMetrics.space1)
@@ -457,32 +455,11 @@ public struct StatusRow: View {
         }
     }
 
-    @ViewBuilder
-    private var primaryActions: some View {
-        StatusActionButton(
-            symbol: AlohaSymbol.reply, count: showsCounts ? displayed.repliesCount : nil,
-            tint: palette.secondaryLabel, isOn: false, style: .plain,
-            label: Text("Reply", comment: "Status action")
-        ) { onAction(.reply(status)) }
-
-        StatusActionButton(
-            symbol: AlohaSymbol.boost, count: showsCounts ? displayed.reblogsCount : nil,
-            tint: palette.boost, isOn: displayed.reblogged, style: .spin,
-            label: Text("Boost", comment: "Status action")
-        ) { onAction(.boost(status)) }
-
-        StatusActionButton(
-            symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
-            count: showsCounts ? displayed.favouritesCount : nil, tint: palette.favourite,
-            isOn: displayed.favourited, style: .pop,
-            label: Text("Favourite", comment: "Status action")
-        ) { onAction(.favourite(status)) }
-
-        StatusActionButton(
-            symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
-            count: nil, tint: palette.bookmark, isOn: displayed.bookmarked, style: .pop,
-            label: Text("Bookmark", comment: "Status action")
-        ) { onAction(.bookmark(status)) }
+    /// Like, repost, comment, save — the app's one order, evenly spread.
+    private var actions: some View {
+        StatusActionStrip(status: status, showsCounts: showsCounts, prominence: .row) {
+            onAction($0)
+        }
     }
 
     /// The numbers a row reports but nobody can change from here.

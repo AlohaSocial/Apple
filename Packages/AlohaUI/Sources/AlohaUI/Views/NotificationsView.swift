@@ -47,6 +47,18 @@ public struct NotificationsView: View {
                 errorStrip(errorMessage)
             }
 
+            AlohaHint(
+                id: "activities-hold",
+                symbol: "hand.tap",
+                title: Text("Hold an activity", comment: "Activities hint title"),
+                message: Text(
+                    "Touch and hold a mention to mute the conversation it belongs to.",
+                    comment: "Activities hint")
+            )
+            .listRowBackground(palette.background)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+
             // The notification policy header: a link to the policy screen and,
             // when there are filtered requests, their count.
             if session.capabilities.notificationPolicy {
@@ -304,14 +316,11 @@ public struct NotificationsView: View {
         } label: {
             VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 HStack(spacing: AlohaMetrics.space2) {
-                    Image(systemName: symbol(for: group.type))
-                        .foregroundStyle(tint(for: group.type))
-                        .font(.footnote)
-                        .accessibilityHidden(true)
+                    activityBadge(group.type)
 
                     HStack(spacing: -8) {
                         ForEach(sample.prefix(4), id: \.id) { account in
-                            AvatarView(account: account, size: 26)
+                            AvatarView(account: account, size: 30)
                                 .overlay(
                                     Circle().strokeBorder(palette.background, lineWidth: 1.5))
                         }
@@ -413,15 +422,11 @@ public struct NotificationsView: View {
             }
         } label: {
             HStack(alignment: .top, spacing: AlohaMetrics.space3) {
-                Image(systemName: symbol(for: notification.type))
-                    .foregroundStyle(tint(for: notification.type))
-                    .font(.footnote)
-                    .frame(width: 20)
-                    .accessibilityHidden(true)
+                activityBadge(notification.type)
 
                 VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                     HStack(spacing: AlohaMetrics.space2) {
-                        AvatarView(account: notification.account, size: 26)
+                        AvatarView(account: notification.account, size: 30)
                         Text(summary(for: notification))
                             .font(.subheadline)
                             .lineLimit(3)
@@ -478,6 +483,17 @@ public struct NotificationsView: View {
         )
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
+    }
+
+    /// The kind of activity as a tinted disc: what happened, legible at a
+    /// glance before a word of the sentence under it is read.
+    private func activityBadge(_ kind: NotificationKind) -> some View {
+        Image(systemName: symbol(for: kind))
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(tint(for: kind))
+            .frame(width: 30, height: 30)
+            .background(tint(for: kind).opacity(0.14), in: Circle())
+            .accessibilityHidden(true)
     }
 
     private func activityDate(_ date: Date) -> some View {

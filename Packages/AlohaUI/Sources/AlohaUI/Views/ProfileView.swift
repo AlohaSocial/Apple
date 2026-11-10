@@ -86,6 +86,12 @@ public struct ProfileView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
+        // The three things a reader does about an account rather than with its
+        // posts, spread evenly at the foot of the profile the way a post's
+        // actions are: report, block, mute.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let account, !isOwn { safetyBar(account) }
+        }
         .navigationTitle(account?.bestDisplayName ?? "")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -142,6 +148,50 @@ public struct ProfileView: View {
         ) { start in
             StoryPlayer(stories: stories, startIndex: start.index, session: session)
         }
+    }
+
+    // MARK: - Safety
+
+    private func safetyBar(_ account: Account) -> some View {
+        HStack(spacing: 0) {
+            safetyButton(
+                symbol: AlohaSymbol.report,
+                title: Text("Report", comment: "Profile action"),
+                tint: palette.secondaryLabel
+            ) { onAction(.report(Status(id: "", account: account))) }
+            safetyButton(
+                symbol: AlohaSymbol.block,
+                title: Text("Block", comment: "Profile action"),
+                tint: palette.destructive
+            ) { onAction(.block(account)) }
+            safetyButton(
+                symbol: AlohaSymbol.mute,
+                title: Text("Mute", comment: "Profile action"),
+                tint: palette.secondaryLabel
+            ) { onAction(.mute(account)) }
+        }
+        .padding(.horizontal, AlohaMetrics.space2)
+        .padding(.vertical, AlohaMetrics.space1)
+        .background(palette.surfaceRaised)
+        .overlay(alignment: .top) {
+            Rectangle().fill(palette.separator).frame(height: 0.5)
+        }
+    }
+
+    private func safetyButton(
+        symbol: String, title: Text, tint: Color, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: symbol).font(.body)
+                title.font(.caption2.weight(.medium))
+            }
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 
     // MARK: - Layout

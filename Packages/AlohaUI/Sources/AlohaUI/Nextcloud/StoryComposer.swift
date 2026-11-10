@@ -6,6 +6,7 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import ImageIO
+import Photos
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -43,6 +44,11 @@ public struct StoryComposerSheet: View {
     @State private var isPosting = false
     @State private var isLoadingMedia = false
     @State private var errorMessage: String?
+    /// The system photo picker, presented from the preview and from "See all".
+    @State private var isPickingLibrary = false
+    /// The last few pictures in the library, for the strip under the preview.
+    @State private var recents: [PHAsset] = []
+    @State private var recentAccessDenied = false
 
     static let canvas = CGSize(width: 1080, height: 1920)
     static let textLimit = 280
@@ -229,35 +235,29 @@ public struct StoryComposerSheet: View {
         } else if movie != nil {
             movieSummary
         } else {
-            // Read out here, not inside the label: `PhotosPicker`'s label
-            // closure is `@Sendable`, so touching main-actor state from within
-            // it crosses isolation. `Bool` and `Color` are `Sendable`, so
-            // capturing the values costs nothing and says nothing untrue.
-            let isLoading = isLoadingMedia
-            let ink = palette.secondaryLabel
-            let surface = palette.surfaceRaised
+            mediaPicker
+        }
+    }
 
-            PhotosPicker(selection: $pickedItem, matching: .any(of: [.images, .videos])) {
-                VStack(spacing: AlohaMetrics.space2) {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.largeTitle)
-                        Text("Choose a picture or video", comment: "Story composer picker")
-                            .font(.subheadline.weight(.medium))
-                    }
-                }
-                .foregroundStyle(ink)
-                .frame(maxWidth: .infinity)
-                .frame(height: 220)
-                .background(
-                    surface,
-                    in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
-                )
+    /// The empty canvas: a story-shaped preview, the last few pictures in the
+    /// library, and the camera — the order a person thinks in when they are
+    /// about to say something with a picture.
+    private var mediaPicker: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space4) {
+            Button {
+                isPickingLibrary = true
+            } label: {
+                previewPlaceholder
             }
             .buttonStyle(.plain)
-            .disabled(isLoading)
+            .disabled(isLoadingMedia)
+            .photosPicker(
+                isPresented: $isPickingLibrary, selection: $pickedItem,
+                matching: .any(of: [.images, .videos])
+            )
+            .accessibilityLabel(Text("Choose a picture or video", comment: "Story composer picker"))
+
+            recentStrip
 
             #if os(iOS)
                 if CameraCapture.isAvailable {
@@ -267,13 +267,109 @@ public struct StoryComposerSheet: View {
                         Label {
                             Text("Take a photo or video", comment: "Story composer action")
                         } icon: {
-                            Image(systemName: "camera")
+                            Image(systemName: AlohaSymbol.camera)
                         }
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     .buttonStyle(.bordered)
-                    .disabled(isLoading)
+                    .disabled(isLoadingMedia)
                 }
             #endif
+
+            AlohaHint(
+                id: "story-canvas",
+                symbol: "wand.and.stars",
+                title: Text("Make it yours", comment: "Story composer hint title"),
+                message: Text(
+                    "Tap the preview to choose a picture or video, then add stickers and drag them into place.",
+                    comment: "Story composer hint")
+            )
+        }
+        .task { await loadRecents() }
+    }
+
+    /// A story-shaped canvas rather than a grey box: what is chosen lands in
+    /// the same frame it will be shared in, so the preview is the story.
+    private var previewPlaceholder: some View {
+        ZStack {
+            LinearGradient(
+                colors: [palette.surfaceRaised, palette.background],
+                startPoint: .top, endPoint: .bottom)
+            VStack(spacing: AlohaMetrics.space3) {
+                if isLoadingMedia {
+                    ProgressView()
+                } else {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.system(size: 40, weight: .light))
+                        .foregroundStyle(palette.accent)
+                    Text("Choose a picture or video", comment: "Story composer picker")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(palette.label)
+                    Text("Your preview appears here", comment: "Story composer placeholder")
+                        .font(.caption)
+                        .foregroundStyle(palette.tertiaryLabel)
+                }
+            }
+            .padding(AlohaMetrics.space4)
+        }
+        .aspectRatio(9 / 16, contentMode: .fit)
+        .frame(maxWidth: 260)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
+                .strokeBorder(palette.separator, style: StrokeStyle(lineWidth: 1.5, dash: [8, 6]))
+        )
+    }
+
+    private var recentStrip: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            HStack {
+                Text("Recent", comment: "Story composer section")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                    isPickingLibrary = true
+                } label: {
+                    Text("See all", comment: "Story composer action")
+                        .font(.footnote.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.accent)
+            }
+
+            if recentAccessDenied {
+                Text(
+                    "Allow photo access in Settings to see your last pictures here. You can still choose one from the library.",
+                    comment: "Story composer recent photos unavailable"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+                .fixedSize(horizontal: false, vertical: true)
+            } else if recents.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(palette.surfaceRaised)
+                            .frame(width: 84, height: 104)
+                    }
+                }
+                .redacted(reason: .placeholder)
+                .accessibilityHidden(true)
+            } else {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(recents, id: \.localIdentifier) { asset in
+                            RecentPhotoTile(asset: asset) {
+                                Task { await use(asset) }
+                            }
+                        }
+                    }
+                    .padding(.vertical, 1)
+                }
+                .scrollIndicators(.hidden)
+            }
         }
     }
 
@@ -512,6 +608,36 @@ public struct StoryComposerSheet: View {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
+    /// The last ten pictures, once the library has agreed to be read. The
+    /// composer works without them: the system picker needs no permission.
+    private func loadRecents() async {
+        guard recents.isEmpty, !recentAccessDenied else { return }
+        guard await RecentPhotos.requestAccess() else {
+            recentAccessDenied = true
+            return
+        }
+        recents = RecentPhotos.latest(limit: 10)
+    }
+
+    /// A picture picked from the recent strip, down the same road as one the
+    /// system picker hands over.
+    private func use(_ asset: PHAsset) async {
+        guard !isLoadingMedia else { return }
+        isLoadingMedia = true
+        defer { isLoadingMedia = false }
+        errorMessage = nil
+        guard let data = await RecentPhotos.data(for: asset),
+            let image = Self.decodeImage(data)
+        else {
+            errorMessage = String(
+                localized: "That picture couldn't be read.", comment: "Story composer failure")
+            return
+        }
+        picture = image
+        movie = nil
+        stickers = []
+    }
+
     // MARK: - Posting
 
     private func post() async {
@@ -675,6 +801,86 @@ public struct StoryComposerSheet: View {
             [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { return nil }
         return output as Data
+    }
+}
+
+/// The last few pictures in the library, for the story composer's strip.
+///
+/// Reading them needs the photo library; choosing one through the system
+/// picker does not. The strip appears only once access is granted, and the
+/// composer stays usable without it.
+@MainActor
+enum RecentPhotos {
+    static func requestAccess() async -> Bool {
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .authorized, .limited: return true
+        case .denied, .restricted: return false
+        case .notDetermined:
+            let answer = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            return answer == .authorized || answer == .limited
+        @unknown default: return false
+        }
+    }
+
+    static func latest(limit: Int) -> [PHAsset] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        options.fetchLimit = limit
+        let result = PHAsset.fetchAssets(with: .image, options: options)
+        var assets: [PHAsset] = []
+        assets.reserveCapacity(min(limit, result.count))
+        result.enumerateObjects { asset, _, _ in assets.append(asset) }
+        return assets
+    }
+
+    /// The picture's bytes rather than a `UIImage`: decoding happens where the
+    /// composer already bounds and rotates what it is given.
+    static func data(for asset: PHAsset) async -> Data? {
+        await withCheckedContinuation { continuation in
+            let options = PHImageRequestOptions()
+            options.isNetworkAccessAllowed = true
+            options.version = .current
+            options.deliveryMode = .highQualityFormat
+            options.resizeMode = .fast
+            PHImageManager.default().requestImageDataAndOrientation(
+                for: asset, options: options
+            ) { data, _, _, _ in
+                continuation.resume(returning: data)
+            }
+        }
+    }
+}
+
+/// One picture in the recent strip.
+private struct RecentPhotoTile: View {
+    @Environment(\.alohaPalette) private var palette
+
+    let asset: PHAsset
+    let action: () -> Void
+    @State private var image: CGImage?
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(palette.surfaceRaised)
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .scaledToFill()
+                }
+            }
+            .frame(width: 84, height: 104)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("Recent photo", comment: "Story composer recent photo"))
+        .task(id: asset.localIdentifier) {
+            guard let data = await RecentPhotos.data(for: asset),
+                let decoded = StoryComposerSheet.decodeImage(data)
+            else { return }
+            image = decoded
+        }
     }
 }
 
