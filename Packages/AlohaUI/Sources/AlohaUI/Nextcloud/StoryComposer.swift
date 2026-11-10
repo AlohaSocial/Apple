@@ -33,6 +33,9 @@ public struct StoryComposerSheet: View {
     @State private var backgroundIndex = 0
     @State private var pickedItem: PhotosPickerItem?
     @State private var picture: CGImage?
+    @State private var pictureZoom: CGFloat = 1
+    @State private var pictureOffset = CGSize.zero
+    @State private var isAdjustingPicture = false
     @State private var movie: URL?
     @State private var movieDuration: Double = 0
     @State private var stickers: [StorySticker] = []
@@ -223,6 +226,10 @@ public struct StoryComposerSheet: View {
     private var mediaEditor: some View {
         if let picture {
             pictureEditor(picture)
+                .sheet(isPresented: $isAdjustingPicture) {
+                    StoryCropSheet(
+                        picture: picture, zoom: $pictureZoom, offset: $pictureOffset)
+                }
         } else if movie != nil {
             movieSummary
         } else {
@@ -404,9 +411,7 @@ public struct StoryComposerSheet: View {
                         comment: "Story composer failure")
                     return
                 }
-                picture = image
-                movie = nil
-                stickers = []
+                show(image)
             case .movie(let url):
                 movie = url
                 let seconds = (try? await AVURLAsset(url: url).load(.duration).seconds) ?? 0
@@ -421,21 +426,37 @@ public struct StoryComposerSheet: View {
             GeometryReader { proxy in
                 StoryPictureCanvas(
                     picture: picture, stickers: $stickers, selected: $selectedSticker,
-                    scale: proxy.size.width / Self.canvas.width, isInteractive: true)
+                    scale: proxy.size.width / Self.canvas.width, isInteractive: true,
+                    zoom: pictureZoom, offset: pictureOffset)
             }
             .aspectRatio(Self.canvas.width / Self.canvas.height, contentMode: .fit)
             .frame(maxWidth: 300)
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous))
 
-            HStack {
+            HStack(spacing: AlohaMetrics.space2) {
                 Text("Stickers", comment: "Story composer section")
                     .font(AlohaType.section)
                 Spacer()
                 Button {
+                    isAdjustingPicture = true
+                } label: {
+                    Label {
+                        Text("Adjust", comment: "Story composer action")
+                    } icon: {
+                        Image(systemName: "crop")
+                    }
+                    .font(.footnote.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint(
+                    Text("Crop and zoom the picture", comment: "Story adjust hint"))
+                Button {
                     self.picture = nil
                     pickedItem = nil
                     stickers = []
+                    pictureZoom = 1
+                    pictureOffset = .zero
                 } label: {
                     Text("Change", comment: "Story composer action")
                         .font(.footnote)
@@ -501,7 +522,7 @@ public struct StoryComposerSheet: View {
             }
 
             Text(
-                "Drag a sticker to place it. It is drawn into the picture when you share.",
+                "Drag a sticker to place it. Use Adjust to crop and zoom the picture. Both are drawn into the picture when you share.",
                 comment: "Story sticker hint"
             )
             .font(.caption)
@@ -582,6 +603,16 @@ public struct StoryComposerSheet: View {
         selectedSticker = sticker.id
     }
 
+    /// A fresh picture starts centred and uncropped; the editor's zoom and
+    /// offset belong to the picture they were set on.
+    private func show(_ image: CGImage) {
+        picture = image
+        movie = nil
+        stickers = []
+        pictureZoom = 1
+        pictureOffset = .zero
+    }
+
     // MARK: - Loading
 
     private func load(_ item: PhotosPickerItem?) async {
@@ -611,9 +642,7 @@ public struct StoryComposerSheet: View {
                 localized: "That picture couldn't be read.", comment: "Story composer failure")
             return
         }
-        picture = image
-        movie = nil
-        stickers = []
+        show(image)
     }
 
     /// Bounded to the story canvas, and rotated the way the camera meant it.
@@ -652,9 +681,7 @@ public struct StoryComposerSheet: View {
                 localized: "That picture couldn't be read.", comment: "Story composer failure")
             return
         }
-        picture = image
-        movie = nil
-        stickers = []
+        show(image)
     }
 
     // MARK: - Posting
@@ -690,7 +717,8 @@ public struct StoryComposerSheet: View {
                             StoryPictureCanvas(
                                 picture: picture, stickers: .constant(stickers),
                                 selected: .constant(nil),
-                                scale: 1, isInteractive: false))
+                                scale: 1, isInteractive: false,
+                                zoom: pictureZoom, offset: pictureOffset))
                     else { throw StoryComposerError.rendering }
                     let attachment = try await upload(
                         jpeg, filename: "story.jpg", mimeType: "image/jpeg")
@@ -976,6 +1004,10 @@ struct StoryPictureCanvas: View {
     @Binding var selected: StorySticker.ID?
     let scale: Double
     let isInteractive: Bool
+    /// The part of the picture the story keeps: 1 is the aspect-filled frame,
+    /// and the offset is a fraction of the canvas so preview and export agree.
+    var zoom: CGFloat = 1
+    var offset: CGSize = .zero
 
     private var size: CGSize {
         CGSize(
@@ -987,9 +1019,13 @@ struct StoryPictureCanvas: View {
         ZStack {
             Image(decorative: picture, scale: 1)
                 .resizable()
+                .interpolation(.high)
                 .scaledToFill()
                 .frame(width: size.width, height: size.height)
-                .clipped()
+                .scaleEffect(zoom)
+                .offset(
+                    x: offset.width * size.width,
+                    y: offset.height * size.height)
 
             ForEach(stickers) { sticker in
                 stickerView(sticker)
@@ -1042,6 +1078,180 @@ struct StoryPictureCanvas: View {
                     x: min(max(value.location.x / size.width, 0.05), 0.95),
                     y: min(max(value.location.y / size.height, 0.05), 0.95))
             }
+    }
+}
+
+/// Fits a picture to the story's 9:16 frame: pinch to zoom, drag to choose
+/// the part that stays. The same zoom and offset are used when the story is
+/// drawn to JPEG, so the shared picture is the one on screen.
+private struct StoryCropSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.alohaPalette) private var palette
+
+    let picture: CGImage
+    @Binding var zoom: CGFloat
+    @Binding var offset: CGSize
+
+    @State private var zoomAtGestureStart: CGFloat = 1
+    @State private var offsetAtGestureStart = CGSize.zero
+
+    var body: some View {
+        VStack(spacing: AlohaMetrics.space3) {
+            HStack {
+                Button {
+                    reset()
+                } label: {
+                    Text("Reset", comment: "Story crop action")
+                        .font(.subheadline.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.secondaryLabel)
+
+                Spacer()
+
+                Text("Adjust picture", comment: "Story crop title")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done", comment: "Story crop action")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.accent)
+            }
+            .padding(.horizontal, AlohaMetrics.space4)
+            .padding(.top, AlohaMetrics.space3)
+
+            GeometryReader { proxy in
+                let size = proxy.size
+                ZStack {
+                    Color.black
+                    Image(decorative: picture, scale: 1)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFill()
+                        .frame(width: size.width, height: size.height)
+                        .scaleEffect(zoom)
+                        .offset(
+                            x: offset.width * size.width,
+                            y: offset.height * size.height)
+                    CropGrid()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
+                        .allowsHitTesting(false)
+                }
+                .frame(width: size.width, height: size.height)
+                .clipped()
+                .contentShape(Rectangle())
+                .gesture(dragGesture(in: size))
+                .simultaneousGesture(magnifyGesture(in: size))
+            }
+            .aspectRatio(9 / 16, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .clipShape(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
+            )
+            .padding(.horizontal, AlohaMetrics.space4)
+
+            VStack(spacing: 2) {
+                Text(
+                    "Pinch to zoom. Drag to choose the part of the picture that fills the story.",
+                    comment: "Story crop hint"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+                .multilineTextAlignment(.center)
+                Text(verbatim: "\(Int((zoom * 100).rounded()))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(palette.tertiaryLabel)
+            }
+            .padding(.horizontal, AlohaMetrics.space5)
+            .padding(.bottom, AlohaMetrics.space4)
+        }
+        .background(palette.background)
+        .onAppear {
+            zoomAtGestureStart = zoom
+            offsetAtGestureStart = offset
+        }
+    }
+
+    private var imageAspect: CGFloat {
+        CGFloat(picture.width) / CGFloat(picture.height)
+    }
+
+    /// What aspect fill would draw before the reader touches anything.
+    private func baseSize(in size: CGSize) -> CGSize {
+        let canvasAspect = size.width / size.height
+        if imageAspect > canvasAspect {
+            return CGSize(width: size.height * imageAspect, height: size.height)
+        }
+        return CGSize(width: size.width, height: size.width / imageAspect)
+    }
+
+    /// Keeps the frame covered: no drag may open a strip of background.
+    private func clamped(_ proposed: CGSize, zoom: CGFloat, in size: CGSize) -> CGSize {
+        let base = baseSize(in: size)
+        let scaled = CGSize(width: base.width * zoom, height: base.height * zoom)
+        let maxX = max(0, (scaled.width - size.width) / 2) / size.width
+        let maxY = max(0, (scaled.height - size.height) / 2) / size.height
+        return CGSize(
+            width: min(max(proposed.width, -maxX), maxX),
+            height: min(max(proposed.height, -maxY), maxY))
+    }
+
+    private func dragGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                offset = clamped(
+                    CGSize(
+                        width: offsetAtGestureStart.width
+                            + value.translation.width / size.width,
+                        height: offsetAtGestureStart.height
+                            + value.translation.height / size.height),
+                    zoom: zoom, in: size)
+            }
+            .onEnded { _ in
+                offsetAtGestureStart = offset
+            }
+    }
+
+    private func magnifyGesture(in size: CGSize) -> some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                zoom = min(max(zoomAtGestureStart * value.magnification, 1), 4)
+                offset = clamped(offset, zoom: zoom, in: size)
+            }
+            .onEnded { _ in
+                zoomAtGestureStart = zoom
+                offsetAtGestureStart = offset
+            }
+    }
+
+    private func reset() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            zoom = 1
+            offset = .zero
+        }
+        zoomAtGestureStart = 1
+        offsetAtGestureStart = .zero
+    }
+}
+
+private struct CropGrid: Shape {
+    nonisolated func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for fraction in [1.0 / 3.0, 2.0 / 3.0] {
+            let x = rect.width * fraction
+            path.move(to: CGPoint(x: x, y: 0))
+            path.addLine(to: CGPoint(x: x, y: rect.height))
+            let y = rect.height * fraction
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: rect.width, y: y))
+        }
+        return path
     }
 }
 
