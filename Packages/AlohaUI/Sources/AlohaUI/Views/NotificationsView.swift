@@ -55,7 +55,7 @@ public struct NotificationsView: View {
                     "Touch and hold a mention to mute the conversation it belongs to.",
                     comment: "Activities hint")
             )
-            .listRowBackground(palette.background)
+            .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
 
@@ -111,7 +111,7 @@ public struct NotificationsView: View {
                         .buttonStyle(.bordered)
                 }
                 .listRowSeparator(.hidden)
-                .listRowBackground(palette.background)
+                .listRowBackground(Color.clear)
             }
         }
         .listStyle(.plain)
@@ -199,26 +199,54 @@ public struct NotificationsView: View {
         .foregroundStyle(palette.secondaryLabel)
     }
 
-    /// The flat list with an optional "caught up" divider inserted at the
-    /// marker position. When the marker notification is in the visible list,
-    /// a divider is inserted below it; the marker advances when the next
-    /// notification appears (handled in `flatRow`).
+    /// The flat list — which is what a Nextcloud server serves — with the same
+    /// day headings as the grouped one and the optional "caught up" divider.
+    /// When the marker notification is in the visible list, a divider is
+    /// inserted below it; the marker advances when the next notification
+    /// appears (handled in `flatRow`).
     private var flatRowsWithMarker: some View {
+        ForEach(flatActivityRows) { row in
+            switch row {
+            case .day(let date):
+                activityDayHeader(date)
+            case .item(let notification):
+                flatRow(notification)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(
+                        EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+            case .caughtUp(let after):
+                caughtUpDivider(after: after)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(
+                        EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
+            }
+        }
+    }
+
+    private var flatActivityRows: [FlatActivityDisplayRow] {
         let notifications = visibleFlat
         let markerID = caughtUpNotificationID
         let markerIndex = markerID.flatMap { id in notifications.firstIndex { $0.id == id } }
-        return ForEach(
-            ActivityListRow.rows(notifications, dividerAfter: markerIndex, markerID: markerID)
-        ) { row in
+        var rows: [FlatActivityDisplayRow] = []
+        var day: Date?
+        for row in ActivityListRow.rows(
+            notifications, dividerAfter: markerIndex, markerID: markerID)
+        {
             switch row {
             case .item(let notification):
-                flatRow(notification)
-                    .listRowBackground(palette.background)
+                let start = Calendar.current.startOfDay(for: notification.createdAt)
+                if start != day {
+                    rows.append(.day(start))
+                    day = start
+                }
+                rows.append(.item(notification))
             case .caughtUp(let after):
-                caughtUpDivider(after: after)
-                    .listRowBackground(palette.background)
+                rows.append(.caughtUp(after))
             }
         }
+        return rows
     }
 
     nonisolated static func matches(
@@ -314,40 +342,15 @@ public struct NotificationsView: View {
                 onAction(.openProfile(account))
             }
         } label: {
-            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
-                HStack(spacing: AlohaMetrics.space2) {
-                    activityBadge(group.type)
-
-                    HStack(spacing: -8) {
-                        ForEach(sample.prefix(4), id: \.id) { account in
-                            AvatarView(account: account, size: 30)
-                                .overlay(
-                                    Circle().strokeBorder(palette.background, lineWidth: 1.5))
-                        }
-                    }
-
-                    Text(
-                        summary(
-                            for: group, sample: sample,
-                            showsCounts: session.settings.showPopularityCounts
-                        )
-                    )
-                    .font(.subheadline)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Spacer(minLength: 0)
-                }
-
-                if let status {
-                    statusPreview(status)
-                }
-                if let date = group.latestPageNotificationAt {
-                    activityDate(date)
-                }
-            }
-            .padding(.vertical, AlohaMetrics.space2)
+            activityCard(
+                kind: group.type,
+                accounts: sample,
+                summary: summary(
+                    for: group, sample: sample,
+                    showsCounts: session.settings.showPopularityCounts),
+                status: status,
+                date: group.latestPageNotificationAt
+            )
             .contentShape(Rectangle())
             .contextMenu {
                 if canMuteConversation, let status {
@@ -402,10 +405,16 @@ public struct NotificationsView: View {
                 activityDayHeader(date)
             case .item(let group):
                 groupRow(group)
-                    .listRowBackground(palette.background)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(
+                        EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
             case .caughtUp(let after):
                 caughtUpDivider(after: after)
-                    .listRowBackground(palette.background)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(
+                        EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
             }
         }
     }
@@ -449,15 +458,23 @@ public struct NotificationsView: View {
         } else {
             title = date.formatted(.dateTime.weekday(.wide).day().month(.wide))
         }
-        return Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(palette.tertiaryLabel)
-            .padding(.top, AlohaMetrics.space3)
-            .padding(.bottom, AlohaMetrics.space1)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowBackground(palette.background)
-            .listRowSeparator(.hidden)
-            .accessibilityAddTraits(.isHeader)
+        return HStack(spacing: AlohaMetrics.space2) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .textCase(.uppercase)
+                .foregroundStyle(palette.secondaryLabel)
+            Rectangle()
+                .fill(palette.separator.opacity(0.6))
+                .frame(height: 0.5)
+        }
+        .padding(.top, AlohaMetrics.space4)
+        .padding(.bottom, AlohaMetrics.space1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .accessibilityIdentifier("activity-day-header")
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func flatRow(_ notification: MastodonNotification) -> some View {
@@ -468,26 +485,13 @@ public struct NotificationsView: View {
                 onAction(.openProfile(notification.account))
             }
         } label: {
-            HStack(alignment: .top, spacing: AlohaMetrics.space3) {
-                activityBadge(notification.type)
-
-                VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-                    HStack(spacing: AlohaMetrics.space2) {
-                        AvatarView(account: notification.account, size: 30)
-                        Text(summary(for: notification))
-                            .font(.subheadline)
-                            .lineLimit(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    if let status = notification.status {
-                        statusPreview(status)
-                    }
-                    activityDate(notification.createdAt)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.vertical, AlohaMetrics.space2)
+            activityCard(
+                kind: notification.type,
+                accounts: [notification.account],
+                summary: summary(for: notification),
+                status: notification.status,
+                date: notification.createdAt
+            )
             .contentShape(Rectangle())
             .contextMenu {
                 let canMute =
@@ -532,14 +536,103 @@ public struct NotificationsView: View {
         .listRowSeparator(.hidden)
     }
 
+    /// An activity as a card of its own, rather than a line in a list.
+    ///
+    /// The face, what happened, a piece of the post and when: four things
+    /// read in one glance, the way a notification is actually understood.
+    /// The card's border takes the kind's tint, so a mention and a favourite
+    /// are distinguishable before the sentence is read.
+    private func activityCard(
+        kind: NotificationKind,
+        accounts: [Account],
+        summary: String,
+        status: Status?,
+        date: Date?
+    ) -> some View {
+        HStack(alignment: .top, spacing: AlohaMetrics.space3) {
+            activityAvatars(accounts, kind: kind)
+
+            VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+                Text(summary)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .foregroundStyle(palette.label)
+
+                if let status {
+                    statusPreview(status)
+                        .padding(AlohaMetrics.space2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            palette.background.opacity(0.65),
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        )
+                }
+
+                HStack(spacing: AlohaMetrics.space1) {
+                    if let date { activityDate(date) }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(palette.tertiaryLabel)
+                }
+            }
+        }
+        .padding(AlohaMetrics.space3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            palette.surfaceRaised,
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(tint(for: kind).opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    /// Up to three faces, overlapped, with the kind's badge on the corner:
+    /// a group announces who and what without spelling out either.
+    private func activityAvatars(_ accounts: [Account], kind: NotificationKind) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            HStack(spacing: -14) {
+                if accounts.isEmpty {
+                    Circle()
+                        .fill(palette.surfaceRaised)
+                        .frame(width: 46, height: 46)
+                        .overlay(
+                            Image(systemName: symbol(for: kind))
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(tint(for: kind))
+                        )
+                } else {
+                    ForEach(Array(accounts.prefix(3).enumerated()), id: \.element.id) {
+                        index, account in
+                        AvatarView(account: account, size: 46)
+                            .overlay(
+                                Circle().strokeBorder(palette.surfaceRaised, lineWidth: 2)
+                            )
+                            .zIndex(Double(3 - index))
+                    }
+                }
+            }
+            activityBadge(kind, size: 24)
+                .offset(x: 5, y: 5)
+        }
+        .frame(width: 58, height: 52, alignment: .bottomLeading)
+    }
+
     /// The kind of activity as a tinted disc: what happened, legible at a
     /// glance before a word of the sentence under it is read.
-    private func activityBadge(_ kind: NotificationKind) -> some View {
+    private func activityBadge(_ kind: NotificationKind, size: CGFloat = 30) -> some View {
         Image(systemName: symbol(for: kind))
-            .font(.footnote.weight(.semibold))
+            .font(.system(size: size * 0.42, weight: .semibold))
             .foregroundStyle(tint(for: kind))
-            .frame(width: 30, height: 30)
-            .background(tint(for: kind).opacity(0.14), in: Circle())
+            .frame(width: size, height: size)
+            .background(tint(for: kind).opacity(0.16), in: Circle())
+            .overlay(Circle().strokeBorder(palette.surfaceRaised, lineWidth: 2))
             .accessibilityHidden(true)
     }
 
@@ -741,20 +834,37 @@ public struct NotificationsView: View {
 
     private func caughtUpDivider(after notificationID: String) -> some View {
         HStack(spacing: AlohaMetrics.space2) {
-            Spacer()
-            VStack(spacing: AlohaMetrics.space1) {
-                Rectangle()
-                    .fill(palette.separator)
-                    .frame(height: 1)
-                Text("You're caught up", comment: "Notifications caught up divider")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(palette.tertiaryLabel)
-            }
-            Spacer()
+            Rectangle()
+                .fill(palette.separator.opacity(0.6))
+                .frame(height: 0.5)
+            Text("You're caught up", comment: "Notifications caught up divider")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(palette.secondaryLabel)
+                .padding(.horizontal, AlohaMetrics.space2)
+                .padding(.vertical, 5)
+                .background(palette.surfaceRaised, in: Capsule())
+                .fixedSize()
+            Rectangle()
+                .fill(palette.separator.opacity(0.6))
+                .frame(height: 0.5)
         }
-        .padding(.vertical, AlohaMetrics.space3)
-        .listRowBackground(palette.background)
+        .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
+    }
+}
+
+/// A day heading, a flat notification, or the catch-up divider.
+private enum FlatActivityDisplayRow: Identifiable {
+    case day(Date)
+    case item(MastodonNotification)
+    case caughtUp(String)
+
+    var id: String {
+        switch self {
+        case .day(let date): "flat-day-\(date.timeIntervalSinceReferenceDate)"
+        case .item(let notification): "flat-item-\(notification.id)"
+        case .caughtUp(let after): "flat-caughtUp-\(after)"
+        }
     }
 }
 

@@ -32,7 +32,6 @@ public struct StoryComposerSheet: View {
     @State private var text = ""
     @State private var backgroundIndex = 0
     @State private var pickedItem: PhotosPickerItem?
-    @State private var isShowingCamera = false
     @State private var picture: CGImage?
     @State private var movie: URL?
     @State private var movieDuration: Double = 0
@@ -115,14 +114,6 @@ public struct StoryComposerSheet: View {
             .onChange(of: pickedItem) { _, item in
                 Task { await load(item) }
             }
-            #if os(iOS)
-                .fullScreenCover(isPresented: $isShowingCamera) {
-                    CameraCapture { captured in
-                        Task { await use(captured) }
-                    }
-                    .ignoresSafeArea()
-                }
-            #endif
         }
         #if os(macOS)
             .frame(minWidth: 520, minHeight: 640)
@@ -244,49 +235,61 @@ public struct StoryComposerSheet: View {
     /// about to say something with a picture.
     private var mediaPicker: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space4) {
-            Button {
-                isPickingLibrary = true
-            } label: {
-                previewPlaceholder
-            }
-            .buttonStyle(.plain)
-            .disabled(isLoadingMedia)
-            .photosPicker(
-                isPresented: $isPickingLibrary, selection: $pickedItem,
-                matching: .any(of: [.images, .videos])
-            )
-            .accessibilityLabel(Text("Choose a picture or video", comment: "Story composer picker"))
-
+            storyCanvas
             recentStrip
-
-            #if os(iOS)
-                if CameraCapture.isAvailable {
-                    Button {
-                        isShowingCamera = true
-                    } label: {
-                        Label {
-                            Text("Take a photo or video", comment: "Story composer action")
-                        } icon: {
-                            Image(systemName: AlohaSymbol.camera)
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(isLoadingMedia)
-                }
-            #endif
 
             AlohaHint(
                 id: "story-canvas",
                 symbol: "wand.and.stars",
                 title: Text("Make it yours", comment: "Story composer hint title"),
                 message: Text(
-                    "Tap the preview to choose a picture or video, then add stickers and drag them into place.",
+                    "Use the shutter for a new picture, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas.",
                     comment: "Story composer hint")
             )
         }
         .task { await loadRecents() }
+    }
+
+    /// The canvas itself: a live camera where there is one, and a viewfinder
+    /// that opens the library where there is not (the simulator, a Mac
+    /// without a camera). The old grey box said "choose a picture or video"
+    /// over the one place a story should already look like a story.
+    @ViewBuilder
+    private var storyCanvas: some View {
+        #if os(iOS)
+            if CameraCapture.isAvailable {
+                StoryCameraCanvas(
+                    onCapture: { data in
+                        Task { await use(CameraCapture.Captured.photo(data)) }
+                    },
+                    onPickLibrary: { isPickingLibrary = true }
+                )
+                .aspectRatio(9 / 16, contentMode: .fit)
+                .frame(maxWidth: 300)
+                .frame(maxWidth: .infinity)
+            } else {
+                libraryCanvas
+            }
+        #else
+            libraryCanvas
+        #endif
+    }
+
+    /// The library as the canvas: the system picker needs no photo-library
+    /// permission, so it works even when the recents strip cannot.
+    private var libraryCanvas: some View {
+        Button {
+            isPickingLibrary = true
+        } label: {
+            previewPlaceholder
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoadingMedia)
+        .photosPicker(
+            isPresented: $isPickingLibrary, selection: $pickedItem,
+            matching: .any(of: [.images, .videos])
+        )
+        .accessibilityLabel(Text("Choose a picture or video", comment: "Story composer picker"))
     }
 
     /// A story-shaped canvas rather than a grey box: what is chosen lands in
@@ -294,27 +297,43 @@ public struct StoryComposerSheet: View {
     private var previewPlaceholder: some View {
         ZStack {
             LinearGradient(
-                colors: [palette.surfaceRaised, palette.background],
-                startPoint: .top, endPoint: .bottom)
+                colors: [
+                    palette.accent.opacity(0.22), palette.surfaceRaised,
+                    palette.favourite.opacity(0.14),
+                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+
             VStack(spacing: AlohaMetrics.space3) {
                 if isLoadingMedia {
                     ProgressView()
                 } else {
-                    Image(systemName: "photo.badge.plus")
-                        .font(.system(size: 40, weight: .light))
+                    Image(systemName: "photo.stack.fill")
+                        .font(.system(size: 42, weight: .light))
                         .foregroundStyle(palette.accent)
-                    Text("Choose a picture or video", comment: "Story composer picker")
-                        .font(.subheadline.weight(.medium))
+                    Text("Your story", comment: "Story composer placeholder title")
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(palette.label)
-                    Text("Your preview appears here", comment: "Story composer placeholder")
+                    Text("Tap to pick a photo or video", comment: "Story composer placeholder")
                         .font(.caption)
-                        .foregroundStyle(palette.tertiaryLabel)
+                        .foregroundStyle(palette.secondaryLabel)
                 }
             }
             .padding(AlohaMetrics.space4)
+
+            VStack {
+                Spacer()
+                HStack {
+                    Image(systemName: "photo.on.rectangle")
+                    Text("Library", comment: "Story composer library chip")
+                    Spacer()
+                    Image(systemName: "camera")
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(palette.secondaryLabel)
+                .padding(AlohaMetrics.space3)
+            }
         }
         .aspectRatio(9 / 16, contentMode: .fit)
-        .frame(maxWidth: 260)
+        .frame(maxWidth: 300)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous))
         .overlay(

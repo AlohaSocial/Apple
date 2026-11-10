@@ -56,7 +56,6 @@ public struct PhotosModeView: View {
         }
         .toolbar {
             ToolbarItem(placement: layoutPlacement) { layoutMenu }
-            ToolbarItem(placement: menuPlacement) { photosMenu }
         }
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -89,7 +88,11 @@ public struct PhotosModeView: View {
         #endif
     }
 
-    /// Layout is a secondary choice; pictures get the space below the toolbar.
+    /// Everything this page lets a reader change, in one menu beside the
+    /// account: the layout, a refresh, and whether numbers are drawn at all.
+    /// A second menu on the trailing edge was folded into the system's
+    /// overflow, where a menu cannot render — it appeared as a "…" that opened
+    /// nothing. One real menu is better than two, one of them dead.
     private var layoutMenu: some View {
         Menu {
             Picker(selection: $layout) {
@@ -101,42 +104,9 @@ public struct PhotosModeView: View {
                 Text("Layout", comment: "Photos layout picker")
             }
             .pickerStyle(.inline)
-        } label: {
-            Image(systemName: symbolName(for: layout))
-        }
-        .accessibilityLabel(Text("Photo layout", comment: "Photos layout menu"))
-        .help(Text("Photo layout", comment: "Photos layout menu"))
-        .accessibilityValue(Text(title(for: layout)))
-    }
 
-    private func title(for layout: PhotosModeView.Layout) -> String {
-        switch layout {
-        case .feed: String(localized: "Feed", comment: "Photos layout")
-        case .grid: String(localized: "Grid", comment: "Photos layout")
-        }
-    }
+            Divider()
 
-    private func symbolName(for layout: PhotosModeView.Layout) -> String {
-        switch layout {
-        case .feed: "rectangle.grid.1x2"
-        case .grid: "square.grid.3x3"
-        }
-    }
-
-    /// The overflow the page carries at its top. It has real work to do:
-    /// refreshing the feed, choosing the layout and deciding whether numbers
-    /// are drawn at all — the three things this screen's reader changes while
-    /// looking at pictures.
-    private var menuPlacement: ToolbarItemPlacement {
-        #if os(iOS)
-            .topBarTrailing
-        #else
-            .primaryAction
-        #endif
-    }
-
-    private var photosMenu: some View {
-        Menu {
             Button {
                 Task {
                     await model.refresh()
@@ -158,10 +128,25 @@ public struct PhotosModeView: View {
                 }
             }
         } label: {
-            Image(systemName: AlohaSymbol.more)
+            Image(systemName: symbolName(for: layout))
         }
-        .accessibilityLabel(Text("Photos options", comment: "Photos menu"))
-        .help(Text("Photos options", comment: "Photos menu"))
+        .accessibilityLabel(Text("Photo layout", comment: "Photos layout menu"))
+        .help(Text("Photo layout", comment: "Photos layout menu"))
+        .accessibilityValue(Text(title(for: layout)))
+    }
+
+    private func title(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: String(localized: "Feed", comment: "Photos layout")
+        case .grid: String(localized: "Grid", comment: "Photos layout")
+        }
+    }
+
+    private func symbolName(for layout: PhotosModeView.Layout) -> String {
+        switch layout {
+        case .feed: "rectangle.grid.1x2"
+        case .grid: "square.grid.3x3"
+        }
     }
 
     private var showsNumbers: Binding<Bool> {

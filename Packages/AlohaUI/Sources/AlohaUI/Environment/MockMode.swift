@@ -15,6 +15,47 @@ import Foundation
         public static let launchArgument = "-AlohaMockServer"
         public static let host = "cloud.example.test"
 
+        /// Serves video over a real loopback socket, because AVFoundation will
+        /// not ask the in-process mock for anything. Signing in then happens
+        /// against `http://localhost:<port>`, which is the same origin as the
+        /// media — so the player sends the account's bearer token, exactly as
+        /// it would to a real instance that protects its files.
+        public static let mediaLaunchArgument = "-AlohaMockMedia"
+
+        private static var mediaServer: MockMediaServer?
+
+        public static var isMediaMode: Bool {
+            CommandLine.arguments.contains(mediaLaunchArgument)
+        }
+
+        /// Starts the media socket once, before the first transport is built.
+        public static func startMediaServerIfNeeded() {
+            guard isMediaMode, mediaServer == nil else { return }
+            var behaviour: MockMediaServer.Behaviour = []
+            if CommandLine.arguments.contains("-AlohaMockMediaRefuseFile") {
+                behaviour.insert(.refuseFile)
+            }
+            if CommandLine.arguments.contains("-AlohaMockMediaRefuseLadder") {
+                behaviour.insert(.refuseLadder)
+            }
+            if CommandLine.arguments.contains("-AlohaMockMediaStallFile") {
+                behaviour.insert(.stallFile)
+            }
+            mediaServer = MockMediaServer(token: "mock-access-token", behaviour: behaviour)
+        }
+
+        /// The host the mock's fixtures point at: the socket when there is one,
+        /// the made-up domain otherwise.
+        public static var activeHost: String {
+            mediaServer.map { "localhost:\($0.port)" } ?? host
+        }
+
+        public static var activeScheme: String {
+            mediaServer == nil ? "https" : "http"
+        }
+
+        public static var origin: String { "\(activeScheme)://\(activeHost)" }
+
         public static var isEnabled: Bool {
             CommandLine.arguments.contains(launchArgument)
         }
@@ -32,9 +73,10 @@ import Foundation
         }
 
         public static func makeTransport() -> any HTTPTransport {
-            MockAPIServer(
+            startMediaServerIfNeeded()
+            return MockAPIServer(
                 configuration: isFailing ? .timelinesUnavailable : .nextcloudSocialWithRewrite,
-                host: host, statusCount: 40)
+                host: activeHost, scheme: activeScheme, statusCount: 40)
         }
 
         /// Seeds one signed-in account so the shell lands on Home.
@@ -49,6 +91,14 @@ import Foundation
             environment.theme = .system
             if CommandLine.arguments.contains("-AlohaMockResetPhotoLayout") {
                 UserDefaults.standard.removeObject(forKey: "aloha.photosLayout")
+            }
+            // First-run hints, so a tour can dismiss one and prove that it
+            // stays dismissed across a relaunch without deleting the app.
+            if CommandLine.arguments.contains("-AlohaMockResetHints") {
+                for key in UserDefaults.standard.dictionaryRepresentation().keys
+                where key.hasPrefix("aloha.hint.") {
+                    UserDefaults.standard.removeObject(forKey: key)
+                }
             }
             // Screen tours skip the optional first-account choice; its own test
             // requests it explicitly so launch behaviour is independent of test order.
@@ -65,9 +115,9 @@ import Foundation
             }
             guard environment.sessions.isEmpty else { return }
 
-            let apiBase = URL(string: "https://\(host)/")!
+            let apiBase = URL(string: "\(origin)/")!
             let probe = ServerProbe(transport: environment.transport)
-            guard let outcome = try? await probe.discover(.init(host: host)) else { return }
+            guard let outcome = try? await probe.discover(.init(host: activeHost)) else { return }
 
             let detector = CapabilityDetector(transport: environment.transport)
             let capabilities = await detector.detect(
@@ -79,16 +129,16 @@ import Foundation
             let people = [
                 Account(
                     id: "1", username: "alice", acct: "alice", displayName: "Alice",
-                    avatar: URL(string: "https://\(host)/avatars/alice.png")),
+                    avatar: URL(string: "\(origin)/avatars/alice.png")),
                 Account(
                     id: "2", username: "bob", acct: "bob", displayName: "Bob",
-                    avatar: URL(string: "https://\(host)/avatars/bob.png")),
+                    avatar: URL(string: "\(origin)/avatars/bob.png")),
             ]
 
             for account in people {
                 do {
                     _ = try await environment.addAccount(
-                        instanceHost: host, apiBase: apiBase, account: account,
+                        instanceHost: activeHost, apiBase: apiBase, account: account,
                         capabilities: capabilities,
                         token: account.id == "2"
                             ? MockAPIServer.secondAccountToken : "mock-access-token")
