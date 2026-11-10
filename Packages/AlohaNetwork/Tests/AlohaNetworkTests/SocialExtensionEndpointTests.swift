@@ -228,6 +228,14 @@ struct AccountNotSetUpTests {
         #expect(error.isAccountNotSetUp)
         #expect(error.accountSetupURL == nil)
     }
+
+    @Test("A missing Social actor is an account that is not set up")
+    func missingActor() throws {
+        let body = Data(#"{"error":"Actor not found for user: alice"}"#.utf8)
+        let error = try #require(APIError.from(status: 404, data: body, headers: [:]))
+        #expect(error.isMissingSocialActor)
+        #expect(!error.requiresReauthentication)
+    }
 }
 
 @Suite("Against the mock server")

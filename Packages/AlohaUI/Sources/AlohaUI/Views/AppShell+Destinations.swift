@@ -21,8 +21,41 @@ extension ThemedAppShell {
             }
     }
 
+    /// Every route, in the group it belongs to.
+    ///
+    /// This used to be one `@ViewBuilder` switch over all of them. On a real
+    /// iPad the compiler's frame for that single function was 16.7 KB, and
+    /// building the sidebar's tab roots at launch overflowed the main thread's
+    /// stack before the first frame was drawn. Each group now has its own
+    /// function, so only the branches of the screen being built are alive on
+    /// the stack; the tab contents are also built lazily (see
+    /// `LazyShellContent`).
     @ViewBuilder
     private func destinationContent(_ route: Route, session: AccountSession) -> some View {
+        switch route {
+        case .thread, .profile, .hashtag, .bookmarks, .favourites, .notifications,
+            .explore, .search, .lists, .filters, .timeline:
+            timelineDestination(route, session: session)
+        case .safety, .conversations, .conversation, .video, .drafts, .scheduledPosts,
+            .notificationRequests, .notificationPolicy, .followRequests, .handle, .settings:
+            conversationDestination(route, session: session)
+        case .interests, .memories, .heldPosts, .starterPacks, .starterPack, .place,
+            .archived, .collections, .followers, .following, .tagged, .annualReport:
+            nextcloudSocialDestination(route, session: session)
+        case .statistics, .portfolio, .migration, .authorizedApps, .featuredTags,
+            .editProfile, .channels, .serverInfo, .deleteAccount:
+            nextcloudAccountDestination(route, session: session)
+        case .moderation, .moderationReports, .moderationReport, .moderationAccounts,
+            .moderationTrends, .quotes:
+            moderationDestination(route, session: session)
+        case .blueskyFeeds, .blueskyFeed, .blueskySettings, .blueskyStarterPack, .filterPost,
+            .linkTimeline:
+            blueskyDestination(route, session: session)
+        }
+    }
+
+    @ViewBuilder
+    private func timelineDestination(_ route: Route, session: AccountSession) -> some View {
         switch route {
         case .thread(let statusID):
             ThreadView(statusID: statusID, session: session) { handle($0, session: session) }
@@ -45,9 +78,6 @@ extension ThemedAppShell {
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
                 .readerColumn
-        case .settings:
-            SettingsView(onAddAccount: { isPresentingSignIn = true })
-                .readerColumn
         case .explore:
             ExploreView(session: session) { handle($0, session: session) }
         case .search(let query):
@@ -58,6 +88,19 @@ extension ThemedAppShell {
                 .readerColumn
         case .filters:
             FiltersView(session: session)
+                .readerColumn
+        case .timeline(let key):
+            TimelineView(key: key, session: session) { handle($0, session: session) }
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func conversationDestination(_ route: Route, session: AccountSession) -> some View {
+        switch route {
+        case .settings:
+            SettingsView(onAddAccount: { presentSignIn() })
                 .readerColumn
         case .safety:
             SafetyListsView(session: session)
@@ -85,10 +128,14 @@ extension ThemedAppShell {
             FollowRequestsView(session: session) { handle($0, session: session) }
         case .handle(let acct):
             ResolvingProfileView(handle: acct, session: session) { handle($0, session: session) }
-        case .timeline(let key):
-            TimelineView(key: key, session: session) { handle($0, session: session) }
+        default:
+            EmptyView()
+        }
+    }
 
-        // Nextcloud Social surfaces.
+    @ViewBuilder
+    private func nextcloudSocialDestination(_ route: Route, session: AccountSession) -> some View {
+        switch route {
         case .interests:
             InterestsSettingsScreen(session: session)
         case .memories:
@@ -103,6 +150,28 @@ extension ThemedAppShell {
             PlaceView(id: id, session: session) { handle($0, session: session) }
         case .archived:
             ArchivedPostsView(session: session) { handle($0, session: session) }
+        case .collections(let accountID):
+            CollectionsView(session: session, accountID: accountID) { handle($0, session: session) }
+        case .followers(let accountID):
+            FollowersView(accountID: accountID, kind: .followers, session: session) {
+                handle($0, session: session)
+            }
+        case .following(let accountID):
+            FollowersView(accountID: accountID, kind: .following, session: session) {
+                handle($0, session: session)
+            }
+        case .tagged(let accountID):
+            TaggedPostsView(accountID: accountID, session: session) { handle($0, session: session) }
+        case .annualReport:
+            AnnualReportView(session: session) { handle($0, session: session) }
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func nextcloudAccountDestination(_ route: Route, session: AccountSession) -> some View {
+        switch route {
         case .statistics:
             StatisticsView(session: session)
         case .portfolio:
@@ -117,25 +186,18 @@ extension ThemedAppShell {
             EditProfileView(session: session)
         case .channels:
             ChannelsView(session: session)
-        case .collections(let accountID):
-            CollectionsView(session: session, accountID: accountID) { handle($0, session: session) }
-        case .followers(let accountID):
-            FollowersView(accountID: accountID, kind: .followers, session: session) {
-                handle($0, session: session)
-            }
-        case .following(let accountID):
-            FollowersView(accountID: accountID, kind: .following, session: session) {
-                handle($0, session: session)
-            }
-        case .tagged(let accountID):
-            TaggedPostsView(accountID: accountID, session: session) { handle($0, session: session) }
-        // Surfaces the web app has, or the server serves and nobody drew.
-        case .annualReport:
-            AnnualReportView(session: session) { handle($0, session: session) }
         case .serverInfo:
             ServerInfoView(session: session)
         case .deleteAccount:
             DeleteAccountView(session: session)
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func moderationDestination(_ route: Route, session: AccountSession) -> some View {
+        switch route {
         case .moderation:
             ModerationView(session: session) { handle($0, session: session) }
         case .moderationReports:
@@ -146,10 +208,16 @@ extension ThemedAppShell {
             ModerationAccountsView(session: session) { handle($0, session: session) }
         case .moderationTrends:
             ModerationTrendsView(session: session) { handle($0, session: session) }
-
         case .quotes(let statusID):
             QuotesView(statusID: statusID, session: session) { handle($0, session: session) }
+        default:
+            EmptyView()
+        }
+    }
 
+    @ViewBuilder
+    private func blueskyDestination(_ route: Route, session: AccountSession) -> some View {
+        switch route {
         case .blueskyFeeds:
             BlueskyFeedsView(session: session)
         case .blueskyFeed(let uri, let name):
@@ -166,6 +234,8 @@ extension ThemedAppShell {
             LinkTimelineView(url: url, title: title, session: session) {
                 handle($0, session: session)
             }
+        default:
+            EmptyView()
         }
     }
 

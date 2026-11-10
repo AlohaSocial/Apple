@@ -72,6 +72,8 @@ public struct ShortsView: View {
     @State private var pausedBeforeHold: Bool?
     @State private var progress: Double = 0
     @State private var hearted: String?
+    /// Counts the double taps that undid a like, for the lighter haptic.
+    @State private var unlikeTick = 0
     @State private var expandedCaption: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
@@ -442,7 +444,8 @@ public struct ShortsView: View {
             // VoiceOver's own play/pause gesture, a two-finger double tap.
             .accessibilityAction(.magicTap) { togglePlayback() }
         #endif
-        .alohaSensoryFeedback(.success, trigger: hearted)
+        .alohaSensoryFeedback(.success, trigger: hearted) { _, new in new != nil }
+        .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
     }
 
     private func togglePlayback() {
@@ -451,9 +454,14 @@ public struct ShortsView: View {
 
     private func heart(_ status: Status) {
         ShortsDoubleTapTip().invalidate(reason: .actionPerformed)
-        if !status.displayed.favourited { onAction(.favourite(status)) }
-        // The heart is the whole reward for the gesture; without it a
-        // double tap feels like it did nothing.
+        let wasFavourited = status.displayed.favourited
+        onAction(.favourite(status))
+        guard !wasFavourited else {
+            unlikeTick += 1
+            return
+        }
+        // The heart is the whole reward for liking; without it a double tap
+        // feels like it did nothing. Undoing a like shows itself in the rail.
         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { hearted = status.id }
         Task {
             try? await Task.sleep(for: .milliseconds(650))
@@ -544,21 +552,22 @@ public struct ShortsView: View {
 
     private func rail(_ status: Status) -> some View {
         let displayed = status.displayed
-        return VStack(spacing: AlohaMetrics.space4) {
+        return VStack(spacing: AlohaMetrics.space3) {
             Button {
                 onAction(.openProfile(displayed.account))
             } label: {
-                AvatarView(account: displayed.account, size: 46)
+                AvatarView(account: displayed.account, size: 38)
                     .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
                     .overlay(alignment: .bottom) {
                         Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(palette.onAccent)
-                            .frame(width: 18, height: 18)
+                            .frame(width: 16, height: 16)
                             .background(palette.accent, in: Circle())
-                            .offset(y: 9)
+                            .offset(y: 8)
                     }
-                    .padding(.bottom, AlohaMetrics.space2)
+                    .padding(.bottom, AlohaMetrics.space1)
+                    .frame(minWidth: 44, minHeight: 44)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
@@ -604,9 +613,9 @@ public struct ShortsView: View {
                 StatusMenu(status: status, onAction: onAction)
             } label: {
                 Image(systemName: AlohaSymbol.more)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 48, height: 40)
+                    .frame(width: 44, height: 36)
                     .contentShape(Rectangle())
                     .shadow(color: .black.opacity(0.4), radius: 3)
             }
@@ -637,17 +646,17 @@ public struct ShortsView: View {
     }
 
     private func railLabel(symbol: String, tint: Color, count: Int?) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 2) {
             Image(systemName: symbol)
-                .font(.system(size: 28, weight: .medium))
+                .font(.system(size: 21, weight: .medium))
                 .foregroundStyle(tint)
             if let count, count > 0 {
                 Text(count, format: .number.notation(.compactName))
-                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .font(.caption2.weight(.semibold).monospacedDigit())
                     .foregroundStyle(.white)
             }
         }
-        .frame(width: 48)
+        .frame(width: 44)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
         .shadow(color: .black.opacity(0.4), radius: 3)

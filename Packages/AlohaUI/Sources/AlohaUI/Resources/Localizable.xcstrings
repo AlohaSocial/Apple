@@ -1047,6 +1047,9 @@
         }
       }
     },
+    "🌺" : {
+
+    },
     "1 day" : {
       "comment" : "Filter expiry",
       "localizations" : {
@@ -1215,8 +1218,11 @@
         }
       }
     },
-    "A calmer client for the social web. Your server, your feeds, your pace." : {
-      "comment" : "Onboarding detail"
+    "A calmer client for the social web." : {
+      "comment" : "Onboarding title"
+    },
+    "A domain, a full URL, or a handle." : {
+      "comment" : "Onboarding server field hint"
     },
     "A draft is private. Once published, anybody with the address can see the page without signing in." : {
       "comment" : "Portfolio publish explanation",
@@ -1272,6 +1278,9 @@
           }
         }
       }
+    },
+    "A grid that opens into full posts. Double-tap a photo to like it." : {
+      "comment" : "Onboarding detail"
     },
     "A handle on your own domain" : {
       "comment" : "Bluesky settings section",
@@ -1383,9 +1392,6 @@
         }
       }
     },
-    "A preview of the tab bar" : {
-      "comment" : "Onboarding tab bar preview"
-    },
     "A quiet year — you read more than you wrote." : {
       "comment" : "Annual archetype",
       "localizations" : {
@@ -1396,6 +1402,9 @@
           }
         }
       }
+    },
+    "A quieter way to keep up." : {
+      "comment" : "Onboarding mock post"
     },
     "A remote server may keep its list to itself; the count above is what it says." : {
       "comment" : "Empty followers explanation",
@@ -1429,6 +1438,9 @@
           }
         }
       }
+    },
+    "A server is where your account lives. It can be a Nextcloud with Social, a Mastodon instance, or any server that speaks the Mastodon API." : {
+      "comment" : "Onboarding server explanation"
     },
     "A soft tick when you favourite something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting." : {
       "comment" : "Senses explanation",
@@ -2052,7 +2064,7 @@
       }
     },
     "Adjust" : {
-      "comment" : "Composer media action\nScreen title",
+      "comment" : "Composer media action\nScreen title\nStory composer action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2062,8 +2074,11 @@
         }
       }
     },
+    "Adjust picture" : {
+      "comment" : "Story crop title"
+    },
     "Advanced" : {
-      "comment" : "Sign-in advanced section",
+      "comment" : "Onboarding advanced section\nSign-in advanced section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2424,7 +2439,7 @@
       }
     },
     "API address" : {
-      "comment" : "Advanced sign-in field",
+      "comment" : "Advanced sign-in field\nOnboarding advanced field",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3457,7 +3472,7 @@
       }
     },
     "Clear" : {
-      "comment" : "Migration import action\nNextcloud file picker action\nSearch history action",
+      "comment" : "Migration import action\nNextcloud file picker action\nOnboarding server field action\nSearch history action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3521,6 +3536,9 @@
           }
         }
       }
+    },
+    "cloud.example.com or @you@cloud.example.com" : {
+      "comment" : "Onboarding server field prompt"
     },
     "Collapse description" : {
       "comment" : "Watch page action",
@@ -3797,6 +3815,9 @@
         }
       }
     },
+    "Copy setup instructions" : {
+      "comment" : "Onboarding server action"
+    },
     "Couldn't add them. Follow them first." : {
       "comment" : "List add failed",
       "localizations" : {
@@ -3874,6 +3895,9 @@
           }
         }
       }
+    },
+    "Couldn't find a server" : {
+      "comment" : "Onboarding server failure"
     },
     "Couldn't find them" : {
       "comment" : "Profile resolution failure",
@@ -4096,6 +4120,12 @@
           }
         }
       }
+    },
+    "Crop" : {
+      "comment" : "Onboarding story tool"
+    },
+    "Crop and zoom the picture" : {
+      "comment" : "Story adjust hint"
     },
     "Current version" : {
       "comment" : "Edit history label",
@@ -4653,7 +4683,7 @@
       }
     },
     "Done" : {
-      "comment" : "Close the list of who favourited or boosted\nMigration import status\nSheet action",
+      "comment" : "Close the list of who favourited or boosted\nMigration import status\nSheet action\nStory crop action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4674,7 +4704,7 @@
         }
       }
     },
-    "Double-tap a picture to like it. Tap it once to open it full size." : {
+    "Double-tap a picture to like or unlike it. Tap it once to open it full size." : {
       "comment" : "Photos hint"
     },
     "Double-tap anywhere on a short to favourite it without looking for the button." : {
@@ -4687,6 +4717,9 @@
           }
         }
       }
+    },
+    "Double-tap the photo" : {
+      "comment" : "Onboarding mock hint"
     },
     "Double-tap to favourite" : {
       "comment" : "Tip title: double-tap a photo\nTip title: double-tap a short",
@@ -4726,6 +4759,7 @@
     },
     "Drag a sticker to place it. It is drawn into the picture when you share." : {
       "comment" : "Story sticker hint",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4734,6 +4768,9 @@
           }
         }
       }
+    },
+    "Drag a sticker to place it. Use Adjust to crop and zoom the picture. Both are drawn into the picture when you share." : {
+      "comment" : "Story sticker hint"
     },
     "Drag the crosshair onto what matters. Cropped previews keep that part in frame." : {
       "comment" : "Focal point hint",
@@ -4981,7 +5018,7 @@
         }
       }
     },
-    "Enter your server's address. If you already have an account, its sign-in page opens; if not, you can create one there." : {
+    "Enter the address where your account lives. A handle works too." : {
       "comment" : "Onboarding server detail"
     },
     "Estimated reach" : {
@@ -5876,7 +5913,7 @@
       }
     },
     "Following" : {
-      "comment" : "Follow button state\nHashtag follow state\nMigration follow state\nProfile action\nProfile stat\nScreen title\nStarter pack member state\nStatistics stat\nWatch page follow state",
+      "comment" : "Follow button state\nHashtag follow state\nMigration follow state\nOnboarding mockup\nProfile action\nProfile stat\nScreen title\nStarter pack member state\nStatistics stat\nWatch page follow state",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6021,6 +6058,9 @@
           }
         }
       }
+    },
+    "Found your server" : {
+      "comment" : "Onboarding server found"
     },
     "From" : {
       "comment" : "Moderation filter",
@@ -6325,6 +6365,9 @@
         }
       }
     },
+    "Hello" : {
+      "comment" : "Onboarding mock story text"
+    },
     "Here" : {
       "comment" : "Moderation origin filter",
       "localizations" : {
@@ -6463,9 +6506,6 @@
     "Home feed" : {
       "comment" : "Settings section"
     },
-    "Home, photos, video, shorts, news and audio, each its own screen." : {
-      "comment" : "Onboarding feature detail"
-    },
     "Hour" : {
       "comment" : "Trend period",
       "localizations" : {
@@ -6499,6 +6539,9 @@
           }
         }
       }
+    },
+    "I'll choose a server later" : {
+      "comment" : "Onboarding action"
     },
     "If approval opened in your browser, finish there and you'll come straight back." : {
       "comment" : "Sign-in browser fallback hint",
@@ -6700,9 +6743,6 @@
         }
       }
     },
-    "Jumps to the server sign-in" : {
-      "comment" : "Onboarding skip hint"
-    },
     "Keep it out" : {
       "comment" : "Trend decision",
       "localizations" : {
@@ -6780,6 +6820,9 @@
           }
         }
       }
+    },
+    "Lake" : {
+      "comment" : "Onboarding mock place"
     },
     "Language" : {
       "comment" : "Composer action\nComposer picker",
@@ -7005,6 +7048,9 @@
         }
       }
     },
+    "Like or unlike" : {
+      "comment" : "Onboarding mock action"
+    },
     "Like people you recently followed" : {
       "comment" : "Suggestion source",
       "localizations" : {
@@ -7015,6 +7061,9 @@
           }
         }
       }
+    },
+    "Like, repost, reply and save keep their order. Tap to try." : {
+      "comment" : "Onboarding detail"
     },
     "Liked posts" : {
       "comment" : "Screen title"
@@ -7054,9 +7103,6 @@
           }
         }
       }
-    },
-    "Links and headlines, kept apart from the conversation." : {
-      "comment" : "Feed mode detail"
     },
     "List address" : {
       "comment" : "Shared list address field",
@@ -7206,9 +7252,6 @@
         }
       }
     },
-    "Longer video, with a player that remembers where you stopped." : {
-      "comment" : "Feed mode detail"
-    },
     "Longest quiet spell" : {
       "comment" : "Statistics tile",
       "localizations" : {
@@ -7287,7 +7330,7 @@
       }
     },
     "Looking for the API…" : {
-      "comment" : "Sign-in probing state",
+      "comment" : "Onboarding server probing\nSign-in probing state",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7296,9 +7339,6 @@
           }
         }
       }
-    },
-    "M" : {
-      "comment" : "Onboarding demo avatar"
     },
     "Made with AI" : {
       "comment" : "AI-generated badge\nComposer toggle",
@@ -7368,9 +7408,6 @@
           }
         }
       }
-    },
-    "mastodon.social" : {
-      "comment" : "Onboarding server field prompt"
     },
     "Media" : {
       "comment" : "Settings section",
@@ -7532,7 +7569,7 @@
       }
     },
     "Mira" : {
-      "comment" : "Onboarding demo name"
+      "comment" : "Onboarding mock author"
     },
     "Moderation" : {
       "comment" : "Screen title\nSettings item\nSettings section",
@@ -8336,9 +8373,6 @@
           }
         }
       }
-    },
-    "No counts shouting, no autoplay, no endless noise." : {
-      "comment" : "Onboarding feature detail"
     },
     "No custom emoji" : {
       "comment" : "Emoji picker empty",
@@ -9248,7 +9282,7 @@
       }
     },
     "now" : {
-      "comment" : "Age of a post less than a minute old\nOnboarding demo time",
+      "comment" : "Age of a post less than a minute old\nOnboarding mock time",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10084,6 +10118,9 @@
         }
       }
     },
+    "Photos, without the noise." : {
+      "comment" : "Onboarding title"
+    },
     "Pick at least one." : {
       "comment" : "Filter context validation",
       "localizations" : {
@@ -10150,9 +10187,6 @@
         }
       }
     },
-    "Pictures first: a grid that opens into full posts." : {
-      "comment" : "Feed mode detail"
-    },
     "Pin" : {
       "comment" : "Interest action",
       "localizations" : {
@@ -10174,6 +10208,9 @@
           }
         }
       }
+    },
+    "Pinch to zoom. Drag to choose the part of the picture that fills the story." : {
+      "comment" : "Story crop hint"
     },
     "Pinned" : {
       "comment" : "Interest pinned state\nPinned posts section\nTimeline context line",
@@ -10276,9 +10313,6 @@
     },
     "Please choose another image or try downloading it from your photo library first." : {
 
-    },
-    "Podcasts and voice posts, with a queue you control." : {
-      "comment" : "Feed mode detail"
     },
     "Politics" : {
       "comment" : "Content warning preset",
@@ -10667,6 +10701,9 @@
         }
       }
     },
+    "Posts, photos, videos and stories from the people you follow." : {
+      "comment" : "Onboarding detail"
+    },
     "Posts, replies and boosts" : {
       "comment" : "Statistics section",
       "localizations" : {
@@ -10953,8 +10990,8 @@
         }
       }
     },
-    "Quiet by default" : {
-      "comment" : "Onboarding feature\nOnboarding title"
+    "Quiet by default." : {
+      "comment" : "Onboarding title"
     },
     "Quiet hours" : {
       "comment" : "Settings section"
@@ -11566,7 +11603,7 @@
       "comment" : "Settings explanation"
     },
     "Reply…" : {
-      "comment" : "Story reply prompt",
+      "comment" : "Onboarding mock reply\nStory reply prompt",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11729,7 +11766,7 @@
       }
     },
     "Reset" : {
-      "comment" : "Interests reset action",
+      "comment" : "Interests reset action\nStory crop action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12180,9 +12217,6 @@
         }
       }
     },
-    "Sensitive" : {
-      "comment" : "Onboarding demo blur label"
-    },
     "Sensitive content" : {
       "comment" : "Cover over sensitive media\nCovered media title\nShorts cover",
       "localizations" : {
@@ -12215,6 +12249,9 @@
           }
         }
       }
+    },
+    "Sensitive media stays covered. Numbers appear only when you ask." : {
+      "comment" : "Onboarding detail"
     },
     "Sent as a message" : {
       "comment" : "Story reply sent",
@@ -12265,6 +12302,9 @@
     },
     "Server address" : {
       "comment" : "Onboarding server field"
+    },
+    "Server address or handle" : {
+      "comment" : "Onboarding server field label"
     },
     "Server rules" : {
       "comment" : "Sign-in section header",
@@ -12425,6 +12465,9 @@
           }
         }
       }
+    },
+    "Shoot, crop, add a sticker, share. The canvas is the story." : {
+      "comment" : "Onboarding detail"
     },
     "Short vertical clips, full screen" : {
       "comment" : "Mode detail",
@@ -12728,9 +12771,6 @@
         }
       }
     },
-    "Sign in to your own instance — no one in the middle." : {
-      "comment" : "Onboarding feature detail"
-    },
     "Sign out" : {
       "comment" : "Settings action"
     },
@@ -12864,10 +12904,7 @@
         }
       }
     },
-    "Six feeds" : {
-      "comment" : "Onboarding feature"
-    },
-    "Six feeds, one app" : {
+    "Six feeds, each its own screen." : {
       "comment" : "Onboarding title"
     },
     "Skip" : {
@@ -13102,6 +13139,9 @@
     "Statistics could not be loaded. Please try again." : {
 
     },
+    "Sticker" : {
+      "comment" : "Onboarding story tool"
+    },
     "Sticker %@" : {
       "comment" : "Story sticker label",
       "localizations" : {
@@ -13222,6 +13262,9 @@
           }
         }
       }
+    },
+    "Stories that start in the camera." : {
+      "comment" : "Onboarding title"
     },
     "Story from %@" : {
       "comment" : "Story rail tile",
@@ -13450,9 +13493,6 @@
         }
       }
     },
-    "Swipe or tap Continue" : {
-      "comment" : "Onboarding hint"
-    },
     "Swipe right" : {
       "comment" : "Settings item: the action a swipe from the leading edge performs",
       "localizations" : {
@@ -13586,7 +13626,7 @@
         }
       }
     },
-    "Tap a feed to see what it becomes. The same six live in the tab bar." : {
+    "Tap along the tab bar to preview each one." : {
       "comment" : "Onboarding detail"
     },
     "Tap the title to switch between the people you follow, your server, and everyone it knows." : {
@@ -13626,7 +13666,7 @@
       }
     },
     "Text" : {
-      "comment" : "Story kind",
+      "comment" : "Onboarding story tool\nStory kind",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13753,6 +13793,9 @@
           }
         }
       }
+    },
+    "That doesn't look like a server address. Try cloud.example.com or @you@cloud.example.com." : {
+      "comment" : "Onboarding server validation\nSign-in validation"
     },
     "That doesn't look like a server address. Try cloud.example.com, https://cloud.example.com or http://192.168.1.10." : {
       "comment" : "Sign-in validation failure"
@@ -14221,9 +14264,6 @@
         }
       }
     },
-    "The people you follow, in the order they posted." : {
-      "comment" : "Feed mode detail"
-    },
     "The post could not be deleted. It is still up." : {
       "comment" : "Delete failure",
       "localizations" : {
@@ -14285,6 +14325,9 @@
           }
         }
       }
+    },
+    "The same four actions, everywhere." : {
+      "comment" : "Onboarding title"
     },
     "The search could not be run." : {
       "comment" : "Search failure"
@@ -14784,7 +14827,7 @@
       }
     },
     "Try again" : {
-      "comment" : "Hashtag tag reload action\nReport send retry\nRetry media playback\nSign-in failure action\nStarter pack retry action",
+      "comment" : "Hashtag tag reload action\nOnboarding server action\nReport send retry\nRetry media playback\nSign-in failure action\nStarter pack retry action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14793,9 +14836,6 @@
           }
         }
       }
-    },
-    "Try it: these switches change the card below, not your settings yet." : {
-      "comment" : "Onboarding detail"
     },
     "Type %@ to confirm" : {
       "comment" : "Move away confirm field",
@@ -14897,7 +14937,7 @@
       }
     },
     "Unfavourite" : {
-      "comment" : "Status menu item\nSwipe action on a post",
+      "comment" : "Accessibility action\nStatus menu item\nSwipe action on a post",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15126,6 +15166,9 @@
         }
       }
     },
+    "Use a different server" : {
+      "comment" : "Onboarding server action\nSign-in action"
+    },
     "Use it" : {
       "comment" : "Bluesky custom handle action",
       "localizations" : {
@@ -15141,7 +15184,7 @@
       "comment" : "Story composer hint"
     },
     "Use this address" : {
-      "comment" : "Advanced sign-in action",
+      "comment" : "Advanced sign-in action\nOnboarding advanced action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15227,9 +15270,6 @@
           }
         }
       }
-    },
-    "Vertical clips, one at a time, no autoplay after the first." : {
-      "comment" : "Feed mode detail"
     },
     "via %@" : {
       "comment" : "The app a post was written with",
@@ -15469,6 +15509,9 @@
     "warning" : {
       "comment" : "Digest summary kind"
     },
+    "We'll look for the API at %@." : {
+      "comment" : "Onboarding server validation"
+    },
     "Week" : {
       "comment" : "Chart axis",
       "localizations" : {
@@ -15490,9 +15533,6 @@
           }
         }
       }
-    },
-    "Welcome to Aloha Social" : {
-      "comment" : "Onboarding title"
     },
     "What did best" : {
       "comment" : "Statistics section",
@@ -15680,9 +15720,6 @@
           }
         }
       }
-    },
-    "Where do you socialize?" : {
-      "comment" : "Onboarding server title"
     },
     "Where it applies" : {
       "comment" : "Filter section",
@@ -16139,9 +16176,6 @@
     "You are in control" : {
       "comment" : "Terms rule title"
     },
-    "You can change all of this later in Settings." : {
-      "comment" : "Onboarding footnote"
-    },
     "You can report any post or account, and block or mute anyone, from anywhere in the app." : {
       "comment" : "Terms rule",
       "extractionState" : "stale",
@@ -16402,6 +16436,9 @@
           }
         }
       }
+    },
+    "Your feed, without the noise." : {
+      "comment" : "Onboarding title"
     },
     "Your feeds" : {
       "comment" : "Bluesky feeds section",
@@ -16694,7 +16731,7 @@
       }
     },
     "Your server" : {
-      "comment" : "Onboarding feature\nSign-in field label",
+      "comment" : "Sign-in field label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16758,6 +16795,12 @@
           }
         }
       }
+    },
+    "Your server, your home." : {
+      "comment" : "Onboarding server title"
+    },
+    "Your server. Your people. Your feed." : {
+      "comment" : "Onboarding detail"
     },
     "Your sign-in has expired" : {
       "comment" : "Re-auth banner title",

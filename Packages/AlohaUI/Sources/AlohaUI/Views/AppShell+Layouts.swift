@@ -26,11 +26,14 @@ extension ThemedAppShell {
                         // The filled spelling while selected, the outline
                         // otherwise — Apple's own apps switch weight rather
                         // than colour to say "this is the tab you are on".
+                        // No title under it: five labelled tabs quote the bar
+                        // to itself, and the symbols are distinct enough to
+                        // stand alone. The name stays as the spoken label.
                         Image(
                             systemName: selectedTab == .mode(mode)
                                 ? mode.selectedSymbolName : mode.symbolName
                         )
-                        Text(modeTitle(mode))
+                        .accessibilityLabel(Text(modeTitle(mode)))
                     }
                 }
 
@@ -50,7 +53,7 @@ extension ThemedAppShell {
                         systemName: selectedTab == .notifications
                             ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications
                     )
-                    Text("Activities", comment: "Tab title")
+                    .accessibilityLabel(Text("Activities", comment: "Tab title"))
                 }
                 // The count the app icon already wears, where it can be
                 // acted on. Zero draws no badge.
@@ -93,7 +96,15 @@ extension ThemedAppShell {
                     Tab(
                         modeTitle(mode), systemImage: mode.symbolName, value: SidebarItem.mode(mode)
                     ) {
-                        iPadDestination(.mode(mode), session: session)
+                        // The TabView builds every tab's content at launch;
+                        // each screen here is a NavigationStack with the whole
+                        // destination switch in it. Building all of them at
+                        // once overflowed the main thread's stack on a real
+                        // iPad, so a tab's screen is built when it is first
+                        // selected and kept afterwards.
+                        LazyShellContent(isSelected: sidebarItem == .mode(mode)) {
+                            iPadDestination(.mode(mode), session: session)
+                        }
                     }
                     .customizationID("aloha.tab.mode.\(mode.rawValue)")
                 }
@@ -101,7 +112,9 @@ extension ThemedAppShell {
                     "Activities", systemImage: AlohaSymbol.notifications,
                     value: SidebarItem.route(.notifications)
                 ) {
-                    iPadDestination(.route(.notifications), session: session)
+                    LazyShellContent(isSelected: sidebarItem == .route(.notifications)) {
+                        iPadDestination(.route(.notifications), session: session)
+                    }
                 }
                 .badge(unreadNotifications(session))
                 .customizationID("aloha.tab.notifications")
@@ -109,12 +122,16 @@ extension ThemedAppShell {
                     "Direct messages", systemImage: "envelope",
                     value: SidebarItem.route(.conversations)
                 ) {
-                    iPadDestination(.route(.conversations), session: session)
+                    LazyShellContent(isSelected: sidebarItem == .route(.conversations)) {
+                        iPadDestination(.route(.conversations), session: session)
+                    }
                 }
                 .badge(unreadConversations)
                 .customizationID("aloha.tab.conversations")
                 Tab("Discover", systemImage: "safari", value: SidebarItem.route(.explore)) {
-                    iPadDestination(.route(.explore), session: session)
+                    LazyShellContent(isSelected: sidebarItem == .route(.explore)) {
+                        iPadDestination(.route(.explore), session: session)
+                    }
                 }
                 .customizationID("aloha.tab.explore")
                 TabSection("Library") {
@@ -158,7 +175,11 @@ extension ThemedAppShell {
                     "Search", systemImage: "magnifyingglass",
                     value: SidebarItem.route(.search(query: nil)), role: .search
                 ) {
-                    iPadDestination(.route(.search(query: nil)), session: session)
+                    LazyShellContent(
+                        isSelected: sidebarItem == .route(.search(query: nil))
+                    ) {
+                        iPadDestination(.route(.search(query: nil)), session: session)
+                    }
                 }
                 .customizationID("aloha.tab.search")
             }
@@ -167,7 +188,7 @@ extension ThemedAppShell {
             .tabViewSidebarBottomBar {
                 AccountMenuButton(
                     session: session, onOpen: open,
-                    onAddAccount: { isPresentingSignIn = true },
+                    onAddAccount: { presentSignIn() },
                     showsBrowseDestinations: false, showsName: true, usesCompactMenu: true)
             }
             .onChange(of: sidebarItem) { _, item in
@@ -181,7 +202,9 @@ extension ThemedAppShell {
             _ title: LocalizedStringKey, symbol: String, route: Route, session: AccountSession
         ) -> some TabContent<SidebarItem> {
             Tab(title, systemImage: symbol, value: SidebarItem.route(route)) {
-                iPadDestination(.route(route), session: session)
+                LazyShellContent(isSelected: sidebarItem == .route(route)) {
+                    iPadDestination(.route(route), session: session)
+                }
             }
             .customizationID(ShellTab.customizationID(for: route))
             .defaultVisibility(.hidden, for: .tabBar)
@@ -217,8 +240,34 @@ extension ThemedAppShell {
             ToolbarItem(id: "account-menu", placement: .topBarLeading) {
                 AccountMenuButton(
                     session: session, onOpen: open,
-                    onAddAccount: { isPresentingSignIn = true },
+                    onAddAccount: { presentSignIn() },
                     showsBrowseDestinations: isCompact, usesCompactMenu: !isCompact)
+            }
+        }
+        /// A tab's screen, built the first time the tab is selected.
+        ///
+        /// `TabView` evaluates the content of every tab while it is being
+        /// created. Each of these contents builds a `NavigationStack` around
+        /// the whole destination switch, and on a real iPad constructing all
+        /// of them at once overran the main thread's stack before the first
+        /// frame was drawn. The screen is kept once built, so leaving a tab
+        /// and coming back still finds it where it was.
+        private struct LazyShellContent<Content: View>: View {
+            let isSelected: Bool
+            @ViewBuilder let content: () -> Content
+            @State private var hasLoaded = false
+
+            var body: some View {
+                Group {
+                    if hasLoaded {
+                        content()
+                    } else {
+                        Color.clear
+                    }
+                }
+                .onChange(of: isSelected, initial: true) { _, selected in
+                    if selected { hasLoaded = true }
+                }
             }
         }
     #endif
@@ -231,7 +280,7 @@ extension ThemedAppShell {
                 session: session,
                 selection: $sidebarItem,
                 selectedSource: $selectedSource,
-                onAddAccount: { isPresentingSignIn = true },
+                onAddAccount: { presentSignIn() },
                 onSwitchAccount: { environment.setActiveAccount($0) }
             )
             .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
@@ -419,7 +468,7 @@ extension ThemedAppShell {
                             AccountMenuButton(
                                 session: session,
                                 onOpen: { open($0) },
-                                onAddAccount: { isPresentingSignIn = true })
+                                onAddAccount: { presentSignIn() })
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink(value: Route.search(query: nil)) {

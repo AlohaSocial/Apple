@@ -31,6 +31,11 @@ public struct NotificationsView: View {
     /// notification ID the user had read. When present in the flat list, a
     /// divider is inserted below it.
     @State private var caughtUpNotificationID: String?
+    /// The marker the divider is drawn at, captured when the list loads.
+    /// `caughtUpNotificationID` advances as rows are seen, but moving the
+    /// line at the same time made it slide under the reader's thumb and
+    /// re-layout the list on every appearance.
+    @State private var caughtUpDisplayID: String?
     /// The reader's filters, in the notifications context: an activity
     /// about a post a hide filter matched is left out, and one a warn filter
     /// matched names the filter instead of quoting the post.
@@ -227,7 +232,7 @@ public struct NotificationsView: View {
 
     private var flatActivityRows: [FlatActivityDisplayRow] {
         let notifications = visibleFlat
-        let markerID = caughtUpNotificationID
+        let markerID = caughtUpDisplayID
         let markerIndex = markerID.flatMap { id in notifications.firstIndex { $0.id == id } }
         var rows: [FlatActivityDisplayRow] = []
         var day: Date?
@@ -370,7 +375,7 @@ public struct NotificationsView: View {
                 // names one notification, and a group's newest is the id the
                 // server reports for it. Where the group below this one has
                 // been seen, the reader has passed the divider.
-                if let markerID = caughtUpNotificationID,
+                if let markerID = caughtUpDisplayID,
                     let idx = visibleGroups.firstIndex(where: {
                         $0.mostRecentNotificationID == markerID
                     }),
@@ -422,7 +427,7 @@ public struct NotificationsView: View {
     /// Groups in server order, with a heading wherever the day changes.
     private var activityRows: [ActivityDisplayRow] {
         let groups = visibleGroups
-        let markerID = caughtUpNotificationID
+        let markerID = caughtUpDisplayID
         let markerIndex = markerID.flatMap { id in
             groups.firstIndex { $0.mostRecentNotificationID == id }
         }
@@ -512,7 +517,7 @@ public struct NotificationsView: View {
             .onAppear {
                 // Advance the "caught up" marker when the first notification
                 // below the divider appears.
-                if let markerID = caughtUpNotificationID,
+                if let markerID = caughtUpDisplayID,
                     let idx = visibleFlat.firstIndex(where: { $0.id == markerID }),
                     idx + 1 < visibleFlat.count,
                     visibleFlat[idx + 1].id == notification.id
@@ -540,8 +545,9 @@ public struct NotificationsView: View {
     ///
     /// The face, what happened, a piece of the post and when: four things
     /// read in one glance, the way a notification is actually understood.
-    /// The card's border takes the kind's tint, so a mention and a favourite
-    /// are distinguishable before the sentence is read.
+    /// The card is drawn like the rest of the app's surfaces — a raised fill
+    /// and a hairline — rather than as a tinted, shadowed tile of its own.
+    /// The kind is carried by the badge on the avatar, where it belongs.
     private func activityCard(
         kind: NotificationKind,
         accounts: [Account],
@@ -565,43 +571,40 @@ public struct NotificationsView: View {
                         .padding(AlohaMetrics.space2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            palette.background.opacity(0.65),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            palette.background.opacity(0.5),
+                            in: RoundedRectangle(
+                                cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
                         )
                 }
 
-                HStack(spacing: AlohaMetrics.space1) {
-                    if let date { activityDate(date) }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(palette.tertiaryLabel)
-                }
+                if let date { activityDate(date) }
             }
         }
         .padding(AlohaMetrics.space3)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             palette.surfaceRaised,
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
         )
+        // A hairline so the card reads as a layer over the scroll rather than
+        // as a slightly different colour — the app's own card language.
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(tint(for: kind).opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                .strokeBorder(palette.separator.opacity(0.5), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
-        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .contentShape(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
     }
 
     /// Up to three faces, overlapped, with the kind's badge on the corner:
     /// a group announces who and what without spelling out either.
     private func activityAvatars(_ accounts: [Account], kind: NotificationKind) -> some View {
         ZStack(alignment: .bottomTrailing) {
-            HStack(spacing: -14) {
+            HStack(spacing: -13) {
                 if accounts.isEmpty {
                     Circle()
                         .fill(palette.surfaceRaised)
-                        .frame(width: 46, height: 46)
+                        .frame(width: 42, height: 42)
                         .overlay(
                             Image(systemName: symbol(for: kind))
                                 .font(.footnote.weight(.semibold))
@@ -610,7 +613,7 @@ public struct NotificationsView: View {
                 } else {
                     ForEach(Array(accounts.prefix(3).enumerated()), id: \.element.id) {
                         index, account in
-                        AvatarView(account: account, size: 46)
+                        AvatarView(account: account, size: 42)
                             .overlay(
                                 Circle().strokeBorder(palette.surfaceRaised, lineWidth: 2)
                             )
@@ -618,10 +621,10 @@ public struct NotificationsView: View {
                     }
                 }
             }
-            activityBadge(kind, size: 24)
+            activityBadge(kind, size: 22)
                 .offset(x: 5, y: 5)
         }
-        .frame(width: 58, height: 52, alignment: .bottomLeading)
+        .frame(width: 54, height: 48, alignment: .bottomLeading)
     }
 
     /// The kind of activity as a tinted disc: what happened, legible at a
@@ -688,6 +691,11 @@ public struct NotificationsView: View {
                 MarkerSet.self, from: Endpoint.markers.read)
             guard !Task.isCancelled, loadID == requestID else { return }
             caughtUpNotificationID = markers.notifications?.lastReadID
+            // The divider belongs where the list opened, not wherever the
+            // marker has advanced to by the time a refresh returns.
+            if caughtUpDisplayID == nil {
+                caughtUpDisplayID = caughtUpNotificationID
+            }
             errorMessage = nil
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
@@ -818,7 +826,9 @@ public struct NotificationsView: View {
     /// that must not be attempted from a synchronous function, and the server
     /// sync folds into the same await rather than a Task inside a Task.
     private func advanceCaughtUpNotificationMarker(to notificationID: String) async {
-        guard caughtUpNotificationID != nil else { return }
+        guard caughtUpNotificationID != nil,
+            caughtUpNotificationID != notificationID
+        else { return }
         caughtUpNotificationID = notificationID
 
         // Whether the stored marker actually moved does not matter here: the

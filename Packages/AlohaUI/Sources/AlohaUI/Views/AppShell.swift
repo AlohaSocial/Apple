@@ -49,10 +49,11 @@ struct ThemedAppShell: View {
     /// Nothing is written back until the stored state has been read, or the
     /// first launch's empty shell would overwrite it.
     @State private var hasRestored = false
-    @State var isPresentingSignIn = false
-    /// The address typed on the introduction, for the sign-in screen to open
-    /// with — or empty when the person chose "skip" and will type it there.
-    @State private var signInAddress = ""
+    /// A sign-in request is an item, not a Bool plus loose fields: the sheet
+    /// opens with exactly the address and server it was given, once.
+    @State var signIn: SignInPresentation?
+    /// The introduction's request waits here while the terms are shown.
+    @State private var pendingSignIn: SignInPresentation?
     /// The terms sheet, shown after the introduction rather than before it.
     /// The first thing a person should see is what the app is; the rules
     /// belong after that, once they care (docs/09 §4).
@@ -139,8 +140,7 @@ struct ThemedAppShell: View {
             .onChange(of: usesSidebar) { _, toSidebar in handOver(toSidebar: toSidebar) }
             .modifier(
                 ShellSheets(
-                    isPresentingSignIn: $isPresentingSignIn,
-                    signInAddress: $signInAddress,
+                    signIn: $signIn,
                     composing: $composing,
                     reportTarget: $reportTarget,
                     editing: $editing,
@@ -231,10 +231,17 @@ struct ThemedAppShell: View {
                 // sign-in sheet belongs to this shell, wherever the request
                 // came from.
                 guard initialRoute == nil else { return }
-                isPresentingSignIn = true
+                presentSignIn()
             }
             // The menu bar acts on the window in front (see `ShellCommands`).
             .focusedSceneValue(\.shellCommands, shellCommands)
+    }
+
+    /// Opens the sign-in sheet for another account. The introduction's address
+    /// and server belong to its own attempt, not to a later one.
+    func presentSignIn() {
+        pendingSignIn = nil
+        signIn = SignInPresentation()
     }
 
     /// What a person sees, in the order it is fair to ask it of them:
@@ -358,21 +365,29 @@ struct ThemedAppShell: View {
 
     /// The introduction, and — for a first launch only — the terms behind it.
     private func introduction(offeringTerms: Bool) -> some View {
-        WelcomeView { address in
-            signInAddress = address ?? ""
+        WelcomeView { request in
+            let pending =
+                request.map {
+                    SignInPresentation(address: $0.address, outcome: $0.outcome)
+                } ?? SignInPresentation()
             if offeringTerms {
+                pendingSignIn = pending
                 isShowingTerms = true
             } else {
-                isPresentingSignIn = true
+                signIn = pending
             }
         }
         .sheet(isPresented: $isShowingTerms) {
             TermsGate(
                 onAccept: {
                     isShowingTerms = false
-                    isPresentingSignIn = true
+                    signIn = pendingSignIn
+                    pendingSignIn = nil
                 },
-                onDecline: { isShowingTerms = false })
+                onDecline: {
+                    isShowingTerms = false
+                    pendingSignIn = nil
+                })
         }
     }
 

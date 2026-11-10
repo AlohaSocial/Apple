@@ -62,7 +62,8 @@
             token: String, behaviour: Behaviour = [],
             port: UInt16 = 0
         ) {
-            let endpoint = port == 0 ? NWEndpoint.Port.any : (NWEndpoint.Port(rawValue: port) ?? .any)
+            let endpoint =
+                port == 0 ? NWEndpoint.Port.any : (NWEndpoint.Port(rawValue: port) ?? .any)
             guard let listener = try? NWListener(using: .tcp, on: endpoint) else { return nil }
 
             self.behaviour = behaviour
@@ -183,7 +184,8 @@
             for line in lines.dropFirst() {
                 guard let separator = line.firstIndex(of: ":") else { continue }
                 headers[line[..<separator].lowercased()] = String(
-                    line[line.index(after: separator)...]).trimmingCharacters(in: .whitespaces)
+                    line[line.index(after: separator)...]
+                ).trimmingCharacters(in: .whitespaces)
             }
 
             // Pictures stay open, the way a Mastodon or Nextcloud instance
@@ -271,15 +273,19 @@
                 body = slice
                 status = 206
                 reason = "Partial Content"
-                headers["Content-Range"] = "bytes \(range.split(separator: "=").last ?? "")/\(data.count)"
+                headers["Content-Range"] =
+                    "bytes \(range.split(separator: "=").last ?? "")/\(data.count)"
             }
             headers["Content-Length"] = String(body.count)
-            send(connection, status: status, reason: reason, headers: headers, body: body, method: method)
+            send(
+                connection, status: status, reason: reason, headers: headers, body: body,
+                method: method)
         }
 
         private static func slice(_ data: Data, for range: String) -> Data? {
             guard range.hasPrefix("bytes=") else { return nil }
-            let parts = range.dropFirst("bytes=".count).split(separator: "-", omittingEmptySubsequences: false)
+            let parts = range.dropFirst("bytes=".count).split(
+                separator: "-", omittingEmptySubsequences: false)
             guard parts.count == 2 else { return nil }
             let start = Int(parts[0]) ?? 0
             let end = parts[1].isEmpty ? data.count - 1 : (Int(parts[1]) ?? data.count - 1)

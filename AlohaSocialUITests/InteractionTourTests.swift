@@ -396,6 +396,16 @@ import XCTest
             XCTAssertTrue(next.isHittable, "Continue unreachable above keyboard")
             shoot("46-welcome-large-text")
             next.tap()
+            XCTAssertTrue(
+                app.staticTexts["server-found-title"].waitForExistence(timeout: 20),
+                "The server the introduction found did not appear")
+            let confirm = app.buttons["Continue"].firstMatch
+            for _ in 0..<3 where !confirm.isHittable {
+                app.scrollViews["welcome-sign-in-content"].swipeUp()
+            }
+            XCTAssertTrue(confirm.isHittable, "Continue on the found server unreachable")
+            shoot("46b-welcome-server-found")
+            confirm.tap()
             XCTAssertTrue(app.labelled("Before you start").waitForExistence(timeout: 5))
         }
 
@@ -406,6 +416,10 @@ import XCTest
             XCTAssertTrue(
                 app.labelled("A calmer client").waitForExistence(timeout: 10),
                 "Introduction missing")
+            XCTAssertTrue(
+                app.staticTexts["Your server. Your people. Your feed."]
+                    .waitForExistence(timeout: 5),
+                "The introduction has no opening page")
             shoot("44-welcome")
             app.buttons["Skip"].firstMatch.tap()
             let field = app.textFields.firstMatch
@@ -419,13 +433,23 @@ import XCTest
             field.typeText("cloud.example.test")
             app.buttons["Continue"].firstMatch.tap()
             XCTAssertTrue(
+                app.staticTexts["server-found-title"].waitForExistence(timeout: 20),
+                "The server was not shown before sign-in")
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(
                 app.labelled("Before you start").waitForExistence(timeout: 5),
                 "Terms gate missing after introduction")
             shoot("43-terms")
             app.buttons["Agree and continue"].firstMatch.tap()
             XCTAssertTrue(
-                app.textFields.firstMatch.waitForExistence(timeout: 5),
+                app.navigationBars["Add account"].waitForExistence(timeout: 5),
                 "Sign-in did not open")
+            XCTAssertTrue(
+                app.buttons["sign-in-authorise"].waitForExistence(timeout: 5),
+                "Sign-in did not open on the server the introduction found")
+            XCTAssertFalse(
+                app.textFields["sign-in-server-field"].exists,
+                "Sign-in asked for the address a second time")
             shoot("45-sign-in")
         }
     }

@@ -44,7 +44,25 @@ public final class SignInModel {
     private var typedHost = ""
     private let logger = Logger(subsystem: "social.aloha.app", category: "signin")
 
-    public init() {}
+    /// A model that already knows where the account lives — the introduction
+    /// probes the server before it hands over, so sign-in opens on the server
+    /// card rather than asking for the address again.
+    public init(preloaded: ServerProbe.Outcome? = nil) {
+        guard let preloaded else { return }
+        outcome = preloaded
+        typedHost = preloaded.instance.domain
+        phase = .found(preloaded)
+    }
+
+    /// Back to the address field, for "use a different server" or a fresh
+    /// attempt from Settings → Add account.
+    public func reset() {
+        outcome = nil
+        typedHost = ""
+        currentCandidate = nil
+        manualBase = ""
+        phase = .idle
+    }
 
     // MARK: - Probing
 
@@ -193,17 +211,33 @@ public final class SignInModel {
         } catch {
             logger.error("sign-in failed: \(String(describing: error), privacy: .public)")
             let apiError = error as? APIError
+            let missingActor = apiError?.isMissingSocialActor == true
             phase = .failed(
                 Failure(
-                    message: apiError?.errorDescription
-                        ?? String(
-                            localized: "Signing in didn't finish.",
-                            comment: "Sign-in authorisation failure"),
+                    message: missingActor
+                        ? String(
+                            localized:
+                                "Your account isn't set up yet. Open Aloha Social in a web browser and choose your username.",
+                            comment: "HTTP 403, account not set up")
+                        : (apiError?.errorDescription
+                            ?? String(
+                                localized: "Signing in didn't finish.",
+                                comment: "Sign-in authorisation failure")),
                     attempted: [], offersServerSnippet: false,
-                    setupURL: apiError?.isAccountNotSetUp == true
-                        ? (apiError?.accountSetupURL
-                            ?? URL(string: outcome.apiBase.originString)) : nil))
+                    setupURL: missingActor
+                        ? socialSetupURL(for: outcome)
+                        : (apiError?.isAccountNotSetUp == true
+                            ? (apiError?.accountSetupURL ?? socialSetupURL(for: outcome))
+                            : nil)))
         }
+    }
+
+    /// The Social app's own address on this server, where a Nextcloud user
+    /// chooses the username their actor gets.
+    private func socialSetupURL(for outcome: ServerProbe.Outcome) -> URL? {
+        if outcome.apiBase.path.contains("apps/social") { return outcome.apiBase }
+        return URL(string: outcome.apiBase.originString)?
+            .appending(path: "index.php/apps/social/")
     }
 
     private func presentWebAuthentication(url: URL, state: String) async throws -> URL {

@@ -89,6 +89,7 @@ public struct TermsGate: View {
 
                     Button(role: .cancel, action: onDecline) {
                         Text("Not now", comment: "Terms action")
+                            .foregroundStyle(palette.label)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderless)
@@ -268,7 +269,11 @@ public struct ModeSelectionView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("\(title(mode)), \(isOn ? "on" : "off")"))
+        .accessibilityLabel(
+            Text(
+                "\(title(mode)), \(isOn ? "on" : "off")",
+                comment: "Accessibility label for a feed mode switch")
+        )
         .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
 

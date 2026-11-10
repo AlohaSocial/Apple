@@ -179,7 +179,7 @@ public struct PhotosModeView: View {
                         symbol: AlohaSymbol.favourite,
                         title: Text("Double-tap to like", comment: "Photos hint title"),
                         message: Text(
-                            "Double-tap a picture to like it. Tap it once to open it full size.",
+                            "Double-tap a picture to like or unlike it. Tap it once to open it full size.",
                             comment: "Photos hint")
                     )
                     .padding(AlohaMetrics.space3)
@@ -427,6 +427,9 @@ public struct PhotoPostCard: View {
     @State private var isRevealed = false
     @State private var isCaptionExpanded = false
     @State private var isHearting = false
+    /// Counts the double taps that undid a like, so the lighter haptic has
+    /// something of the person's own to trigger on rather than a server sync.
+    @State private var unlikeTick = 0
     /// A pointer over the card — a trackpad or mouse on iPad — which has no
     /// swipe to page with and needs the arrows the Mac always shows.
     @State private var isPointerOver = false
@@ -631,6 +634,7 @@ public struct PhotoPostCard: View {
             }
         }
         .alohaSensoryFeedback(.success, trigger: isHearting) { _, new in new }
+        .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(
@@ -638,7 +642,12 @@ public struct PhotoPostCard: View {
                 ? Text("Tap to show", comment: "Covered media hint")
                 : Text("Opens the media viewer", comment: "Accessibility hint")
         )
-        .accessibilityAction(named: Text("Favourite", comment: "Accessibility action")) { heart() }
+        .accessibilityAction(
+            named: Text(
+                displayed.favourited
+                    ? String(localized: "Unfavourite", comment: "Accessibility action")
+                    : String(localized: "Favourite", comment: "Accessibility action"))
+        ) { heart() }
         .mediaTransitionSource(
             id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
             in: mediaTransition
@@ -699,8 +708,13 @@ public struct PhotoPostCard: View {
 
     private func heart() {
         PhotosDoubleTapTip().invalidate(reason: .actionPerformed)
-        guard !isCovered, !displayed.favourited else { return }
+        guard !isCovered else { return }
+        let wasFavourited = displayed.favourited
         onAction(.favourite(status))
+        guard !wasFavourited else {
+            unlikeTick += 1
+            return
+        }
         withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5)) {
             isHearting = true
         }

@@ -12,19 +12,18 @@ public struct SignInView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
-    @State private var model = SignInModel()
-    /// Bound to the shell's `signInAddress`, not a copy of it: what the
-    /// introduction's last page holds stays in the field, so the address is
-    /// typed once — here or there — and never asked for twice. A `State`
-    /// snapshot went stale whenever the sheet presented with an older value.
-    @Binding private var typed: String
+    @State private var model: SignInModel
+    /// What the introduction put in its field — or empty when the person
+    /// chose to type it here. The sheet is presented by item, so this is a
+    /// fresh copy for this one attempt.
+    @State private var typed: String
     @FocusState private var isFieldFocused: Bool
 
-    /// Opens with an address already in the field — the one the person typed
-    /// on the introduction's last page, rather than asking them to type it
-    /// twice.
-    public init(serverAddress: Binding<String> = .constant("")) {
-        _typed = serverAddress
+    /// Opens with the introduction's address, or with the server it already
+    /// probed, so the address and the discovery are not repeated.
+    public init(address: String = "", outcome: ServerProbe.Outcome? = nil) {
+        _typed = State(initialValue: address)
+        _model = State(initialValue: SignInModel(preloaded: outcome))
     }
 
     public var body: some View {
@@ -61,7 +60,9 @@ public struct SignInView: View {
                 }
             }
         }
-        .onAppear { isFieldFocused = true }
+        .onAppear {
+            if case .idle = model.phase { isFieldFocused = true }
+        }
         .onDisappear { WebAuthenticator.shared.cancel() }
     }
 
@@ -69,24 +70,9 @@ public struct SignInView: View {
 
     private var entrySection: some View {
         Section {
-            // The app's own lockup above the field it belongs to: the screen
-            // the person lands on after the introduction should look like the
-            // app the introduction just showed them, not a bare form. It lives
-            // inside this section's builder, because a view builder is what
-            // this is — a second `Section` here would be a second expression
-            // in a function whose result is one view.
-            VStack(spacing: AlohaMetrics.space2) {
-                AlohaLogoMark(size: 56)
-                AlohaWordmark()
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.bottom, AlohaMetrics.space2)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(Text("Aloha Social", comment: "App name"))
-
             TextField(
                 text: $typed,
-                prompt: Text(verbatim: "cloud.example.com")
+                prompt: Text(verbatim: "cloud.example.com or @you@cloud.example.com")
             ) {
                 Text("Your server", comment: "Sign-in field label")
             }
@@ -97,7 +83,22 @@ public struct SignInView: View {
                 .textInputAutocapitalization(.never)
                 .keyboardType(.URL)
             #endif
-            .onSubmit { Task { await model.probe(typed, environment: environment) } }
+            .onSubmit {
+                guard parsedAddress != nil else { return }
+                Task { await model.probe(typed, environment: environment) }
+            }
+            .accessibilityIdentifier("sign-in-server-field")
+
+            if !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                parsedAddress == nil
+            {
+                Text(
+                    "That doesn't look like a server address. Try cloud.example.com or @you@cloud.example.com.",
+                    comment: "Sign-in validation"
+                )
+                .font(.footnote)
+                .foregroundStyle(palette.destructive)
+            }
 
             Button {
                 Task { await model.probe(typed, environment: environment) }
@@ -107,7 +108,8 @@ public struct SignInView: View {
             // Return continues on a hardware keyboard: the sheet is a Mac
             // window, and its primary action must answer Return.
             .keyboardShortcut(.defaultAction)
-            .disabled(typed.trimmingCharacters(in: .whitespaces).isEmpty)
+            .disabled(parsedAddress == nil)
+            .accessibilityIdentifier("sign-in-continue")
         } header: {
             BrandMark(size: 72)
                 .frame(maxWidth: .infinity)
@@ -122,6 +124,10 @@ public struct SignInView: View {
                 }
             }
         }
+    }
+
+    private var parsedAddress: ServerProbe.ServerAddress? {
+        ServerProbe.ServerAddress(typed: typed)
     }
 
     /// Honest about what is happening, which is what makes the ten-second
@@ -146,29 +152,7 @@ public struct SignInView: View {
     private func foundSection(_ outcome: ServerProbe.Outcome) -> some View {
         Group {
             Section {
-                HStack(spacing: AlohaMetrics.space3) {
-                    RemoteImage(url: outcome.instance.thumbnail)
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(outcome.instance.title).font(.headline)
-                        Text(outcome.instance.domain)
-                            .font(.caption)
-                            .foregroundStyle(palette.secondaryLabel)
-                        // What the server reports about itself: people, posts,
-                        // connected servers — whichever of those this server's
-                        // API generation actually serves (v2 has no post or
-                        // server counts, and a missing number is omitted rather
-                        // than shown as zero).
-                        serverStats(outcome.instance)
-                        serverDetails(outcome.instance)
-                    }
-                }
-
-                if !outcome.instance.shortDescription.isEmpty {
-                    Text(outcome.instance.shortDescription).font(.footnote)
-                }
+                ServerSummary(instance: outcome.instance)
             }
 
             if !outcome.instance.rules.isEmpty {
@@ -188,6 +172,7 @@ public struct SignInView: View {
                     Text("Sign in", comment: "Sign-in action")
                 }
                 .keyboardShortcut(.defaultAction)
+                .accessibilityIdentifier("sign-in-authorise")
 
                 // Nextcloud Social's client API cannot create an account — an
                 // account there is a Nextcloud account — so there is never a
@@ -197,6 +182,13 @@ public struct SignInView: View {
                         Text("Create an account on this server", comment: "Sign-in link")
                     }
                 }
+
+                Button {
+                    model.reset()
+                    isFieldFocused = true
+                } label: {
+                    Text("Use a different server", comment: "Sign-in action")
+                }
             } footer: {
                 if outcome.winningCandidate.rank > 1 {
                     Text(
@@ -205,57 +197,6 @@ public struct SignInView: View {
                 }
             }
         }
-    }
-
-    /// People, posts and connected servers as one line of facts — each only
-    /// where the server answered it.
-    @ViewBuilder
-    private func serverStats(_ instance: InstanceDescription) -> some View {
-        let stats: [Text] = [
-            instance.userCount.map {
-                Text("^[\($0) person](inflect: true)", comment: "Instance user count")
-            },
-            instance.statusCount.map {
-                Text("^[\($0) post](inflect: true)", comment: "Instance post count")
-            },
-            instance.domainCount.map {
-                Text(
-                    "^[\($0) connected server](inflect: true)",
-                    comment: "Instance server count")
-            },
-        ].compactMap { $0 }
-        if !stats.isEmpty {
-            // One Text from many, so the line wraps as a unit, and the
-            // separators join without a trailing one.
-            Text.concatenating(
-                stats.dropFirst().reduce([stats[0]]) { $0 + [Text(verbatim: " · "), $1] }
-            )
-            .font(.caption)
-            .foregroundStyle(palette.tertiaryLabel)
-        }
-    }
-
-    /// Version, registration state and languages: the three things that tell
-    /// a person whether this server takes new accounts and speaks theirs.
-    private func serverDetails(_ instance: InstanceDescription) -> some View {
-        var parts: [String] = []
-        if !instance.version.isEmpty { parts.append(instance.version) }
-        if instance.registrationsEnabled {
-            parts.append(
-                instance.approvalRequired
-                    ? String(
-                        localized: "Registrations open, approval required",
-                        comment: "Instance detail")
-                    : String(localized: "Registrations open", comment: "Instance detail"))
-        } else {
-            parts.append(String(localized: "Registrations closed", comment: "Instance detail"))
-        }
-        if !instance.languages.isEmpty {
-            parts.append(instance.languages.joined(separator: ", ").uppercased())
-        }
-        return Text(parts.joined(separator: " · "))
-            .font(.caption)
-            .foregroundStyle(palette.tertiaryLabel)
     }
 
     private var authorisingSection: some View {

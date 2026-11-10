@@ -188,6 +188,26 @@ extension APIError {
         return false
     }
 
+    /// Whether the server knows the Nextcloud user but has no Social actor for
+    /// them. Nextcloud Social throws "Actor not found" from its actor lookup;
+    /// that is an account to set up, not a dead token or a deleted post.
+    public var isMissingSocialActor: Bool {
+        let message: String?
+        switch self {
+        case .unauthorised(let value), .forbidden(let value), .notFound(let value):
+            message = value
+        case .accountNotSetUp(let value, _):
+            message = value
+        case .server(_, let body):
+            message = body
+        case .refused(let refusal):
+            message = refusal.message
+        default:
+            message = nil
+        }
+        return message?.range(of: "actor not found", options: .caseInsensitive) != nil
+    }
+
     /// The server's refusal code, for a caller that branches on one.
     public var refusalCode: String? {
         if case .refused(let refusal) = self { return refusal.code }

@@ -72,7 +72,8 @@ final class VideoPlaybackTests: XCTestCase {
             motion = pictureMotion()
             if motion > 0.01 { break }
         }
-        XCTAssertFalse(failureCard.exists, "\(message): the failure card is up — \(failureCard.label)")
+        XCTAssertFalse(
+            failureCard.exists, "\(message): the failure card is up — \(failureCard.label)")
         XCTAssertGreaterThan(motion, 0.01, "\(message): the picture never moved")
     }
 
