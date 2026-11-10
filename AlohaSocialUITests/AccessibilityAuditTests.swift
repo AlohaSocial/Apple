@@ -69,10 +69,13 @@ import XCTest
             ).firstMatch
             XCTAssertTrue(body.waitForExistence(timeout: 8), "No plain status body found")
             body.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+            // Generous, because a hosted runner draws the thread and its
+            // replies far more slowly than a Mac does; the answer itself is
+            // in-process and arrives at once.
             XCTAssertTrue(
-                app.navigationBars["Post"].waitForExistence(timeout: 8), "Thread did not open")
+                app.navigationBars["Post"].waitForExistence(timeout: 15), "Thread did not open")
             XCTAssertTrue(
-                app.labelled("Reply 1 to that").waitForExistence(timeout: 8),
+                app.labelled("Reply 1 to that").waitForExistence(timeout: 20),
                 "The thread has no replies to audit")
             try audit("Thread")
         }

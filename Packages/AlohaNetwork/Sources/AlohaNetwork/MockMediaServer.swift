@@ -5,6 +5,7 @@
     import Foundation
     import ImageIO
     import Network
+    import OSLog
     #if canImport(CoreGraphics)
         import CoreGraphics
     #endif
@@ -55,6 +56,10 @@
         private let queue = DispatchQueue(label: "social.aloha.mock-media")
         private let files: [String: Data]
         private let poster: Data
+        /// What the player asked for, so a rung that ends on the failure card
+        /// can be read back from Console rather than guessed at.
+        private let logger = Logger(
+            subsystem: "social.aloha.mock-media", category: "http")
 
         /// Starts a listener on a free loopback port and waits until it is
         /// ready, so callers have a URL to hand to the fixtures.
@@ -93,9 +98,10 @@
 
         // MARK: - Fixtures
 
-        /// The bundle keeps the directory as the package declared it, which is
-        /// one level deeper than `url(forResource:)` likes; walking once is
-        /// simpler than naming every segment twice.
+        /// The resources are copied into the built bundle flat: `hls/master.m3u8`
+        /// arrives as `master.m3u8` and `hls/seg0.ts` as `seg0.ts`. Each file is
+        /// therefore keyed by both its repository path and its name, so a
+        /// lookup can name whichever the mock serves.
         private static func loadFixtures() -> [String: Data] {
             let manager = FileManager.default
             guard let root = Bundle.module.resourceURL,
@@ -116,7 +122,14 @@
             for case let file as URL in files where file.hasDirectoryPath == false {
                 let key = file.path.replacingOccurrences(
                     of: directory.path + "/", with: "")
-                if let data = try? Data(contentsOf: file) { loaded[key] = data }
+                if let data = try? Data(contentsOf: file) {
+                    loaded[key] = data
+                    // `.process` flattens subdirectories in the built bundle
+                    // for some toolchains, so `hls/master.m3u8` can arrive as
+                    // `master.m3u8`. Keep both keys: the lookup names the
+                    // fixture the way it sits in the repository.
+                    loaded[file.lastPathComponent] = data
+                }
             }
             return loaded
         }
@@ -188,17 +201,24 @@
                 ).trimmingCharacters(in: .whitespaces)
             }
 
-            // Pictures stay open, the way a Mastodon or Nextcloud instance
-            // serves a preview from its own CDN: the app's image loader has no
-            // token to attach. The video itself is the account's, and that is
-            // the request this server exists to refuse.
-            let isPicture = path.hasSuffix(".jpg") || path.hasSuffix(".png")
+            // Pictures and the ladder stay open, the way a Mastodon or
+            // Nextcloud instance serves derivatives from its own CDN: the
+            // app's image loader has no token to attach, and AVFoundation's
+            // HLS loader fetches the playlist and every segment itself,
+            // dropping the asset's headers — a token-protected ladder could
+            // never play. The original file is the account's, and that is the
+            // request this server exists to refuse.
+            let isDerivative =
+                path.hasSuffix(".jpg") || path.hasSuffix(".png") || path.contains("/hls/")
             let authorized = headers["authorization"] == "Bearer \(token)"
-            guard authorized || isPicture else {
+            guard authorized || isDerivative else {
                 return send(
                     connection, status: 401, reason: "Unauthorized",
                     headers: ["WWW-Authenticate": "Bearer"], body: Data(), method: method)
             }
+
+            logger.notice("\(method, privacy: .public) \(path, privacy: .public)")
+            record("\(method) \(path)")
 
             if path.contains(".mp4") {
                 if behaviour.contains(.stallFile) {
@@ -227,15 +247,19 @@
                 let name = path.split(separator: "/").last.map(String.init) ?? ""
                 if name.hasSuffix(".m3u8") {
                     // The playlists name their segments relatively, so a
-                    // segment request arrives under the same directory.
-                    let fixture = path.contains("master") ? "hls/master.m3u8" : "hls/index.m3u8"
-                    guard let data = files[fixture] else { return notFound(connection, method) }
+                    // segment request arrives under the same directory. The
+                    // built bundle keeps the files flat (see loadFixtures), so
+                    // try the bare name as well as the repository's path.
+                    let fixture = path.contains("master") ? "master.m3u8" : "index.m3u8"
+                    guard let data = files[fixture] ?? files["hls/\(fixture)"] else {
+                        return notFound(connection, method)
+                    }
                     return send(
                         connection, status: 200, reason: "OK",
                         headers: ["Content-Type": "application/vnd.apple.mpegurl"],
                         body: data, method: method)
                 }
-                if name.hasSuffix(".ts"), let data = files["hls/\(name)"] {
+                if name.hasSuffix(".ts"), let data = files[name] ?? files["hls/\(name)"] {
                     return send(
                         connection, status: 200, reason: "OK",
                         headers: ["Content-Type": "video/mp2t"], body: data, method: method)
@@ -252,6 +276,8 @@
         }
 
         private func notFound(_ connection: NWConnection, _ method: String) {
+            logger.error("404 \(method, privacy: .public)")
+            record("404 \(method)")
             send(
                 connection, status: 404, reason: "Not Found", headers: [:], body: Data(),
                 method: method)
@@ -311,6 +337,26 @@
             connection.send(
                 content: payload,
                 completion: .contentProcessed { _ in connection.cancel() })
+        }
+
+        /// Request lines also go to a file in the app's container, where a
+        /// failed tour can be read back with `simctl get_app_container`; the
+        /// simulator's unified log is not always readable from the test host.
+        private func record(_ line: String) {
+            guard
+                let directory = FileManager.default.urls(
+                    for: .documentDirectory, in: .userDomainMask
+                ).first
+            else { return }
+            let url = directory.appending(path: "mock-media.log")
+            let text = Data((line + "\n").utf8)
+            if let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(text)
+                try? handle.close()
+            } else {
+                try? text.write(to: url)
+            }
         }
 
         private func close(_ connection: NWConnection) {

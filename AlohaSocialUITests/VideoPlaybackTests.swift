@@ -49,6 +49,14 @@ final class VideoPlaybackTests: XCTestCase {
         app.labelled("could not be played")
     }
 
+    /// Every label on the page, for a failure that has to say what the player
+    /// itself said — the card's second line names the host and the reason.
+    private var visibleText: String {
+        app.staticTexts.allElementsBoundByIndex.map(\.label)
+            .filter { !$0.isEmpty }
+            .joined(separator: " / ")
+    }
+
     /// Three luminance readings half a second apart. A playing video moves its
     /// picture between them; a paused one, a poster and a black rectangle do
     /// not.
@@ -73,7 +81,7 @@ final class VideoPlaybackTests: XCTestCase {
             if motion > 0.01 { break }
         }
         XCTAssertFalse(
-            failureCard.exists, "\(message): the failure card is up — \(failureCard.label)")
+            failureCard.exists, "\(message): the failure card is up — \(visibleText)")
         XCTAssertGreaterThan(motion, 0.01, "\(message): the picture never moved")
     }
 
@@ -88,22 +96,26 @@ final class VideoPlaybackTests: XCTestCase {
         shoot("60-video-file-plays")
 
         // The system player's own controls, which is what "bedienbar" means:
-        // tapping the picture reveals them and pause has to stop the clock.
+        // tapping the picture reveals them, and pause and play have to change
+        // the player's state. The controls are read rather than the pixels
+        // here: the mock's video is ten seconds long, and by the time a runner
+        // has opened the page and taken the readings above, a resumed picture
+        // can already be its last frame — which is a fact about the fixture,
+        // not about the player.
         app.otherElements.firstMatch.tap()
         let pause = app.buttons["Pause"]
-        if pause.waitForExistence(timeout: 5) {
-            pause.tap()
-            let paused = pictureMotion()
-            XCTAssertLessThan(paused, 0.01, "Paused, but the picture kept moving")
-            shoot("61-video-file-paused")
-            let play = app.buttons["Play"]
-            if play.waitForExistence(timeout: 5) {
-                play.tap()
-                assertPlaying("resumed")
-            }
-        } else {
-            XCTFail("No pause control appeared on the player")
-        }
+        XCTAssertTrue(
+            pause.waitForExistence(timeout: 5), "No pause control appeared on the player")
+        pause.tap()
+        let play = app.buttons["Play"]
+        XCTAssertTrue(
+            play.waitForExistence(timeout: 5), "Pausing did not turn the control into Play")
+        shoot("61-video-file-paused")
+        play.tap()
+        XCTAssertTrue(
+            pause.waitForExistence(timeout: 5), "Resuming did not turn the control into Pause")
+        XCTAssertFalse(failureCard.exists, "Resuming put the failure card up")
+        shoot("62-video-file-resumed")
     }
 
     /// The ladder, when the file refuses: the fallback chain has to be real
@@ -112,7 +124,7 @@ final class VideoPlaybackTests: XCTestCase {
         launch(["-AlohaMockMediaRefuseFile"])
         openVideoPost()
         assertPlaying("ladder after a 401 from the file")
-        shoot("62-video-ladder-plays")
+        shoot("63-video-ladder-plays")
     }
 
     /// A rung that accepts the connection and says nothing is the other half
@@ -121,7 +133,7 @@ final class VideoPlaybackTests: XCTestCase {
         launch(["-AlohaMockMediaStallFile"])
         openVideoPost()
         assertPlaying("ladder after the file stalled")
-        shoot("63-video-ladder-after-stall")
+        shoot("64-video-ladder-after-stall")
     }
 
     /// Nothing plays, so the card appears — and only then.
@@ -131,6 +143,6 @@ final class VideoPlaybackTests: XCTestCase {
         XCTAssertTrue(
             failureCard.waitForExistence(timeout: 30),
             "Neither rung plays, yet no failure card appeared")
-        shoot("64-video-failure-card")
+        shoot("65-video-failure-card")
     }
 }
