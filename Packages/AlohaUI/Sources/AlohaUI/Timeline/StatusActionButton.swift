@@ -103,7 +103,7 @@ struct StatusActionButton: View {
             }
         }
         .frame(
-            minWidth: prominence == .row ? 52 : 44,
+            minWidth: 44,
             maxWidth: prominence == .row ? nil : .infinity,
             minHeight: minimumHeight,
             alignment: alignment
@@ -202,7 +202,7 @@ struct StatusMetric: View {
                 .contentTransition(.numericText())
         }
         .foregroundStyle(palette.tertiaryLabel)
-        .frame(minWidth: 52, minHeight: 32, alignment: .leading)
+        .frame(minWidth: 44, minHeight: 32, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .alohaLargeContentViewer(symbol: symbol, label: label)

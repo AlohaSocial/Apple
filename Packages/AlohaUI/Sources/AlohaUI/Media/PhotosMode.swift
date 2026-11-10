@@ -150,16 +150,6 @@ public struct PhotosModeView: View {
                 }
             }
 
-            Picker(selection: $layout) {
-                ForEach(Layout.allCases, id: \.rawValue) { option in
-                    Label(title(for: option), systemImage: symbolName(for: option))
-                        .tag(option)
-                }
-            } label: {
-                Text("Layout", comment: "Photos layout picker")
-            }
-            .pickerStyle(.inline)
-
             Toggle(isOn: showsNumbers) {
                 Label {
                     Text("Show numbers", comment: "Photos menu setting")

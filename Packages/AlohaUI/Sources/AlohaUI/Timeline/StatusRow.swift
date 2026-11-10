@@ -10,7 +10,6 @@ public struct StatusRow: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// The list's filters, for the post this one quotes.
     @Environment(\.filterVerdicts) private var filterVerdicts
     /// The scale `AvatarView` draws at, so the context line stays aligned
@@ -423,36 +422,37 @@ public struct StatusRow: View {
         }
     }
 
-    /// One line of actions, or two at the accessibility text sizes: the four
-    /// actions and the menu first, the counts the row only reports below. At
-    /// those sizes one line pushed the menu off the trailing edge.
-    @ViewBuilder
+    /// The four actions and the menu on one line, evenly spread; the counts
+    /// the row only reports — quotes, dislikes, views — on a quiet line below
+    /// when there are any. Squeezing both onto one line pushed Save or the
+    /// menu off a narrow phone, and split the four actions unevenly.
     private var actionRow: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-                HStack(spacing: 0) {
-                    actions
-                    moreMenu
-                }
-                HStack(spacing: 0) { countMetrics }
-            }
-            .padding(.top, AlohaMetrics.space1)
-            .animation(
-                .spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited
-            )
-            .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
-        } else {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
             HStack(spacing: 0) {
                 actions
-                countMetrics
                 moreMenu
             }
-            .padding(.top, AlohaMetrics.space1)
-            .animation(
-                .spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited
-            )
-            .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
+            if hasCountMetrics {
+                HStack(spacing: 0) { countMetrics }
+            }
         }
+        .padding(.top, AlohaMetrics.space1)
+        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
+        .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
+    }
+
+    /// Whether the read-only line has anything on it, so an empty row is not
+    /// given the space of one.
+    private var hasCountMetrics: Bool {
+        guard showsCounts else { return false }
+        if displayed.mediaAttachments.contains(where: { $0.type.isPlayable }),
+            displayed.dislikesCount > 0
+        {
+            return true
+        }
+        if let quotes = displayed.quotesCount, quotes > 0 { return true }
+        if isOwn, let views = displayed.viewCount, views > 0 { return true }
+        return false
     }
 
     /// Like, repost, comment, save — the app's one order, evenly spread.
