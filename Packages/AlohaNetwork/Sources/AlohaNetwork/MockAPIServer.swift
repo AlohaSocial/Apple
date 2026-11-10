@@ -39,17 +39,25 @@
 
         public let configuration: Configuration
         public let host: String
+        /// `https` except in the one tour that needs a real socket for video:
+        /// AVFoundation cannot use the in-process transport, so that tour signs
+        /// in to a loopback origin whose scheme is plain HTTP.
+        public let scheme: String
         private(set) public var requestLog: [(method: String, path: String)] = []
         var statusFixtures: [[String: Any]]
 
         public init(
             configuration: Configuration,
             host: String = "cloud.example.test",
+            scheme: String = "https",
             statusCount: Int = 20
         ) {
             self.configuration = configuration
             self.host = host
-            self.statusFixtures = (0..<statusCount).map { Fixtures.status(index: $0) }
+            self.scheme = scheme
+            // With the host, not without: a fixture that carries the default
+            // domain points every media URL at a name that does not resolve.
+            self.statusFixtures = (0..<statusCount).map { Fixtures.status(index: $0, host: host) }
         }
 
         public var loggedPaths: [String] { requestLog.map(\.path) }
@@ -78,8 +86,11 @@
             guard let url = request.url else { throw APIError.invalidResponse }
 
             // A request aimed at some other host does not reach this server at all.
-            // Answering it anyway would let a discovery bug pass unnoticed.
-            guard url.host()?.lowercased() == host.lowercased() else {
+            // Answering it anyway would let a discovery bug pass unnoticed. The
+            // configured host may carry a port (`localhost:8123`, for the tour
+            // whose media needs a real socket); `URL.host()` never does.
+            let hostname = host.split(separator: ":").first.map(String.init) ?? host
+            guard url.host()?.lowercased() == hostname.lowercased() else {
                 throw APIError.transport(URLError(.cannotFindHost))
             }
 
@@ -779,7 +790,23 @@
         func respond(
             url: URL, status: Int, json: Any, headers: [String: String] = [:]
         ) -> (Data, HTTPURLResponse) {
-            let data = (try? JSONSerialization.data(withJSONObject: json)) ?? Data()
+            // Unescaped slashes, because the scheme rewrite below works on the
+            // encoded text and `https:\/\/host` is not `https://host`.
+            var data =
+                (try? JSONSerialization.data(
+                    withJSONObject: json, options: [.withoutEscapingSlashes])) ?? Data()
+            // Every fixture writes its URLs as `https://<host>`. A tour whose
+            // media lives on a loopback socket needs `http`, and rewriting the
+            // encoded body once is cheaper than threading a scheme through
+            // forty fixture builders.
+            if scheme != "https",
+                let text = String(data: data, encoding: .utf8),
+                let rewritten = text.replacingOccurrences(
+                    of: "https://\(host)", with: "\(scheme)://\(host)"
+                ).data(using: .utf8)
+            {
+                data = rewritten
+            }
             return respond(url: url, status: status, data: data, headers: headers)
         }
 
