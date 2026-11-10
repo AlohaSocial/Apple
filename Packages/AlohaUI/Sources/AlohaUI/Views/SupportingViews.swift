@@ -47,6 +47,21 @@ public struct WelcomeView: View {
                         ? .opacity : .opacity.combined(with: .offset(y: 14))
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 40)
+                        .onEnded { value in
+                            guard
+                                abs(value.translation.width)
+                                    > abs(value.translation.height),
+                                abs(value.translation.width) > 60
+                            else { return }
+                            if value.translation.width < 0 {
+                                go(to: page + 1)
+                            } else {
+                                go(to: page - 1)
+                            }
+                        }
+                )
 
                 footer
             }

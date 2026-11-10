@@ -11,8 +11,6 @@
     /// picture straight into the editor. Choosing a file from the library
     /// stays one tap away for when the camera is pointed at the wrong thing.
     struct StoryCameraCanvas: View {
-        @Environment(\.alohaPalette) private var palette
-
         let onCapture: (Data) -> Void
         let onPickLibrary: () -> Void
 
