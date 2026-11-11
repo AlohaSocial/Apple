@@ -74,9 +74,18 @@ import XCTest
             // in-process and arrives at once.
             XCTAssertTrue(
                 app.navigationBars["Post"].waitForExistence(timeout: 15), "Thread did not open")
-            XCTAssertTrue(
-                app.labelled("Reply 1 to that").waitForExistence(timeout: 20),
-                "The thread has no replies to audit")
+            let reply = app.labelled("Reply 1 to that")
+            var found = reply.waitForExistence(timeout: 45)
+            // A List realizes only the rows near the viewport, and the focused
+            // post plus its footer fill the phone; on a slow runner the replies
+            // below them are not in the tree until they are scrolled into it.
+            var scrolls = 0
+            while !found && scrolls < 4 {
+                app.swipeUp()
+                scrolls += 1
+                found = reply.waitForExistence(timeout: 5)
+            }
+            XCTAssertTrue(found, "The thread has no replies to audit")
             try audit("Thread")
         }
 
