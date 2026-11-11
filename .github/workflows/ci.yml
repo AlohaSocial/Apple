@@ -279,8 +279,10 @@ jobs:
     runs-on: xcode-27
     # The whole suite is over half an hour on a fast Mac, too close to an
     # hour on a hosted runner; four shards run it in parallel. A test class
-    # in no shard would never run, which the first step refuses.
-    timeout-minutes: 60
+    # in no shard would never run, which the first step refuses. The limit
+    # leaves the accessibility shard room to finish: thirteen tests at two to
+    # three minutes each, and a retry doubles one of them.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -335,7 +337,7 @@ jobs:
       - name: Run the ${{ matrix.shard }} tours
         # Short of the job's limit, so the log step below still has time to
         # say where a stuck run was.
-        timeout-minutes: 45
+        timeout-minutes: 55
         env:
           CODE_SIGNING_ALLOWED: "NO"
         run: |
@@ -391,9 +393,11 @@ jobs:
           #    seconds on these runners. One retry absorbs a runner that dies on
           #    launch, and the watchdog stops xcodebuild before the job's
           #    own timeout would, so whatever happened is still printed.
-          #    The watchdog is short of the step's 45 minutes, so xcodebuild
+          #    The watchdog is short of the step's 55 minutes, so xcodebuild
           #    stops and writes its result bundle before the step is killed.
-          ( sleep 2400; pkill -INT -x xcodebuild ) &
+          #    Fifty minutes, because the accessibility shard alone needs
+          #    close to forty on a runner this size.
+          ( sleep 3000; pkill -INT -x xcodebuild ) &
           watchdog=$!
           status=0
           only=()
