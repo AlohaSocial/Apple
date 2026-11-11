@@ -19,6 +19,27 @@ struct StatusActionButton: View {
     let isOn: Bool
     let style: Style
     let label: Text
+
+    /// Where the button sits. A timeline row packs five controls and their
+    /// numbers into the width next to an avatar, so they are small and read
+    /// left-aligned. An opened post has the whole width for the same five, so
+    /// they are evenly spread, centred and drawn at the size of a tap target.
+    var prominence: Prominence = .row
+
+    /// When set, the number becomes its own control: the glyph performs the
+    /// action and the number opens what stands behind it — who favourited,
+    /// who boosted — the way X and Threads do it. A control that is not
+    /// offered stays part of the glyph's button, as it is in the timeline.
+    var onCountTap: (() -> Void)? = nil
+
+    /// What VoiceOver says about the number when it is its own control.
+    var countHint: Text? = nil
+
+    /// How the glyph and its number sit in their cell. A strip spreads equal
+    /// cells and centres what each holds; a row on its own reads from the
+    /// leading edge.
+    var contentAlignment: Alignment? = nil
+
     let action: () -> Void
 
     enum Style {
@@ -30,55 +51,72 @@ struct StatusActionButton: View {
         case plain
     }
 
+    enum Prominence {
+        case row
+        case detail
+    }
+
     /// Counted rather than toggled, so only turning an action *on* moves
     /// the glyph — undoing a favourite is not a celebration.
     @State private var burst = 0
     @State private var spin = 0
 
+    private var minimumHeight: Double { prominence == .row ? 32 : 44 }
+    private var iconSide: Double { prominence == .row ? 18 : 24 }
+
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: AlohaMetrics.space1) {
-                ZStack {
-                    Image(systemName: symbol)
-                        .font(.footnote)
-                        // Differentiate Without Colour: the state changes weight
-                        // as well as tint (docs/12 §3).
-                        .fontWeight(isOn ? .bold : .regular)
-                        .symbolVariant(isOn ? .fill : .none)
-                        // SF Symbols' own motion rather than a hand-made scale
-                        // and spin: the outline-to-fill change is the symbol's
-                        // replace transition, and turning an action on bounces
-                        // or turns the glyph the way the system's own do.
-                        .contentTransition(.symbolEffect(.replace))
-                        .symbolEffect(.bounce.up, options: .nonRepeating, value: burst)
-                        .symbolEffect(.rotate.clockwise, options: .nonRepeating, value: spin)
-                        .symbolEffectsRemoved(reduceMotion)
-
-                    if style == .pop, !reduceMotion {
-                        SparkBurst(trigger: burst, tint: tint)
+        Group {
+            if let onCountTap, let count, count > 0 {
+                // Two controls side by side: the glyph acts, the number tells
+                // and opens. Not a button inside a button, which SwiftUI
+                // resolves as one control and swallows the inner one.
+                HStack(spacing: AlohaMetrics.space1) {
+                    Button(action: action) {
+                        glyph
+                            .frame(minWidth: iconSide + 6, minHeight: minimumHeight)
+                            .contentShape(Rectangle())
                     }
-                }
-                .frame(width: 18, height: 18)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(label)
 
-                if let count, count > 0 {
-                    Text(count, format: .number.notation(.compactName))
-                        .font(.caption.monospacedDigit().weight(.medium))
-                        // Rounded digits read as friendlier and stop the row
-                        // jittering as counts change width. A thin numeral at
-                        // caption size is the app's smallest text, so it takes
-                        // the label colour rather than the secondary one.
-                        .fontDesign(.rounded)
-                        .foregroundStyle(isOn ? tint : palette.label.opacity(0.75))
-                        .contentTransition(.numericText())
+                    Button(action: onCountTap) {
+                        countText(count)
+                            // An opened post has the width for a real tap
+                            // target around a one-digit count; a timeline row
+                            // does not, and keeps its number beside the glyph.
+                            .frame(
+                                minWidth: prominence == .detail ? 44 : nil,
+                                minHeight: minimumHeight
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("\(label) \(Text(count, format: .number))"))
+                    .accessibilityHint(countHint ?? Text(verbatim: ""))
                 }
+            } else {
+                Button(action: action) {
+                    HStack(spacing: AlohaMetrics.space1) {
+                        glyph
+                        if let count, count > 0 { countText(count) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: alignment)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(label)
+                .modifier(CountAccessibilityValue(count: count))
             }
-            .foregroundStyle(isOn ? tint : palette.secondaryLabel)
-            .frame(minWidth: 52, minHeight: 32, alignment: .leading)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .alohaHoverTarget(Capsule())
-        .accessibilityLabel(label)
+        .frame(
+            minWidth: 44,
+            maxWidth: prominence == .row ? nil : .infinity,
+            minHeight: minimumHeight,
+            alignment: alignment
+        )
+        .foregroundStyle(isOn ? tint : palette.secondaryLabel)
+        .contentShape(Rectangle())
+        .alohaHoverTarget(prominence == .row ? AnyShape(Capsule()) : AnyShape(Circle()))
         .alohaLargeContentViewer(symbol: symbol, label: label)
         .onChange(of: isOn) { _, new in
             guard new else { return }
@@ -87,6 +125,61 @@ struct StatusActionButton: View {
             case .spin: spin += 1
             case .plain: break
             }
+        }
+    }
+
+    private var alignment: Alignment {
+        contentAlignment ?? (prominence == .row ? .leading : .center)
+    }
+
+    /// The glyph and its celebration, without the number.
+    private var glyph: some View {
+        ZStack {
+            Image(systemName: symbol)
+                .font(prominence == .row ? .footnote : .body)
+                // Differentiate Without Colour: the state changes weight
+                // as well as tint (docs/12 §3).
+                .fontWeight(isOn ? .bold : .regular)
+                .symbolVariant(isOn ? .fill : .none)
+                // SF Symbols' own motion rather than a hand-made scale
+                // and spin: the outline-to-fill change is the symbol's
+                // replace transition, and turning an action on bounces
+                // or turns the glyph the way the system's own do.
+                .contentTransition(.symbolEffect(.replace))
+                .symbolEffect(.bounce.up, options: .nonRepeating, value: burst)
+                .symbolEffect(.rotate.clockwise, options: .nonRepeating, value: spin)
+                .symbolEffectsRemoved(reduceMotion)
+
+            if style == .pop, !reduceMotion {
+                SparkBurst(trigger: burst, tint: tint)
+            }
+        }
+        .frame(width: iconSide, height: iconSide)
+    }
+
+    private func countText(_ count: Int) -> some View {
+        Text(count, format: .number.notation(.compactName))
+            .font(.caption.monospacedDigit().weight(.medium))
+            // Rounded digits read as friendlier and stop the row
+            // jittering as counts change width. A thin numeral at
+            // caption size is the app's smallest text, so it takes
+            // the label colour rather than the secondary one.
+            .fontDesign(.rounded)
+            .foregroundStyle(isOn ? tint : palette.label.opacity(0.75))
+            .contentTransition(.numericText())
+    }
+}
+
+/// A number drawn inside a button is still worth hearing: it is what the
+/// action has amounted to so far.
+private struct CountAccessibilityValue: ViewModifier {
+    let count: Int?
+
+    func body(content: Content) -> some View {
+        if let count, count > 0 {
+            content.accessibilityValue(Text(count, format: .number))
+        } else {
+            content
         }
     }
 }
@@ -115,7 +208,7 @@ struct StatusMetric: View {
                 .contentTransition(.numericText())
         }
         .foregroundStyle(palette.tertiaryLabel)
-        .frame(minWidth: 52, minHeight: 32, alignment: .leading)
+        .frame(minWidth: 44, minHeight: 32, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .alohaLargeContentViewer(symbol: symbol, label: label)

@@ -793,13 +793,13 @@ private struct ExportShareSheet: View {
                     Image(systemName: AlohaSymbol.share)
                 }
             }
-            .alohaGlassProminentButtonStyle()
+            .buttonStyle(.borderedProminent)
             Button {
                 dismiss()
             } label: {
                 Text("Done", comment: "Sheet action")
             }
-            .alohaGlassButtonStyle()
+            .buttonStyle(.bordered)
         }
         .padding(AlohaMetrics.space6)
         .presentationDetents([.medium])

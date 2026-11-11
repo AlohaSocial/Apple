@@ -176,4 +176,23 @@ struct DiscoveryTimingTests {
         #expect(!ServerProbe.mayReprobe(lastAttempt: now.addingTimeInterval(-59 * 60), now: now))
         #expect(ServerProbe.mayReprobe(lastAttempt: now.addingTimeInterval(-60 * 60), now: now))
     }
+
+    @Test("A re-probe follows a move on the same host, never to another one")
+    func reprobeStaysOnHost() {
+        let stored = URL(string: "https://example.com/index.php/apps/social/")!
+        func adopts(_ found: String) -> Bool {
+            ServerProbe.mayAdopt(apiBase: URL(string: found)!, replacing: stored)
+        }
+        #expect(adopts("https://example.com/apps/social/"))
+        #expect(adopts("https://EXAMPLE.com:8443/apps/social/"))
+        #expect(!adopts("https://social.example.com/apps/social/"))
+        #expect(!adopts("https://elsewhere.test/index.php/apps/social/"))
+        #expect(!adopts("http://example.com/index.php/apps/social/"))
+
+        let local = URL(string: "http://192.168.1.20/index.php/apps/social/")!
+        #expect(
+            ServerProbe.mayAdopt(
+                apiBase: URL(string: "https://192.168.1.20/index.php/apps/social/")!,
+                replacing: local))
+    }
 }

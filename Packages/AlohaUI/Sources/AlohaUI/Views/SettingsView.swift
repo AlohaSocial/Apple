@@ -319,10 +319,10 @@ public struct SettingsView: View {
         .navigationTitle(Text("Settings", comment: "Screen title"))
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .sheet(isPresented: $isShowingIntroduction) {
-            // The same introduction a first launch sees, in a sheet: the last
-            // page's address field still signs in, and anything already
-            // signed in stays signed in when it is dismissed.
-            WelcomeView()
+            // The same introduction a first launch sees, as a tour: adding an
+            // account is its own row below, so this does not become a second
+            // sign-in path.
+            WelcomeView(showsConnectionStep: false)
                 .alohaTheme(environment.theme, metrics: environment.metrics)
         }
         .sheet(isPresented: whenSignedIn($isShowingNextcloudConnect)) {

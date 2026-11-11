@@ -39,17 +39,25 @@
 
         public let configuration: Configuration
         public let host: String
+        /// `https` except in the one tour that needs a real socket for video:
+        /// AVFoundation cannot use the in-process transport, so that tour signs
+        /// in to a loopback origin whose scheme is plain HTTP.
+        public let scheme: String
         private(set) public var requestLog: [(method: String, path: String)] = []
         var statusFixtures: [[String: Any]]
 
         public init(
             configuration: Configuration,
             host: String = "cloud.example.test",
+            scheme: String = "https",
             statusCount: Int = 20
         ) {
             self.configuration = configuration
             self.host = host
-            self.statusFixtures = (0..<statusCount).map { Fixtures.status(index: $0) }
+            self.scheme = scheme
+            // With the host, not without: a fixture that carries the default
+            // domain points every media URL at a name that does not resolve.
+            self.statusFixtures = (0..<statusCount).map { Fixtures.status(index: $0, host: host) }
         }
 
         public var loggedPaths: [String] { requestLog.map(\.path) }
@@ -78,8 +86,11 @@
             guard let url = request.url else { throw APIError.invalidResponse }
 
             // A request aimed at some other host does not reach this server at all.
-            // Answering it anyway would let a discovery bug pass unnoticed.
-            guard url.host()?.lowercased() == host.lowercased() else {
+            // Answering it anyway would let a discovery bug pass unnoticed. The
+            // configured host may carry a port (`localhost:8123`, for the tour
+            // whose media needs a real socket); `URL.host()` never does.
+            let hostname = host.split(separator: ":").first.map(String.init) ?? host
+            guard url.host()?.lowercased() == hostname.lowercased() else {
                 throw APIError.transport(URLError(.cannotFindHost))
             }
 
@@ -211,6 +222,56 @@
         }
 
         private var nextStatusID = 2000
+        /// Posts sent with a time, which `GET api/v1/scheduled_statuses` lists.
+        private var scheduledFixtures: [[String: Any]] = []
+
+        /// A post sent with a `scheduled_at`, answered as Mastodon answers it:
+        /// a time still to come is not a post yet but a scheduled one — an id,
+        /// the time and the parameters, with no account and no content
+        /// (`REST::ScheduledStatusSerializer`) — and one less than five
+        /// minutes out is refused (`ScheduledStatusValidator`). A time already
+        /// past is posted at once, so that answer is the caller's: nil.
+        ///
+        /// Answering with a status here let the composer read a scheduled post
+        /// as a status, which no real server ever sends.
+        private func scheduledPost(
+            _ fields: [String: String], url: URL
+        ) -> (Data, HTTPURLResponse)? {
+            guard let raw = fields["scheduled_at"], !raw.isEmpty,
+                let date = DateParsing.parse(raw), date > Date()
+            else { return nil }
+            guard date >= Date().addingTimeInterval(5 * 60) else {
+                return respond(
+                    url: url, status: 422,
+                    body:
+                        #"{"error":"Validation failed: Scheduled at The scheduled date must be in the future"}"#
+                )
+            }
+            nextStatusID += 1
+            let reply = fields["in_reply_to_id"].flatMap { $0.isEmpty ? nil : $0 }
+            let params: [String: Any] = [
+                "text": fields["status"] ?? "",
+                "visibility": fields["visibility"] ?? "public",
+                "spoiler_text": fields["spoiler_text"].map { $0 as Any } ?? NSNull(),
+                "sensitive": fields["sensitive"] == "true",
+                "language": fields["language"].map { $0 as Any } ?? NSNull(),
+                "in_reply_to_id": reply.map { $0 as Any } ?? NSNull(),
+                "media_ids": NSNull(),
+                "poll": NSNull(),
+                "scheduled_at": NSNull(),
+                "application_id": 1,
+                "idempotency": NSNull(),
+                "with_rate_limit": false,
+            ]
+            let scheduled: [String: Any] = [
+                "id": String(nextStatusID),
+                "scheduled_at": DateParsing.format(date),
+                "params": params,
+                "media_attachments": [] as [Any],
+            ]
+            scheduledFixtures.append(scheduled)
+            return respond(url: url, status: 200, json: scheduled)
+        }
 
         /// Strips the prefix this configuration serves under. A request to the root
         /// on a no-rewrite server finds nothing, which is the whole point.
@@ -241,6 +302,7 @@
 
             case "api/v1/statuses" where method == "POST":
                 let fields = formFields(body)
+                if let scheduled = scheduledPost(fields, url: url) { return scheduled }
                 var status = Fixtures.status(index: 0, host: host)
                 nextStatusID += 1
                 status["id"] = String(nextStatusID)
@@ -364,7 +426,10 @@
             case "api/v1/bookmarks", "api/v1/favourites", "api/v1/favourites/":
                 return respond(url: url, status: 200, json: Array(statusFixtures.prefix(4)))
 
-            case "api/v1/custom_emojis", "api/v1/announcements", "api/v1/scheduled_statuses",
+            case "api/v1/scheduled_statuses":
+                return respond(url: url, status: 200, json: scheduledFixtures)
+
+            case "api/v1/custom_emojis", "api/v1/announcements",
                 "api/v1/blocks", "api/v1/mutes", "api/v1/domain_blocks",
                 "api/v1/notifications/requests":
                 return respond(url: url, status: 200, body: "[]")
@@ -725,7 +790,23 @@
         func respond(
             url: URL, status: Int, json: Any, headers: [String: String] = [:]
         ) -> (Data, HTTPURLResponse) {
-            let data = (try? JSONSerialization.data(withJSONObject: json)) ?? Data()
+            // Unescaped slashes, because the scheme rewrite below works on the
+            // encoded text and `https:\/\/host` is not `https://host`.
+            var data =
+                (try? JSONSerialization.data(
+                    withJSONObject: json, options: [.withoutEscapingSlashes])) ?? Data()
+            // Every fixture writes its URLs as `https://<host>`. A tour whose
+            // media lives on a loopback socket needs `http`, and rewriting the
+            // encoded body once is cheaper than threading a scheme through
+            // forty fixture builders.
+            if scheme != "https",
+                let text = String(data: data, encoding: .utf8),
+                let rewritten = text.replacingOccurrences(
+                    of: "https://\(host)", with: "\(scheme)://\(host)"
+                ).data(using: .utf8)
+            {
+                data = rewritten
+            }
             return respond(url: url, status: status, data: data, headers: headers)
         }
 

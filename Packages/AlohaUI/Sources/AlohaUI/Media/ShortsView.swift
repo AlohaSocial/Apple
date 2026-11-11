@@ -15,9 +15,9 @@ import TipKit
 /// handle and caption at the foot, and a hairline of playback progress along
 /// the very bottom.
 ///
-/// Autoplay is always on here — a vertical short-video feed that does not play
-/// is not the feature. What adapts under Low Power or Low Data is the preload
-/// depth, never the decision (docs/06 §4).
+/// Shorts play on arrival unless Autoplay video is off, the one switch that
+/// stops autoplay everywhere; then each waits for a tap. What adapts under Low
+/// Power or Low Data is the preload depth, never the decision (docs/06 §4).
 public struct ShortsView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -63,9 +63,17 @@ public struct ShortsView: View {
     @State private var model: TimelineModel
     @State private var currentID: String?
     @AppStorage("aloha.shorts.muted") private var isMuted = true
-    @State private var isPaused = false
+    /// Whether the current short is held still. Each short starts playing
+    /// only when Autoplay video is on (docs/06 §4); otherwise it waits for a
+    /// tap, and every short after it does the same.
+    @State private var isPaused: Bool
+    /// What a press-and-hold found, so letting go puts it back rather than
+    /// setting a short the person had paused off again.
+    @State private var pausedBeforeHold: Bool?
     @State private var progress: Double = 0
     @State private var hearted: String?
+    /// Counts the double taps that undid a like, for the lighter haptic.
+    @State private var unlikeTick = 0
     @State private var expandedCaption: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
@@ -73,6 +81,7 @@ public struct ShortsView: View {
         self.onAction = onAction
         let initial = Feed.initial(offersForYou: session.capabilities.isNextcloudSocial)
         _feed = State(initialValue: initial)
+        _isPaused = State(initialValue: !session.settings.autoplayVideo)
         _model = State(
             initialValue: TimelineModel(
                 key: TimelineKey(mode: .shorts, source: initial.source), session: session))
@@ -162,6 +171,8 @@ public struct ShortsView: View {
         }
         .onChange(of: currentID) { oldValue, newValue in
             progress = 0
+            isPaused = !session.settings.autoplayVideo
+            pausedBeforeHold = nil
             // A short counts as watched for as long as it was the current
             // page — the time For you learns from for Shorts.
             if let signals = ReadingSignals.forSession(session) {
@@ -355,7 +366,6 @@ public struct ShortsView: View {
                     // a consent decision, and it stands.
                     isCovered: status.displayed.sensitive
                         && !session.settings.sensitiveMediaPolicy.allowsAutomaticReveal,
-                    autoplay: session.settings.autoplayVideo,
                     progress: isCurrent ? $progress : .constant(0),
                     onWatched: { position, duration in
                         await report(status: status, position: position, duration: duration)
@@ -411,22 +421,47 @@ public struct ShortsView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { heart(status) }
+        // A tap plays or pauses — the only way to start a short when Autoplay
+        // video is off.
+        .onTapGesture { togglePlayback() }
         // Holding pauses, as it does everywhere else of this shape; letting go
-        // resumes. Every gesture here has a button equivalent on the rail.
+        // puts back whatever was there before.
         .onLongPressGesture(
             minimumDuration: 0.25,
             pressing: { pressing in
-                withAnimation(.easeOut(duration: 0.15)) { isPaused = pressing }
+                withAnimation(.easeOut(duration: 0.15)) {
+                    if pressing {
+                        pausedBeforeHold = isPaused
+                        isPaused = true
+                    } else {
+                        isPaused = pausedBeforeHold ?? false
+                        pausedBeforeHold = nil
+                    }
+                }
             }, perform: {}
         )
-        .alohaSensoryFeedback(.success, trigger: hearted)
+        #if os(iOS) || os(visionOS)
+            // VoiceOver's own play/pause gesture, a two-finger double tap.
+            .accessibilityAction(.magicTap) { togglePlayback() }
+        #endif
+        .alohaSensoryFeedback(.success, trigger: hearted) { _, new in new != nil }
+        .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
+    }
+
+    private func togglePlayback() {
+        withAnimation(.easeOut(duration: 0.15)) { isPaused.toggle() }
     }
 
     private func heart(_ status: Status) {
         ShortsDoubleTapTip().invalidate(reason: .actionPerformed)
-        if !status.displayed.favourited { onAction(.favourite(status)) }
-        // The heart is the whole reward for the gesture; without it a
-        // double tap feels like it did nothing.
+        let wasFavourited = status.displayed.favourited
+        onAction(.favourite(status))
+        guard !wasFavourited else {
+            unlikeTick += 1
+            return
+        }
+        // The heart is the whole reward for liking; without it a double tap
+        // feels like it did nothing. Undoing a like shows itself in the rail.
         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { hearted = status.id }
         Task {
             try? await Task.sleep(for: .milliseconds(650))
@@ -471,6 +506,13 @@ public struct ShortsView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // The tap and the hold on the picture, for someone who cannot
+            // make them; every short has a handle, so this is always here.
+            .accessibilityAction(
+                named: isPaused
+                    ? Text("Play", comment: "Shorts action")
+                    : Text("Pause", comment: "Shorts action")
+            ) { togglePlayback() }
 
             if !text.isEmpty {
                 Button {
@@ -510,21 +552,22 @@ public struct ShortsView: View {
 
     private func rail(_ status: Status) -> some View {
         let displayed = status.displayed
-        return VStack(spacing: AlohaMetrics.space4) {
+        return VStack(spacing: AlohaMetrics.space3) {
             Button {
                 onAction(.openProfile(displayed.account))
             } label: {
-                AvatarView(account: displayed.account, size: 46)
+                AvatarView(account: displayed.account, size: 38)
                     .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
                     .overlay(alignment: .bottom) {
                         Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(palette.onAccent)
-                            .frame(width: 18, height: 18)
+                            .frame(width: 16, height: 16)
                             .background(palette.accent, in: Circle())
-                            .offset(y: 9)
+                            .offset(y: 8)
                     }
-                    .padding(.bottom, AlohaMetrics.space2)
+                    .padding(.bottom, AlohaMetrics.space1)
+                    .frame(minWidth: 44, minHeight: 44)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
@@ -540,16 +583,16 @@ public struct ShortsView: View {
             ) { onAction(.favourite(status)) }
 
             railButton(
-                symbol: AlohaSymbol.reply, tint: .white,
-                count: session.settings.showPopularityCounts ? displayed.repliesCount : nil,
-                label: Text("Reply", comment: "Shorts action")
-            ) { onAction(.open(status)) }
-
-            railButton(
                 symbol: AlohaSymbol.boost, tint: displayed.reblogged ? palette.boost : .white,
                 count: session.settings.showPopularityCounts ? displayed.reblogsCount : nil,
                 label: Text("Boost", comment: "Shorts action")
             ) { onAction(.boost(status)) }
+
+            railButton(
+                symbol: AlohaSymbol.reply, tint: .white,
+                count: session.settings.showPopularityCounts ? displayed.repliesCount : nil,
+                label: Text("Reply", comment: "Shorts action")
+            ) { onAction(.open(status)) }
 
             railButton(
                 symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
@@ -570,9 +613,9 @@ public struct ShortsView: View {
                 StatusMenu(status: status, onAction: onAction)
             } label: {
                 Image(systemName: AlohaSymbol.more)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
-                    .frame(width: 48, height: 40)
+                    .frame(width: 44, height: 36)
                     .contentShape(Rectangle())
                     .shadow(color: .black.opacity(0.4), radius: 3)
             }
@@ -603,17 +646,17 @@ public struct ShortsView: View {
     }
 
     private func railLabel(symbol: String, tint: Color, count: Int?) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 2) {
             Image(systemName: symbol)
-                .font(.system(size: 28, weight: .medium))
+                .font(.system(size: 21, weight: .medium))
                 .foregroundStyle(tint)
             if let count, count > 0 {
                 Text(count, format: .number.notation(.compactName))
-                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .font(.caption2.weight(.semibold).monospacedDigit())
                     .foregroundStyle(.white)
             }
         }
-        .frame(width: 48)
+        .frame(width: 44)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
         .shadow(color: .black.opacity(0.4), radius: 3)
@@ -697,7 +740,6 @@ struct ShortPlayer: View {
     let isPaused: Bool
     let loops: Bool
     let isCovered: Bool
-    let autoplay: Bool
     @Binding var progress: Double
     let onWatched: (Double, Double) async -> Void
 
@@ -755,6 +797,10 @@ struct ShortPlayer: View {
                     .foregroundStyle(.primary)
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    // One element, the card: under the page's play/pause tap
+                    // the message alone counts as a control, a line of text
+                    // high — too small to hit. Activating it tries again.
+                    .accessibilityElement(children: .combine)
                 } else {
                     ProgressView().tint(.white)
                 }
@@ -763,7 +809,9 @@ struct ShortPlayer: View {
         .task(id: "\(isCurrent):\(isCovered):\(sourceIndex):\(retryCount)") { await manage() }
         .onChange(of: isMuted) { _, muted in player?.isMuted = muted }
         .onChange(of: isPaused) { _, paused in
-            guard isCurrent, autoplay else { return }
+            // Whatever the autoplay setting: it decides how a short starts,
+            // and this is the person starting or stopping it.
+            guard isCurrent else { return }
             if paused { player?.pause() } else { player?.play() }
         }
         .onDisappear { teardown() }
@@ -857,7 +905,9 @@ struct ShortPlayer: View {
             MainActor.assumeIsolated { progress = time.seconds / duration }
         }
 
-        if autoplay, !isPaused { newPlayer.play() }
+        // Paused already reflects Autoplay video, and any tap made while
+        // this was loading.
+        if !isPaused { newPlayer.play() }
 
         // Report as it goes, coalesced well inside the server's 600-a-minute.
         while !Task.isCancelled, isCurrent, player != nil {

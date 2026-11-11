@@ -88,7 +88,11 @@ public struct PhotosModeView: View {
         #endif
     }
 
-    /// Layout is a secondary choice; pictures get the space below the toolbar.
+    /// Everything this page lets a reader change, in one menu beside the
+    /// account: the layout, a refresh, and whether numbers are drawn at all.
+    /// A second menu on the trailing edge was folded into the system's
+    /// overflow, where a menu cannot render — it appeared as a "…" that opened
+    /// nothing. One real menu is better than two, one of them dead.
     private var layoutMenu: some View {
         Menu {
             Picker(selection: $layout) {
@@ -100,6 +104,29 @@ public struct PhotosModeView: View {
                 Text("Layout", comment: "Photos layout picker")
             }
             .pickerStyle(.inline)
+
+            Divider()
+
+            Button {
+                Task {
+                    await model.refresh()
+                    await loadStories()
+                }
+            } label: {
+                Label {
+                    Text("Refresh", comment: "Photos menu action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.refresh)
+                }
+            }
+
+            Toggle(isOn: showsNumbers) {
+                Label {
+                    Text("Show numbers", comment: "Photos menu setting")
+                } icon: {
+                    Image(systemName: "number")
+                }
+            }
         } label: {
             Image(systemName: symbolName(for: layout))
         }
@@ -122,6 +149,14 @@ public struct PhotosModeView: View {
         }
     }
 
+    private var showsNumbers: Binding<Bool> {
+        Binding(
+            get: { session.settings.showPopularityCounts },
+            set: { value in
+                Task { await session.updateSettings { $0.showPopularityCounts = value } }
+            })
+    }
+
     /// Mastodon's home timeline ignores `only_media`, so a text-only status
     /// can arrive here; a blank tile is never the right way to show one.
     private var statuses: [Status] {
@@ -139,8 +174,15 @@ public struct PhotosModeView: View {
                 }
 
                 if !statuses.isEmpty {
-                    TipView(PhotosDoubleTapTip())
-                        .padding(AlohaMetrics.space3)
+                    AlohaHint(
+                        id: "photos-double-tap",
+                        symbol: AlohaSymbol.favourite,
+                        title: Text("Double-tap to like", comment: "Photos hint title"),
+                        message: Text(
+                            "Double-tap a picture to like or unlike it. Tap it once to open it full size.",
+                            comment: "Photos hint")
+                    )
+                    .padding(AlohaMetrics.space3)
                 }
 
                 ForEach(statuses) { status in
@@ -385,6 +427,9 @@ public struct PhotoPostCard: View {
     @State private var isRevealed = false
     @State private var isCaptionExpanded = false
     @State private var isHearting = false
+    /// Counts the double taps that undid a like, so the lighter haptic has
+    /// something of the person's own to trigger on rather than a server sync.
+    @State private var unlikeTick = 0
     /// A pointer over the card — a trackpad or mouse on iPad — which has no
     /// swipe to page with and needs the arrows the Mac always shows.
     @State private var isPointerOver = false
@@ -589,6 +634,7 @@ public struct PhotoPostCard: View {
             }
         }
         .alohaSensoryFeedback(.success, trigger: isHearting) { _, new in new }
+        .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(
@@ -596,7 +642,12 @@ public struct PhotoPostCard: View {
                 ? Text("Tap to show", comment: "Covered media hint")
                 : Text("Opens the media viewer", comment: "Accessibility hint")
         )
-        .accessibilityAction(named: Text("Favourite", comment: "Accessibility action")) { heart() }
+        .accessibilityAction(
+            named: Text(
+                displayed.favourited
+                    ? String(localized: "Unfavourite", comment: "Accessibility action")
+                    : String(localized: "Favourite", comment: "Accessibility action"))
+        ) { heart() }
         .mediaTransitionSource(
             id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
             in: mediaTransition
@@ -657,8 +708,13 @@ public struct PhotoPostCard: View {
 
     private func heart() {
         PhotosDoubleTapTip().invalidate(reason: .actionPerformed)
-        guard !isCovered, !displayed.favourited else { return }
+        guard !isCovered else { return }
+        let wasFavourited = displayed.favourited
         onAction(.favourite(status))
+        guard !wasFavourited else {
+            unlikeTick += 1
+            return
+        }
         withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5)) {
             isHearting = true
         }
@@ -670,40 +726,14 @@ public struct PhotoPostCard: View {
 
     // MARK: Actions
 
+    /// Like, repost, comment, save and share — the same evenly spread strip a
+    /// timeline row and an opened post draw, with each count beside its
+    /// glyph instead of a "12 favourites" line underneath.
     private var actionRow: some View {
-        HStack(spacing: 0) {
-            actionButton(
-                symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
-                tint: displayed.favourited ? palette.favourite : palette.label,
-                label: Text("Favourite", comment: "Status action")
-            ) { onAction(.favourite(status)) }
-
-            actionButton(
-                symbol: "bubble.right", tint: palette.label,
-                label: Text("Reply", comment: "Status action")
-            ) { onAction(.reply(status)) }
-
-            actionButton(
-                symbol: AlohaSymbol.boost,
-                tint: displayed.reblogged ? palette.boost : palette.label,
-                label: Text("Boost", comment: "Status action")
-            ) { onAction(.boost(status)) }
-
-            StatusShareLink(status: status) {
-                actionLabel(symbol: "paperplane", tint: palette.label)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Share", comment: "Status action"))
-            .help(Text("Share", comment: "Status action"))
-
-            Spacer(minLength: 0)
-
-            actionButton(
-                symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
-                tint: displayed.bookmarked ? palette.bookmark : palette.label,
-                label: Text("Bookmark", comment: "Status action")
-            ) { onAction(.bookmark(status)) }
-        }
+        StatusActionStrip(
+            status: status, showsCounts: showsCounts, prominence: .detail,
+            showsShare: true
+        ) { onAction($0) }
         .padding(.horizontal, AlohaMetrics.space1)
         .padding(.top, AlohaMetrics.space1)
         .animation(
@@ -711,36 +741,10 @@ public struct PhotoPostCard: View {
             value: displayed.favourited)
     }
 
-    private func actionButton(
-        symbol: String, tint: Color, label: Text, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            actionLabel(symbol: symbol, tint: tint)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-
-    private func actionLabel(symbol: String, tint: Color) -> some View {
-        Image(systemName: symbol)
-            .font(.title3.weight(.medium))
-            .foregroundStyle(tint)
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
-    }
-
     // MARK: Details
 
     private var details: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-            if showsCounts, displayed.favouritesCount > 0 {
-                Text(
-                    "^[\(displayed.favouritesCount) favourite](inflect: true)",
-                    comment: "Photo post favourite count"
-                )
-                .font(.subheadline.weight(.semibold))
-            }
-
             if displayed.hasContentWarning {
                 Text(displayed.spoilerText)
                     .font(.subheadline.weight(.medium))
@@ -762,22 +766,6 @@ public struct PhotoPostCard: View {
                         .buttonStyle(.plain)
                     }
                 }
-            }
-
-            if displayed.repliesCount > 0 {
-                Button {
-                    onAction(.open(status))
-                } label: {
-                    Text(
-                        showsCounts
-                            ? "View all ^[\(displayed.repliesCount) reply](inflect: true)"
-                            : "View all replies",
-                        comment: "Photo post reply count link"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(palette.tertiaryLabel)
-                }
-                .buttonStyle(.plain)
             }
 
             Text(displayed.createdAt, format: .relative(presentation: .named))

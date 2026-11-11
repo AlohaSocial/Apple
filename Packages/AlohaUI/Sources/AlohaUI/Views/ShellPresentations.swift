@@ -2,6 +2,7 @@
 
 import AlohaDesign
 import AlohaModels
+import AlohaNetwork
 import SwiftUI
 
 /// What the composer was opened for.
@@ -25,6 +26,15 @@ struct ComposerPresentation: Identifiable {
 
     /// Text the composer opens with: a draft handed off from another device.
     var draftText = ""
+}
+
+/// A sign-in sheet's input: where the person wants to go, and the server the
+/// introduction already found. Presented by item so every opening gets a
+/// fresh identity and a model built from this value.
+struct SignInPresentation: Identifiable {
+    let id = UUID()
+    var address = ""
+    var outcome: ServerProbe.Outcome?
 }
 
 /// The smaller sheets a status or an account can put up: one enum, so the
@@ -59,10 +69,7 @@ struct ShellSheets: ViewModifier {
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    @Binding var isPresentingSignIn: Bool
-    /// What the introduction's last page had in its field, handed to the
-    /// sign-in screen so the address is typed once.
-    @Binding var signInAddress: String
+    @Binding var signIn: SignInPresentation?
     @Binding var composing: ComposerPresentation?
     @Binding var reportTarget: ReportTarget?
     @Binding var editing: EditRequest?
@@ -71,8 +78,8 @@ struct ShellSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $isPresentingSignIn) {
-                SignInView(serverAddress: $signInAddress)
+            .sheet(item: $signIn) { request in
+                SignInView(address: request.address, outcome: request.outcome)
                     #if os(macOS)
                         // A sign-in form at the sheet default is a cramped
                         // column: the address field, the server card and the

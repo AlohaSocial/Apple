@@ -439,19 +439,19 @@ public struct VideoWatchView: View {
                     label: Text("Reply", comment: "Status action")
                 ) { onAction(.reply(status)) }
 
-                StatusShareLink(status: status) {
-                    pillLabel(
-                        symbol: AlohaSymbol.share, title: Text("Share", comment: "Status action"))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Share", comment: "Status action"))
-
                 pill(
                     symbol: target.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
                     title: Text("Save", comment: "Watch page bookmark pill"),
                     label: Text("Bookmark", comment: "Status action"),
                     isOn: target.bookmarked, tint: palette.bookmark
                 ) { onAction(.bookmark(status)) }
+
+                StatusShareLink(status: status) {
+                    pillLabel(
+                        symbol: AlohaSymbol.share, title: Text("Share", comment: "Status action"))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Share", comment: "Status action"))
 
                 Menu {
                     StatusMenu(status: status, onAction: onAction)

@@ -28,6 +28,10 @@ public final class SyncEngine {
     private var failureCounts: [UUID: Int] = [:]
     private var lastInteraction = Date()
     private var visibleTimelineLastSeen: [UUID: Date] = [:]
+    /// Accounts being removed, or removed. Nothing is fetched for them and
+    /// nothing a fetch already under way brings back is written: the rows it
+    /// would write are the ones the removal is deleting.
+    private var removedAccounts: Set<UUID> = []
 
     private weak var environment: AppEnvironment?
     private let notifier: LocalNotifier
@@ -45,7 +49,11 @@ public final class SyncEngine {
 
     public func start() {
         guard let environment else { return }
-        for session in environment.sessions { startTicking(session) }
+        // An account being removed is still in the list while its token is
+        // revoked, and a scene activation in that time must not restart it.
+        for session in environment.sessions where isLive(session.id) {
+            startTicking(session)
+        }
     }
 
     public func stop() {
@@ -87,11 +95,45 @@ public final class SyncEngine {
         visibleTimelineLastSeen[accountID] = Date()
     }
 
+    // MARK: - Removing an account
+
+    /// Stops everything that runs for one account and forgets what it knew,
+    /// before its rows are deleted.
+    ///
+    /// Until it did, a removed account went on polling and streaming until
+    /// the app was backgrounded: each poll wrote its notifications back
+    /// into the store the removal had just emptied, could raise them, and
+    /// its unread count stayed in the badge. Returns once the account's
+    /// poll loop has stopped, so a poll it had under way cannot write after
+    /// the rows are gone.
+    public func forget(_ accountID: UUID) async {
+        removedAccounts.insert(accountID)
+        let tick = tickTasks.removeValue(forKey: accountID)
+        tick?.cancel()
+        if let stream = streams.removeValue(forKey: accountID) { await stream.close() }
+        failureCounts[accountID] = nil
+        lastPoll[accountID] = nil
+        visibleTimelineLastSeen[accountID] = nil
+        if unreadCounts.removeValue(forKey: accountID) != nil { publishUnreadTotal() }
+        await tick?.value
+    }
+
+    /// Takes back an account whose removal failed, so it is polled again
+    /// from the next start — its rows, and so the account, are still here.
+    public func readmit(_ accountID: UUID) {
+        removedAccounts.remove(accountID)
+    }
+
+    private func isLive(_ accountID: UUID) -> Bool {
+        !removedAccounts.contains(accountID)
+    }
+
     private func startTicking(_ session: AccountSession) {
         tickTasks[session.id]?.cancel()
 
-        // Nothing goes out for an account whose token was revoked.
-        guard !session.needsReauthentication else { return }
+        // Nothing goes out for an account whose token was revoked, or that
+        // is being removed.
+        guard !session.needsReauthentication, isLive(session.id) else { return }
 
         // A second start — every scene activation calls it — would otherwise
         // leave the first socket open and unreachable beside the new one.
@@ -164,11 +206,13 @@ public final class SyncEngine {
 
     @discardableResult
     public func poll(_ session: AccountSession, scope: PollScheduler.Scope = .full) async -> Int {
-        guard !session.needsReauthentication else { return 0 }
+        guard !session.needsReauthentication, isLive(session.id) else { return 0 }
 
         do {
             // Step one is the cheapest call there is, and it drives the badge.
             let count = try await fetchUnreadCount(session)
+            // Removed while the request was out: the answer is nobody's now.
+            guard isLive(session.id) else { return 0 }
             let previous = unreadCounts[session.id]
             unreadCounts[session.id] = count
             lastPoll[session.id] = Date()
@@ -191,6 +235,7 @@ public final class SyncEngine {
             }
             return count
         } catch {
+            guard isLive(session.id) else { return 0 }
             failureCounts[session.id, default: 0] += 1
             await session.handle(error)
             return unreadCounts[session.id] ?? 0
@@ -210,6 +255,9 @@ public final class SyncEngine {
     private func fetchAndAnnounceNotifications(_ session: AccountSession) async {
         do {
             let arrivals = try await NotificationSync.fetch(session: session)
+            // Each await is a moment the account may have been removed in;
+            // what comes back after that is neither stored nor raised.
+            guard isLive(session.id) else { return }
             let arrived = try await session.supportStore.storeNotifications(
                 arrivals, accountID: session.id)
             // What quiet hours or a Focus held back on an earlier poll is
@@ -217,7 +265,7 @@ public final class SyncEngine {
             let fresh = try await session.supportStore.pendingAnnouncements(
                 arrived: arrived, accountID: session.id,
                 since: Date().addingTimeInterval(-12 * 3600))
-            guard !fresh.isEmpty else { return }
+            guard !fresh.isEmpty, isLive(session.id) else { return }
 
             // Web Push, where a server has it, delivers the alert itself —
             // raising a local one too would show everything twice.
@@ -237,9 +285,11 @@ public final class SyncEngine {
                 isQuiet: quiet.isQuiet(at: Date()),
                 showAccountName: (environment?.sessions.count ?? 1) > 1)
 
+            guard isLive(session.id) else { return }
             try await session.supportStore.markAnnounced(
                 accountID: session.id, serverIDs: announced)
         } catch {
+            guard isLive(session.id) else { return }
             await session.handle(error)
         }
     }
@@ -247,6 +297,8 @@ public final class SyncEngine {
     // MARK: - Streaming
 
     private func handle(_ event: StreamingConnection.Event, session: AccountSession) async {
+        // An event the socket delivered just before it was closed.
+        guard isLive(session.id) else { return }
         switch event {
         case .update(let status):
             try? await session.timelineStore.updateStatus(accountID: session.id, status: status)

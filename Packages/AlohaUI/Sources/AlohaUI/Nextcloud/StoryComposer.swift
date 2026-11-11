@@ -6,6 +6,7 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import ImageIO
+import Photos
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -31,8 +32,10 @@ public struct StoryComposerSheet: View {
     @State private var text = ""
     @State private var backgroundIndex = 0
     @State private var pickedItem: PhotosPickerItem?
-    @State private var isShowingCamera = false
     @State private var picture: CGImage?
+    @State private var pictureZoom: CGFloat = 1
+    @State private var pictureOffset = CGSize.zero
+    @State private var isAdjustingPicture = false
     @State private var movie: URL?
     @State private var movieDuration: Double = 0
     @State private var stickers: [StorySticker] = []
@@ -43,6 +46,11 @@ public struct StoryComposerSheet: View {
     @State private var isPosting = false
     @State private var isLoadingMedia = false
     @State private var errorMessage: String?
+    /// The system photo picker, presented from the preview and from "See all".
+    @State private var isPickingLibrary = false
+    /// The last few pictures in the library, for the strip under the preview.
+    @State private var recents: [PHAsset] = []
+    @State private var recentAccessDenied = false
 
     static let canvas = CGSize(width: 1080, height: 1920)
     static let textLimit = 280
@@ -109,14 +117,6 @@ public struct StoryComposerSheet: View {
             .onChange(of: pickedItem) { _, item in
                 Task { await load(item) }
             }
-            #if os(iOS)
-                .fullScreenCover(isPresented: $isShowingCamera) {
-                    CameraCapture { captured in
-                        Task { await use(captured) }
-                    }
-                    .ignoresSafeArea()
-                }
-            #endif
         }
         #if os(macOS)
             .frame(minWidth: 520, minHeight: 640)
@@ -226,54 +226,176 @@ public struct StoryComposerSheet: View {
     private var mediaEditor: some View {
         if let picture {
             pictureEditor(picture)
+                .sheet(isPresented: $isAdjustingPicture) {
+                    StoryCropSheet(
+                        picture: picture, zoom: $pictureZoom, offset: $pictureOffset)
+                }
         } else if movie != nil {
             movieSummary
         } else {
-            // Read out here, not inside the label: `PhotosPicker`'s label
-            // closure is `@Sendable`, so touching main-actor state from within
-            // it crosses isolation. `Bool` and `Color` are `Sendable`, so
-            // capturing the values costs nothing and says nothing untrue.
-            let isLoading = isLoadingMedia
-            let ink = palette.secondaryLabel
-            let surface = palette.surfaceRaised
+            mediaPicker
+        }
+    }
 
-            PhotosPicker(selection: $pickedItem, matching: .any(of: [.images, .videos])) {
-                VStack(spacing: AlohaMetrics.space2) {
-                    if isLoading {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.largeTitle)
-                        Text("Choose a picture or video", comment: "Story composer picker")
-                            .font(.subheadline.weight(.medium))
+    /// The empty canvas: a story-shaped preview, the last few pictures in the
+    /// library, and the camera — the order a person thinks in when they are
+    /// about to say something with a picture.
+    private var mediaPicker: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space4) {
+            storyCanvas
+            recentStrip
+
+            AlohaHint(
+                id: "story-canvas",
+                symbol: "wand.and.stars",
+                title: Text("Make it yours", comment: "Story composer hint title"),
+                message: Text(
+                    "Use the shutter for a new picture, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas.",
+                    comment: "Story composer hint")
+            )
+        }
+        .task { await loadRecents() }
+    }
+
+    /// The canvas itself: a live camera where there is one, and a viewfinder
+    /// that opens the library where there is not (the simulator, a Mac
+    /// without a camera). The old grey box said "choose a picture or video"
+    /// over the one place a story should already look like a story.
+    @ViewBuilder
+    private var storyCanvas: some View {
+        #if os(iOS)
+            if CameraCapture.isAvailable {
+                StoryCameraCanvas(
+                    onCapture: { data in
+                        Task { await use(CameraCapture.Captured.photo(data)) }
+                    },
+                    onPickLibrary: { isPickingLibrary = true }
+                )
+                .aspectRatio(9 / 16, contentMode: .fit)
+                .frame(maxWidth: 300)
+                .frame(maxWidth: .infinity)
+            } else {
+                libraryCanvas
+            }
+        #else
+            libraryCanvas
+        #endif
+    }
+
+    /// The library as the canvas: the system picker needs no photo-library
+    /// permission, so it works even when the recents strip cannot.
+    private var libraryCanvas: some View {
+        Button {
+            isPickingLibrary = true
+        } label: {
+            previewPlaceholder
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoadingMedia)
+        .photosPicker(
+            isPresented: $isPickingLibrary, selection: $pickedItem,
+            matching: .any(of: [.images, .videos])
+        )
+        .accessibilityLabel(Text("Choose a picture or video", comment: "Story composer picker"))
+    }
+
+    /// A story-shaped canvas rather than a grey box: what is chosen lands in
+    /// the same frame it will be shared in, so the preview is the story.
+    private var previewPlaceholder: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    palette.accent.opacity(0.22), palette.surfaceRaised,
+                    palette.favourite.opacity(0.14),
+                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+
+            VStack(spacing: AlohaMetrics.space3) {
+                if isLoadingMedia {
+                    ProgressView()
+                } else {
+                    Image(systemName: "photo.stack.fill")
+                        .font(.system(size: 42, weight: .light))
+                        .foregroundStyle(palette.accent)
+                    Text("Your story", comment: "Story composer placeholder title")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(palette.label)
+                    Text("Tap to pick a photo or video", comment: "Story composer placeholder")
+                        .font(.caption)
+                        .foregroundStyle(palette.secondaryLabel)
+                }
+            }
+            .padding(AlohaMetrics.space4)
+
+            VStack {
+                Spacer()
+                HStack {
+                    Image(systemName: "photo.on.rectangle")
+                    Text("Library", comment: "Story composer library chip")
+                    Spacer()
+                    Image(systemName: "camera")
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(palette.secondaryLabel)
+                .padding(AlohaMetrics.space3)
+            }
+        }
+        .aspectRatio(9 / 16, contentMode: .fit)
+        .frame(maxWidth: 300)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
+                .strokeBorder(palette.separator, style: StrokeStyle(lineWidth: 1.5, dash: [8, 6]))
+        )
+    }
+
+    private var recentStrip: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            HStack {
+                Text("Recent", comment: "Story composer section")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button {
+                    isPickingLibrary = true
+                } label: {
+                    Text("See all", comment: "Story composer action")
+                        .font(.footnote.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.accent)
+            }
+
+            if recentAccessDenied {
+                Text(
+                    "Allow photo access in Settings to see your last pictures here. You can still choose one from the library.",
+                    comment: "Story composer recent photos unavailable"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+                .fixedSize(horizontal: false, vertical: true)
+            } else if recents.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(palette.surfaceRaised)
+                            .frame(width: 84, height: 104)
                     }
                 }
-                .foregroundStyle(ink)
-                .frame(maxWidth: .infinity)
-                .frame(height: 220)
-                .background(
-                    surface,
-                    in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(isLoading)
-
-            #if os(iOS)
-                if CameraCapture.isAvailable {
-                    Button {
-                        isShowingCamera = true
-                    } label: {
-                        Label {
-                            Text("Take a photo or video", comment: "Story composer action")
-                        } icon: {
-                            Image(systemName: "camera")
+                .redacted(reason: .placeholder)
+                .accessibilityHidden(true)
+            } else {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(recents, id: \.localIdentifier) { asset in
+                            RecentPhotoTile(asset: asset) {
+                                Task { await use(asset) }
+                            }
                         }
                     }
-                    .alohaGlassButtonStyle()
-                    .disabled(isLoading)
+                    .padding(.vertical, 1)
                 }
-            #endif
+                .scrollIndicators(.hidden)
+            }
         }
     }
 
@@ -289,9 +411,7 @@ public struct StoryComposerSheet: View {
                         comment: "Story composer failure")
                     return
                 }
-                picture = image
-                movie = nil
-                stickers = []
+                show(image)
             case .movie(let url):
                 movie = url
                 let seconds = (try? await AVURLAsset(url: url).load(.duration).seconds) ?? 0
@@ -306,21 +426,37 @@ public struct StoryComposerSheet: View {
             GeometryReader { proxy in
                 StoryPictureCanvas(
                     picture: picture, stickers: $stickers, selected: $selectedSticker,
-                    scale: proxy.size.width / Self.canvas.width, isInteractive: true)
+                    scale: proxy.size.width / Self.canvas.width, isInteractive: true,
+                    zoom: pictureZoom, offset: pictureOffset)
             }
             .aspectRatio(Self.canvas.width / Self.canvas.height, contentMode: .fit)
             .frame(maxWidth: 300)
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous))
 
-            HStack {
+            HStack(spacing: AlohaMetrics.space2) {
                 Text("Stickers", comment: "Story composer section")
                     .font(AlohaType.section)
                 Spacer()
                 Button {
+                    isAdjustingPicture = true
+                } label: {
+                    Label {
+                        Text("Adjust", comment: "Story composer action")
+                    } icon: {
+                        Image(systemName: "crop")
+                    }
+                    .font(.footnote.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint(
+                    Text("Crop and zoom the picture", comment: "Story adjust hint"))
+                Button {
                     self.picture = nil
                     pickedItem = nil
                     stickers = []
+                    pictureZoom = 1
+                    pictureOffset = .zero
                 } label: {
                     Text("Change", comment: "Story composer action")
                         .font(.footnote)
@@ -386,7 +522,7 @@ public struct StoryComposerSheet: View {
             }
 
             Text(
-                "Drag a sticker to place it. It is drawn into the picture when you share.",
+                "Drag a sticker to place it. Use Adjust to crop and zoom the picture. Both are drawn into the picture when you share.",
                 comment: "Story sticker hint"
             )
             .font(.caption)
@@ -467,6 +603,16 @@ public struct StoryComposerSheet: View {
         selectedSticker = sticker.id
     }
 
+    /// A fresh picture starts centred and uncropped; the editor's zoom and
+    /// offset belong to the picture they were set on.
+    private func show(_ image: CGImage) {
+        picture = image
+        movie = nil
+        stickers = []
+        pictureZoom = 1
+        pictureOffset = .zero
+    }
+
     // MARK: - Loading
 
     private func load(_ item: PhotosPickerItem?) async {
@@ -496,9 +642,7 @@ public struct StoryComposerSheet: View {
                 localized: "That picture couldn't be read.", comment: "Story composer failure")
             return
         }
-        picture = image
-        movie = nil
-        stickers = []
+        show(image)
     }
 
     /// Bounded to the story canvas, and rotated the way the camera meant it.
@@ -510,6 +654,34 @@ public struct StoryComposerSheet: View {
             kCGImageSourceThumbnailMaxPixelSize: Int(canvas.height),
         ]
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    /// The last ten pictures, once the library has agreed to be read. The
+    /// composer works without them: the system picker needs no permission.
+    private func loadRecents() async {
+        guard recents.isEmpty, !recentAccessDenied else { return }
+        guard await RecentPhotos.requestAccess() else {
+            recentAccessDenied = true
+            return
+        }
+        recents = RecentPhotos.latest(limit: 10)
+    }
+
+    /// A picture picked from the recent strip, down the same road as one the
+    /// system picker hands over.
+    private func use(_ asset: PHAsset) async {
+        guard !isLoadingMedia else { return }
+        isLoadingMedia = true
+        defer { isLoadingMedia = false }
+        errorMessage = nil
+        guard let data = await RecentPhotos.data(for: asset),
+            let image = Self.decodeImage(data)
+        else {
+            errorMessage = String(
+                localized: "That picture couldn't be read.", comment: "Story composer failure")
+            return
+        }
+        show(image)
     }
 
     // MARK: - Posting
@@ -545,7 +717,8 @@ public struct StoryComposerSheet: View {
                             StoryPictureCanvas(
                                 picture: picture, stickers: .constant(stickers),
                                 selected: .constant(nil),
-                                scale: 1, isInteractive: false))
+                                scale: 1, isInteractive: false,
+                                zoom: pictureZoom, offset: pictureOffset))
                     else { throw StoryComposerError.rendering }
                     let attachment = try await upload(
                         jpeg, filename: "story.jpg", mimeType: "image/jpeg")
@@ -585,8 +758,9 @@ public struct StoryComposerSheet: View {
     /// The picker hands back whatever the camera recorded — usually QuickTime,
     /// which a server configured for MP4 refuses with a 422 after the bytes
     /// have already been sent. Asking first turns that into a local decision:
-    /// the file goes out as-is when it fits, through the exporter when it does
-    /// not, and never at all when it is over the ceiling.
+    /// the file goes out in its own container when it fits, through the
+    /// exporter when it does not, and never at all when it is over the
+    /// ceiling. Either way it goes without its location.
     private func prepareStoryVideo(at url: URL) async throws -> MediaPreparer.Prepared {
         let mimeType = preparer.mimeType(for: url)
         let size =
@@ -597,7 +771,13 @@ public struct StoryComposerSheet: View {
             fileSize: size, mimeType: mimeType, limits: session.capabilities.limits)
         {
         case .ready:
-            let data = try Data(contentsOf: url)
+            // Copied rather than re-encoded, only to leave out where it was
+            // taken and who took it; the copy is read mapped, so the video is
+            // never in memory all at once.
+            let cleaned = try await preparer.removingPersonalMetadata(
+                fromVideoAt: url, mimeType: mimeType)
+            defer { try? FileManager.default.removeItem(at: cleaned) }
+            let data = try Data(contentsOf: cleaned, options: .alwaysMapped)
             return MediaPreparer.Prepared(
                 data: data, filename: url.lastPathComponent, mimeType: mimeType)
 
@@ -668,6 +848,86 @@ public struct StoryComposerSheet: View {
             [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { return nil }
         return output as Data
+    }
+}
+
+/// The last few pictures in the library, for the story composer's strip.
+///
+/// Reading them needs the photo library; choosing one through the system
+/// picker does not. The strip appears only once access is granted, and the
+/// composer stays usable without it.
+@MainActor
+enum RecentPhotos {
+    static func requestAccess() async -> Bool {
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .authorized, .limited: return true
+        case .denied, .restricted: return false
+        case .notDetermined:
+            let answer = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            return answer == .authorized || answer == .limited
+        @unknown default: return false
+        }
+    }
+
+    static func latest(limit: Int) -> [PHAsset] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        options.fetchLimit = limit
+        let result = PHAsset.fetchAssets(with: .image, options: options)
+        var assets: [PHAsset] = []
+        assets.reserveCapacity(min(limit, result.count))
+        result.enumerateObjects { asset, _, _ in assets.append(asset) }
+        return assets
+    }
+
+    /// The picture's bytes rather than a `UIImage`: decoding happens where the
+    /// composer already bounds and rotates what it is given.
+    static func data(for asset: PHAsset) async -> Data? {
+        await withCheckedContinuation { continuation in
+            let options = PHImageRequestOptions()
+            options.isNetworkAccessAllowed = true
+            options.version = .current
+            options.deliveryMode = .highQualityFormat
+            options.resizeMode = .fast
+            PHImageManager.default().requestImageDataAndOrientation(
+                for: asset, options: options
+            ) { data, _, _, _ in
+                continuation.resume(returning: data)
+            }
+        }
+    }
+}
+
+/// One picture in the recent strip.
+private struct RecentPhotoTile: View {
+    @Environment(\.alohaPalette) private var palette
+
+    let asset: PHAsset
+    let action: () -> Void
+    @State private var image: CGImage?
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(palette.surfaceRaised)
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .scaledToFill()
+                }
+            }
+            .frame(width: 84, height: 104)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("Recent photo", comment: "Story composer recent photo"))
+        .task(id: asset.localIdentifier) {
+            guard let data = await RecentPhotos.data(for: asset),
+                let decoded = StoryComposerSheet.decodeImage(data)
+            else { return }
+            image = decoded
+        }
     }
 }
 
@@ -744,6 +1004,10 @@ struct StoryPictureCanvas: View {
     @Binding var selected: StorySticker.ID?
     let scale: Double
     let isInteractive: Bool
+    /// The part of the picture the story keeps: 1 is the aspect-filled frame,
+    /// and the offset is a fraction of the canvas so preview and export agree.
+    var zoom: CGFloat = 1
+    var offset: CGSize = .zero
 
     private var size: CGSize {
         CGSize(
@@ -755,9 +1019,13 @@ struct StoryPictureCanvas: View {
         ZStack {
             Image(decorative: picture, scale: 1)
                 .resizable()
+                .interpolation(.high)
                 .scaledToFill()
                 .frame(width: size.width, height: size.height)
-                .clipped()
+                .scaleEffect(zoom)
+                .offset(
+                    x: offset.width * size.width,
+                    y: offset.height * size.height)
 
             ForEach(stickers) { sticker in
                 stickerView(sticker)
@@ -810,6 +1078,180 @@ struct StoryPictureCanvas: View {
                     x: min(max(value.location.x / size.width, 0.05), 0.95),
                     y: min(max(value.location.y / size.height, 0.05), 0.95))
             }
+    }
+}
+
+/// Fits a picture to the story's 9:16 frame: pinch to zoom, drag to choose
+/// the part that stays. The same zoom and offset are used when the story is
+/// drawn to JPEG, so the shared picture is the one on screen.
+private struct StoryCropSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.alohaPalette) private var palette
+
+    let picture: CGImage
+    @Binding var zoom: CGFloat
+    @Binding var offset: CGSize
+
+    @State private var zoomAtGestureStart: CGFloat = 1
+    @State private var offsetAtGestureStart = CGSize.zero
+
+    var body: some View {
+        VStack(spacing: AlohaMetrics.space3) {
+            HStack {
+                Button {
+                    reset()
+                } label: {
+                    Text("Reset", comment: "Story crop action")
+                        .font(.subheadline.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.secondaryLabel)
+
+                Spacer()
+
+                Text("Adjust picture", comment: "Story crop title")
+                    .font(.headline)
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done", comment: "Story crop action")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(palette.accent)
+            }
+            .padding(.horizontal, AlohaMetrics.space4)
+            .padding(.top, AlohaMetrics.space3)
+
+            GeometryReader { proxy in
+                let size = proxy.size
+                ZStack {
+                    Color.black
+                    Image(decorative: picture, scale: 1)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFill()
+                        .frame(width: size.width, height: size.height)
+                        .scaleEffect(zoom)
+                        .offset(
+                            x: offset.width * size.width,
+                            y: offset.height * size.height)
+                    CropGrid()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
+                        .allowsHitTesting(false)
+                }
+                .frame(width: size.width, height: size.height)
+                .clipped()
+                .contentShape(Rectangle())
+                .gesture(dragGesture(in: size))
+                .simultaneousGesture(magnifyGesture(in: size))
+            }
+            .aspectRatio(9 / 16, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .clipShape(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerLarge, style: .continuous)
+            )
+            .padding(.horizontal, AlohaMetrics.space4)
+
+            VStack(spacing: 2) {
+                Text(
+                    "Pinch to zoom. Drag to choose the part of the picture that fills the story.",
+                    comment: "Story crop hint"
+                )
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+                .multilineTextAlignment(.center)
+                Text(verbatim: "\(Int((zoom * 100).rounded()))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(palette.tertiaryLabel)
+            }
+            .padding(.horizontal, AlohaMetrics.space5)
+            .padding(.bottom, AlohaMetrics.space4)
+        }
+        .background(palette.background)
+        .onAppear {
+            zoomAtGestureStart = zoom
+            offsetAtGestureStart = offset
+        }
+    }
+
+    private var imageAspect: CGFloat {
+        CGFloat(picture.width) / CGFloat(picture.height)
+    }
+
+    /// What aspect fill would draw before the reader touches anything.
+    private func baseSize(in size: CGSize) -> CGSize {
+        let canvasAspect = size.width / size.height
+        if imageAspect > canvasAspect {
+            return CGSize(width: size.height * imageAspect, height: size.height)
+        }
+        return CGSize(width: size.width, height: size.width / imageAspect)
+    }
+
+    /// Keeps the frame covered: no drag may open a strip of background.
+    private func clamped(_ proposed: CGSize, zoom: CGFloat, in size: CGSize) -> CGSize {
+        let base = baseSize(in: size)
+        let scaled = CGSize(width: base.width * zoom, height: base.height * zoom)
+        let maxX = max(0, (scaled.width - size.width) / 2) / size.width
+        let maxY = max(0, (scaled.height - size.height) / 2) / size.height
+        return CGSize(
+            width: min(max(proposed.width, -maxX), maxX),
+            height: min(max(proposed.height, -maxY), maxY))
+    }
+
+    private func dragGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                offset = clamped(
+                    CGSize(
+                        width: offsetAtGestureStart.width
+                            + value.translation.width / size.width,
+                        height: offsetAtGestureStart.height
+                            + value.translation.height / size.height),
+                    zoom: zoom, in: size)
+            }
+            .onEnded { _ in
+                offsetAtGestureStart = offset
+            }
+    }
+
+    private func magnifyGesture(in size: CGSize) -> some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                zoom = min(max(zoomAtGestureStart * value.magnification, 1), 4)
+                offset = clamped(offset, zoom: zoom, in: size)
+            }
+            .onEnded { _ in
+                zoomAtGestureStart = zoom
+                offsetAtGestureStart = offset
+            }
+    }
+
+    private func reset() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            zoom = 1
+            offset = .zero
+        }
+        zoomAtGestureStart = 1
+        offsetAtGestureStart = .zero
+    }
+}
+
+private struct CropGrid: Shape {
+    nonisolated func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for fraction in [1.0 / 3.0, 2.0 / 3.0] {
+            let x = rect.width * fraction
+            path.move(to: CGPoint(x: x, y: 0))
+            path.addLine(to: CGPoint(x: x, y: rect.height))
+            let y = rect.height * fraction
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: rect.width, y: y))
+        }
+        return path
     }
 }
 

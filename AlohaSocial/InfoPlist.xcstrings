@@ -7,7 +7,13 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
+            "value" : "Aloha Social"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Aloha Social"
           }
         }
@@ -19,7 +25,13 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
+            "value" : "Aloha Social"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Aloha Social"
           }
         }
@@ -31,8 +43,14 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Aloha Social verwendet die Kamera, wenn du ein Foto aufnimmst oder ein Video zum Posten aufzeichnest."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Aloha Social uses the camera when you take a photo or record a video to post."
           }
         }
       }
@@ -43,8 +61,14 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Aloha Social verwendet das Mikrofon, wenn du ein Video zum Posten aufzeichnest."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Aloha Social uses the microphone when you record a video to post."
           }
         }
       }
@@ -55,8 +79,14 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Aloha Social sichert Bilder und Videos in deiner Fotomediathek, wenn du darum bittest."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Aloha Social saves images and videos to your photo library when you ask it to."
           }
         }
       }
@@ -67,8 +97,14 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Aloha Social liest Fotos und Videos, die du einem Beitrag anhängst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Aloha Social reads photos and videos you choose to attach to a post."
           }
         }
       }

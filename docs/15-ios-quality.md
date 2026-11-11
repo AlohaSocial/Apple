@@ -86,3 +86,60 @@ on iPad Pro 13-inch; Black/Warm Light canvas in portrait and landscape; iPhone
 17e account switching and navigation to Discover and lists; iPad deep navigation
 through profile, publishing, search, settings and the photo viewer; 100 UI package tests.
 Smaller iPads, window resizing and large text remain open runtime checks.
+
+## The opened post, and where glass belongs (2026-11-04)
+
+An opened post now reads like the post screens a reader already uses (X,
+Threads, Instagram): the name and handle at the top, the words and media at
+reading size, then one line saying the exact moment, what it was written with
+and how far it got, a hairline, and one row of five evenly spread actions
+(reply, boost, favourite, bookmark, share) with each count beside its glyph
+(**12** replies, **40** boosts, **128** favourites). Tapping a glyph acts on
+the post; tapping its number opens the people behind it. The post's own menu
+sits at the end of the provenance line, so translate, report, edit and delete
+are reachable where they were missing. Nothing is drawn twice.
+
+What changed, and why:
+
+- The raised card and the accent rail around the opened post are gone. A card
+  with a painted edge reads as a selected row; an opened post is the screen.
+- The two glass pills ("12 favourites", "40 boosts") are gone. They repeated
+  the counts the action row had already shown, and they sat between a glass
+  navigation bar and the content: glass inside glass.
+- The actions moved out of the row's text column, where they were squeezed to
+  footnote size beside the avatar, into the full width underneath at tap-target
+  size, centred, with their counts. The timeline keeps its compact row.
+- A thread follows the store while it is open: favouriting or boosting the
+  post being read updates its counts, its glyphs and the same post in the
+  replies around it at once, instead of only after the screen was loaded
+  again.
+- The relative age left the header; the exact moment is stated once,
+  underneath.
+- The numbers sit beside their glyphs, not on a line of their own under
+  them. A separate "**1** reply · **1** favourite · **1** boost" line was a
+  second place to look for the same fact, twenty points below the controls it
+  described, and at the accessibility text sizes it wrapped into a stack that
+  read as three unrelated sentences. Counts nobody can act on from here —
+  quotes, views on the reader's own post, a federated video's dislikes — stay
+  on the provenance line, where they describe the post rather than being
+  something to do to it.
+- A count is its own control: the glyph performs the action, the number opens
+  the sheet of who favourited or boosted. It is the one number on the screen
+  that was always asking to be tapped.
+- A thread draws no accent rule beside the reader's own posts. The rule sits
+  outside the row's inset, so an opened post and each of its replies by the
+  same author grew a blue stripe against the screen's edge that looked like a
+  selection that had gone wrong. Timelines keep it.
+
+The rule this settles, and the rest of the app now follows it:
+
+- **Glass is for controls that float over content** — the media viewer, the
+  short player, the photo viewer. Those keep `.alohaGlassButtonStyle()`.
+- **Everything inside content — sheets, lists, forms, error strips, empty
+  states — uses the system's standard button styles** (`.bordered`,
+  `.borderedProminent`). A sheet is already a layer of material; a glass button
+  inside it is the nesting the platform warns about.
+- **A control is custom only where the system cannot do it**: the favourite and
+  boost celebrations (spring, sparks, symbol effects), the Large Content Viewer
+  on fixed-size glyphs, and the thread's inline reply indentation. Everything
+  else is a system control.

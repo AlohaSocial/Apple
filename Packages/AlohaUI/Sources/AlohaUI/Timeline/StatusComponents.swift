@@ -388,12 +388,18 @@ public struct StatusMenu: View {
         // this menu too, where these are what people reach for.
         ControlGroup {
             Button {
-                onAction(.reply(status))
+                onAction(.favourite(status))
             } label: {
                 Label {
-                    Text("Reply", comment: "Status menu item")
+                    if displayed.favourited {
+                        Text("Unfavourite", comment: "Status menu item")
+                    } else {
+                        Text("Favourite", comment: "Status menu item")
+                    }
                 } icon: {
-                    Image(systemName: AlohaSymbol.reply)
+                    Image(
+                        systemName: displayed.favourited
+                            ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
                 }
             }
             Button {
@@ -410,18 +416,12 @@ public struct StatusMenu: View {
                 }
             }
             Button {
-                onAction(.favourite(status))
+                onAction(.reply(status))
             } label: {
                 Label {
-                    if displayed.favourited {
-                        Text("Unfavourite", comment: "Status menu item")
-                    } else {
-                        Text("Favourite", comment: "Status menu item")
-                    }
+                    Text("Reply", comment: "Status menu item")
                 } icon: {
-                    Image(
-                        systemName: displayed.favourited
-                            ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
+                    Image(systemName: AlohaSymbol.reply)
                 }
             }
             Button {

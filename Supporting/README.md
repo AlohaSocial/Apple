@@ -59,12 +59,18 @@ Identifiers → each bundle id above → App Groups ✓ (with
 `group.social.aloha.app` assigned) and Keychain Sharing ✓.
 
 **Signing with another team.** An app group belongs to the team that
-registered it, so another team cannot claim `group.social.aloha.app`. Either
-change the group to one of your own — the string in each `*.entitlements`,
-`AppGroup.identifier` and `StoreContainer.appGroupIdentifier` — or set
-`AlohaAppGroupEnabled` to `false` in the Info.plists and remove
-`com.apple.security.application-groups` from the entitlements. The second gives
-an app that works alone, with widgets and extensions that see no accounts.
+registered it, so another team cannot claim `group.social.aloha.app` — and a
+free Apple ID cannot use app groups or keychain sharing at all. The iPhone
+and watch targets therefore ship standalone: no `application-groups` or
+`keychain-access-groups` entitlements, `AlohaAppGroupEnabled` and
+`AlohaKeychainSharingEnabled` set to `false`, each process keeping its store
+and tokens in its own container. That build runs under any Apple ID after
+picking the team in Xcode (Signing & Capabilities, once per target); widgets
+and extensions then see no accounts. To restore sharing, either register a
+group of your own and put it back — the string in each `*.entitlements`,
+`AppGroup.identifier` and `StoreContainer.appGroupIdentifier`, plus the two
+Info.plist keys set to `true` — or, on a paid team, keep the standalone
+setup and do nothing.
 
 The Apple TV shares the same group name with its Top Shelf extension; it is a
 different device, so nothing actually crosses between it and the phone. Its

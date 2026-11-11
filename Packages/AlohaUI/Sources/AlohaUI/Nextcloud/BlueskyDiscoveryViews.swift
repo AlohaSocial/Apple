@@ -355,7 +355,7 @@ struct BlueskyStarterPackView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .alohaGlassProminentButtonStyle()
+        .buttonStyle(.borderedProminent)
         .disabled(isFollowing || toFollow.isEmpty)
     }
 

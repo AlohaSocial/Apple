@@ -28,12 +28,14 @@ enum WidgetData {
     @MainActor
     static func latestPosts(accountID: UUID, limit: Int) async -> [WidgetPost] {
         let timelines = TimelineStore(modelContainer: StoreContainer.reader())
+        // Only the rows the widget shows are read and decoded, not the whole
+        // cached timeline: the widget's memory budget is a few megabytes.
         guard
-            let rows = try? await timelines.cachedTimeline(
-                accountID: accountID, timelineKey: "home:home")
+            let statuses = try? await timelines.latestStatuses(
+                accountID: accountID, timelineKey: "home:home", limit: limit)
         else { return [] }
 
-        return rows.compactMap(\.status).prefix(limit).map { status in
+        return statuses.map { status in
             let target = status.displayed
             return WidgetPost(
                 id: target.id,
@@ -79,13 +81,14 @@ enum WidgetData {
     @MainActor
     static func latestMentions(accountID: UUID, limit: Int) async -> [WidgetMention] {
         let container = StoreContainer.reader()
-        let descriptor = FetchDescriptor<NotificationRecord>(
+        var descriptor = FetchDescriptor<NotificationRecord>(
             predicate: #Predicate { $0.accountID == accountID && $0.kindRaw == "mention" },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
+        descriptor.fetchLimit = limit
         guard let records = try? container.mainContext.fetch(descriptor) else { return [] }
 
-        let payloads = records.prefix(limit).compactMap { record in
+        let payloads = records.compactMap { record in
             (try? AlohaJSON.decoder.decode(NotificationPayload.self, from: record.payload))
                 .map { (record, $0) }
         }

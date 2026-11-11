@@ -10,7 +10,8 @@ public struct StatusRow: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The list's filters, for the post this one quotes.
+    @Environment(\.filterVerdicts) private var filterVerdicts
     /// The scale `AvatarView` draws at, so the context line stays aligned
     /// with the name column as the avatar grows.
     @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
@@ -25,6 +26,13 @@ public struct StatusRow: View {
     private let isOwn: Bool
     private let showsCounts: Bool
     private let selectableText: Bool
+    private let showsTimestamp: Bool
+    /// Whether a post of the reader's own carries the accent rule down its
+    /// leading edge. A thread leaves it out: the rule sits outside the row's
+    /// inset, so an opened post and each of its replies by the same author grew
+    /// a blue stripe against the edge of the screen, which looked like a
+    /// selection that had gone wrong rather than a way to find yourself.
+    private let showsOwnMarker: Bool
     private let onAction: (StatusRowAction) -> Void
 
     @State private var isSpoilerRevealed = false
@@ -52,6 +60,11 @@ public struct StatusRow: View {
         /// The focused post of a thread, whose words can be selected and
         /// copied; a timeline row's tap opens the post instead.
         selectableText: Bool = false,
+        /// Whether the row carries its age beside the name. An opened post
+        /// says the exact moment underneath instead, so the relative age in
+        /// the header only repeats it.
+        showsTimestamp: Bool = true,
+        showsOwnMarker: Bool = true,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
         self.status = status
@@ -64,6 +77,8 @@ public struct StatusRow: View {
         self.isOwn = isOwn
         self.showsCounts = showsCounts
         self.selectableText = selectableText
+        self.showsTimestamp = showsTimestamp
+        self.showsOwnMarker = showsOwnMarker
         self.onAction = onAction
     }
 
@@ -138,7 +153,7 @@ public struct StatusRow: View {
         // Your own posts carry a rule in the accent down their leading edge —
         // enough to find yourself in a timeline, not enough to shout.
         .overlay(alignment: .leading) {
-            if isOwn {
+            if isOwn, showsOwnMarker {
                 Capsule()
                     .fill(palette.accent.opacity(0.55))
                     .frame(width: 3)
@@ -275,10 +290,12 @@ public struct StatusRow: View {
 
             Spacer(minLength: AlohaMetrics.space2)
 
-            PostAgeText(displayed.createdAt)
-                .font(AlohaType.meta)
-                .foregroundStyle(palette.tertiaryLabel)
-                .lineLimit(1)
+            if showsTimestamp {
+                PostAgeText(displayed.createdAt)
+                    .font(AlohaType.meta)
+                    .foregroundStyle(palette.tertiaryLabel)
+                    .lineLimit(1)
+            }
 
             if displayed.isEdited {
                 Image(systemName: AlohaSymbol.edit)
@@ -375,7 +392,11 @@ public struct StatusRow: View {
             }
 
             if let quoted = displayed.quotedStatus ?? fetchedQuote {
-                QuotedStatusCard(status: quoted, localHost: localHost) {
+                QuotedStatusCard(
+                    status: quoted, policy: policy,
+                    verdict: filterVerdicts?.decision(for: quoted) ?? .show,
+                    localHost: localHost
+                ) {
                     onAction(.open(quoted))
                 }
             } else if displayed.quoteID != nil, displayed.quote?.state != "revoked" {
@@ -401,66 +422,44 @@ public struct StatusRow: View {
         }
     }
 
-    /// One line of actions, or two at the accessibility text sizes: the four
-    /// actions and the menu first, the counts the row only reports below. At
-    /// those sizes one line pushed the menu off the trailing edge.
-    @ViewBuilder
+    /// The four actions and the menu on one line, evenly spread; the counts
+    /// the row only reports — quotes, dislikes, views — on a quiet line below
+    /// when there are any. Squeezing both onto one line pushed Save or the
+    /// menu off a narrow phone, and split the four actions unevenly.
     private var actionRow: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
-                HStack(spacing: 0) {
-                    primaryActions
-                    Spacer(minLength: 0)
-                    moreMenu
-                }
-                HStack(spacing: 0) { countMetrics }
-            }
-            .padding(.top, AlohaMetrics.space1)
-            .animation(
-                .spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited
-            )
-            .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
-        } else {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
             HStack(spacing: 0) {
-                primaryActions
-                countMetrics
-                Spacer(minLength: 0)
+                actions
                 moreMenu
             }
-            .padding(.top, AlohaMetrics.space1)
-            .animation(
-                .spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited
-            )
-            .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
+            if hasCountMetrics {
+                HStack(spacing: 0) { countMetrics }
+            }
         }
+        .padding(.top, AlohaMetrics.space1)
+        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
+        .animation(.spring(response: 0.42, dampingFraction: 0.7), value: displayed.reblogged)
     }
 
-    @ViewBuilder
-    private var primaryActions: some View {
-        StatusActionButton(
-            symbol: AlohaSymbol.reply, count: showsCounts ? displayed.repliesCount : nil,
-            tint: palette.secondaryLabel, isOn: false, style: .plain,
-            label: Text("Reply", comment: "Status action")
-        ) { onAction(.reply(status)) }
+    /// Whether the read-only line has anything on it, so an empty row is not
+    /// given the space of one.
+    private var hasCountMetrics: Bool {
+        guard showsCounts else { return false }
+        if displayed.mediaAttachments.contains(where: { $0.type.isPlayable }),
+            displayed.dislikesCount > 0
+        {
+            return true
+        }
+        if let quotes = displayed.quotesCount, quotes > 0 { return true }
+        if isOwn, let views = displayed.viewCount, views > 0 { return true }
+        return false
+    }
 
-        StatusActionButton(
-            symbol: AlohaSymbol.boost, count: showsCounts ? displayed.reblogsCount : nil,
-            tint: palette.boost, isOn: displayed.reblogged, style: .spin,
-            label: Text("Boost", comment: "Status action")
-        ) { onAction(.boost(status)) }
-
-        StatusActionButton(
-            symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
-            count: showsCounts ? displayed.favouritesCount : nil, tint: palette.favourite,
-            isOn: displayed.favourited, style: .pop,
-            label: Text("Favourite", comment: "Status action")
-        ) { onAction(.favourite(status)) }
-
-        StatusActionButton(
-            symbol: displayed.bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark,
-            count: nil, tint: palette.bookmark, isOn: displayed.bookmarked, style: .pop,
-            label: Text("Bookmark", comment: "Status action")
-        ) { onAction(.bookmark(status)) }
+    /// Like, repost, comment, save — the app's one order, evenly spread.
+    private var actions: some View {
+        StatusActionStrip(status: status, showsCounts: showsCounts, prominence: .row) {
+            onAction($0)
+        }
     }
 
     /// The numbers a row reports but nobody can change from here.
@@ -568,8 +567,14 @@ public struct StatusRow: View {
         guard fetchedQuote == nil, let id = displayed.quoteID,
             let session = environment.activeSession
         else { return }
-        fetchedQuote = try? await session.client.decode(
-            Status.self, from: Endpoint.statuses.status(id))
+        guard
+            let quote = try? await session.client.decode(
+                Status.self, from: Endpoint.statuses.status(id))
+        else { return }
+        // Its words parsed for the keyword filters before it is drawn, so
+        // its verdict is decided off the main actor like the list's own.
+        await filterVerdicts?.warm([quote])
+        fetchedQuote = quote
     }
 
     private func filteredPlaceholder(_ title: String) -> some View {
@@ -663,14 +668,78 @@ public struct StatusRow: View {
 
 /// A quoted post inside the quoting one: who, when, an excerpt, and the first
 /// picture. Tapping opens the quoted post's thread.
+///
+/// The quote is a post of its own and is read under the same rules as the
+/// one quoting it. It used to collapse only its text: the first picture was
+/// drawn whatever the post's content warning, its sensitive flag or the
+/// reader's media policy said, and no filter ever looked at it — so a post
+/// somebody had filtered away came back inside anyone's quote of it.
 struct QuotedStatusCard: View {
     @Environment(\.alohaPalette) private var palette
 
     let status: Status
+    let policy: SensitiveMediaPolicy
+    /// What the reader's filters say about the quoted post, in the context
+    /// of the list it is drawn in.
+    var verdict: FilterEvaluator.Decision = .show
     let localHost: String?
     let onOpen: () -> Void
 
+    @State private var isFilterRevealed = false
+
     var body: some View {
+        switch verdict {
+        case .hide:
+            // Hidden means not shown — not one tap away. Saying that something
+            // was here keeps the quoting post from reading as if it pointed
+            // at nothing.
+            notice(
+                Text("Quoted post hidden by a filter", comment: "Quote removed by a hide filter"))
+        case .warn(let title) where !isFilterRevealed:
+            notice(Text("Filtered: \(title)", comment: "Row hidden by a keyword filter")) {
+                Button {
+                    withAnimation { isFilterRevealed = true }
+                } label: {
+                    Text("Show anyway", comment: "Reveal a filtered post")
+                }
+                .font(.footnote)
+            }
+        case .show, .warn:
+            card
+        }
+    }
+
+    private func notice(
+        _ text: Text, @ViewBuilder action: () -> some View = { EmptyView() }
+    ) -> some View {
+        HStack(spacing: AlohaMetrics.space3) {
+            Image(systemName: AlohaSymbol.sensitive)
+                .foregroundStyle(palette.secondaryLabel)
+                .accessibilityHidden(true)
+            text
+                .font(.footnote)
+                .foregroundStyle(palette.secondaryLabel)
+            Spacer(minLength: 0)
+            action()
+        }
+        .padding(AlohaMetrics.space3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                .strokeBorder(palette.separator, lineWidth: 1)
+        )
+    }
+
+    /// A content warning collapses the media with the words, as it does on
+    /// the post itself; a sensitive picture is covered, or not drawn, as the
+    /// reader's policy says. The card has no reveal of its own — opening the
+    /// post is one tap, and the post has both.
+    nonisolated static func showsMedia(of status: Status, policy: SensitiveMediaPolicy) -> Bool {
+        guard !status.hasContentWarning else { return false }
+        return !(status.sensitive && !policy.drawsAtAll)
+    }
+
+    private var card: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                 HStack(spacing: AlohaMetrics.space2) {
@@ -701,10 +770,11 @@ struct QuotedStatusCard: View {
                         .font(.subheadline)
                 }
 
-                if let first = status.mediaAttachments.first {
-                    RemoteImage(
-                        url: first.displayImageURL, blurhash: first.blurhash,
-                        accessibilityText: first.description
+                if Self.showsMedia(of: status, policy: policy),
+                    let first = status.mediaAttachments.first
+                {
+                    SensitiveThumbnail(
+                        attachment: first, isSensitive: status.sensitive, policy: policy
                     )
                     .aspectRatio(16 / 9, contentMode: .fill)
                     .frame(maxHeight: 160)

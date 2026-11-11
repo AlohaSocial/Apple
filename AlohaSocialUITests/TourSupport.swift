@@ -126,7 +126,9 @@ extension XCUIApplication {
         func dismissSystemAlertsIfPresent() {
             let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
             for label in ["Don’t Allow", "Don't Allow", "Cancel", "Allow"] {
-                let button = springboard.buttons[label]
+                // The system's photos alert nests the same button twice, so the
+                // query has to name one of them rather than all of them.
+                let button = springboard.buttons[label].firstMatch
                 if button.waitForExistence(timeout: 2) {
                     button.tap()
                     break

@@ -69,11 +69,23 @@ import XCTest
             ).firstMatch
             XCTAssertTrue(body.waitForExistence(timeout: 8), "No plain status body found")
             body.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+            // Generous, because a hosted runner draws the thread and its
+            // replies far more slowly than a Mac does; the answer itself is
+            // in-process and arrives at once.
             XCTAssertTrue(
-                app.navigationBars["Post"].waitForExistence(timeout: 8), "Thread did not open")
-            XCTAssertTrue(
-                app.labelled("Reply 1 to that").waitForExistence(timeout: 8),
-                "The thread has no replies to audit")
+                app.navigationBars["Post"].waitForExistence(timeout: 15), "Thread did not open")
+            let reply = app.labelled("Reply 1 to that")
+            var found = reply.waitForExistence(timeout: 45)
+            // A List realizes only the rows near the viewport, and the focused
+            // post plus its footer fill the phone; on a slow runner the replies
+            // below them are not in the tree until they are scrolled into it.
+            var scrolls = 0
+            while !found && scrolls < 4 {
+                app.swipeUp()
+                scrolls += 1
+                found = reply.waitForExistence(timeout: 5)
+            }
+            XCTAssertTrue(found, "The thread has no replies to audit")
             try audit("Thread")
         }
 
@@ -179,7 +191,23 @@ import XCTest
             fresh.launch()
             XCTAssertTrue(fresh.labelled("A calmer client").waitForExistence(timeout: 10))
             shoot("96-welcome-before-audit")
+            // Let the introduction's opening transition finish: the audit
+            // samples rendered pixels, and a half-faded header is not a colour
+            // the app chose.
+            sleep(2)
             try fresh.performAccessibilityAudit(for: auditTypes) { issue in
+                // The same pixel check the main audit uses: SwiftUI's node
+                // frame includes the backdrop, and the system's own contrast
+                // probe calls plainly legible labels failures. Measure the
+                // element itself and accept only at 4.5:1 or better.
+                if issue.auditType == .contrast, let element = issue.element,
+                    let ratio = Self.measuredContrast(of: element)
+                {
+                    Self.record(
+                        "[Welcome] contrast measured \(String(format: "%.1f", ratio)):1, "
+                            + "label='\(element.label)'")
+                    if ratio >= Self.minimumContrast { return true }
+                }
                 Self.record(
                     "[Welcome] \(issue.compactDescription) — "
                         + "label='\(issue.element?.label ?? "")' "
@@ -195,11 +223,46 @@ import XCTest
             XCTAssertEqual(server.value as? String, "cloud.example.test")
             XCTAssertTrue(fresh.buttons["Continue"].firstMatch.isEnabled)
             fresh.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(
+                fresh.staticTexts["server-found-title"].waitForExistence(timeout: 20),
+                "The server was not shown before the terms")
+            fresh.buttons["Continue"].firstMatch.tap()
             XCTAssertTrue(fresh.labelled("Before you start").waitForExistence(timeout: 5))
+            sleep(1)
+            // A page sheet is narrower and shorter than the window, so the
+            // window's frame is not the visible area. The terms are a scroll
+            // view; elements below its fold have no rendered pixels to judge.
+            let termsScroll = fresh.scrollViews.firstMatch
+            let termsViewport = termsScroll.exists ? termsScroll.frame : fresh.frame
+            let notNow = fresh.buttons["Not now"].firstMatch
+            if termsScroll.exists {
+                for _ in 0..<3 where !notNow.isHittable {
+                    termsScroll.swipeUp()
+                }
+            }
+            Self.record(
+                "[Terms] viewport=\(termsViewport) notNow hittable=\(notNow.isHittable) "
+                    + "frame=\(notNow.frame)")
+            sleep(1)
             try fresh.performAccessibilityAudit(for: auditTypes) { issue in
+                if issue.auditType == .contrast, let frame = issue.element?.frame,
+                    frame.width == 0 || frame.height == 0 || !termsViewport.contains(frame)
+                {
+                    Self.record("[Terms] outside \(termsViewport): \(frame), accepted")
+                    return true
+                }
+                if issue.auditType == .contrast, let element = issue.element,
+                    let ratio = Self.measuredContrast(of: element)
+                {
+                    Self.record(
+                        "[Terms] contrast measured \(String(format: "%.1f", ratio)):1, "
+                            + "label='\(element.label)' frame=\(element.frame)")
+                    if ratio >= Self.minimumContrast { return true }
+                }
                 Self.record(
                     "[Terms] \(issue.compactDescription) — "
-                        + "label='\(issue.element?.label ?? "")'")
+                        + "label='\(issue.element?.label ?? "")' "
+                        + "frame=\(String(describing: issue.element?.frame))")
                 return false
             }
 
