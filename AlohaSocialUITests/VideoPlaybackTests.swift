@@ -109,9 +109,14 @@ final class VideoPlaybackTests: XCTestCase {
         XCTAssertTrue(
             playPause.waitForExistence(timeout: 10), "No player controls appeared on the player")
         // Ten seconds of fixture can end while a slow runner takes the
-        // readings above; the control then offers Play. Start it again rather
-        // than failing on the fixture's length.
-        if playPause.label == "Play" { playPause.tap() }
+        // readings above; the control then offers Play, and pressing it on a
+        // finished item does nothing. Rewind to the first frame so there is
+        // somewhere to play from, then start it again.
+        if playPause.label == "Play" {
+            let rewind = app.buttons["Skip Backward"]
+            if rewind.exists { rewind.tap() }
+            if playPause.label == "Play" { playPause.tap() }
+        }
         let pause = app.buttons["Pause"]
         XCTAssertTrue(
             pause.waitForExistence(timeout: 10), "No pause control appeared on the player")
