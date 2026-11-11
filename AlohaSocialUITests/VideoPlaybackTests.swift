@@ -102,10 +102,19 @@ final class VideoPlaybackTests: XCTestCase {
         // has opened the page and taken the readings above, a resumed picture
         // can already be its last frame — which is a fact about the fixture,
         // not about the player.
-        app.otherElements.firstMatch.tap()
+        let surface = app.otherElements["Video"].firstMatch
+        XCTAssertTrue(surface.waitForExistence(timeout: 10), "No video surface to tap")
+        surface.tap()
+        let playPause = app.buttons["Play/Pause"]
+        XCTAssertTrue(
+            playPause.waitForExistence(timeout: 10), "No player controls appeared on the player")
+        // Ten seconds of fixture can end while a slow runner takes the
+        // readings above; the control then offers Play. Start it again rather
+        // than failing on the fixture's length.
+        if playPause.label == "Play" { playPause.tap() }
         let pause = app.buttons["Pause"]
         XCTAssertTrue(
-            pause.waitForExistence(timeout: 5), "No pause control appeared on the player")
+            pause.waitForExistence(timeout: 10), "No pause control appeared on the player")
         pause.tap()
         let play = app.buttons["Play"]
         XCTAssertTrue(

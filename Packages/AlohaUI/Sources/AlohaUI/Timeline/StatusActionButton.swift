@@ -81,7 +81,13 @@ struct StatusActionButton: View {
 
                     Button(action: onCountTap) {
                         countText(count)
-                            .frame(minHeight: minimumHeight)
+                            // An opened post has the width for a real tap
+                            // target around a one-digit count; a timeline row
+                            // does not, and keeps its number beside the glyph.
+                            .frame(
+                                minWidth: prominence == .detail ? 44 : nil,
+                                minHeight: minimumHeight
+                            )
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
