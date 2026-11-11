@@ -326,7 +326,7 @@
       }
     },
     "%@, %@" : {
-      "comment" : "Accessibility label for a status\nAccessibility label for an account row\nVoiceOver rotor entry for a post: author, then age",
+      "comment" : "Accessibility label for a feed mode switch\nAccessibility label for a status\nAccessibility label for an account row\nVoiceOver rotor entry for a post: author, then age",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1048,7 +1048,7 @@
       }
     },
     "🌺" : {
-
+      "comment" : "Onboarding mock story sticker"
     },
     "1 day" : {
       "comment" : "Filter expiry",
@@ -16346,6 +16346,9 @@
           }
         }
       }
+    },
+    "Your account isn't set up yet. Open Aloha Social in a web browser and choose your username." : {
+      "comment" : "HTTP 403, account not set up"
     },
     "Your account on Bluesky" : {
       "comment" : "Bluesky settings section",
