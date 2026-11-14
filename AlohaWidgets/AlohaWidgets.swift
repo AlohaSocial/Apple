@@ -4,6 +4,7 @@ import AlohaDesign
 import AlohaModels
 import AlohaStore
 import AppIntents
+import CoreGraphics
 import SwiftUI
 import WidgetKit
 
@@ -11,42 +12,65 @@ import WidgetKit
 /// never downloads (docs/09 §8).
 struct LatestPostsProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> PostsEntry {
-        PostsEntry(date: Date(), posts: [], accountHandle: "@you", serverTheme: nil)
+        PostsEntry(
+            date: Date(), posts: [], accountHandle: "@you", serverTheme: nil, empty: .nothingYet)
     }
 
     func snapshot(for configuration: WidgetAccount, in context: Context) async -> PostsEntry {
-        await entry(for: configuration)
+        await entry(for: configuration, family: context.family)
     }
 
     func timeline(
         for configuration: WidgetAccount, in context: Context
     ) async -> Timeline<PostsEntry> {
-        let entry = await entry(for: configuration)
+        let entry = await entry(for: configuration, family: context.family)
         // Reloaded by the app after a background refresh and after any post;
         // this interval is only the floor.
         return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(900)))
     }
 
-    private func entry(for configuration: WidgetAccount) async -> PostsEntry {
+    private func entry(for configuration: WidgetAccount, family: WidgetFamily) async -> PostsEntry {
         guard let snapshot = await WidgetData.account(matching: configuration) else {
-            return PostsEntry(date: Date(), posts: [], accountHandle: "", serverTheme: nil)
+            return PostsEntry(
+                date: Date(), posts: [], accountHandle: "", serverTheme: nil, empty: .nothingYet)
         }
-        let posts = await WidgetData.latestPosts(accountID: snapshot.id, limit: 6)
+        let theme = WidgetData.serverTheme(of: snapshot)
+        // A list picked while another account was chosen belongs to that
+        // account: its id means nothing, or something else, on this one.
+        let listID = configuration.list.flatMap { $0.accountID == snapshot.id ? $0.listID : nil }
+        guard let key = configuration.feed.timelineKey(listID: listID) else {
+            return PostsEntry(
+                date: Date(), posts: [], accountHandle: snapshot.qualifiedHandle,
+                serverTheme: theme, empty: .chooseList)
+        }
+        let posts = await WidgetData.latestPosts(
+            accountID: snapshot.id, timelineKey: key,
+            limit: LatestPostsView.visibleCount(for: family),
+            images: LatestPostsView.imageSizes(for: family))
         return PostsEntry(
             date: Date(), posts: posts, accountHandle: snapshot.qualifiedHandle,
-            serverTheme: WidgetData.serverTheme(of: snapshot))
+            serverTheme: theme,
+            // Home is cached from the first launch; any other feed only once
+            // the app has opened it, which is worth saying.
+            empty: configuration.feed == .home ? .nothingYet : .openFeedInApp)
     }
 }
 
 struct PostsEntry: WidgetKit.TimelineEntry {
+    /// Why a widget with no rows has none.
+    enum Empty {
+        case nothingYet, chooseList, openFeedInApp
+    }
+
     let date: Date
     let posts: [WidgetPost]
     let accountHandle: String
     /// The account's server colour, so the widget wears what the app does.
     let serverTheme: AlohaThemeModifier.ServerTheme?
+    let empty: Empty
 }
 
-struct WidgetPost: Identifiable, Hashable {
+struct WidgetPost: Identifiable {
     let id: String
     /// The local account the post was read with: its link and its heart act
     /// under that account, whichever one the app has active.
@@ -56,13 +80,16 @@ struct WidgetPost: Identifiable, Hashable {
     let text: String
     let createdAt: Date
     let favourited: Bool
+    /// From the app's disk cache, already shrunk; nil where it is not there.
+    let avatar: CGImage?
+    let thumbnail: CGImage?
 
     var linkURL: URL? { WidgetData.statusURL(accountID: accountID, statusID: id) }
 }
 
 /// A mention, as a widget row: who said it, what they said, and the post it
 /// points at so a tap opens the thread rather than the notifications screen.
-struct WidgetMention: Identifiable, Hashable {
+struct WidgetMention: Identifiable {
     let id: String
     let accountID: UUID
     let author: String
@@ -71,12 +98,43 @@ struct WidgetMention: Identifiable, Hashable {
     let createdAt: Date
     let statusID: String?
     let favourited: Bool
+    let avatar: CGImage?
 
     /// A row without a status has nowhere to open — a mention whose post has
     /// since been deleted is still worth reading, but the link cannot point at
     /// nothing.
     var linkURL: URL? {
         statusID.flatMap { WidgetData.statusURL(accountID: accountID, statusID: $0) }
+    }
+}
+
+/// An author's picture on a row, or their initial where the app has not
+/// cached the picture: the widget never fetches one itself.
+struct WidgetAvatar: View {
+    let image: CGImage?
+    let name: String
+    var size: CGFloat = 20
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .widgetAccentedRenderingMode(.accentedDesaturated)
+                    .scaledToFill()
+            } else {
+                Circle()
+                    .fill(.tint.opacity(0.2))
+                    .overlay {
+                        Text(verbatim: String(name.prefix(1)).uppercased())
+                            .font(.system(size: size * 0.5, weight: .semibold))
+                            .foregroundStyle(.tint)
+                    }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
     }
 }
 
@@ -115,16 +173,6 @@ struct FavouriteButton: View {
     }
 }
 
-struct WidgetAccount: WidgetConfigurationIntent {
-    static let title: LocalizedStringResource = "Account"
-    static let description = IntentDescription("Which account to show.")
-
-    @Parameter(title: "Handle")
-    var handle: String?
-
-    init() {}
-}
-
 struct LatestPostsWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(
@@ -148,13 +196,23 @@ struct LatestPostsView: View {
     @Environment(\.widgetFamily) private var family
     let entry: PostsEntry
 
-    private var visibleCount: Int {
+    static func visibleCount(for family: WidgetFamily) -> Int {
         switch family {
         case .systemSmall: 1
         case .systemMedium: 2
         case .systemLarge: 5
         case .systemExtraLarge: 12
         default: 3
+        }
+    }
+
+    /// Avatars at every size; a post's picture only where a row has room
+    /// beside the text for it to be more than a smudge.
+    static func imageSizes(for family: WidgetFamily) -> WidgetImages.Sizes {
+        switch family {
+        case .systemSmall, .systemMedium: WidgetImages.Sizes(avatar: 64, thumbnail: nil)
+        case .systemLarge, .systemExtraLarge: WidgetImages.Sizes(avatar: 64, thumbnail: 160)
+        default: .none
         }
     }
 
@@ -165,11 +223,11 @@ struct LatestPostsView: View {
     }
 
     var body: some View {
-        let rows = Array(entry.posts.prefix(visibleCount))
+        let rows = Array(entry.posts.prefix(Self.visibleCount(for: family)))
         Grid(horizontalSpacing: 8, verticalSpacing: 6) {
             if rows.isEmpty {
                 GridRow {
-                    Text("Nothing yet", comment: "Empty widget")
+                    emptyText
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .gridCellColumns(columns)
@@ -193,15 +251,45 @@ struct LatestPostsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    private var emptyText: Text {
+        switch entry.empty {
+        case .nothingYet:
+            Text("Nothing yet", comment: "Empty widget")
+        case .chooseList:
+            Text(
+                "Choose a list in the widget's settings.",
+                comment: "Latest posts widget set to a list without one picked")
+        case .openFeedInApp:
+            Text(
+                "Open this feed in Aloha Social to show it here.",
+                comment: "Latest posts widget whose feed the app has not cached")
+        }
+    }
+
     private func postRow(_ post: WidgetPost) -> some View {
-        HStack(alignment: .top, spacing: 2) {
+        HStack(alignment: .top, spacing: 4) {
             if let url = post.linkURL {
-                Link(destination: url) { postText(post) }
+                Link(destination: url) { postContent(post) }
             } else {
-                postText(post)
+                postContent(post)
             }
             FavouriteButton(
                 accountID: post.accountID, statusID: post.id, favourited: post.favourited)
+        }
+    }
+
+    private func postContent(_ post: WidgetPost) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            WidgetAvatar(image: post.avatar, name: post.author)
+            postText(post)
+            if let thumbnail = post.thumbnail {
+                Image(decorative: thumbnail, scale: 1)
+                    .resizable()
+                    .widgetAccentedRenderingMode(.accentedDesaturated)
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
         }
     }
 
@@ -232,43 +320,56 @@ struct LatestPostsView: View {
 
 // MARK: - Notifications widget
 
-struct UnreadProvider: TimelineProvider {
+struct UnreadProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> UnreadEntry {
-        UnreadEntry(date: Date(), count: 0, serverTheme: nil)
+        UnreadEntry(date: Date(), count: 0, accountHandle: nil, serverTheme: nil)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (UnreadEntry) -> Void) {
-        Task { completion(await entry()) }
+    func snapshot(
+        for configuration: NotificationsWidgetAccount, in context: Context
+    ) async -> UnreadEntry {
+        await entry(for: configuration)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<UnreadEntry>) -> Void) {
-        Task {
-            completion(
-                Timeline(
-                    entries: [await entry()],
-                    policy: .after(Date().addingTimeInterval(900))))
-        }
+    func timeline(
+        for configuration: NotificationsWidgetAccount, in context: Context
+    ) async -> Timeline<UnreadEntry> {
+        Timeline(
+            entries: [await entry(for: configuration)],
+            policy: .after(Date().addingTimeInterval(900)))
     }
 
-    private func entry() async -> UnreadEntry {
-        UnreadEntry(
-            date: Date(), count: await WidgetData.unreadCount(),
-            serverTheme: await WidgetData.activeServerTheme())
+    /// Set to an account, that account's count and colour; unset, every
+    /// account's total in the active account's colour, as before the widget
+    /// could be configured.
+    private func entry(for configuration: NotificationsWidgetAccount) async -> UnreadEntry {
+        let picked = configuration.account?.id
+        let snapshot = await WidgetData.account(id: picked)
+        return UnreadEntry(
+            date: Date(), count: WidgetData.unreadCount(accountID: picked),
+            accountHandle: picked == nil ? nil : snapshot?.qualifiedHandle,
+            serverTheme: snapshot.flatMap(WidgetData.serverTheme(of:)))
     }
 }
 
 struct UnreadEntry: WidgetKit.TimelineEntry {
     let date: Date
     let count: Int
+    /// Shown where there is room, when the widget is set to one account.
+    let accountHandle: String?
     let serverTheme: AlohaThemeModifier.ServerTheme?
 }
 
 struct UnreadWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Unread", provider: UnreadProvider()) { entry in
+        AppIntentConfiguration(
+            kind: "Unread", intent: NotificationsWidgetAccount.self, provider: UnreadProvider()
+        ) { entry in
             UnreadView(entry: entry)
                 .serverTint(entry.serverTheme)
                 .containerBackground(.fill.tertiary, for: .widget)
+                // A count is a door to the list it counts.
+                .widgetURL(URL(string: "alohasocial://notifications"))
         }
         .configurationDisplayName(Text("Unread notifications", comment: "Widget name"))
         .description(Text("How many things happened.", comment: "Widget description"))
@@ -306,6 +407,28 @@ struct UnreadView: View {
                     Text(entry.count, format: .number)
                 }
                 .gaugeStyle(.accessoryCircular)
+            case .accessoryRectangular:
+                // Three short lines, the Lock Screen's own shape for a count:
+                // what it is, how many, and whose.
+                VStack(alignment: .leading, spacing: 0) {
+                    Label {
+                        Text("Notifications", comment: "Lock Screen widget heading")
+                    } icon: {
+                        Image(systemName: "bell.fill")
+                    }
+                    .font(.headline)
+                    .widgetAccentable()
+                    Text("\(entry.count) unread", comment: "Lock Screen widget count")
+                        .font(.body.monospacedDigit())
+                        .contentTransition(.numericText())
+                    if let handle = entry.accountHandle {
+                        Text(handle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
         #endif
         default:
             VStack(alignment: .leading, spacing: 2) {
@@ -319,6 +442,12 @@ struct UnreadView: View {
                 Text("unread", comment: "Widget label")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let handle = entry.accountHandle {
+                    Text(handle)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
             }
         }
     }
@@ -351,23 +480,26 @@ struct MentionsProvider: AppIntentTimelineProvider {
         MentionsEntry(date: Date(), mentions: [], accountHandle: "@you", serverTheme: nil)
     }
 
-    func snapshot(for configuration: WidgetAccount, in context: Context) async -> MentionsEntry {
+    func snapshot(
+        for configuration: NotificationsWidgetAccount, in context: Context
+    ) async -> MentionsEntry {
         await entry(for: configuration)
     }
 
     func timeline(
-        for configuration: WidgetAccount, in context: Context
+        for configuration: NotificationsWidgetAccount, in context: Context
     ) async -> Timeline<MentionsEntry> {
         Timeline(
             entries: [await entry(for: configuration)],
             policy: .after(Date().addingTimeInterval(600)))
     }
 
-    private func entry(for configuration: WidgetAccount) async -> MentionsEntry {
-        guard let snapshot = await WidgetData.account(matching: configuration) else {
+    private func entry(for configuration: NotificationsWidgetAccount) async -> MentionsEntry {
+        guard let snapshot = await WidgetData.account(id: configuration.account?.id) else {
             return MentionsEntry(date: Date(), mentions: [], accountHandle: "", serverTheme: nil)
         }
-        let mentions = await WidgetData.latestMentions(accountID: snapshot.id, limit: 6)
+        let mentions = await WidgetData.latestMentions(
+            accountID: snapshot.id, limit: 6, avatarPixels: 64)
         return MentionsEntry(
             date: Date(), mentions: mentions, accountHandle: snapshot.qualifiedHandle,
             serverTheme: WidgetData.serverTheme(of: snapshot))
@@ -385,7 +517,8 @@ struct MentionsEntry: WidgetKit.TimelineEntry {
 struct MentionsWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(
-            kind: "Mentions", intent: WidgetAccount.self, provider: MentionsProvider()
+            kind: "Mentions", intent: NotificationsWidgetAccount.self,
+            provider: MentionsProvider()
         ) { entry in
             MentionsView(entry: entry)
                 .serverTint(entry.serverTheme)
@@ -430,6 +563,13 @@ struct MentionsView: View {
     }
 
     private func row(_ mention: WidgetMention) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            WidgetAvatar(image: mention.avatar, name: mention.author)
+            rowText(mention)
+        }
+    }
+
+    private func rowText(_ mention: WidgetMention) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
                 Text(mention.author)

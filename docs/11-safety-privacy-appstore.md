@@ -154,17 +154,18 @@ any future addition of analytics requires changing this document first.
   because Mastodon servers cache them and Nextcloud serves cached copies
   via `/document/get`. Prefer the local cache URL when the entity offers one.
 - The shared app group (`group.social.aloha.app`) and Keychain access group
-  (`$(AppIdentifierPrefix)social.aloha.app`) are **on** for the Mac app, the TV
-  app and their extensions. The iPhone and watch targets ship standalone (no
-  group entitlements, `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled`
-  set to `false`) so any Apple ID — including a free one, which cannot use
-  those capabilities — can run them; each process keeps the SwiftData store,
-  the defaults and the tokens in its own container. All of it stays on this
-  device; nothing in it leaves it. Which targets carry which entitlement, and
-  what a build signed with another team changes, is in
+  (`$(AppIdentifierPrefix)social.aloha.app`) are turned on and off together,
+  for every target, by one build setting, `ALOHA_SHARED_CONTAINER`
+  (`Supporting/Aloha.xcconfig`). It defaults to off so any Apple ID —
+  including a free one, which cannot use those capabilities — can run every
+  target; each process then keeps the SwiftData store, the defaults and the
+  tokens in its own container. Either way all of it stays on this device;
+  nothing in it leaves it. Which targets carry which entitlement, and what a
+  build signed with another team changes, is in
   [Supporting/README.md](../Supporting/README.md). The `Info.plist` keys
-  `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` still gate both, so a
-  build without the entitlements works alone instead of failing.
+  `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` follow the same
+  setting and gate both, so a build without the entitlements works alone
+  instead of failing.
 
 ## 4. Age rating
 
