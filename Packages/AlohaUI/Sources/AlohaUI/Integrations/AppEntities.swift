@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AppIntents
@@ -8,7 +9,13 @@ import Foundation
 /// The package's intents, entities and Focus filter, declared so the app's
 /// App Intents metadata includes them: code in a Swift package is otherwise
 /// invisible to Shortcuts, Siri and Spotlight, however it is linked.
-public struct AlohaUIAppIntents: AppIntentsPackage {}
+public struct AlohaUIAppIntents: AppIntentsPackage {
+    /// The upload's Cancel intent lives with the upload, in `AlohaMedia`, so
+    /// the widget extension that draws the button can name it too.
+    public static var includedPackages: [any AppIntentsPackage.Type] {
+        [AlohaMediaAppIntents.self]
+    }
+}
 
 // MARK: - Posts
 

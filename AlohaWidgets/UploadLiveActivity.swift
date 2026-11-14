@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaMedia
+import AppIntents
 import SwiftUI
 import WidgetKit
+
+/// The upload's Cancel button names an intent from `AlohaMedia`; listing the
+/// package puts it in this extension's App Intents metadata, which a package's
+/// types are otherwise left out of.
+struct AlohaWidgetsAppIntents: AppIntentsPackage {
+    static var includedPackages: [any AppIntentsPackage.Type] { [AlohaMediaAppIntents.self] }
+}
 
 #if os(iOS)
     import ActivityKit
@@ -23,6 +31,9 @@ import WidgetKit
                     }
                     DynamicIslandExpandedRegion(.center) {
                         Text(title(context.state)).font(.caption)
+                    }
+                    DynamicIslandExpandedRegion(.trailing) {
+                        cancelButton(context.state)
                     }
                     DynamicIslandExpandedRegion(.bottom) {
                         if context.state.phase == .uploading {
@@ -71,6 +82,7 @@ import WidgetKit
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
+                    cancelButton(state)
                 }
 
                 if state.phase == .processing || state.phase == .posting {
@@ -86,6 +98,27 @@ import WidgetKit
                             .truncationMode(.middle)
                     }
                 }
+            }
+        }
+
+        /// Cancel while bytes are going up, and only then (docs/09 §9): a
+        /// transcode is the server's and cannot be called back from here, and
+        /// a post being sent may already be out.
+        @ViewBuilder
+        private func cancelButton(_ state: UploadActivityAttributes.ContentState) -> some View {
+            if state.phase == .uploading {
+                Button(intent: CancelUploadIntent()) {
+                    Label {
+                        Text("Cancel", comment: "Live Activity button that stops the upload")
+                    } icon: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                    .labelStyle(.iconOnly)
+                    .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    Text("Cancel upload", comment: "Live Activity button, accessibility label"))
             }
         }
 

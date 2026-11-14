@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AppIntents
 import Foundation
 
 #if os(iOS)
@@ -106,8 +107,50 @@ public final class UploadActivityController {
 
     private var isRunning = false
     private var last: UploadActivityAttributes.ContentState?
+    /// How to stop each upload the activity's Cancel button covers.
+    private var running: [UUID: @MainActor () -> Void] = [:]
 
     private init() {}
+
+    /// Runs one upload so that the activity's Cancel button can stop it.
+    ///
+    /// The upload runs as a task of its own that Cancel cancels; the caller
+    /// sees what any cancelled request throws. Cancelling the caller cancels
+    /// the upload too, as awaiting it directly would.
+    public func cancellable<T: Sendable>(
+        _ operation: @escaping @MainActor () async throws -> T
+    ) async throws -> T {
+        let key = UUID()
+        let task = Task { try await operation() }
+        running[key] = { task.cancel() }
+        defer { running[key] = nil }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    /// The activity's Cancel button (`CancelUploadIntent`), run in the app.
+    ///
+    /// Stops every upload in flight and takes the activity down at once; the
+    /// composer is left with what had already finished, and says the rest did
+    /// not. Ends every upload activity even when this process started none —
+    /// an app relaunched to run the intent has no uploads, only a stale
+    /// activity on the Lock Screen.
+    public func requestCancel() {
+        for cancel in running.values { cancel() }
+        running.removeAll()
+        isRunning = false
+        last = nil
+        #if os(iOS)
+            Task {
+                for activity in Activity<UploadActivityAttributes>.activities {
+                    await activity.end(nil, dismissalPolicy: .immediate)
+                }
+            }
+        #endif
+    }
 
     public static func isWorthShowing(totalBytes: Int, containsVideo: Bool) -> Bool {
         containsVideo || totalBytes >= minimumBytesToShow
@@ -221,3 +264,28 @@ public final class UploadActivityController {
         #endif
     }
 }
+
+/// The package's intents, declared so an app or extension that links it can
+/// list them in its own App Intents metadata.
+public struct AlohaMediaAppIntents: AppIntentsPackage {}
+
+#if os(iOS)
+    /// The Cancel button on the upload's Live Activity (docs/09 §9).
+    ///
+    /// A `LiveActivityIntent` runs in the app's process, which is where the
+    /// uploads are: the widget extension only draws the button.
+    public struct CancelUploadIntent: LiveActivityIntent {
+        public static let title = LocalizedStringResource(
+            "Cancel upload", comment: "Live Activity intent title")
+        /// Only the activity offers it: there is nothing to cancel from
+        /// Shortcuts.
+        public static let isDiscoverable = false
+
+        public init() {}
+
+        public func perform() async throws -> some IntentResult {
+            await UploadActivityController.shared.requestCancel()
+            return .result()
+        }
+    }
+#endif
