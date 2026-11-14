@@ -14,11 +14,12 @@ struct ShellRestorationTests {
         tab: ShellTab = .mode(.photos),
         tabPaths: [ShellTab: [Route]] = [:],
         sidebarItem: SidebarItem = .mode(.home),
-        sidebarPaths: [SidebarItem: [Route]] = [:]
+        sidebarPaths: [SidebarItem: [Route]] = [:],
+        detailPaths: [SidebarItem: [Route]] = [:]
     ) -> ShellRestoration {
         ShellRestoration(
             accountID: account, tab: tab, tabPaths: tabPaths,
-            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths)
+            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths, detailPaths: detailPaths)
     }
 
     @Test("Each tab's stack and the sidebar's survive encoding")
@@ -34,7 +35,8 @@ struct ShellRestorationTests {
             sidebarPaths: [
                 .route(.explore): [.hashtag("photography")],
                 .mode(.video): [.video(statusID: "42")],
-            ])
+            ],
+            detailPaths: [.mode(.home): [.thread(statusID: "5"), .profile(accountID: "9")]])
         let data = try #require(original.encoded())
         let restored = try #require(ShellRestoration.decode(data, for: account))
 
@@ -44,6 +46,20 @@ struct ShellRestorationTests {
             restored.tabPaths[.mode(.home)] == [.thread(statusID: "109"), .profile(accountID: "7")])
         #expect(restored.restoredSidebarPaths[.route(.explore)] == [.hashtag("photography")])
         #expect(restored.sidebarItem.item == .route(.explore))
+        #expect(
+            restored.restoredDetailPaths[.mode(.home)] == [
+                .thread(statusID: "5"), .profile(accountID: "9"),
+            ])
+    }
+
+    @Test("A restoration written before the detail column still reads")
+    func readsWithoutDetailPaths() throws {
+        let data = try #require(restoration(tabPaths: [.mode(.home): [.hashtag("a")]]).encoded())
+        let json = try #require(String(data: data, encoding: .utf8))
+        #expect(!json.contains("detailPaths"))
+        let restored = try #require(ShellRestoration.decode(data, for: account))
+        #expect(restored.restoredDetailPaths.isEmpty)
+        #expect(restored.tabPaths[.mode(.home)] == [.hashtag("a")])
     }
 
     @Test("Another account's restoration is ignored")

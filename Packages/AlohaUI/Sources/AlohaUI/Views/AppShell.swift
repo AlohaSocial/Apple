@@ -43,6 +43,17 @@ struct ThemedAppShell: View {
     @State var tabPaths: [TabSelection: [Route]] = [:]
     /// The same, per sidebar row, for the iPad, Mac and Vision shells.
     @State var sidebarPaths: [SidebarItem: [Route]] = [:]
+    /// What each sidebar row has open in the iPad's detail column: the
+    /// thread or profile at its root, then whatever was pushed inside it.
+    /// Empty for a row whose column is closed (`push`).
+    @State var detailPaths: [SidebarItem: [Route]] = [:]
+    /// Whether the window is wide enough for a detail column beside the
+    /// primary one (`ShellLayout.detailColumnMinimumWidth`).
+    @State var isDetailColumnAvailable = false
+    /// Which column this copy of the shell builds screens for. The detail
+    /// column's screens are built by a copy marked `.detail`, so the actions
+    /// they send push onto the detail column's own stack.
+    var column: ShellColumn = .primary
     /// A route opened while the account was being switched, held until the
     /// shell has reset for the account it belongs to.
     @State var accountSwitch = AccountSwitchNavigation()
@@ -98,7 +109,7 @@ struct ThemedAppShell: View {
     /// otherwise stays out of the way: the app-wide requests — compose, open a
     /// route, add an account — are for the main window, or every open thread
     /// window would answer them too.
-    private let initialRoute: Route?
+    let initialRoute: Route?
 
     /// The account load and the sync engine are the process's, not a
     /// window's: loading again from a second window would replace the
@@ -169,6 +180,7 @@ struct ThemedAppShell: View {
                 guard previous != nil, previous != current else { return }
                 tabPaths = [:]
                 sidebarPaths = [:]
+                detailPaths = [:]
                 // For you is Nextcloud Social's; another server has no such feed.
                 if selectedSource == .interests,
                     environment.activeSession?.capabilities.isNextcloudSocial != true
@@ -483,6 +495,7 @@ struct ThemedAppShell: View {
         else { return }
         tabPaths = restored.tabPaths
         sidebarPaths = restored.restoredSidebarPaths
+        detailPaths = restored.restoredDetailPaths
         selectedTab = restored.tab
         sidebarItem = restored.sidebarItem.item
         if usesSidebar {
@@ -499,7 +512,7 @@ struct ThemedAppShell: View {
         guard hasRestored, let id = environment.activeSession?.id else { return nil }
         return ShellRestoration(
             accountID: id, tab: selectedTab, tabPaths: tabPaths,
-            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths)
+            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths, detailPaths: detailPaths)
     }
 
     func unreadNotifications(_ session: AccountSession) -> Int {
@@ -510,8 +523,32 @@ struct ThemedAppShell: View {
         Binding(get: { tabPaths[tab, default: []] }, set: { tabPaths[tab] = $0 })
     }
 
+    /// A sidebar row's primary stack. Where there is no room for the detail
+    /// column — the window narrowed, or the scene came back narrower than it
+    /// was left — what the column had open is shown pushed on top of this
+    /// stack instead, so narrowing a window never closes what you were
+    /// reading. The first change to that stack makes the arrangement real.
     func sidebarPath(_ item: SidebarItem) -> Binding<[Route]> {
-        Binding(get: { sidebarPaths[item, default: []] }, set: { sidebarPaths[item] = $0 })
+        let folds = !showsDetailColumn
+        return Binding(
+            get: {
+                sidebarPaths[item, default: []]
+                    + (folds ? detailPaths[item, default: []] : [])
+            },
+            set: { path in
+                sidebarPaths[item] = path
+                if folds { detailPaths[item] = nil }
+            })
+    }
+
+    /// The detail column's stack: everything after its root.
+    func detailPath(_ item: SidebarItem) -> Binding<[Route]> {
+        Binding(
+            get: { Array(detailPaths[item, default: []].dropFirst()) },
+            set: { path in
+                guard let root = detailPaths[item]?.first else { return }
+                detailPaths[item] = [root] + path
+            })
     }
 
     /// Writes today's "on this day" for the Memories widget, once per day and
