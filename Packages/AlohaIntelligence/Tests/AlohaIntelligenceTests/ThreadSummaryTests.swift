@@ -121,7 +121,7 @@ struct IntelligenceErrorTests {
         #expect(IntelligenceError.classify(Other()) == .failed)
     }
 
-    #if canImport(FoundationModels)
+    #if canImport(FoundationModels) && compiler(>=6.4)
         @Test("A context overflow and a guardrail are told apart")
         func modelErrors() {
             let overflow = LanguageModelError.contextSizeExceeded(
@@ -133,6 +133,25 @@ struct IntelligenceErrorTests {
             let assets = SystemLanguageModel.Error.assetsUnavailable(
                 .init(debugDescription: "downloading"))
             #expect(IntelligenceError.classify(assets) == .modelUnavailable)
+        }
+    #elseif canImport(FoundationModels) && !os(watchOS) && !os(tvOS)
+        // The Xcode 26 SDK the hosted package runner builds with names the
+        // same failures differently; they have to land in the same places.
+        @Test("A context overflow and a guardrail are told apart")
+        func modelErrors() {
+            let context = LanguageModelSession.GenerationError.Context(debugDescription: "x")
+            #expect(
+                IntelligenceError.classify(
+                    LanguageModelSession.GenerationError.exceededContextWindowSize(context))
+                    == .contextExceeded)
+            #expect(
+                IntelligenceError.classify(
+                    LanguageModelSession.GenerationError.guardrailViolation(context))
+                    == .refused)
+            #expect(
+                IntelligenceError.classify(
+                    LanguageModelSession.GenerationError.assetsUnavailable(context))
+                    == .modelUnavailable)
         }
     #endif
 }

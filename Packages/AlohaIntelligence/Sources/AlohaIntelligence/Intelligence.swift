@@ -119,21 +119,38 @@ public enum IntelligenceError: Error, Sendable, Hashable {
         if let known = error as? IntelligenceError { return known }
         if error is CancellationError { return .cancelled }
         #if canImport(FoundationModels)
-            if let modelError = error as? LanguageModelError {
-                switch modelError {
-                case .contextSizeExceeded: return .contextExceeded
-                case .guardrailViolation, .refusal: return .refused
-                case .rateLimited, .timeout: return .busy
-                default: return .failed
+            // The app ships against the 27 SDKs only, whose errors these are.
+            // The hosted macOS runner the package suite runs on still has
+            // Xcode 26 (Swift 6.3), whose SDK names the same failures
+            // `LanguageModelSession.GenerationError`; the compiler version is
+            // what tells the two SDKs apart.
+            #if compiler(>=6.4)
+                if let modelError = error as? LanguageModelError {
+                    switch modelError {
+                    case .contextSizeExceeded: return .contextExceeded
+                    case .guardrailViolation, .refusal: return .refused
+                    case .rateLimited, .timeout: return .busy
+                    default: return .failed
+                    }
                 }
-            }
-            if let sessionError = error as? LanguageModelSession.Error,
-                sessionError == .concurrentRequests
-            {
-                return .busy
-            }
-            #if !os(watchOS)
-                if error is SystemLanguageModel.Error { return .modelUnavailable }
+                if let sessionError = error as? LanguageModelSession.Error,
+                    sessionError == .concurrentRequests
+                {
+                    return .busy
+                }
+                #if !os(watchOS)
+                    if error is SystemLanguageModel.Error { return .modelUnavailable }
+                #endif
+            #elseif !os(watchOS) && !os(tvOS)
+                if let generationError = error as? LanguageModelSession.GenerationError {
+                    switch generationError {
+                    case .exceededContextWindowSize: return .contextExceeded
+                    case .guardrailViolation, .refusal: return .refused
+                    case .rateLimited, .concurrentRequests: return .busy
+                    case .assetsUnavailable: return .modelUnavailable
+                    default: return .failed
+                    }
+                }
             #endif
         #endif
         return .failed
