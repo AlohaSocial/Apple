@@ -86,6 +86,10 @@ public enum AppGroup {
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"
     public static let unreadTotalKey = "aloha.unreadTotal"
+    /// Mastodon notification ids a push already announced, per account
+    /// (`[account id string: [id]]`), so the poll that finds the same
+    /// notification later does not raise it a second time.
+    public static let pushAnnouncedKey = "aloha.pushAnnounced"
     /// How many conversations are unread, per account id. The sidebar's
     /// badge on "Direct messages" reads it, and it is written by the
     /// messages list — the one place that already holds the answer.
