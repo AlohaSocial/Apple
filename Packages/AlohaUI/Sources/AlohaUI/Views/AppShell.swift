@@ -233,6 +233,16 @@ struct ThemedAppShell: View {
                 guard initialRoute == nil else { return }
                 presentSignIn()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .alohaSignInAgain)) { note in
+                // The Settings scene's "Sign in again", which has no shell of
+                // its own to present from (`SignInAgainAction`).
+                guard initialRoute == nil,
+                    let id = note.userInfo?[SignInAgainAction.accountIDKey] as? UUID
+                else { return }
+                presentSignIn(renewing: id)
+            }
+            // Everything inside this window asks this window for the sheet.
+            .environment(\.signInAgain, SignInAgainAction { presentSignIn(renewing: $0) })
             // The menu bar acts on the window in front (see `ShellCommands`).
             .focusedSceneValue(\.shellCommands, shellCommands)
     }
@@ -242,6 +252,22 @@ struct ThemedAppShell: View {
     func presentSignIn() {
         pendingSignIn = nil
         signIn = SignInPresentation()
+    }
+
+    /// Opens the sign-in sheet for an account that is already here, on its
+    /// own server and straight to the approval step. Before this the only way
+    /// back from an expired sign-in was "Add account" and typing the server
+    /// again — which did renew the account, but nothing said it would.
+    func presentSignIn(renewing accountID: UUID) {
+        guard let session = environment.sessions.first(where: { $0.id == accountID }) else {
+            return
+        }
+        let snapshot = session.snapshot
+        pendingSignIn = nil
+        signIn = SignInPresentation(
+            reauthenticating: SignInView.Reauthentication(
+                handle: snapshot.qualifiedHandle, host: snapshot.instanceHost,
+                apiBase: snapshot.apiBase))
     }
 
     /// What a person sees, in the order it is fair to ask it of them:

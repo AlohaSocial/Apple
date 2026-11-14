@@ -35,6 +35,16 @@ struct SignInPresentation: Identifiable {
     let id = UUID()
     var address = ""
     var outcome: ServerProbe.Outcome?
+    /// Set when the sheet renews an expired account rather than adding one.
+    var reauthenticating: SignInView.Reauthentication?
+}
+
+extension SignInView {
+    init(_ request: SignInPresentation) {
+        self.init(
+            address: request.address, outcome: request.outcome,
+            reauthenticating: request.reauthenticating)
+    }
 }
 
 /// The smaller sheets a status or an account can put up: one enum, so the
@@ -79,7 +89,7 @@ struct ShellSheets: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(item: $signIn) { request in
-                SignInView(address: request.address, outcome: request.outcome)
+                SignInView(request)
                     #if os(macOS)
                         // A sign-in form at the sheet default is a cramped
                         // column: the address field, the server card and the
