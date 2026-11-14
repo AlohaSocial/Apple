@@ -52,6 +52,79 @@ struct TimelineMergeTests {
         #expect(TimelineMerge.isWellFormed(plan.slots))
     }
 
+    /// A refresh fetches the head, so a busy hour fills the page while the
+    /// page still reaches back into the cache. Touching ranges need no gap.
+    @Test("A full refresh that reaches the cache joins it, with no gap")
+    func fullOverlappingRefreshJoins() {
+        let existing = slots(["3", "2", "1"])
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["5", "4", "3", "2"], direction: .newer,
+            pageWasFull: true)
+
+        #expect(plan.slots.map(\.statusID) == ["5", "4", "3", "2", "1"])
+        #expect(plan.openedGapIDs.isEmpty)
+        #expect(plan.insertedStatusIDs == ["5", "4"])
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+        // The cached rows keep their places; only the new ones are written.
+        #expect(Array(plan.slots.suffix(3)) == existing)
+    }
+
+    @Test("A row the cache lacks below the overlap goes under its neighbour")
+    func lateRowBelowOverlap() {
+        let existing = slots(["5", "3", "1"])
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["6", "5", "4", "3"], direction: .newer,
+            pageWasFull: true)
+
+        #expect(plan.slots.map(\.statusID) == ["6", "5", "4", "3", "1"])
+        #expect(plan.openedGapIDs.isEmpty)
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+    }
+
+    @Test("Late rows renumber rather than collide where neighbours touch")
+    func lateRowsBetweenAdjacentPositions() {
+        let existing = [
+            Slot(statusID: "5", position: 10), Slot(statusID: "3", position: 9),
+        ]
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["5", "4", "3"], direction: .newer, pageWasFull: false)
+
+        #expect(plan.slots.map(\.statusID) == ["5", "4", "3"])
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+    }
+
+    @Test("A refresh whose page spans a gap closes it")
+    func refreshClosesSpannedGap() {
+        var existing = slots(["9", "8"])
+        existing.append(Slot.gap(below: "8", position: 970))
+        existing.append(contentsOf: [
+            Slot(statusID: "3", position: 960), Slot(statusID: "2", position: 950),
+        ])
+
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["10", "9", "8", "7", "3"], direction: .newer,
+            pageWasFull: true)
+
+        #expect(plan.slots.map(\.statusID) == ["10", "9", "8", "7", "3", "2"])
+        #expect(plan.closedGapIDs == ["gap:8"])
+        #expect(plan.openedGapIDs.isEmpty)
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+    }
+
+    @Test("A gap below everything the page lists stays open")
+    func refreshKeepsGapBelowPage() {
+        var existing = slots(["9", "8"])
+        existing.append(Slot.gap(below: "8", position: 970))
+        existing.append(Slot(statusID: "3", position: 960))
+
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["11", "10", "9"], direction: .newer, pageWasFull: true)
+
+        #expect(plan.slots.map(\.statusID) == ["11", "10", "9", "8", "gap:8", "3"])
+        #expect(plan.closedGapIDs.isEmpty)
+        #expect(plan.openedGapIDs.isEmpty)
+    }
+
     @Test("A refresh into an empty timeline never opens a gap")
     func fullRefreshOnEmptyTimeline() {
         let plan = TimelineMerge.plan(

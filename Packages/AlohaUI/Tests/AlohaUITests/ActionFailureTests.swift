@@ -56,4 +56,81 @@ struct ActionFailureTests {
         #expect(block.path.hasSuffix("accounts/42/block"))
         #expect(mute.path.hasSuffix("accounts/42/mute"))
     }
+
+    // MARK: - Optimistic favourites, boosts and bookmarks
+
+    private let alice = Account(id: "a", username: "alice", acct: "alice")
+
+    @Test("A favourite shows at once: the flag and the count move together")
+    func optimisticFavourite() throws {
+        var post = Status(id: "1", account: alice)
+        post.favouritesCount = 4
+        let liked = try #require(StatusActions.optimisticCopy(of: post, for: .favourite))
+        #expect(liked.favourited)
+        #expect(liked.favouritesCount == 5)
+
+        let unliked = try #require(StatusActions.optimisticCopy(of: liked, for: .unfavourite))
+        #expect(!unliked.favourited)
+        #expect(unliked.favouritesCount == 4)
+    }
+
+    @Test("Undoing never takes a count below zero")
+    func optimisticCountFloor() throws {
+        var post = Status(id: "1", account: alice)
+        post.reblogged = true
+        post.reblogsCount = 0
+        let undone = try #require(StatusActions.optimisticCopy(of: post, for: .unreblog))
+        #expect(!undone.reblogged)
+        #expect(undone.reblogsCount == 0)
+    }
+
+    @Test("Bookmark and mute flip their flag; a pin waits for the server")
+    func optimisticFlags() throws {
+        let post = Status(id: "1", account: alice)
+        #expect(try #require(StatusActions.optimisticCopy(of: post, for: .bookmark)).bookmarked)
+        #expect(try #require(StatusActions.optimisticCopy(of: post, for: .mute)).muted)
+        #expect(StatusActions.optimisticCopy(of: post, for: .pin) == nil)
+    }
+
+    /// Mastodon moves counts asynchronously: the answer to a favourite can
+    /// carry the flag and the count from before it.
+    @Test("A server answer with the flag but not yet the count keeps the count")
+    func reconcileLaggingCount() throws {
+        var post = Status(id: "1", account: alice)
+        post.favouritesCount = 4
+        let optimistic = try #require(StatusActions.optimisticCopy(of: post, for: .favourite))
+        var answer = post
+        answer.favourited = true
+        let settled = StatusActions.reconciled(answer, original: post, optimistic: optimistic)
+        #expect(settled.favourited)
+        #expect(settled.favouritesCount == 5)
+    }
+
+    @Test("Otherwise the server's answer is taken as it is")
+    func reconcileTakesServer() throws {
+        var post = Status(id: "1", account: alice)
+        post.favouritesCount = 4
+        let optimistic = try #require(StatusActions.optimisticCopy(of: post, for: .favourite))
+        var answer = post
+        answer.favourited = true
+        answer.favouritesCount = 9
+        #expect(
+            StatusActions.reconciled(answer, original: post, optimistic: optimistic)
+                .favouritesCount == 9)
+
+        // The server says it did not take: its word stands.
+        let refused = StatusActions.reconciled(post, original: post, optimistic: optimistic)
+        #expect(!refused.favourited)
+        #expect(refused.favouritesCount == 4)
+    }
+
+    @Test("Each toggle names what did not happen")
+    func toggleFailureMessages() {
+        let actions: [Endpoint.StatusAction] = [
+            .favourite, .unfavourite, .reblog, .unreblog, .bookmark, .unbookmark, .mute,
+            .unmute, .pin, .unpin,
+        ]
+        let messages = Set(actions.map(StatusActions.toggleFailure))
+        #expect(messages.count == actions.count)
+    }
 }
