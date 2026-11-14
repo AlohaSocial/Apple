@@ -2,11 +2,19 @@
 
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
+import AppIntents
 import CoreSpotlight
 import Foundation
 import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
+
+#if canImport(UIKit)
+    import UIKit
+#elseif canImport(AppKit)
+    import AppKit
+#endif
 
 /// Handoff and Spotlight, both resolving through `RouteResolver` so every entry
 /// point behaves identically (docs/09 §11, §12).
@@ -143,8 +151,11 @@ public struct AccountIdentity: Sendable, Hashable {
 public enum SpotlightIndexer {
     private static let logger = Logger(subsystem: "social.aloha.app", category: "spotlight")
 
-    /// Once a day is plenty for an index of things that change by hand.
-    static let refreshInterval: TimeInterval = 24 * 60 * 60
+    /// The full rebuild — bookmarks, own posts, follows — is worth a few
+    /// requests a few times a day, not on every activation. Bookmarks do not
+    /// wait for it: they follow the store as they change
+    /// (`observeChanges`).
+    static let refreshInterval: TimeInterval = 6 * 60 * 60
 
     /// Every item of one account lives under this domain, so removing the
     /// account removes them all: Core Spotlight deletes a domain together with
@@ -169,6 +180,7 @@ public enum SpotlightIndexer {
         // server requests and an index rebuild are the app's work, not
         // something to spend an extension's memory and seconds on.
         guard Bundle.main.bundleURL.pathExtension != "appex" else { return }
+        observeChanges()
         let key = "aloha.spotlight.\(session.id.uuidString)"
         if let last = UserDefaults.standard.object(forKey: key) as? Date,
             now.timeIntervalSince(last) < refreshInterval
@@ -217,7 +229,71 @@ public enum SpotlightIndexer {
         try await index.indexSearchableItems(items)
     }
 
-    /// Kept for the bookmarks screen, which knows the moment its list changes.
+    // MARK: - Following the store
+
+    private static var observers: [any NSObjectProtocol] = []
+
+    /// Installed once, by the first refresh in the app's process: from then
+    /// on a bookmark made or taken back anywhere — a row, a thread, a
+    /// notification action, an intent — reaches the index at once, because
+    /// every one of them writes the post back through the store, which
+    /// announces it (`TimelineStatusUpdate`). And each return to the app
+    /// rebuilds what has gone stale, rather than only the first launch of
+    /// the day.
+    static func observeChanges() {
+        guard observers.isEmpty else { return }
+        let centre = NotificationCenter.default
+        observers.append(
+            centre.addObserver(
+                forName: TimelineStatusUpdate.notification, object: nil, queue: .main
+            ) { note in
+                guard let update = note.object as? TimelineStatusUpdate else { return }
+                MainActor.assumeIsolated { noteStatusUpdate(update) }
+            })
+        if let becameActive = appBecameActive {
+            observers.append(
+                centre.addObserver(forName: becameActive, object: nil, queue: .main) { _ in
+                    MainActor.assumeIsolated { refreshLiveSessions() }
+                })
+        }
+    }
+
+    private static var appBecameActive: Notification.Name? {
+        #if canImport(UIKit)
+            UIApplication.didBecomeActiveNotification
+        #elseif canImport(AppKit)
+            NSApplication.didBecomeActiveNotification
+        #else
+            nil
+        #endif
+    }
+
+    private static func refreshLiveSessions() {
+        guard let environment = IntentContext.live else { return }
+        for session in environment.sessions where !session.needsReauthentication {
+            Task(priority: .background) { await refreshIfStale(session) }
+        }
+    }
+
+    /// A post bookmarked is indexed; one unbookmarked leaves — unless it is
+    /// the person's own, which stays indexed as one of their posts.
+    static func noteStatusUpdate(_ update: TimelineStatusUpdate) {
+        guard
+            let session = IntentContext.live?.sessions.first(where: { $0.id == update.accountID })
+        else { return }
+        let status = update.status
+        if status.bookmarked {
+            Task { await index(bookmarks: [status], accountID: update.accountID) }
+        } else if status.account.id != session.snapshot.serverAccountID {
+            let identifier = identifier(statusID: status.id, accountID: update.accountID)
+            Task {
+                try? await CSSearchableIndex.default().deleteSearchableItems(
+                    withIdentifiers: [identifier])
+            }
+        }
+    }
+
+    /// Adds bookmarks to the index without rebuilding the rest of it.
     public static func index(bookmarks: [Status], accountID: UUID) async {
         let domain = "\(domain(for: accountID)).bookmarks"
         let items = bookmarks.map { item(for: $0, accountID: accountID, domain: domain) }
@@ -242,6 +318,9 @@ public enum SpotlightIndexer {
         attributes.keywords = target.tags.map(\.name)
         let identifier = identifier(statusID: target.id, accountID: accountID)
         attributes.contentURL = URL(string: identifier)
+        // The same post as Shortcuts and Siri know it (`PostEntity`), so a
+        // Spotlight result can be handed to an intent as a post.
+        attributes.associateAppEntity(PostEntity(status), priority: 0)
         return CSSearchableItem(
             uniqueIdentifier: identifier, domainIdentifier: domain, attributeSet: attributes)
     }
