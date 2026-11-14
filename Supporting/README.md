@@ -96,8 +96,18 @@ Identifiers & Profiles → Identifiers → each bundle id above → App Groups �
 **Signing with another team.** An app group belongs to the team that
 registered it, so another team cannot claim `group.social.aloha.app` — and a
 free Apple ID cannot use app groups or keychain sharing at all. Leave the
-switch off and the build runs under any Apple ID after picking the team in
-Xcode (Signing & Capabilities, once per target). To share under a team of
+switch off and the build runs under any Apple ID once your team is in
+`Supporting/Local.xcconfig`:
+
+    DEVELOPMENT_TEAM = ABCDE12345
+    ALOHA_APP_BUNDLE_IDENTIFIER = com.example.aloha
+
+The second line only if `social.aloha.app` is registered to a team that is
+not yours: an App ID belongs to one team, and every target's id is that
+prefix plus its own suffix. The project itself names no team and no
+personal id. **Don't pick a team in Signing & Capabilities** — Xcode writes
+it into `project.pbxproj`, which is how one contributor's team and ids kept
+replacing the last one's for everybody. To share under a team of
 your own, register a group, change the string in the `-Shared` entitlements,
 `AppGroup.identifier` and `StoreContainer.appGroupIdentifier`, and turn the
 switch on.
