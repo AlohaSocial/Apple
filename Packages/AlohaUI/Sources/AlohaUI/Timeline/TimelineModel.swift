@@ -14,6 +14,8 @@ import Observation
 @MainActor
 @Observable
 public final class TimelineModel {
+    /// Assigned once per change, through `commit`: every assignment rebuilds
+    /// the index over up to five hundred rows and redraws the list.
     public private(set) var rows: [TimelineRow] = [] {
         didSet { index = TimelineIndex(rows: rows, webLinks: webLinks) }
     }
@@ -35,20 +37,41 @@ public final class TimelineModel {
     private var nextCursor: URL?
     private var refreshTask: Task<Void, Never>?
     private var lastRefresh: Date?
+    /// Set by a gap on a timeline that pages only by link: the next refresh
+    /// reloads from the top instead of merging (see `fillGap`).
+    @ObservationIgnored private var replacesCacheOnNextRefresh = false
     @ObservationIgnored private var statusUpdates: NotificationSubscription?
     @ObservationIgnored private var statusRemovals: NotificationSubscription?
     /// When the server last confirmed an interaction with a status, per id.
     /// A page fetched *before* that moment carries the older copy and must
     /// not overwrite the confirmation again (see `performRefresh`).
     @ObservationIgnored private var confirmations: [String: Date] = [:]
-    /// The post ID that marks "you're caught up" on the home timeline.
-    /// Loaded from the local marker store; when the reader scrolls past the
-    /// divider below this post, the marker advances. Read by the view to
-    /// restore where the reader got to (docs/08 §7).
-    @ObservationIgnored private(set) public var caughtUpMarkerID: String?
-    /// Whether the marker has been advanced this session (to avoid
-    /// re-syncing on every appearance of the same row).
-    @ObservationIgnored private var markerAdvancedThisSession = false
+    /// Statuses with an optimistic copy on screen whose server answer has
+    /// not arrived, and since when. Every page is older than that answer, so
+    /// none may overwrite the copy (`TimelineStatusUpdate.isProvisional`).
+    @ObservationIgnored private var inFlight: [String: Date] = [:]
+
+    /// Where the reader left off when this visit began: the newest home post
+    /// they had seen. The timeline opens there and the "caught up" divider
+    /// sits above it, and both stay put for the visit while the saved marker
+    /// moves on underneath (docs/08 §7).
+    public private(set) var visitMarkerID: String?
+    /// The home marker as saved, locally and on the server. Only ever moves
+    /// to a newer post.
+    @ObservationIgnored private var savedMarkerID: String?
+    /// Whether the reader's own scrolling has saved a marker this visit, after
+    /// which a marker read back late must not move the divider under them.
+    @ObservationIgnored private var markerMovedThisVisit = false
+    /// The posts on screen, reported by the rows as they come and go, so the
+    /// topmost of them can be saved as the marker.
+    @ObservationIgnored private var visibleStatusIDs: Set<String> = []
+    @ObservationIgnored private var markerSaveTask: Task<Void, Never>?
+    @ObservationIgnored private var lastMarkerSave = Date.distantPast
+    /// Whether the list is scrolled to its very top, reported by the view.
+    /// Only there may new posts go straight into the list: anywhere else they
+    /// would move what the reader is looking at, so they wait behind the
+    /// pill (docs/05 §3). A list starts at the top.
+    @ObservationIgnored public var readerIsAtTop = true
     /// The web links in each post, by row id, for the VoiceOver links rotor
     /// (docs/12 §3). Filled as pages arrive, from the parse the rich-text
     /// cache does anyway, because the view cannot parse inside its body.
@@ -75,7 +98,13 @@ public final class TimelineModel {
             guard let self, update.accountID == self.session.id else { return }
             let now = Date()
             Self.pruneConfirmations(&self.confirmations, now: now)
+            Self.pruneConfirmations(&self.inFlight, now: now)
             self.confirmations[update.status.id] = now
+            if update.isProvisional {
+                self.inFlight[update.status.id] = now
+            } else {
+                self.inFlight[update.status.id] = nil
+            }
             self.rows = Self.replacing(update.status, in: self.rows)
             self.pendingRows = Self.replacing(update.status, in: self.pendingRows)
         }
@@ -85,7 +114,7 @@ public final class TimelineModel {
         statusRemovals = StatusRemovals.observe { [weak self] removal in
             guard let self, removal.accountID == self.session.id else { return }
             let kept = Self.removing(removal, from: self.rows)
-            if kept.count != self.rows.count { self.rows = kept }
+            if kept.count != self.rows.count { self.commit(kept) }
             guard !self.pendingRows.isEmpty else { return }
             self.pendingRows = Self.removing(removal, from: self.pendingRows)
             let known = Set(self.rows.map(\.id))
@@ -94,10 +123,14 @@ public final class TimelineModel {
         }
 
         // Load the "caught up" marker for the home timeline.
-        if key.mode == .home, key.source == .home {
+        if tracksReadingPosition {
             Task { await loadCaughtUpMarker() }
         }
     }
+
+    /// Only your own home feed has a marker; every other list opens at the
+    /// top and keeps no reading position.
+    private var tracksReadingPosition: Bool { key.mode == .home && key.source == .home }
 
     /// Loads the home marker: the local one first, so the divider is there
     /// at once, then the server's, which is how another device's reading
@@ -112,16 +145,17 @@ public final class TimelineModel {
             logger.debug(
                 "could not load home marker: \(String(describing: error), privacy: .public)")
         }
-        if let local, !local.isEmpty { applyCaughtUpMarker(local) }
+        if let local, !local.isEmpty { adoptLoadedMarker(local) }
 
         let server = try? await session.client.decode(
             MarkerSet.self, from: Endpoint.markers.read
         ).home?.lastReadID
-        guard let newest = Self.newestMarker(local: local, server: server), newest != local
+        guard let newest = Self.newestMarker(local: savedMarkerID, server: server),
+            newest != savedMarkerID
         else { return }
         _ = try? await session.supportStore.advanceMarker(
             accountID: session.id, timeline: "home", to: newest)
-        applyCaughtUpMarker(newest)
+        adoptLoadedMarker(newest)
     }
 
     /// The marker that is further along. Neither copy may move the other
@@ -137,59 +171,123 @@ public final class TimelineModel {
         }
     }
 
-    /// Moves the divider to a new marker rather than adding a second one.
-    private func applyCaughtUpMarker(_ id: String) {
-        caughtUpMarkerID = id
-        rows.removeAll { row in
-            if case .caughtUpDivider = row { return true }
-            return false
-        }
-        ensureCaughtUpDivider()
+    /// A marker read back from the store or the server. It becomes where this
+    /// visit opens and where its divider sits — unless the reader has already
+    /// scrolled on, in which case it only moves the saved marker forward.
+    private func adoptLoadedMarker(_ id: String) {
+        if let saved = savedMarkerID, !SupportStore.isNewer(id, than: saved) { return }
+        savedMarkerID = id
+        guard !markerMovedThisVisit else { return }
+        visitMarkerID = id
+        commit(rows)
     }
 
-    /// Advances the caught-up marker to the given post ID, both locally
-    /// and on the server (fire-and-forget).
-    /// Called from the view when the reader passes the divider.
+    /// The app came back from the background: what the reader saw last time
+    /// is now where they left off, and another device may have read further.
+    public func beginNewVisit() async {
+        guard tracksReadingPosition else { return }
+        markerSaveTask?.cancel()
+        await saveReadingMarker()
+        markerMovedThisVisit = false
+        if let savedMarkerID, savedMarkerID != visitMarkerID {
+            visitMarkerID = savedMarkerID
+            commit(rows)
+        }
+        await loadCaughtUpMarker()
+    }
+
+    // MARK: - Reading position
+
+    /// A post row came on screen, or went. The marker is saved a moment after
+    /// the scrolling stops, so a fling past fifty posts writes once, and at
+    /// most every ten seconds; leaving the screen or the app saves at once
+    /// (docs/08 §7).
+    public func noteRow(_ statusID: String, isVisible: Bool) {
+        guard tracksReadingPosition else { return }
+        if isVisible {
+            visibleStatusIDs.insert(statusID)
+        } else {
+            visibleStatusIDs.remove(statusID)
+        }
+        let delay = max(2, 10 - Date().timeIntervalSince(lastMarkerSave))
+        markerSaveTask?.cancel()
+        markerSaveTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            await self?.saveReadingMarker()
+        }
+    }
+
+    /// The newest post on screen. In a newest-first list that is the topmost
+    /// one, and it is what Mastodon's home marker means: the last post read.
+    var topmostVisibleStatusID: String? {
+        guard !visibleStatusIDs.isEmpty else { return nil }
+        return index.statusIDs.first(where: visibleStatusIDs.contains)
+    }
+
+    /// Saves the topmost visible post as the home marker, locally and on the
+    /// server — only ever forwards.
+    ///
+    /// This used to save the row *below* the divider, once per session. In a
+    /// newest-first list that row is older than the marker, so the store
+    /// refused it while the copy in memory moved back, and the next launch
+    /// restored to a post the reader had long scrolled past.
     ///
     /// Async because the local marker lives in an actor — the store — and a
     /// marker that is only saved off the main actor is the one thing this
     /// must not do.
-    func advanceCaughtUpMarker(to statusID: String) async {
-        guard !markerAdvancedThisSession else { return }
-        markerAdvancedThisSession = true
-        caughtUpMarkerID = statusID
-        // Local store.
+    public func saveReadingMarker() async {
+        guard tracksReadingPosition, let top = topmostVisibleStatusID,
+            Self.movesMarkerForward(to: top, from: savedMarkerID)
+        else { return }
+        savedMarkerID = top
+        markerMovedThisVisit = true
+        lastMarkerSave = Date()
         do {
             _ = try await session.supportStore.advanceMarker(
-                accountID: session.id, timeline: "home", to: statusID)
+                accountID: session.id, timeline: "home", to: top)
         } catch {
             logger.debug(
                 "could not advance local home marker: \(String(describing: error), privacy: .public)"
             )
         }
-        // Server sync, fire-and-forget.
-        let endpoint = Endpoint.markers.write(home: statusID, notifications: nil)
+        // The server keeps the marker other devices read; a failure here is
+        // retried by the next save, which carries the newer post anyway.
         do {
-            _ = try await session.client.send(endpoint)
+            _ = try await session.client.send(Endpoint.markers.write(home: top, notifications: nil))
         } catch {
             logger.debug(
                 "could not sync home marker: \(String(describing: error), privacy: .public)")
         }
     }
 
-    /// Ensures the "caught up" divider is present in `rows` when the marker
-    /// ID is known and present in the timeline. Idempotent.
-    private func ensureCaughtUpDivider() {
-        guard let markerID = caughtUpMarkerID,
-            let idx = rows.firstIndex(where: { $0.status?.id == markerID })
-        else { return }
-        // Already present?
-        if rows.indices.contains(idx + 1),
-            case .caughtUpDivider = rows[idx + 1]
-        {
-            return
+    nonisolated static func movesMarkerForward(to candidate: String, from saved: String?) -> Bool {
+        guard let saved, !saved.isEmpty else { return true }
+        return SupportStore.isNewer(candidate, than: saved)
+    }
+
+    /// The rows with the "caught up" divider above the visit's marker, and
+    /// nowhere else. None when the marker is the newest post — there is
+    /// nothing new above it to divide from — or not loaded.
+    nonisolated static func placingDivider(
+        in rows: [TimelineRow], above markerID: String?
+    ) -> [TimelineRow] {
+        var placed = rows.filter {
+            if case .caughtUpDivider = $0 { return false }
+            return true
         }
-        rows.insert(.caughtUpDivider(after: markerID), at: idx + 1)
+        guard let markerID,
+            let index = placed.firstIndex(where: { $0.status?.id == markerID }),
+            placed[..<index].contains(where: { $0.status != nil })
+        else { return placed }
+        placed.insert(.caughtUpDivider(above: markerID), at: index)
+        return placed
+    }
+
+    /// The one way rows change wholesale: the divider placed, then a single
+    /// assignment, so the index and the list are rebuilt once.
+    private func commit(_ newRows: [TimelineRow]) {
+        rows = Self.placingDivider(in: newRows, above: visitMarkerID)
     }
 
     /// Store updates arrive on whichever thread posted them; the model only
@@ -209,6 +307,23 @@ public final class TimelineModel {
             guard var status = row.status else { return row }
             if status.id == updated.id { return .status(updated) }
             if status.reblog?.value.id == updated.id {
+                status.reblog = Box(updated)
+                return .status(status)
+            }
+            return row
+        }
+    }
+
+    /// Every status in `updates`, keyed by id, replaced in one pass — as a
+    /// post, or inside a boost of it.
+    nonisolated static func replacing(
+        _ updates: [String: Status], in rows: [TimelineRow]
+    ) -> [TimelineRow] {
+        guard !updates.isEmpty else { return rows }
+        return rows.map { row in
+            guard var status = row.status else { return row }
+            if let updated = updates[status.id] { return .status(updated) }
+            if let inner = status.reblog?.value.id, let updated = updates[inner] {
                 status.reblog = Box(updated)
                 return .status(status)
             }
@@ -243,7 +358,13 @@ public final class TimelineModel {
     /// Paints from cache instantly; refreshes only if the cache is stale.
     public func appear() async {
         if rows.isEmpty { await loadFromCache() }
-        let isStale = lastRefresh.map { Date().timeIntervalSince($0) > 60 } ?? true
+        await refreshIfStale(olderThan: 60)
+    }
+
+    /// A refresh unless one landed within `interval` — on appearing, and on
+    /// coming back to the foreground.
+    public func refreshIfStale(olderThan interval: TimeInterval) async {
+        let isStale = lastRefresh.map { Date().timeIntervalSince($0) > interval } ?? true
         if isStale { await refresh() }
     }
 
@@ -253,8 +374,7 @@ public final class TimelineModel {
                 accountID: session.id, timelineKey: storageKey)
             await verdicts.load(from: session)
             await verdicts.warm(cached.compactMap(\.status))
-            rows = applyFilters(to: cached)
-            ensureCaughtUpDivider()
+            commit(applyFilters(to: cached))
             let statuses = cached.compactMap(\.status)
             Task { await indexLinks(statuses) }
         } catch {
@@ -262,113 +382,121 @@ public final class TimelineModel {
         }
     }
 
-    /// What a refresh should ask the server for, and how the answer merges.
+    /// How a refresh merges what it fetched.
     ///
-    /// A model that has never fetched asks for the **head** of the timeline,
-    /// even when the cache handed it rows to draw immediately.
+    /// Every refresh fetches the **head** of the timeline — `since_id`
+    /// responses never carry existing posts whose counts, flags or text have
+    /// changed, and statuses are cached per id and shared between timelines,
+    /// so the head is how an edited post or another source's copy of a
+    /// shared one is put right.
     ///
-    /// Deciding this from the rows alone conflated "I have a cache" with "I
-    /// have fetched": a freshly built model with a warm cache asked only for
-    /// what was newer, the server had nothing newer, and the cache was left on
-    /// screen however old or wrong it was. Switching the source rebuilds the
-    /// model by design (`AppShell.timelineChrome` keys it on the source), so
-    /// the other source's copy of a shared post stayed up — the title and the
-    /// toggle said My feed while the rows still read Local.
+    /// The merge is what differs. With rows to keep it is `.newer`, even on a
+    /// model's first fetch: the head goes on top of the cache and a gap opens
+    /// only where the two do not meet. The first fetch used to merge cold,
+    /// which kept the forty posts it fetched and dropped up to five hundred
+    /// cached ones — the post the reader was on among them.
     ///
-    /// Statuses are cached per id and shared between timelines, so this is not
-    /// only about the toggle: it is how an edited post, or one whose counts
-    /// have moved, is stale until something forces a cold load.
+    /// Cold is for a list with nothing to keep, for a gap that can only be
+    /// filled by starting again (`fillGap`), and for the first fetch of a list
+    /// that pages only by link: there the cursor to the next page comes from
+    /// the server, and a merged cache would leave no cursor that reaches below
+    /// it.
     ///
-    /// Pulled out of `performRefresh` and made static so it can be tested. It
-    /// is four lines of branching that cost a visible bug once, and nothing
-    /// about it needs a session, a store or a server to check.
-    ///
-    /// `nonisolated` because it reads no state: the two things it decides from
-    /// are handed to it. That is also what lets a test call it without hopping
-    /// to the main actor.
-    nonisolated static func refreshPlan(
-        hasFetchedBefore: Bool, newestRowID: String?
-    ) -> (anchor: PageAnchor, direction: TimelineMerge.Direction) {
-        guard hasFetchedBefore, let newestRowID else { return (.cold, .cold) }
-        return (.newerThan(newestRowID), .newer)
+    /// `nonisolated` and static because it reads no state: what it decides
+    /// from is handed to it, so a test can pin it without a session.
+    nonisolated static func refreshDirection(
+        hasRows: Bool, hasFetchedBefore: Bool, pagesOnlyByLink: Bool, replacesCache: Bool
+    ) -> TimelineMerge.Direction {
+        guard hasRows, !replacesCache else { return .cold }
+        if pagesOnlyByLink && !hasFetchedBefore { return .cold }
+        return .newer
     }
 
     /// One refresh in flight per timeline; a second coalesces onto the first.
-    public func refresh() async {
+    ///
+    /// - Parameter revealingArrivals: a pull to refresh. The pull happens at
+    ///   the top, and the reader asked for what is new, so new posts go
+    ///   straight into the list rather than behind the pill.
+    public func refresh(revealingArrivals: Bool = false) async {
         if let refreshTask {
             await refreshTask.value
+            if revealingArrivals { revealPendingRows() }
             return
         }
-        let task = Task { await performRefresh() }
+        let task = Task { await performRefresh(revealingArrivals: revealingArrivals) }
         refreshTask = task
         await task.value
         refreshTask = nil
     }
 
-    private func performRefresh() async {
+    private func performRefresh(revealingArrivals: Bool) async {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        let plan = Self.refreshPlan(
+        let direction = Self.refreshDirection(
+            hasRows: rows.contains { $0.status != nil },
             hasFetchedBefore: lastRefresh != nil,
-            newestRowID: rows.compactMap(\.status).first?.id)
-        let direction = plan.direction
+            pagesOnlyByLink: key.source.pagesOnlyByLink,
+            replacesCache: replacesCacheOnNextRefresh)
+        replacesCacheOnNextRefresh = false
         if direction == .cold { hasMoreOlderPosts = true }
 
         do {
-            // Fetch the head as well as new arrivals: since_id responses never
-            // include existing posts whose counts or interaction flags changed.
+            // When the page was asked for: an interaction confirmed after this
+            // instant may not be in it, however late the page arrives.
+            let requestedAt = Date()
             let harvest = try await fetch(anchor: .cold)
-            // When this response arrived, not when the server produced it: a
-            // confirmation stamped after this instant is newer than anything
-            // the page can say about its status.
-            let harvestReceivedAt = Date()
             errorMessage = nil
             isOffline = false
             lastRefresh = Date()
 
             guard !harvest.statuses.isEmpty || direction == .cold else { return }
 
+            // A like the reader can see must survive a page that was already
+            // on the wire: confirmed after the page was asked for, or still on
+            // its way to the server. Their copies stay, in the store and here.
+            let protected = protectedStatusIDs(
+                in: harvest.statuses.map(\.displayed.id), since: requestedAt)
             let merged = try await session.timelineStore.apply(
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
-                direction: direction, pageWasFull: harvest.pageWasFull)
+                direction: direction, pageWasFull: harvest.pageWasFull, preserving: protected)
 
             await verdicts.warm(harvest.statuses)
-            let filtered = applyFilters(to: merged)
+            // Asked again after the awaits: an interaction may have landed
+            // while the merge was being written.
+            let local = localCopies(
+                of: protectedStatusIDs(
+                    in: harvest.statuses.map(\.displayed.id), since: requestedAt))
+            let incoming = Self.replacing(local, in: applyFilters(to: merged))
 
-            // A new-post pill must not hold updated counts on existing rows
-            // hostage alongside the arrivals it is deliberately withholding.
-            Self.pruneConfirmations(&confirmations, now: harvestReceivedAt)
-            for status in harvest.statuses {
-                // ...unless the server confirmed an interaction with that
-                // status while this page was on the wire. That confirmation is
-                // newer than the page's copy; applying the copy again would
-                // visibly revert the like or boost until the next refresh.
-                if let confirmedAt = confirmations[status.id], confirmedAt > harvestReceivedAt {
-                    continue
-                }
-                rows = Self.replacing(status.displayed, in: rows)
-                ensureCaughtUpDivider()
-            }
-
-            if direction == .cold || rows.isEmpty {
-                rows = filtered
+            if direction == .cold || !rows.contains(where: { $0.status != nil }) {
+                pendingRows = []
+                pendingNewCount = 0
+                commit(incoming)
                 nextCursor = harvest.nextCursor
                 hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
-                ensureCaughtUpDivider()
             } else {
-                // Hold new rows behind a pill rather than moving what the person
-                // is reading.
                 let knownIDs = Set(rows.map(\.id))
-                let arrivals = filtered.filter { !knownIDs.contains($0.id) }
-                if arrivals.isEmpty {
-                    rows = filtered
-                } else if session.settings.showNewPostsPill {
-                    pendingRows = filtered
-                    pendingNewCount = arrivals.compactMap(\.status).count
+                let arrivals = incoming.filter { $0.status != nil && !knownIDs.contains($0.id) }
+                let showsDirectly =
+                    arrivals.isEmpty || revealingArrivals || readerIsAtTop
+                    || !session.settings.showNewPostsPill
+                if showsDirectly {
+                    pendingRows = []
+                    pendingNewCount = 0
+                    commit(incoming)
                 } else {
-                    rows = filtered
-                    ensureCaughtUpDivider()
+                    // Hold new rows behind a pill rather than moving what the
+                    // person is reading — but not the updated counts and flags
+                    // of the rows already on screen alongside them.
+                    var fresh: [String: Status] = [:]
+                    for status in harvest.statuses.map(\.displayed)
+                    where !protected.contains(status.id) {
+                        fresh[status.id] = status
+                    }
+                    commit(Self.replacing(local, in: Self.replacing(fresh, in: rows)))
+                    pendingRows = incoming
+                    pendingNewCount = arrivals.count
                 }
             }
 
@@ -381,6 +509,29 @@ public final class TimelineModel {
         } catch {
             await handle(error)
         }
+    }
+
+    /// Statuses among `ids` whose copy on screen is newer than a page asked
+    /// for at `requestedAt`.
+    private func protectedStatusIDs(in ids: [String], since requestedAt: Date) -> Set<String> {
+        let now = Date()
+        Self.pruneConfirmations(&confirmations, now: now)
+        Self.pruneConfirmations(&inFlight, now: now)
+        return Set(
+            ids.filter { id in
+                inFlight[id] != nil || (confirmations[id].map { $0 > requestedAt } ?? false)
+            })
+    }
+
+    /// The copies on screen, or held behind the pill, of the given statuses.
+    private func localCopies(of ids: Set<String>) -> [String: Status] {
+        guard !ids.isEmpty else { return [:] }
+        var copies: [String: Status] = [:]
+        for row in pendingRows + rows {
+            guard let shown = row.status?.displayed, ids.contains(shown.id) else { continue }
+            copies[shown.id] = shown
+        }
+        return copies
     }
 
     /// A post this account just made. Shown at once on the feeds where it
@@ -402,16 +553,29 @@ public final class TimelineModel {
         _ = try? await session.timelineStore.apply(
             page: [status], accountID: session.id, timelineKey: storageKey,
             direction: .newer, pageWasFull: false)
-        rows.insert(.status(status), at: 0)
+        commit([.status(status)] + rows)
         if !pendingRows.isEmpty { pendingRows.insert(.status(status), at: 0) }
     }
 
     public func revealPendingRows() {
         guard !pendingRows.isEmpty else { return }
-        rows = pendingRows
-        ensureCaughtUpDivider()
+        commit(pendingRows)
         pendingRows = []
         pendingNewCount = 0
+    }
+
+    /// Rows from a merge that also holds the posts waiting behind the pill —
+    /// paging older, filling a gap. The pill keeps them: shown here, they
+    /// would land above the reader and push the list down under them.
+    private func commitMerged(_ incoming: [TimelineRow]) {
+        guard pendingNewCount > 0 else {
+            commit(incoming)
+            return
+        }
+        let shown = Set(rows.map(\.id))
+        let held = Set(pendingRows.map(\.id)).subtracting(shown)
+        commit(incoming.filter { !held.contains($0.id) })
+        pendingRows = incoming
     }
 
     private var hasMoreOlderPosts = true
@@ -462,8 +626,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .older, pageWasFull: harvest.pageWasFull)
             await verdicts.warm(harvest.statuses)
-            rows = applyFilters(to: merged)
-            ensureCaughtUpDivider()
+            commitMerged(applyFilters(to: merged))
             nextCursor = harvest.nextCursor
             hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
             let statuses = harvest.statuses
@@ -480,7 +643,7 @@ public final class TimelineModel {
         if key.source.pagesOnlyByLink {
             // No status id can name the window under the gap (see
             // `pagesOnlyByLink`), so the list is loaded again from the top.
-            lastRefresh = nil
+            replacesCacheOnNextRefresh = true
             await refresh()
             return
         }
@@ -492,8 +655,7 @@ public final class TimelineModel {
                 page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
                 direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
             await verdicts.warm(harvest.statuses)
-            rows = applyFilters(to: merged)
-            ensureCaughtUpDivider()
+            commitMerged(applyFilters(to: merged))
         } catch {
             await handle(error)
         }
