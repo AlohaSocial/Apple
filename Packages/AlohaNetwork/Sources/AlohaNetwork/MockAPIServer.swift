@@ -35,6 +35,11 @@
             case timelinesUnavailable
             /// Serves a timeline whose third entry is malformed.
             case malformedEntities
+            /// Mastodon before 4.3, GoToSocial, Akkoma and Pleroma: the core
+            /// API without `notifications/unread_count`, v1 or v2. The badge
+            /// has to be counted from the notifications marker instead
+            /// (docs/02 §7).
+            case withoutUnreadCount
         }
 
         public let configuration: Configuration
@@ -205,6 +210,13 @@
             return CGColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
         }
 
+        /// Snowflake order: a longer id is newer, and equal lengths compare as
+        /// text — the same rule as the client's (`SupportStore.isNewer`).
+        static func isNewer(_ candidate: String, than current: String) -> Bool {
+            if candidate.count != current.count { return candidate.count > current.count }
+            return candidate > current
+        }
+
         func formFields(_ body: Data?) -> [String: String] {
             guard let body, let text = String(data: body, encoding: .utf8) else { return [:] }
             if let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
@@ -222,6 +234,9 @@
         }
 
         private var nextStatusID = 2000
+        /// The notifications marker, as the last `POST api/v1/markers` left
+        /// it. Like the server's, it never moves backwards.
+        private var notificationsMarker: String?
         /// Posts sent with a time, which `GET api/v1/scheduled_statuses` lists.
         private var scheduledFixtures: [[String: Any]] = []
 
@@ -435,7 +450,22 @@
                 return respond(url: url, status: 200, body: "[]")
 
             case "api/v1/markers":
-                return respond(url: url, status: 200, body: "{}")
+                if method == "POST", let id = formFields(body)["notifications[last_read_id]"] {
+                    if notificationsMarker.map({ Self.isNewer(id, than: $0) }) ?? true {
+                        notificationsMarker = id
+                    }
+                }
+                guard let notificationsMarker else {
+                    return respond(url: url, status: 200, body: "{}")
+                }
+                return respond(
+                    url: url, status: 200,
+                    json: [
+                        "notifications": [
+                            "last_read_id": notificationsMarker, "version": 1,
+                            "updated_at": "2026-09-20T12:00:00.000Z",
+                        ]
+                    ])
 
             case let route where route.hasPrefix("api/v1/polls/"):
                 var poll = Fixtures.poll()
@@ -558,12 +588,23 @@
                 return respond(url: url, status: 200, body: body)
 
             case "api/v1/notifications":
-                return respond(
-                    url: url, status: 200,
-                    json: Fixtures.flatNotifications(
-                        statuses: Array(statusFixtures.prefix(3)), host: host))
+                // `min_id` and `since_id` both mean "newer than this", which
+                // is how the badge is counted where `unread_count` is missing.
+                let newerThan = query.first { $0.name == "min_id" || $0.name == "since_id" }?.value
+                let page = Fixtures.flatNotifications(
+                    statuses: Array(statusFixtures.prefix(3)), host: host
+                ).filter { notification in
+                    guard let newerThan, let id = notification["id"] as? String else {
+                        return true
+                    }
+                    return Self.isNewer(id, than: newerThan)
+                }
+                return respond(url: url, status: 200, json: page)
 
             case "api/v1/notifications/unread_count", "api/v2/notifications/unread_count":
+                if configuration == .withoutUnreadCount {
+                    return respond(url: url, status: 404, body: #"{"error":"Not found"}"#)
+                }
                 return respond(url: url, status: 200, body: #"{"count":3}"#)
 
             case "api/v1/accounts/relationships":
