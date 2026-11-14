@@ -522,8 +522,10 @@ public struct VideoAttachmentPlayer: View {
             guard !Task.isCancelled else { return }
             let source = ladder[index]
             let headers = await session?.client.mediaRequestHeaders(for: source.url) ?? [:]
+            // A media URL carries the post's and the account's ids, so it is
+            // private in every line here (docs/12 §7).
             PlaybackLog.logger.info(
-                "opening video rung \(index) \(source.url.absoluteString, privacy: .public)")
+                "opening video rung \(index) \(source.url.absoluteString, privacy: .private)")
 
             switch await PlaybackReadiness.open(url: source.url, headers: headers, deadline: .zero)
             {
@@ -541,7 +543,7 @@ public struct VideoAttachmentPlayer: View {
                 startTicking(newPlayer, item: item)
                 watch(item, at: index)
                 PlaybackLog.logger.notice(
-                    "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .public)"
+                    "video handed over ready=\(isReady) \(source.url.absoluteString, privacy: .private)"
                 )
                 // The first rung that opens is the one: carrying on would open
                 // every rung after it and end on the failure card below.
@@ -590,7 +592,7 @@ public struct VideoAttachmentPlayer: View {
                 try? await Task.sleep(for: PlaybackReadiness.stallDeadline)
                 guard !Task.isCancelled, !isRevealed else { return }
                 PlaybackLog.logger.error(
-                    "video rung stalled rung=\(rung) \(urlOf(rung).absoluteString, privacy: .public)"
+                    "video rung stalled rung=\(rung) \(urlOf(rung).absoluteString, privacy: .private)"
                 )
                 giveUp(
                     on: rung,

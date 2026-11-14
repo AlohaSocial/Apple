@@ -89,13 +89,55 @@ public enum RewriteStyle: String, Sendable, CaseIterable, Identifiable {
     }
 }
 
-public enum IntelligenceError: Error, Sendable {
+public enum IntelligenceError: Error, Sendable, Hashable {
     case unavailable
-    /// The model declined. Shown plainly, with no retry loop and no prompt
-    /// gymnastics (docs/10 §3).
+    /// The model declined — a guardrail or a refusal. Shown plainly, with no
+    /// retry loop and no prompt gymnastics (docs/10 §3).
     case refused
+    /// A rewrite came back longer than the server accepts.
     case tooLong
     case failed
+    /// The input did not fit the model's context even after it was split.
+    /// Not a refusal: telling the person the model "didn't want to" when it
+    /// simply could not take that much is a different, wrong message.
+    case contextExceeded
+    /// The model's assets are missing — still downloading, or removed to free
+    /// space — although the device is eligible and the feature is on.
+    case modelUnavailable
+    /// Too many requests at once, or the system's rate limit: worth trying
+    /// again in a moment, unlike a refusal.
+    case busy
+    /// The work was cancelled, usually because the sheet asking for it was
+    /// closed. Nothing is shown for it.
+    case cancelled
+
+    /// What any error thrown while generating means for the person.
+    ///
+    /// Every failure used to become `.refused`, so a thread that was merely
+    /// too long, or a model still downloading, read as a guardrail refusal.
+    public static func classify(_ error: any Error) -> IntelligenceError {
+        if let known = error as? IntelligenceError { return known }
+        if error is CancellationError { return .cancelled }
+        #if canImport(FoundationModels)
+            if let modelError = error as? LanguageModelError {
+                switch modelError {
+                case .contextSizeExceeded: return .contextExceeded
+                case .guardrailViolation, .refusal: return .refused
+                case .rateLimited, .timeout: return .busy
+                default: return .failed
+                }
+            }
+            if let sessionError = error as? LanguageModelSession.Error,
+                sessionError == .concurrentRequests
+            {
+                return .busy
+            }
+            #if !os(watchOS)
+                if error is SystemLanguageModel.Error { return .modelUnavailable }
+            #endif
+        #endif
+        return .failed
+    }
 }
 
 /// Protects mentions, hashtags and links across a rewrite.
@@ -216,26 +258,52 @@ public struct OnDeviceIntelligence: IntelligenceProviding {
         try await ImageDescriber().describe(imageData, using: self)
     }
 
+    /// Measured against the model's own context rather than a post count,
+    /// and summarised in parts when it does not fit (docs/10 §5).
     public func summarise(_ passages: [String]) async throws -> String {
         guard availability.isAvailable else { throw IntelligenceError.unavailable }
-
-        let instructions = """
-            Summarise a conversation for someone deciding whether to read it. \
-            Two or three sentences. Neutral. Do not invent anything that is not there.
-            """
-        let joined = passages.prefix(60).joined(separator: "\n\n")
-        return try await generate(instructions: instructions, prompt: joined)
+        #if canImport(FoundationModels)
+            let model = SystemLanguageModel.default
+            let measure: @Sendable (String) async throws -> Int = { text in
+                // The framework's count where it answers, a deliberately
+                // high estimate where it does not.
+                (try? await model.tokenCount(for: text))
+                    ?? ThreadSummariser.estimatedTokens(text)
+            }
+            // The longest of the instructions, so every call fits.
+            let instructionsCost = try await measure(ThreadSummariser.combineInstructions)
+            let summariser = ThreadSummariser(
+                budget: ThreadSummariser.budget(
+                    contextSize: model.contextSize, instructionsCost: instructionsCost),
+                measure: measure,
+                respond: { instructions, prompt in
+                    try await Self.generate(instructions: instructions, prompt: prompt)
+                })
+            do {
+                return try await summariser.summarise(passages)
+            } catch {
+                throw IntelligenceError.classify(error)
+            }
+        #else
+            throw IntelligenceError.unavailable
+        #endif
     }
 
     private func generate(instructions: String, prompt: String) async throws -> String {
+        try await Self.generate(instructions: instructions, prompt: prompt)
+    }
+
+    /// One model call. A failure is classified rather than flattened, so the
+    /// person learns whether the model refused, could not take that much, or
+    /// is not on the device yet — and a refusal is still never retried.
+    private static func generate(instructions: String, prompt: String) async throws -> String {
         #if canImport(FoundationModels)
             do {
                 let session = LanguageModelSession(instructions: instructions)
                 let response = try await session.respond(to: prompt)
                 return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
             } catch {
-                // A guardrail refusal is shown plainly rather than retried.
-                throw IntelligenceError.refused
+                throw IntelligenceError.classify(error)
             }
         #else
             throw IntelligenceError.unavailable
