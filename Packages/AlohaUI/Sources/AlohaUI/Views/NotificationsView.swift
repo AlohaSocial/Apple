@@ -39,6 +39,18 @@ public struct NotificationsView: View {
     /// about a post a hide filter matched is left out, and one a warn filter
     /// matched names the filter instead of quoting the post.
     @State private var verdicts = FilterVerdicts(context: .notifications)
+    /// Where the next older page starts (`max_id`), and whether there is one.
+    @State private var olderAnchor: String?
+    @State private var hasOlder = false
+    @State private var isLoadingOlder = false
+    /// Set from the start of a load until its first page is on screen: an
+    /// older page asked for meanwhile would hang off the list being
+    /// replaced, and leave a gap under the new one.
+    @State private var isReplacingList = false
+    @State private var olderError: String?
+    /// The `types[]` the list on screen was loaded with, so an older page
+    /// asks for the same activities as the first did.
+    @State private var loadedTypes: [String] = []
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -99,10 +111,18 @@ public struct NotificationsView: View {
                 flatRowsWithMarker
             }
 
-            if !isLoading && errorMessage == nil && groups.isEmpty && flat.isEmpty {
+            if hasOlder || olderError != nil {
+                olderRow
+            }
+
+            // A chip asks the server, so an empty answer under one is "none of
+            // these", not "nothing yet".
+            if !isLoading && errorMessage == nil && groups.isEmpty && flat.isEmpty
+                && selectedKinds.isEmpty
+            {
                 emptyState
             } else if !isLoading && errorMessage == nil && visibleGroups.isEmpty
-                && visibleFlat.isEmpty
+                && visibleFlat.isEmpty && !hasOlder
             {
                 ContentUnavailableView {
                     Text("No matching activities", comment: "Notification filter empty state")
@@ -136,6 +156,11 @@ public struct NotificationsView: View {
         .navigationTitle(Text("Activities", comment: "Screen title"))
         .refreshable { await load() }
         .task { await load() }
+        // The chips ask the server (`types[]`), so the older mentions are
+        // reachable too; what is on screen narrows at once meanwhile.
+        .onChange(of: selectedKinds) { _, _ in
+            Task { await load() }
+        }
         .onStatusesRemoved(for: session) { removal in
             withAnimation {
                 flat.removeAll { Self.isRemoved($0, by: removal) }
@@ -617,19 +642,33 @@ public struct NotificationsView: View {
 
     // MARK: - Loading
 
+    /// The first page, for the chips chosen, and what goes with it.
+    ///
+    /// Only the activities themselves can fail the screen. The policy (for
+    /// the filtered-requests count) and the marker (for the divider) are
+    /// decoration: a server that refuses either still has a list to show,
+    /// and used to show an error in its place.
     private func load() async {
         let requestID = UUID()
         loadID = requestID
         isLoading = true
         defer { if loadID == requestID { isLoading = false } }
 
-        let types = Endpoint.notifications.everyType(
-            onAlohaSocial: session.capabilities.isNextcloudSocial)
+        isReplacingList = true
+        defer { if loadID == requestID { isReplacingList = false } }
+
+        let selection = selectedKinds
+        let types = ActivityPaging.types(
+            for: selection, onAlohaSocial: session.capabilities.isNextcloudSocial)
+        olderError = nil
         do {
             if session.capabilities.groupedNotifications {
-                let results = try await session.client.decode(
+                let page = try await session.client.page(
                     GroupedNotificationsResults.self,
-                    from: Endpoint.notifications.grouped(types: types))
+                    from: Endpoint.notifications.grouped(
+                        limit: ActivityPaging.groupedLimit, types: types),
+                    limit: ActivityPaging.groupedLimit)
+                let results = page.value
                 await verdicts.prepare(results.statuses, session: session)
                 guard !Task.isCancelled, loadID == requestID else { return }
                 groups = results.notificationGroups
@@ -637,42 +676,161 @@ public struct NotificationsView: View {
                     results.accounts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
                 statuses = Dictionary(
                     results.statuses.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+                olderAnchor = ActivityPaging.olderAnchor(groups: groups)
+                hasOlder = ActivityPaging.mayHaveMore(
+                    link: page.link, receivedAny: !results.notificationGroups.isEmpty,
+                    previousAnchor: nil, nextAnchor: olderAnchor)
             } else {
-                let page = try await session.client.decode(
+                let page = try await session.client.page(
                     LossyArray<MastodonNotification>.self,
-                    from: Endpoint.notifications.flat(types: types))
-                await verdicts.prepare(page.elements.compactMap(\.status), session: session)
+                    from: Endpoint.notifications.flat(
+                        limit: ActivityPaging.flatLimit, types: types),
+                    limit: ActivityPaging.flatLimit)
+                let elements = page.value.elements
+                await verdicts.prepare(elements.compactMap(\.status), session: session)
                 guard !Task.isCancelled, loadID == requestID else { return }
-                flat = page.elements
+                flat = elements
+                olderAnchor = ActivityPaging.olderAnchor(flat: flat)
+                hasOlder = ActivityPaging.mayHaveMore(
+                    link: page.link, receivedAny: !elements.isEmpty,
+                    previousAnchor: nil, nextAnchor: olderAnchor)
             }
-            // Fetch the notification policy when the server supports it; its
-            // summary carries the count of filtered requests we display at
-            // the top of the list.
-            if session.capabilities.notificationPolicy {
-                let useV2 = session.capabilities.notificationPolicy
-                let policy = try await session.client.decode(
-                    NotificationPolicy.self, from: Endpoint.notifications.policy(v2: useV2))
-                guard !Task.isCancelled, loadID == requestID else { return }
-                notificationPolicy = policy
-            }
-            // Fetch the "caught up" marker for the notifications timeline.
-            let markers = try await session.client.decode(
-                MarkerSet.self, from: Endpoint.markers.read)
-            guard !Task.isCancelled, loadID == requestID else { return }
-            caughtUpNotificationID = markers.notifications?.lastReadID
-            // The divider belongs where the list opened, not wherever the
-            // marker has advanced to by the time a refresh returns.
-            if caughtUpDisplayID == nil {
-                caughtUpDisplayID = caughtUpNotificationID
-            }
+            loadedTypes = types
             errorMessage = nil
-            await markAllRead()
+            isReplacingList = false
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
             guard loadID == requestID else { return }
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            return
         }
+
+        await loadPolicy(requestID: requestID)
+        await loadMarker(requestID: requestID)
+        guard !Task.isCancelled, loadID == requestID else { return }
+        // Opening the whole list is reading it. A chip's list is not the
+        // whole list: its newest is not the newest activity, and marking up
+        // to it would say nothing true about the others.
+        if selection.isEmpty { await markAllRead() }
+    }
+
+    /// The notification policy, when the server has one: its summary carries
+    /// the count of filtered requests shown at the top of the list.
+    private func loadPolicy(requestID: UUID) async {
+        guard session.capabilities.notificationPolicy else { return }
+        guard
+            let policy = try? await session.client.decode(
+                NotificationPolicy.self, from: Endpoint.notifications.policy(v2: true)),
+            !Task.isCancelled, loadID == requestID
+        else { return }
+        notificationPolicy = policy
+    }
+
+    /// The "caught up" marker for the notifications timeline. Without it
+    /// there is no divider, and `markAllRead` still moves the marker to the
+    /// newest — the server never lets it move backwards (docs/08 §7).
+    private func loadMarker(requestID: UUID) async {
+        guard
+            let markers = try? await session.client.decode(
+                MarkerSet.self, from: Endpoint.markers.read),
+            !Task.isCancelled, loadID == requestID
+        else { return }
+        caughtUpNotificationID = markers.notifications?.lastReadID
+        // The divider belongs where the list opened, not wherever the
+        // marker has advanced to by the time a refresh returns.
+        if caughtUpDisplayID == nil {
+            caughtUpDisplayID = caughtUpNotificationID
+        }
+    }
+
+    /// The page older than the oldest row on screen, asked for the same
+    /// activities as the first. A refresh or a chip starting over meanwhile
+    /// wins: this page belongs to a list that is no longer on screen.
+    private func loadOlder() async {
+        guard hasOlder, !isLoadingOlder, !isReplacingList, let anchor = olderAnchor else {
+            return
+        }
+        let requestID = loadID
+        isLoadingOlder = true
+        defer { isLoadingOlder = false }
+        do {
+            if session.capabilities.groupedNotifications {
+                let page = try await session.client.page(
+                    GroupedNotificationsResults.self,
+                    from: Endpoint.notifications.grouped(
+                        limit: ActivityPaging.groupedLimit, anchor: .olderThan(anchor),
+                        types: loadedTypes),
+                    limit: ActivityPaging.groupedLimit)
+                let results = page.value
+                await verdicts.prepare(results.statuses, session: session)
+                guard !Task.isCancelled, loadID == requestID else { return }
+                groups = ActivityPaging.appending(results.notificationGroups, to: groups)
+                for account in results.accounts where accounts[account.id] == nil {
+                    accounts[account.id] = account
+                }
+                for status in results.statuses where statuses[status.id] == nil {
+                    statuses[status.id] = status
+                }
+                let next = ActivityPaging.olderAnchor(groups: groups)
+                hasOlder = ActivityPaging.mayHaveMore(
+                    link: page.link, receivedAny: !results.notificationGroups.isEmpty,
+                    previousAnchor: anchor, nextAnchor: next)
+                olderAnchor = next
+            } else {
+                let page = try await session.client.page(
+                    LossyArray<MastodonNotification>.self,
+                    from: Endpoint.notifications.flat(
+                        limit: ActivityPaging.flatLimit, anchor: .olderThan(anchor),
+                        types: loadedTypes),
+                    limit: ActivityPaging.flatLimit)
+                let elements = page.value.elements
+                await verdicts.prepare(elements.compactMap(\.status), session: session)
+                guard !Task.isCancelled, loadID == requestID else { return }
+                flat = ActivityPaging.appending(elements, to: flat)
+                let next = ActivityPaging.olderAnchor(flat: flat)
+                hasOlder = ActivityPaging.mayHaveMore(
+                    link: page.link, receivedAny: !elements.isEmpty,
+                    previousAnchor: anchor, nextAnchor: next)
+                olderAnchor = next
+            }
+            olderError = nil
+        } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
+            await session.handle(error)
+            olderError = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    /// The end of the list: older activities loading as it comes into view,
+    /// or why they did not, with a way to ask again.
+    @ViewBuilder
+    private var olderRow: some View {
+        Group {
+            if let olderError {
+                AlohaErrorStrip(message: olderError) {
+                    self.olderError = nil
+                    Task { await loadOlder() }
+                }
+            } else {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .accessibilityLabel(
+                            Text("Loading older activities", comment: "Activities paging"))
+                    Spacer()
+                }
+                .padding(.vertical, AlohaMetrics.space3)
+                // Asked again whenever the list under it changes — a new
+                // page, a chip, a refresh — so while this row stays in view
+                // the pages keep coming, and once it leaves they stop.
+                .task(id: "\(loadID)|\(olderAnchor ?? "")|\(isReplacingList)") {
+                    await loadOlder()
+                }
+            }
+        }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     // MARK: - Presentation
@@ -797,6 +955,8 @@ public struct NotificationsView: View {
     /// Opening the list is reading it, so the marker moves to the newest
     /// activity the list shows, and the badge is asked again at once rather
     /// than at the next poll. The divider stays at `caughtUpDisplayID`.
+    /// Older pages loaded after it cannot move either: the newest activity
+    /// is always the first page's top.
     ///
     /// This used to advance only when the row below the divider scrolled into
     /// view — which, in a newest-first list, named an *older* activity than

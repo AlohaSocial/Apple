@@ -32,18 +32,23 @@ public final class AccountSession: Identifiable {
         transport: any HTTPTransport,
         timelines: TimelineStore,
         support: SupportStore,
-        accounts: AccountStore
+        accounts: AccountStore,
+        rateLimiter: RateLimiter = RateLimiter()
     ) {
         self.id = snapshot.id
         self.snapshot = snapshot
         self.timelines = timelines
         self.support = support
         self.accounts = accounts
+        // The limiter is the environment's, one for every account: its
+        // buckets are per host, and five accounts on one small instance
+        // should spend one budget between them rather than five (docs/08 §3).
         self.client = APIClient(
             accountID: snapshot.id,
             apiBase: snapshot.capabilities.apiBase,
             accessToken: token,
-            transport: transport
+            transport: transport,
+            rateLimiter: rateLimiter
         )
     }
 

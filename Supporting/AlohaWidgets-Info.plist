@@ -2,12 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Standalone personal signing: no shared container or keychain group
-	     (Supporting/README.md). -->
+	<!-- Both follow ALOHA_SHARED_CONTAINER (Supporting/Aloha.xcconfig), the
+	     same switch that picks this target's entitlements, so the flags
+	     cannot claim a group the signature lacks or miss one it has. -->
 	<key>AlohaAppGroupEnabled</key>
-	<false/>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<key>AlohaKeychainSharingEnabled</key>
-	<false/>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<!-- The extension talks to the same self-hosted servers as the app,
 	     including plain-http ones on the local network (docs/11 §5). -->
 	<key>NSAppTransportSecurity</key>

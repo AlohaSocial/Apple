@@ -48,6 +48,9 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     // Notifications
     public var localNotificationKinds: Set<String>
     public var pollFrequency: PollFrequency
+    /// On cellular, poll notifications only — the badge stays right, and the
+    /// timeline waits for Wi-Fi (docs/08 §3).
+    public var syncOverWiFiOnly: Bool
     public var quietHoursStart: Int?
     public var quietHoursEnd: Int?
     /// How local notifications are delivered.
@@ -107,6 +110,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
                 .blueskyStarterPackJoined,
             ].map(\.rawValue)),
         pollFrequency: PollFrequency = .normal,
+        syncOverWiFiOnly: Bool = false,
         quietHoursStart: Int? = nil,
         quietHoursEnd: Int? = nil,
         notificationDeliveryMode: NotificationDeliveryMode = .immediate,
@@ -132,6 +136,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
         self.enabledModes = enabledModes
         self.localNotificationKinds = localNotificationKinds
         self.pollFrequency = pollFrequency
+        self.syncOverWiFiOnly = syncOverWiFiOnly
         self.quietHoursStart = quietHoursStart
         self.quietHoursEnd = quietHoursEnd
         self.notificationDeliveryMode = notificationDeliveryMode
@@ -177,6 +182,7 @@ public struct AccountSettings: Codable, Sendable, Hashable {
             localNotificationKinds: value(
                 .localNotificationKinds, defaults.localNotificationKinds),
             pollFrequency: value(.pollFrequency, defaults.pollFrequency),
+            syncOverWiFiOnly: value(.syncOverWiFiOnly, defaults.syncOverWiFiOnly),
             quietHoursStart: value(.quietHoursStart, defaults.quietHoursStart),
             quietHoursEnd: value(.quietHoursEnd, defaults.quietHoursEnd),
             notificationDeliveryMode: value(

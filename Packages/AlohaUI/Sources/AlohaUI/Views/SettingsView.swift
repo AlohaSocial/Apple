@@ -11,6 +11,7 @@ import SwiftUI
 public struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.signInAgain) private var signInAgain
     @AppStorage(LinkOpening.externalKey) private var opensLinksExternally = false
 
     /// Eight sections in one scroll is a lot to read through for one switch.
@@ -100,6 +101,7 @@ public struct SettingsView: View {
                 }
                 if shows(.notifications) {
                     notificationsSection(session)
+                    syncSection(session)
                 }
                 if shows(.posting) {
                     composerSection(session)
@@ -835,6 +837,48 @@ public struct SettingsView: View {
         }
     }
 
+    /// How often the account is checked for new activity, and on which
+    /// networks (docs/08 §3). Both lived in the settings model with nothing
+    /// to change them; the sync engine follows a change at once, a manual
+    /// account included, so there is nothing to restart here.
+    private func syncSection(_ session: AccountSession) -> some View {
+        Section {
+            Picker(
+                selection: Binding(
+                    get: { session.settings.pollFrequency },
+                    set: { value in
+                        Task { await session.updateSettings { $0.pollFrequency = value } }
+                    })
+            ) {
+                Text("Often", comment: "Sync frequency").tag(AccountSettings.PollFrequency.frequent)
+                Text("Normally", comment: "Sync frequency").tag(
+                    AccountSettings.PollFrequency.normal)
+                Text("To save battery", comment: "Sync frequency")
+                    .tag(AccountSettings.PollFrequency.batterySaver)
+                Text("Only when I refresh", comment: "Sync frequency")
+                    .tag(AccountSettings.PollFrequency.manual)
+            } label: {
+                Text("Check for new activity", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.syncOverWiFiOnly },
+                    set: { value in
+                        Task { await session.updateSettings { $0.syncOverWiFiOnly = value } }
+                    })
+            ) {
+                Text("Only on Wi-Fi", comment: "Settings item")
+            }
+        } header: {
+            Text("Checking for new activity", comment: "Settings section")
+        } footer: {
+            Text(
+                "Less often saves battery and data. On mobile data with \"Only on Wi-Fi\" on, notifications and the badge still update; timelines wait for Wi-Fi.",
+                comment: "Sync settings explanation")
+        }
+    }
+
     private func composerSection(_ session: AccountSession) -> some View {
         Section {
             Picker(
@@ -1079,9 +1123,18 @@ extension SettingsView {
     /// one. Extracted from the accounts section because a builder this large
     /// is more than the compiler will check in one go — the check and the
     /// reauth badge are the part of the row that is a fact, not layout.
+    ///
+    /// An expired account's row signs it in again rather than only switching
+    /// to it: switching to an account that cannot load anything is never what
+    /// the red "Sign in again" beside it asked for, and success makes it the
+    /// active account anyway.
     private func accountRow(_ session: AccountSession, isActiveAccount: Bool) -> some View {
         Button {
-            environment.setActiveAccount(session.id)
+            if session.needsReauthentication {
+                signInAgain(session.id)
+            } else {
+                environment.setActiveAccount(session.id)
+            }
         } label: {
             HStack(spacing: AlohaMetrics.space3) {
                 AvatarView(
@@ -1098,9 +1151,14 @@ extension SettingsView {
                 }
                 Spacer()
                 if session.needsReauthentication {
-                    Text("Sign in again", comment: "Account state")
-                        .font(.caption)
-                        .foregroundStyle(palette.destructive)
+                    Label {
+                        Text("Sign in again", comment: "Account state")
+                    } icon: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(palette.destructive)
                 }
                 if isActiveAccount {
                     Image(systemName: "checkmark")
@@ -1113,6 +1171,18 @@ extension SettingsView {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accountLabel(session))
+        .accessibilityValue(
+            session.needsReauthentication
+                ? Text("Sign-in expired", comment: "Accessibility value for an expired account")
+                : Text(verbatim: "")
+        )
+        .accessibilityHint(
+            session.needsReauthentication
+                ? Text(
+                    "Opens your server's sign-in page",
+                    comment: "Accessibility hint for an expired account row")
+                : Text(verbatim: "")
+        )
         .accessibilityAddTraits(
             isActiveAccount
                 ? [.isButton, .isSelected] : .isButton

@@ -8,13 +8,9 @@
     <true/>
     <key>com.apple.security.files.user-selected.read-only</key>
     <true/>
-    <key>com.apple.security.application-groups</key>
-    <array>
-        <string>group.social.aloha.app</string>
-    </array>
-    <key>keychain-access-groups</key>
-    <array>
-        <string>$(AppIdentifierPrefix)social.aloha.app</string>
-    </array>
+    <!-- Standalone (ALOHA_SHARED_CONTAINER = NO, the default): no app group
+         or shared keychain, so any Apple ID, including a free one, can sign
+         this target. The -Shared file beside it is the same plus both groups;
+         the build setting picks one (Supporting/README.md). -->
 </dict>
 </plist>

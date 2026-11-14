@@ -20,7 +20,12 @@ import UniformTypeIdentifiers
 /// `AppEnvironment`, whose services (sync, notifications) stay idle until
 /// something starts them, which nothing here does; loading it reads the
 /// account list and refreshes each account's server state, as the app does.
-/// Shared movies stay on disk (`loadFile`) for the memory budget's sake.
+/// The store it opens is the extension's lightweight one: `StoreContainer`
+/// opens it as a writer that never creates, migrates or rebuilds the file —
+/// a writer rather than a reader because a share made offline is kept as a
+/// queued draft. The Spotlight refresh the app runs on load is skipped in an
+/// extension (`SpotlightIndexer`). Shared movies stay on disk (`loadFile`)
+/// for the memory budget's sake.
 @MainActor
 enum ShareExtensionRoot {
     /// The composer for the active account, or the no-account screen. `end`
@@ -244,6 +249,48 @@ extension NSItemProvider {
         return .init(data: jpeg, filename: upload.filename, mimeType: upload.mimeType)
     }
 
+    /// A shared file known only by its URL, as an attachment when it is a
+    /// picture or a movie a server takes. The URL may be security-scoped (a
+    /// Finder selection on the Mac), so access is asked for while it is read.
+    func loadSharedFile() async -> ComposerView.PrefilledAttachment? {
+        guard let url = await loadFileURL(),
+            let type = UTType(filenameExtension: url.pathExtension)
+        else { return nil }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        if let movie = SharedItemType.pick(
+            from: [type.identifier], preferring: SharedItemType.uploadableMovies)
+        {
+            // Copied, never read: a movie can be larger than the extension's
+            // whole memory allowance.
+            let upload = SharedItemType.upload(for: movie)
+            let kept = FileManager.default.temporaryDirectory
+                .appending(path: upload.filename)
+            guard (try? FileManager.default.copyItem(at: url, to: kept)) != nil else { return nil }
+            return .init(fileURL: kept, filename: upload.filename, mimeType: upload.mimeType)
+        }
+        guard type.conforms(to: .image), let data = try? Data(contentsOf: url) else { return nil }
+        if let image = SharedItemType.pick(
+            from: [type.identifier], preferring: SharedItemType.uploadableImages)
+        {
+            let upload = SharedItemType.upload(for: image)
+            return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)
+        }
+        guard let jpeg = Self.jpeg(from: data) else { return nil }
+        let upload = SharedItemType.upload(for: .jpeg)
+        return .init(data: jpeg, filename: upload.filename, mimeType: upload.mimeType)
+    }
+
+    /// The item's file URL, or nil when what it carries is not a file.
+    private func loadFileURL() async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = loadObject(ofClass: URL.self) { url, _ in
+                continuation.resume(returning: url?.isFileURL == true ? url : nil)
+            }
+        }
+    }
+
     private static func jpeg(from data: Data) -> Data? {
         #if canImport(UIKit)
             UIImage(data: data)?.jpegData(compressionQuality: 0.9)
@@ -281,37 +328,70 @@ public struct SharePayload: Sendable {
         }
 
         for item in items {
+            var links: [String] = []
+            var passages: [String] = []
             for provider in item.attachments ?? [] {
-                if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
-                    let url = await provider.loadText(UTType.url)
-                {
-                    append(url)
-                    continue
-                }
-                if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier),
-                    let value = await provider.loadText(UTType.plainText)
-                {
-                    append(value)
-                    continue
-                }
-                if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                    if let movie = await provider.loadUpload(
+                // Media before links: a picture from Files or a movie from
+                // Finder also registers `public.file-url`, which conforms to
+                // `public.url`, so asking for a URL first put a file:// path
+                // into the post instead of attaching the picture.
+                if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier),
+                    let movie = await provider.loadUpload(
                         preferring: SharedItemType.uploadableMovies)
-                    {
-                        attachments.append(movie)
-                        continue
-                    }
+                {
+                    attachments.append(movie)
+                    continue
                 }
                 if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
                     let image = await provider.loadUpload(
                         preferring: SharedItemType.uploadableImages)
                 {
                     attachments.append(image)
+                    continue
+                }
+                // A file that registers nothing but its URL: typed by its
+                // extension, attached when it is media, and otherwise left
+                // out — a path on this device means nothing in a post.
+                if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                    if let file = await provider.loadSharedFile() { attachments.append(file) }
+                    continue
+                }
+                if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
+                    let url = await provider.loadText(UTType.url)
+                {
+                    links.append(url)
+                    continue
+                }
+                if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier),
+                    let value = await provider.loadText(UTType.plainText)
+                {
+                    passages.append(value)
                 }
             }
+            // A page shared from Safari carries its title in the item's
+            // content text; it heads the link, as a person would write it.
+            if !links.isEmpty,
+                let title = pageTitle(
+                    item.attributedContentText?.string ?? item.attributedTitle?.string,
+                    alreadyShared: passages + links)
+            {
+                append(title)
+            }
+            passages.forEach(append)
+            links.forEach(append)
         }
 
         return SharePayload(text: text, attachments: attachments)
+    }
+
+    /// The page title worth adding: not empty, not the link itself, and not
+    /// something the shared text already says.
+    static func pageTitle(_ candidate: String?, alreadyShared: [String]) -> String? {
+        guard let title = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !title.isEmpty,
+            !alreadyShared.contains(where: { $0 == title || $0.contains(title) })
+        else { return nil }
+        return title
     }
 }
 

@@ -47,11 +47,15 @@ public struct LocalNotifier: Sendable {
         // One category, because a reply is a mention: Mastodon's API has no
         // "reply" kind, so every notification that can be replied to arrives
         // as a mention and wears this category's actions.
+        // Pushes name the same categories (`NotificationAlert`), so a mention
+        // that arrived through Nextcloud's proxy carries the same actions.
         let mention = UNNotificationCategory(
-            identifier: "mention", actions: [reply, favourite, boost, muteConversation],
+            identifier: NotificationAlert.mentionCategory,
+            actions: [reply, favourite, boost, muteConversation],
             intentIdentifiers: [], options: [])
         let generic = UNNotificationCategory(
-            identifier: "generic", actions: [], intentIdentifiers: [], options: [])
+            identifier: NotificationAlert.genericCategory, actions: [], intentIdentifiers: [],
+            options: [])
 
         center.setNotificationCategories([mention, generic])
     }
@@ -75,12 +79,17 @@ public struct LocalNotifier: Sendable {
         // What the Focus filters out is held, as quiet hours hold it: not
         // reported as announced, so it comes through once the Focus ends.
         let focus = FocusFilterState.current
+        // What a push already put on screen is done: raising it again from
+        // the poll would show the same mention twice (docs/08 §5).
+        let pushed = NotificationAlert.pushAnnounced(accountID: session.id)
+        let alreadyPushed = notifications.filter { pushed.contains($0.serverID) }.map(\.serverID)
         let eligible = notifications.filter {
             enabled.contains($0.kind.rawValue) && focus.allows(kind: $0.kind, accountID: session.id)
+                && !pushed.contains($0.serverID)
         }
         let authorization = await center.notificationSettings().authorizationStatus
         guard authorization == .authorized || authorization == .provisional else {
-            return eligible.map(\.serverID) + switchedOff
+            return eligible.map(\.serverID) + switchedOff + alreadyPushed
         }
         var announced: [String] = []
 
@@ -128,7 +137,7 @@ public struct LocalNotifier: Sendable {
                 )
             }
             announced.append(contentsOf: held.map { $0.serverID })
-            return announced + switchedOff
+            return announced + switchedOff + alreadyPushed
         }
 
         for notification in announcements {
@@ -147,7 +156,7 @@ public struct LocalNotifier: Sendable {
                 )
             }
         }
-        return announced + switchedOff
+        return announced + switchedOff + alreadyPushed
     }
 
     /// One request for everything held since the last digest.
@@ -207,7 +216,7 @@ public struct LocalNotifier: Sendable {
         content.interruptionLevel = .passive
         content.filterCriteria = session.id.uuidString
         content.userInfo = [
-            "accountID": session.id.uuidString,
+            NotificationAlert.accountIDKey: session.id.uuidString,
             "digestCounts": totals,
         ]
 
@@ -275,22 +284,19 @@ public struct LocalNotifier: Sendable {
         content.title = title(for: notification, payload: payload)
         content.body = payload?.body ?? ""
         if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
-        // A reply is a mention: Mastodon's own API has no separate
-        // "reply" kind, and the mention category carries the actions
-        // people want on both.
-        content.categoryIdentifier =
-            notification.kind == NotificationKind.mention ? "mention" : "generic"
+        // The same category, thread, Focus criteria and userInfo a push gets
+        // in the notification service extension (`NotificationAlert`).
+        content.categoryIdentifier = NotificationAlert.category(for: notification.kind)
         content.interruptionLevel =
-            notification.kind == NotificationKind.mention ? .active : .passive
-        content.threadIdentifier = payload?.statusID ?? notification.serverID
+            NotificationAlert.isActive(notification.kind) ? .active : .passive
+        content.threadIdentifier = NotificationAlert.threadIdentifier(
+            statusID: payload?.statusID, notificationID: notification.serverID)
         // What a Focus filter's predicate matches: a Focus that keeps the app
         // on one account lets only that account's notifications through.
         content.filterCriteria = session.id.uuidString
-        content.userInfo = [
-            "accountID": session.id.uuidString,
-            "statusID": payload?.statusID ?? "",
-            "notificationID": notification.serverID,
-        ]
+        content.userInfo = NotificationAlert.userInfo(
+            accountID: session.id, statusID: payload?.statusID,
+            notificationID: notification.serverID)
         content.sound = Self.sound(for: notification.kind)
         return content
     }

@@ -42,19 +42,7 @@ public actor ImageLoader {
         self.diskCeiling = diskCeiling
         memory.totalCostLimit = 96 * 1024 * 1024
 
-        if let diskDirectory {
-            self.diskDirectory = diskDirectory
-        } else {
-            let groupBase =
-                AppGroup.isEnabled
-                ? FileManager.default.containerURL(
-                    forSecurityApplicationGroupIdentifier: AppGroup.identifier)
-                : nil
-            let base =
-                groupBase
-                ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-            self.diskDirectory = base?.appending(path: "ImageCache")
-        }
+        self.diskDirectory = diskDirectory ?? Self.defaultDiskDirectory()
         if let directory = self.diskDirectory {
             try? FileManager.default.createDirectory(
                 at: directory, withIntermediateDirectories: true)
@@ -257,6 +245,41 @@ public actor ImageLoader {
     }
 
     // MARK: - Disk
+
+    /// The app group's cache when there is a group, so the widgets read what
+    /// the app downloaded; the process's own caches otherwise.
+    static func defaultDiskDirectory() -> URL? {
+        let groupBase =
+            AppGroup.isEnabled
+            ? FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: AppGroup.identifier)
+            : nil
+        let base =
+            groupBase
+            ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        return base?.appending(path: "ImageCache")
+    }
+
+    /// What the disk cache already holds for `url`, decoded at `maxPixels`,
+    /// and nothing from the network: a widget never downloads (docs/09 §8),
+    /// but may show an avatar the app has already fetched. The file is read
+    /// through ImageIO straight to the small size, so a large original costs
+    /// a widget a thumbnail's memory, not the photograph's.
+    public static func cachedImage(for url: URL, maxPixels: Int) -> CGImage? {
+        guard let directory = defaultDiskDirectory() else { return nil }
+        let file = diskURL(in: directory, resource: resourceKey(url))
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(file as CFURL, sourceOptions) else {
+            return nil
+        }
+        let options =
+            [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+            ] as CFDictionary
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options)
+    }
 
     private static func diskURL(in directory: URL, resource: String) -> URL {
         directory.appending(path: resource.replacingOccurrences(of: "/", with: "_"))

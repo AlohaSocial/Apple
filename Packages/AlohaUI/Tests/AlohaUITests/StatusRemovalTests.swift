@@ -58,7 +58,7 @@ struct StatusRemovalTests {
             TimelineStatusRemoval(accountID: UUID(), authorID: "b"),
             from: [
                 .status(theirs), .status(theirBoost), .status(boostOfThem),
-                .caughtUpDivider(after: "1"), .status(unrelated),
+                .caughtUpDivider(above: "1"), .status(unrelated),
             ])
         // The divider marks a place in the list, not a post, and stays.
         #expect(rows.map(\.id) == ["caughtUp-1", "4"])

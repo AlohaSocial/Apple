@@ -49,9 +49,17 @@ public enum KeyboardShortcuts {
 
     /// The ones that work anywhere in the window.
     public static var global: [Entry] {
-        [
+        // The Mac swaps the two N shortcuts (docs/09 §2), as its menu does.
+        #if os(macOS)
+            let newPost = "⌥⌘N"
+            let newWindow = "⌘N"
+        #else
+            let newPost = "⌘N"
+            let newWindow = "⌥⌘N"
+        #endif
+        return [
             .init(
-                keys: ["⌘N"],
+                keys: [newPost],
                 label: String(localized: "Write a new post", comment: "Keyboard shortcut")),
             .init(
                 keys: ["⌘F"], label: String(localized: "Search", comment: "Keyboard shortcut")),
@@ -70,7 +78,7 @@ public enum KeyboardShortcuts {
                 label: String(
                     localized: "Notifications, Discover, Messages", comment: "Keyboard shortcut")),
             .init(
-                keys: ["⌥⌘N"],
+                keys: [newWindow],
                 label: String(localized: "Open a new window", comment: "Keyboard shortcut")),
         ]
     }

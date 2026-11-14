@@ -35,12 +35,25 @@ struct ThemedAppShell: View {
     @State var selectedMode: FeedMode = .home
     @State var sidebarItem: SidebarItem = .mode(.home)
     @State var selectedSource: TimelineSource = .home
+    /// Search or Discover, on the phone's search tab.
+    @State var searchTabScope: SearchTabScope = .search
     /// What each phone tab has pushed, so leaving a tab and coming back
     /// finds the screen you left there. One shared path made a screen pushed
     /// on one tab turn up on the next.
     @State var tabPaths: [TabSelection: [Route]] = [:]
     /// The same, per sidebar row, for the iPad, Mac and Vision shells.
     @State var sidebarPaths: [SidebarItem: [Route]] = [:]
+    /// What each sidebar row has open in the iPad's detail column: the
+    /// thread or profile at its root, then whatever was pushed inside it.
+    /// Empty for a row whose column is closed (`push`).
+    @State var detailPaths: [SidebarItem: [Route]] = [:]
+    /// Whether the window is wide enough for a detail column beside the
+    /// primary one (`ShellLayout.detailColumnMinimumWidth`).
+    @State var isDetailColumnAvailable = false
+    /// Which column this copy of the shell builds screens for. The detail
+    /// column's screens are built by a copy marked `.detail`, so the actions
+    /// they send push onto the detail column's own stack.
+    var column: ShellColumn = .primary
     /// A route opened while the account was being switched, held until the
     /// shell has reset for the account it belongs to.
     @State var accountSwitch = AccountSwitchNavigation()
@@ -76,6 +89,9 @@ struct ThemedAppShell: View {
     /// The Focus filter last applied, so it is applied once per change.
     @State private var appliedFocus = FocusFilterState.none
     @Environment(\.scenePhase) private var scenePhase
+    /// This window's name to the sync engine, which runs while any window
+    /// is in the foreground.
+    @State private var syncSceneID = UUID()
     @Environment(\.openURL) var openURLAction
     #if os(iOS)
         @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -96,7 +112,7 @@ struct ThemedAppShell: View {
     /// otherwise stays out of the way: the app-wide requests — compose, open a
     /// route, add an account — are for the main window, or every open thread
     /// window would answer them too.
-    private let initialRoute: Route?
+    let initialRoute: Route?
 
     /// The account load and the sync engine are the process's, not a
     /// window's: loading again from a second window would replace the
@@ -167,6 +183,7 @@ struct ThemedAppShell: View {
                 guard previous != nil, previous != current else { return }
                 tabPaths = [:]
                 sidebarPaths = [:]
+                detailPaths = [:]
                 // For you is Nextcloud Social's; another server has no such feed.
                 if selectedSource == .interests,
                     environment.activeSession?.capabilities.isNextcloudSocial != true
@@ -175,10 +192,15 @@ struct ThemedAppShell: View {
                 }
                 if let destination { open(destination) }
             }
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                // Only the background stops sync, and only once every window
+                // is there: a socket closes then, immediately, and
+                // BGAppRefreshTask takes over (docs/08 §6). Inactive — Control
+                // Center, Face ID, another window focused — is a moment.
+                environment.sync.scene(syncSceneID, didEnter: phase)
+            }
+            .onDisappear { environment.sync.sceneDidDisappear(syncSceneID) }
             .onChange(of: scenePhase) { _, phase in
-                // A socket closes on background immediately; BGAppRefreshTask
-                // takes over from there (docs/08 §6).
-                environment.sync.setForeground(phase == .active)
                 if phase == .active { Task { await environment.sendQueue.drainAll() } }
                 if phase == .active { refreshMemoriesWidget() }
                 // An intent with `openAppWhenRun` brings a running app to the
@@ -233,6 +255,16 @@ struct ThemedAppShell: View {
                 guard initialRoute == nil else { return }
                 presentSignIn()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .alohaSignInAgain)) { note in
+                // The Settings scene's "Sign in again", which has no shell of
+                // its own to present from (`SignInAgainAction`).
+                guard initialRoute == nil,
+                    let id = note.userInfo?[SignInAgainAction.accountIDKey] as? UUID
+                else { return }
+                presentSignIn(renewing: id)
+            }
+            // Everything inside this window asks this window for the sheet.
+            .environment(\.signInAgain, SignInAgainAction { presentSignIn(renewing: $0) })
             // The menu bar acts on the window in front (see `ShellCommands`).
             .focusedSceneValue(\.shellCommands, shellCommands)
     }
@@ -242,6 +274,22 @@ struct ThemedAppShell: View {
     func presentSignIn() {
         pendingSignIn = nil
         signIn = SignInPresentation()
+    }
+
+    /// Opens the sign-in sheet for an account that is already here, on its
+    /// own server and straight to the approval step. Before this the only way
+    /// back from an expired sign-in was "Add account" and typing the server
+    /// again — which did renew the account, but nothing said it would.
+    func presentSignIn(renewing accountID: UUID) {
+        guard let session = environment.sessions.first(where: { $0.id == accountID }) else {
+            return
+        }
+        let snapshot = session.snapshot
+        pendingSignIn = nil
+        signIn = SignInPresentation(
+            reauthenticating: SignInView.Reauthentication(
+                handle: snapshot.qualifiedHandle, host: snapshot.instanceHost,
+                apiBase: snapshot.apiBase))
     }
 
     /// What a person sees, in the order it is fair to ask it of them:
@@ -455,6 +503,7 @@ struct ThemedAppShell: View {
         else { return }
         tabPaths = restored.tabPaths
         sidebarPaths = restored.restoredSidebarPaths
+        detailPaths = restored.restoredDetailPaths
         selectedTab = restored.tab
         sidebarItem = restored.sidebarItem.item
         if usesSidebar {
@@ -471,7 +520,7 @@ struct ThemedAppShell: View {
         guard hasRestored, let id = environment.activeSession?.id else { return nil }
         return ShellRestoration(
             accountID: id, tab: selectedTab, tabPaths: tabPaths,
-            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths)
+            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths, detailPaths: detailPaths)
     }
 
     func unreadNotifications(_ session: AccountSession) -> Int {
@@ -482,8 +531,32 @@ struct ThemedAppShell: View {
         Binding(get: { tabPaths[tab, default: []] }, set: { tabPaths[tab] = $0 })
     }
 
+    /// A sidebar row's primary stack. Where there is no room for the detail
+    /// column — the window narrowed, or the scene came back narrower than it
+    /// was left — what the column had open is shown pushed on top of this
+    /// stack instead, so narrowing a window never closes what you were
+    /// reading. The first change to that stack makes the arrangement real.
     func sidebarPath(_ item: SidebarItem) -> Binding<[Route]> {
-        Binding(get: { sidebarPaths[item, default: []] }, set: { sidebarPaths[item] = $0 })
+        let folds = !showsDetailColumn
+        return Binding(
+            get: {
+                sidebarPaths[item, default: []]
+                    + (folds ? detailPaths[item, default: []] : [])
+            },
+            set: { path in
+                sidebarPaths[item] = path
+                if folds { detailPaths[item] = nil }
+            })
+    }
+
+    /// The detail column's stack: everything after its root.
+    func detailPath(_ item: SidebarItem) -> Binding<[Route]> {
+        Binding(
+            get: { Array(detailPaths[item, default: []].dropFirst()) },
+            set: { path in
+                guard let root = detailPaths[item]?.first else { return }
+                detailPaths[item] = [root] + path
+            })
     }
 
     /// Writes today's "on this day" for the Memories widget, once per day and

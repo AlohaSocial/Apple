@@ -13,6 +13,9 @@ public struct TimelineView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.displayScale) private var displayScale
     @Environment(\.shellUsesTabBar) private var shellUsesTabBar
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.signInAgain) private var signInAgain
     /// The same scale `AvatarView` applies, for the prefetch's avatar size.
     @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
 
@@ -26,7 +29,18 @@ public struct TimelineView: View {
     private let onAction: (StatusRowAction) -> Void
     /// Set once the first page has been scrolled to, so reopening a timeline
     /// does not pull the reader back to the post they had already left behind.
+    /// Also set once the reader scrolls on their own: a marker that arrives
+    /// from the server after that is not a reason to move them.
     @State private var didRestorePosition = false
+    /// Whether this timeline is the one on screen, rather than under a pushed
+    /// screen or in a tab not chosen. Only then does it refresh on a signal.
+    @State private var isOnScreen = false
+    /// Bumped by the new-posts pill; the list scrolls to the newest post.
+    @State private var scrollToNewestRequests = 0
+    /// Whether the scene went to the background since it was last active:
+    /// the phase passes through `inactive` on the way back, so the previous
+    /// phase alone cannot say.
+    @State private var wasInBackground = false
     /// Where the VoiceOver rotors point: each post registers its row here.
     @Namespace private var rotorNamespace
 
@@ -44,10 +58,11 @@ public struct TimelineView: View {
             list
             if model.pendingNewCount > 0 {
                 newPostsPill
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(pillTransition)
             }
         }
-        .animation(.spring(response: 0.42, dampingFraction: 0.72), value: model.pendingNewCount > 0)
+        .animation(pillAnimation, value: model.pendingNewCount > 0)
+        .actionFeedbackToast()
         .background(palette.background.ignoresSafeArea())
         .timelineKeyboard(
             focusedID: $focusedStatusID,
@@ -59,11 +74,81 @@ public struct TimelineView: View {
         )
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .task { await model.appear() }
-        .refreshable { await model.refresh() }
+        .refreshable { await model.refresh(revealingArrivals: true) }
         .onChange(of: session.lastPosted?.id) { _, _ in
             guard let posted = session.lastPosted else { return }
             Task { await model.insertOwn(posted) }
         }
+        .onAppear { isOnScreen = true }
+        .onDisappear {
+            isOnScreen = false
+            Task { await model.saveReadingMarker() }
+        }
+        // Nextcloud Social has no streaming, so nothing arrives unless asked
+        // for: the sync engine says when the home timeline is due — a poll, or
+        // a streamed post where there is a socket — and the timeline on
+        // screen fetches. New posts still wait behind the pill unless the
+        // reader is at the very top (docs/08 §2, docs/05 §3).
+        .onChange(of: environment.sync.timelineRefreshRequests[session.id]) { _, _ in
+            guard isOnScreen, followsHomeTimeline else { return }
+            Task { await model.refresh() }
+        }
+        // Back in the foreground, the timeline catches up by itself rather
+        // than waiting for a pull. Here rather than in the shell, so only the
+        // timeline on screen fetches.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                wasInBackground = true
+                guard isOnScreen else { return }
+                Task { await model.saveReadingMarker() }
+            case .active:
+                // From the background — not merely from a glance at Control
+                // Centre — it is a new visit, and the divider moves to where
+                // the reader got to.
+                let isNewVisit = wasInBackground
+                wasInBackground = false
+                guard isOnScreen else { return }
+                Task {
+                    if isNewVisit {
+                        await model.beginNewVisit()
+                        await model.refresh()
+                    } else {
+                        await model.refreshIfStale(olderThan: 30)
+                    }
+                }
+            default:
+                break
+            }
+        }
+        // While it is on screen, the engine is told so — repeatedly, because
+        // it trusts the word for five minutes and a reader stays longer.
+        .task(id: isOnScreen && scenePhase == .active && followsHomeTimeline) {
+            guard isOnScreen, scenePhase == .active, followsHomeTimeline else { return }
+            while !Task.isCancelled {
+                environment.sync.noteTimelineVisible(for: session.id)
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
+    }
+
+    /// The home timeline and its media modes: what the sync engine's refresh
+    /// signal is about.
+    private var followsHomeTimeline: Bool { model.key.source == .home }
+
+    /// The pill slides in from the top; with Reduce Motion it fades.
+    private var pillTransition: AnyTransition {
+        reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity)
+    }
+
+    private var pillAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.42, dampingFraction: 0.72)
+    }
+
+    /// Scrolling the list for the reader is a jump, not a glide, with Reduce
+    /// Motion on.
+    private func scrollAnimation(_ duration: Double) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: duration)
     }
 
     private var list: some View {
@@ -78,27 +163,52 @@ public struct TimelineView: View {
                     reportPrefetchGeometry()
                 }
                 .onChange(of: displayScale) { _, _ in reportPrefetchGeometry() }
-                // "Return to where I was": once the first page is in, scroll to
-                // the last-read post rather than to the top. Off, the timeline
-                // opens at the newest post, which is what a storefront expects.
-                .onChange(of: model.rows.isEmpty) { _, isEmpty in
-                    guard
-                        !isEmpty, !didRestorePosition,
-                        session.settings.restoreTimelinePosition,
-                        let markerID = model.caughtUpMarkerID,
-                        model.rows.contains(where: { $0.id == markerID })
-                    else { return }
-                    didRestorePosition = true
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        proxy.scrollTo(markerID, anchor: .top)
+                // "Return to where I was": once the first page and the marker
+                // are both in — in either order — scroll to the last-read post
+                // rather than to the top. Off, the timeline opens at the newest
+                // post, which is what a storefront expects.
+                .onChange(of: model.rows.isEmpty) { _, _ in restorePosition(proxy) }
+                .onChange(of: model.visitMarkerID) { _, _ in restorePosition(proxy) }
+                // Whether new posts may go straight in: only at the very top.
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentOffset.y <= -geometry.contentInsets.top + 4
+                } action: { _, isAtTop in
+                    model.readerIsAtTop = isAtTop
+                    if !isAtTop { didRestorePosition = true }
+                }
+                .onChange(of: scrollToNewestRequests) { _, _ in
+                    // A turn later, so the list has the revealed rows to
+                    // scroll to.
+                    Task { @MainActor in
+                        await Task.yield()
+                        guard let newest = model.index.statusIDs.first else { return }
+                        withAnimation(scrollAnimation(0.3)) {
+                            proxy.scrollTo(newest, anchor: .top)
+                        }
                     }
                 }
                 .onChange(of: focusedStatusID) { _, id in
                     guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
+                    withAnimation(scrollAnimation(0.18)) {
                         proxy.scrollTo(id, anchor: .center)
                     }
                 }
+        }
+    }
+
+    private func restorePosition(_ proxy: ScrollViewProxy) {
+        guard
+            !didRestorePosition, !model.rows.isEmpty,
+            session.settings.restoreTimelinePosition,
+            let markerID = model.visitMarkerID,
+            model.index.status(id: markerID) != nil
+        else { return }
+        didRestorePosition = true
+        // Already the newest post: the list is where it should be.
+        guard model.index.statusIDs.first != markerID else { return }
+        model.readerIsAtTop = false
+        withAnimation(scrollAnimation(0.25)) {
+            proxy.scrollTo(markerID, anchor: .top)
         }
     }
 
@@ -194,26 +304,17 @@ public struct TimelineView: View {
                     .onAppear {
                         Task { await model.prefetchOlder(near: status.id) }
                         model.prefetchMedia(around: row.id)
+                        // Which posts are on screen, so the topmost can be
+                        // saved as where the reader got to.
+                        model.noteRow(status.id, isVisible: true)
                     }
+                    .onDisappear { model.noteRow(status.id, isVisible: false) }
 
                 case .gap(let id):
                     gapRow(id: id)
 
-                case .caughtUpDivider(let after):
-                    caughtUpDivider(after: after)
-                        .onAppear {
-                            // The divider sits below the last-read post: when
-                            // it becomes visible the reader has passed it, so
-                            // the marker moves to the post that follows.
-                            guard
-                                let idx = model.rows.firstIndex(where: {
-                                    $0.id == "caughtUp-\(after)"
-                                }),
-                                idx + 1 < model.rows.count,
-                                case .status(let next) = model.rows[idx + 1]
-                            else { return }
-                            Task { await model.advanceCaughtUpMarker(to: next.id) }
-                        }
+                case .caughtUpDivider:
+                    caughtUpDivider
                 }
             }
 
@@ -284,8 +385,8 @@ public struct TimelineView: View {
         .unifiedGlass(.subtle)
     }
 
-    /// A visual divider marking where the previous session ended.
-    private func caughtUpDivider(after statusID: String) -> some View {
+    /// Where the reader left off last visit: everything above it is new.
+    private var caughtUpDivider: some View {
         HStack(spacing: AlohaMetrics.space2) {
             Spacer()
             VStack(spacing: AlohaMetrics.space1) {
@@ -303,12 +404,12 @@ public struct TimelineView: View {
         .listRowSeparator(.hidden)
     }
 
-    /// A visual divider marking where the previous session ended.
-
-    /// New content never moves what the person is reading.
+    /// New content never moves what the person is reading. Tapping the pill
+    /// shows it and takes the reader to the newest post (docs/05 §3).
     private var newPostsPill: some View {
         Button {
-            withAnimation(.easeOut(duration: 0.2)) { model.revealPendingRows() }
+            withAnimation(scrollAnimation(0.2)) { model.revealPendingRows() }
+            scrollToNewestRequests += 1
         } label: {
             HStack(spacing: AlohaMetrics.space2) {
                 Image(systemName: "arrow.up")
@@ -325,7 +426,6 @@ public struct TimelineView: View {
         }
         .buttonStyle(.plain)
         .padding(.top, AlohaMetrics.space2)
-        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - Non-content states
@@ -345,6 +445,18 @@ public struct TimelineView: View {
                 .foregroundStyle(palette.secondaryLabel)
             }
             Spacer()
+            // The banner said what to do and offered no way to do it; the
+            // sheet this opens goes straight to the account's own server.
+            Button {
+                signInAgain(session.id)
+            } label: {
+                Text("Sign in", comment: "Re-auth banner action")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .accessibilityHint(
+                Text(
+                    "Opens your server's sign-in page", comment: "Re-auth banner action hint"))
         }
         .padding(AlohaMetrics.space3)
         .background(palette.surfaceRaised)

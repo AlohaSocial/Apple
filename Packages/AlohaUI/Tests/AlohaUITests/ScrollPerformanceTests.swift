@@ -214,11 +214,12 @@ struct PrefetchGeometryTests {
 @Suite("Avatars grow with text, within reason")
 struct AvatarScalingTests {
 
-    @Test("Default text keeps the base size; large text grows it at most by half")
+    @Test("Default text keeps the base size; large text grows it at most by a quarter")
     func scaling() {
         #expect(AvatarView.dimension(base: 46, typeScale: 1) == 46)
         #expect(AvatarView.dimension(base: 46, typeScale: 1.2) == 55)
-        #expect(AvatarView.dimension(base: 46, typeScale: 3) == 69)
+        // Accessibility sizes stop at the cap: the words need the width.
+        #expect(AvatarView.dimension(base: 46, typeScale: 3) == 58)
         // Smaller-than-default text never shrinks a face below its size.
         #expect(AvatarView.dimension(base: 46, typeScale: 0.8) == 46)
     }

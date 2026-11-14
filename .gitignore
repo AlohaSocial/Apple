@@ -25,3 +25,7 @@ build/
 
 # macOS
 .DS_Store
+
+# A contributor's own build settings: the shared-container switch and anything
+# else that depends on the team signing the build (Supporting/Aloha.xcconfig).
+Supporting/Local.xcconfig

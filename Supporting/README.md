@@ -20,21 +20,59 @@ to move under that id — a decision for App Store Connect, not for this file.
 
 ## App group and Keychain sharing
 
-Every process that reads what the app wrote shares two things:
+One build setting decides whether the app and its extensions share anything:
+`ALOHA_SHARED_CONTAINER`, set in [`Aloha.xcconfig`](Aloha.xcconfig), which
+the project's Debug and Release configurations are based on.
 
-| Target | Bundle id | Entitlements file | App group | Keychain group | Sandbox |
-|---|---|---|---|---|---|
-| AlohaSocial (iPhone, iPad, Vision) | `social.aloha.app` | `AlohaSocial.entitlements` | ✓ | ✓ | — |
-| AlohaWidgets (iOS) | `social.aloha.app.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | — |
-| AlohaWidgets (Mac) | `social.aloha.app.mac.widgets` | `AlohaWidgets.entitlements` | ✓ | ✓ | ✓ + network client |
-| AlohaShareExtension (iOS) | `social.aloha.app.share` | `AlohaShareExtension.entitlements` | ✓ | ✓ | — |
-| AlohaShareExtension (Mac) | `social.aloha.app.mac.share` | `AlohaShareExtensionMac.entitlements` | ✓ | ✓ | ✓ + network client |
-| AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService.entitlements` | ✓ | ✓ | — |
-| AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac.entitlements` | ✓ | ✓ | ✓ + network client, user-selected files |
-| AlohaSocialTV | `social.aloha.app.tv` | `AlohaSocialTV.entitlements` | ✓ | ✓ | — |
-| AlohaTopShelf (tvOS) | `social.aloha.app.tv.topshelf` | `AlohaTopShelf.entitlements` | ✓ | ✓ | — |
-| AlohaSocialWatch | `social.aloha.app.watch` | `AlohaSocialWatch.entitlements` | ✓ (on the watch) | ✓ (on the watch) | — |
-| AlohaWatchWidgets (complications) | `social.aloha.app.watch.widgets` | `AlohaWatchWidgets.entitlements` | ✓ (on the watch) | ✓ (on the watch) | — |
+- **`NO` (the default for Debug): every target is standalone.** No
+  `application-groups` or `keychain-access-groups` entitlement anywhere, and
+  `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` off in every
+  Info.plist. Any Apple ID — a free one included — can sign any target, and
+  CI builds with `CODE_SIGNING_ALLOWED=NO` need no profile. Each process keeps
+  its store and tokens in its own container, so **widgets, the share sheet,
+  the notification service, complications and Top Shelf see no accounts**.
+- **`YES` (the default for Release): every target shares**
+  `group.social.aloha.app` and the keychain group
+  `$(AppIdentifierPrefix)social.aloha.app`, and its Info.plist says so.
+  Release is what gets archived for TestFlight and the App Store, so a
+  shipped build has working widgets, share sheet and Top Shelf without anyone
+  remembering a switch; only a team that owns the group can sign it anyway.
+
+To turn sharing on for Debug as well — on a team that owns the group —
+create `Supporting/Local.xcconfig` (git-ignored, included by `Aloha.xcconfig`
+when it exists, and winning over it for both configurations) containing
+
+    ALOHA_SHARED_CONTAINER = YES
+
+(`= NO` there makes Release standalone too, for archiving under another team)
+
+or pass `ALOHA_SHARED_CONTAINER=YES` to `xcodebuild`. Nothing else changes by
+hand. The setting drives two things, so they cannot disagree:
+
+- `CODE_SIGN_ENTITLEMENTS` names `<Target>$(ALOHA_ENTITLEMENTS_SUFFIX).entitlements`:
+  the plain file when off, the `-Shared` one beside it when on. The two files
+  of a pair differ only by the two groups; keep them in step.
+- Each Info.plist writes `$(ALOHA_SHARED_CONTAINER)` into both keys, and
+  `AppGroup` reads the string `YES` as on and anything else as off. Without
+  the key, `AppGroup` stays on the process's own container rather than
+  claiming one it was never granted.
+
+| Target | Bundle id | Entitlements (`NO` / `YES`) | Sandbox |
+|---|---|---|---|
+| AlohaSocial (iPhone, iPad, Vision) | `social.aloha.app` | `AlohaSocial` / `AlohaSocial-Shared` | — |
+| AlohaWidgets (iOS and Mac) | `social.aloha.app.widgets`, `social.aloha.app.mac.widgets` | `AlohaWidgets` / `AlohaWidgets-Shared` | ✓ + network client (Mac) |
+| AlohaShareExtension (iOS) | `social.aloha.app.share` | `AlohaShareExtension` / `AlohaShareExtension-Shared` | — |
+| AlohaShareExtension (Mac) | `social.aloha.app.mac.share` | `AlohaShareExtensionMac` / `AlohaShareExtensionMac-Shared` | ✓ + network client |
+| AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService` / `AlohaNotificationService-Shared` | — |
+| AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac` / `AlohaSocialMac-Shared` | ✓ + network client, user-selected files |
+| AlohaSocialTV | `social.aloha.app.tv` | `AlohaSocialTV` / `AlohaSocialTV-Shared` | — |
+| AlohaTopShelf (tvOS) | `social.aloha.app.tv.topshelf` | `AlohaTopShelf` / `AlohaTopShelf-Shared` | — |
+| AlohaSocialWatch | `social.aloha.app.watch` | `AlohaSocialWatch` / `AlohaSocialWatch-Shared` | — |
+| AlohaWatchWidgets (complications) | `social.aloha.app.watch.widgets` | `AlohaWatchWidgets` / `AlohaWatchWidgets-Shared` | — |
+
+The iOS and Mac share extensions are one target with per-SDK entitlements and
+one Info.plist; the iOS and Mac widgets are one target with one of each. Both
+follow the switch like everything else, so the Mac is no longer half shared.
 
 - App group: `group.social.aloha.app`, on every platform. Since macOS 15 an
   iOS-style `group.` identifier is valid on the Mac when the provisioning
@@ -48,29 +86,28 @@ Every process that reads what the app wrote shares two things:
   `WatchConnectivity`. The watch app keeps the pairing in the shared Keychain
   group so its complications can read the token; a pairing an older build
   stored privately is moved over on first launch (`WatchPairingStore`).
-- Each target that has the app group says so with `AlohaAppGroupEnabled` in
-  its Info.plist. Without the key, `AppGroup` stays on the process's own
-  container rather than claiming one it was never granted.
 
-With automatic signing, building registers both capabilities on each App ID
-(**App Groups** and **Keychain Sharing**, plus the group itself) and puts them
-in the profiles. To check by hand: Certificates, Identifiers & Profiles →
-Identifiers → each bundle id above → App Groups ✓ (with
-`group.social.aloha.app` assigned) and Keychain Sharing ✓.
+With automatic signing and the switch on, building registers both
+capabilities on each App ID (**App Groups** and **Keychain Sharing**, plus the
+group itself) and puts them in the profiles. To check by hand: Certificates,
+Identifiers & Profiles → Identifiers → each bundle id above → App Groups ✓
+(with `group.social.aloha.app` assigned) and Keychain Sharing ✓.
 
 **Signing with another team.** An app group belongs to the team that
 registered it, so another team cannot claim `group.social.aloha.app` — and a
-free Apple ID cannot use app groups or keychain sharing at all. The iPhone
-and watch targets therefore ship standalone: no `application-groups` or
-`keychain-access-groups` entitlements, `AlohaAppGroupEnabled` and
-`AlohaKeychainSharingEnabled` set to `false`, each process keeping its store
-and tokens in its own container. That build runs under any Apple ID after
-picking the team in Xcode (Signing & Capabilities, once per target); widgets
-and extensions then see no accounts. To restore sharing, either register a
-group of your own and put it back — the string in each `*.entitlements`,
-`AppGroup.identifier` and `StoreContainer.appGroupIdentifier`, plus the two
-Info.plist keys set to `true` — or, on a paid team, keep the standalone
-setup and do nothing.
+free Apple ID cannot use app groups or keychain sharing at all. Leave the
+switch off and the build runs under any Apple ID after picking the team in
+Xcode (Signing & Capabilities, once per target). To share under a team of
+your own, register a group, change the string in the `-Shared` entitlements,
+`AppGroup.identifier` and `StoreContainer.appGroupIdentifier`, and turn the
+switch on.
+
+**Switching changes where data lives.** A process reads the group's container
+only while the switch is on. The first launch with it on moves what the app
+kept in its own container into the group (below); turning it off again does
+not move anything back, so the app starts from its own, older container. The Mac
+app and the Apple TV were shared before the switch existed; they still are in
+Release, and are standalone in a Debug build unless the switch is turned on.
 
 The Apple TV shares the same group name with its Top Shelf extension; it is a
 different device, so nothing actually crosses between it and the phone. Its

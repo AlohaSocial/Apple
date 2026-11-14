@@ -295,17 +295,129 @@ public enum StatusActions {
         }
     }
 
+    /// Favourite, boost, bookmark and mute: shown at once, sent behind, and
+    /// reconciled with the server's answer — or put back, with a word, when
+    /// the server refuses (docs/08 §8).
+    ///
+    /// The optimistic copy goes through the store as a provisional update, so
+    /// every list on screen shows it and holds it against pages fetched while
+    /// the request is out; the final copy — the server's, or the original
+    /// put back — releases it. A pin is not predictable (a server caps how
+    /// many there may be), so it waits for the answer, and only says when it
+    /// fails.
     private static func toggle(
         status: Status, session: AccountSession, on action: Endpoint.StatusAction
     ) async {
         let target = status.displayed
+        let optimistic = optimisticCopy(of: target, for: action)
+        if let optimistic {
+            try? await session.timelineStore.updateStatus(
+                accountID: session.id, status: optimistic, provisional: true)
+        }
         do {
-            let updated = try await session.client.decode(
+            let answer = try await session.client.decode(
                 Status.self, from: Endpoint.statuses.action(target.id, action))
-            // The server's answer is authoritative — counts move there too.
-            try await session.timelineStore.updateStatus(accountID: session.id, status: updated)
+            // A boost answers with the boost itself, wrapping the post; the
+            // post is what every list shows and what was changed.
+            let settled = reconciled(answer.displayed, original: target, optimistic: optimistic)
+            try? await session.timelineStore.updateStatus(accountID: session.id, status: settled)
         } catch {
+            if optimistic != nil {
+                try? await session.timelineStore.updateStatus(accountID: session.id, status: target)
+            }
             await session.handle(error)
+            if case APIError.cancelled = error { return }
+            ActionFeedback.shared.report(
+                failureMessage(error, fallback: toggleFailure(action)))
+        }
+    }
+
+    /// The post as it will be once the server agrees: the flag flipped and
+    /// its count moved with it. Nil for an action whose outcome is not
+    /// predictable from here.
+    nonisolated static func optimisticCopy(
+        of target: Status, for action: Endpoint.StatusAction
+    ) -> Status? {
+        var copy = target
+        switch action {
+        case .favourite:
+            guard !target.favourited else { return nil }
+            copy.favourited = true
+            copy.favouritesCount = target.favouritesCount + 1
+        case .unfavourite:
+            guard target.favourited else { return nil }
+            copy.favourited = false
+            copy.favouritesCount = max(0, target.favouritesCount - 1)
+        case .reblog:
+            guard !target.reblogged else { return nil }
+            copy.reblogged = true
+            copy.reblogsCount = target.reblogsCount + 1
+        case .unreblog:
+            guard target.reblogged else { return nil }
+            copy.reblogged = false
+            copy.reblogsCount = max(0, target.reblogsCount - 1)
+        case .bookmark: copy.bookmarked = true
+        case .unbookmark: copy.bookmarked = false
+        case .mute: copy.muted = true
+        case .unmute: copy.muted = false
+        case .pin, .unpin: return nil
+        }
+        return copy
+    }
+
+    /// The server's answer, which is authoritative — except for a count it
+    /// has not moved yet. Mastodon updates counts asynchronously, so the
+    /// answer to a favourite can say `favourited: true` beside the count from
+    /// before it; taking that literally made the number tick up and back.
+    nonisolated static func reconciled(
+        _ answer: Status, original: Status, optimistic: Status?
+    ) -> Status {
+        guard let optimistic else { return answer }
+        var settled = answer
+        if answer.favourited == optimistic.favourited,
+            answer.favourited != original.favourited,
+            answer.favouritesCount == original.favouritesCount
+        {
+            settled.favouritesCount = optimistic.favouritesCount
+        }
+        if answer.reblogged == optimistic.reblogged,
+            answer.reblogged != original.reblogged,
+            answer.reblogsCount == original.reblogsCount
+        {
+            settled.reblogsCount = optimistic.reblogsCount
+        }
+        return settled
+    }
+
+    /// What did not happen, in the reader's terms.
+    nonisolated static func toggleFailure(_ action: Endpoint.StatusAction) -> String {
+        switch action {
+        case .favourite:
+            String(localized: "The favourite did not go through.", comment: "Favourite failure")
+        case .unfavourite:
+            String(
+                localized: "The favourite could not be removed.", comment: "Unfavourite failure")
+        case .reblog:
+            String(localized: "The boost did not go through.", comment: "Boost failure")
+        case .unreblog:
+            String(localized: "The boost could not be undone.", comment: "Undo boost failure")
+        case .bookmark:
+            String(localized: "The bookmark could not be saved.", comment: "Bookmark failure")
+        case .unbookmark:
+            String(
+                localized: "The bookmark could not be removed.", comment: "Remove bookmark failure")
+        case .mute:
+            String(
+                localized: "The conversation could not be muted.",
+                comment: "Mute conversation failure")
+        case .unmute:
+            String(
+                localized: "The conversation could not be unmuted.",
+                comment: "Unmute conversation failure")
+        case .pin:
+            String(localized: "The post could not be pinned.", comment: "Pin failure")
+        case .unpin:
+            String(localized: "The post could not be unpinned.", comment: "Unpin failure")
         }
     }
 

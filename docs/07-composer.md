@@ -3,7 +3,8 @@
 ## 1. Shape
 
 One composer, presented as a sheet on iPhone, a sheet or a dedicated window on
-iPad, and always a separate window on Mac (`⌘N` from anywhere, `⌘⏎` to post).
+iPad, and always a separate window on Mac (`⌘⌥N` from anywhere — `⌘N` is a new
+main window there, docs/09 §2 — and `⌘⏎` to post).
 Not available on tvOS. On watchOS only a reduced reply composer (dictation,
 scribble, emoji, canned responses).
 

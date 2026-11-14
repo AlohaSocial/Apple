@@ -165,8 +165,11 @@ public struct AvatarView: View {
     @Environment(\.alohaPalette) private var palette
 
     /// Avatars grow with Dynamic Type, so a face does not shrink to a dot
-    /// next to accessibility-size names — but only so far: past half again
-    /// its size an avatar takes the room the words need.
+    /// next to large names — but only so far. The avatar column is width the
+    /// words beside it do not get, and at accessibility sizes those words
+    /// need all of it: growing to half again its size, as it once did, left
+    /// a post's text a few characters wide. A quarter keeps the face in
+    /// proportion through the ordinary sizes and stops there.
     @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
 
     private let account: Account
@@ -179,7 +182,7 @@ public struct AvatarView: View {
 
     /// The drawn size: the caller's (or the density's), scaled with text.
     static func dimension(base: Double, typeScale: Double) -> Double {
-        (base * min(max(typeScale, 1), 1.5)).rounded()
+        (base * min(max(typeScale, 1), 1.25)).rounded()
     }
 
     public var body: some View {

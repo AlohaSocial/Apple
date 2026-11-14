@@ -25,8 +25,22 @@ public enum AppGroup {
     /// iOS-style group is valid there when the provisioning profile grants
     /// it, which automatic signing does, so the Mac app and its widgets share
     /// one name with the iPhone instead of a team-prefixed variant.
-    public static let isEnabled =
-        Bundle.main.object(forInfoDictionaryKey: "AlohaAppGroupEnabled") as? Bool ?? false
+    public static let isEnabled = infoFlag("AlohaAppGroupEnabled", default: false)
+
+    /// An Info.plist switch, as a boolean or as the `YES`/`NO` string the
+    /// checked-in plists carry: they write `$(ALOHA_SHARED_CONTAINER)`, and
+    /// build-setting substitution can only produce strings
+    /// (Supporting/Aloha.xcconfig). Anything but `YES` is off, as it is for
+    /// the entitlements the same setting selects.
+    static func infoFlag(
+        _ key: String, default fallback: Bool, in info: [String: Any]? = Bundle.main.infoDictionary
+    ) -> Bool {
+        switch info?[key] {
+        case let flag as Bool: flag
+        case let text as String: text == "YES"
+        default: fallback
+        }
+    }
 
     /// Falls back to `.standard` where the entitlement is missing — an unsigned
     /// local build — so the app still works alone even though sharing does not.
@@ -44,9 +58,7 @@ public enum AppGroup {
     /// `UserDefaults`. Gating it on `isEnabled` silently disabled a capability
     /// the app was still entitled to.
     public static let keychainAccessGroup: String? =
-        Bundle.main.object(forInfoDictionaryKey: "AlohaKeychainSharingEnabled") as? Bool ?? true
-        ? "social.aloha.app"
-        : nil
+        infoFlag("AlohaKeychainSharingEnabled", default: true) ? "social.aloha.app" : nil
 
     /// Moves what this process wrote to `.standard` while the group was off
     /// — the active account, the Nextcloud push registration, the Focus
@@ -74,6 +86,13 @@ public enum AppGroup {
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"
     public static let unreadTotalKey = "aloha.unreadTotal"
+    /// The same count per account, as `[account id string: count]`, so a
+    /// widget set to one account shows that account's.
+    public static let unreadByAccountKey = "aloha.unreadByAccount"
+    /// Mastodon notification ids a push already announced, per account
+    /// (`[account id string: [id]]`), so the poll that finds the same
+    /// notification later does not raise it a second time.
+    public static let pushAnnouncedKey = "aloha.pushAnnounced"
     /// How many conversations are unread, per account id. The sidebar's
     /// badge on "Direct messages" reads it, and it is written by the
     /// messages list — the one place that already holds the answer.

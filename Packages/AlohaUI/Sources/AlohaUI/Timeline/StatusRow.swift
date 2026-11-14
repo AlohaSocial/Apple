@@ -15,6 +15,7 @@ public struct StatusRow: View {
     /// The scale `AvatarView` draws at, so the context line stays aligned
     /// with the name column as the avatar grows.
     @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let status: Status
     private let policy: SensitiveMediaPolicy
@@ -257,66 +258,109 @@ public struct StatusRow: View {
         .padding(.leading, avatarColumnWidth + AlohaMetrics.space3)
     }
 
+    /// Name, handle, age and badges on one line — until the text is an
+    /// accessibility size, where one line has room for none of them and the
+    /// name was cut to a letter or two. There the header stacks: the name in
+    /// full, the handle under it, then the age and badges.
+    @ViewBuilder
     private var header: some View {
-        HStack(spacing: AlohaMetrics.space2) {
-            Button {
-                onAction(.openProfile(displayed.account))
-            } label: {
-                HStack(spacing: AlohaMetrics.space2) {
-                    EmojiLabel(
-                        displayed.account.bestDisplayName, emojis: displayed.account.emojis,
-                        relativeTo: .subheadline
-                    )
-                    .font(AlohaType.name)
-                    .foregroundStyle(palette.label)
-
-                    if displayed.account.bot {
-                        Image(systemName: "gearshape.2")
-                            .font(.caption2)
-                            .foregroundStyle(palette.tertiaryLabel)
-                            .accessibilityLabel(Text("Automated account", comment: "Bot badge"))
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
+                Button {
+                    onAction(.openProfile(displayed.account))
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: AlohaMetrics.space2) {
+                            displayName(lineLimit: nil)
+                            botBadge
+                        }
+                        handle(lineLimit: 2)
                     }
-
-                    // The host shows whenever it differs from the reading
-                    // account's, so two Alices stay distinguishable.
-                    Text(displayed.account.qualifiedHandle(localHost: localHost))
-                        .font(AlohaType.meta)
-                        .foregroundStyle(palette.tertiaryLabel)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .buttonStyle(.plain)
+
+                HStack(spacing: AlohaMetrics.space2) { metaBadges }
             }
-            .buttonStyle(.plain)
+        } else {
+            HStack(spacing: AlohaMetrics.space2) {
+                Button {
+                    onAction(.openProfile(displayed.account))
+                } label: {
+                    HStack(spacing: AlohaMetrics.space2) {
+                        displayName(lineLimit: 1)
+                        botBadge
+                        handle(lineLimit: 1)
+                    }
+                }
+                .buttonStyle(.plain)
 
-            Spacer(minLength: AlohaMetrics.space2)
+                Spacer(minLength: AlohaMetrics.space2)
 
-            if showsTimestamp {
-                PostAgeText(displayed.createdAt)
-                    .font(AlohaType.meta)
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .lineLimit(1)
+                metaBadges
             }
-
-            if displayed.isEdited {
-                Image(systemName: AlohaSymbol.edit)
-                    .font(.caption2)
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .accessibilityLabel(Text("Edited", comment: "Edited badge"))
-            }
-
-            // A label the post carries about itself — by a hashtag, or by a
-            // picture whose metadata said so (`ai_generated`). A quiet mark,
-            // never a warning: it is not a judgement of the post.
-            if isAIGenerated {
-                Image(systemName: "wand.and.sparkles")
-                    .font(.caption2)
-                    .foregroundStyle(palette.tertiaryLabel)
-                    .accessibilityLabel(Text("Made with AI", comment: "AI-generated badge"))
-                    .help(Text("Made with AI", comment: "AI-generated badge"))
-            }
-
-            visibilityBadge
         }
+    }
+
+    private func displayName(lineLimit: Int?) -> some View {
+        EmojiLabel(
+            displayed.account.bestDisplayName, emojis: displayed.account.emojis,
+            relativeTo: .subheadline, lineLimit: lineLimit
+        )
+        .font(AlohaType.name)
+        .foregroundStyle(palette.label)
+        .multilineTextAlignment(.leading)
+    }
+
+    @ViewBuilder
+    private var botBadge: some View {
+        if displayed.account.bot {
+            Image(systemName: "gearshape.2")
+                .font(.caption2)
+                .foregroundStyle(palette.tertiaryLabel)
+                .accessibilityLabel(Text("Automated account", comment: "Bot badge"))
+        }
+    }
+
+    /// The host shows whenever it differs from the reading account's, so two
+    /// Alices stay distinguishable.
+    private func handle(lineLimit: Int) -> some View {
+        Text(displayed.account.qualifiedHandle(localHost: localHost))
+            .font(AlohaType.meta)
+            .foregroundStyle(palette.tertiaryLabel)
+            .lineLimit(lineLimit)
+            .truncationMode(.middle)
+    }
+
+    /// The age and the marks a post carries about itself.
+    @ViewBuilder
+    private var metaBadges: some View {
+        if showsTimestamp {
+            PostAgeText(displayed.createdAt)
+                .font(AlohaType.meta)
+                .foregroundStyle(palette.tertiaryLabel)
+                .lineLimit(1)
+        }
+
+        if displayed.isEdited {
+            Image(systemName: AlohaSymbol.edit)
+                .font(.caption2)
+                .foregroundStyle(palette.tertiaryLabel)
+                .accessibilityLabel(Text("Edited", comment: "Edited badge"))
+        }
+
+        // A label the post carries about itself — by a hashtag, or by a
+        // picture whose metadata said so (`ai_generated`). A quiet mark,
+        // never a warning: it is not a judgement of the post.
+        if isAIGenerated {
+            Image(systemName: "wand.and.sparkles")
+                .font(.caption2)
+                .foregroundStyle(palette.tertiaryLabel)
+                .accessibilityLabel(Text("Made with AI", comment: "AI-generated badge"))
+                .help(Text("Made with AI", comment: "AI-generated badge"))
+        }
+
+        visibilityBadge
     }
 
     private var isAIGenerated: Bool {

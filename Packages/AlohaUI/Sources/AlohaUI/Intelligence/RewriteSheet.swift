@@ -113,22 +113,33 @@ public struct RewriteSheet: View {
         do {
             proposal = try await intelligence.rewrite(
                 original, style: style, maximumCharacters: maximumCharacters)
-        } catch IntelligenceError.refused {
-            // Shown plainly. No retry loop, no prompt gymnastics.
-            errorMessage = String(
-                localized: "Apple Intelligence didn't want to rewrite that.",
-                comment: "Rewrite refused")
-        } catch IntelligenceError.tooLong {
-            errorMessage = String(
-                localized: "That didn't fit in your server's character limit.",
-                comment: "Rewrite too long")
-        } catch IntelligenceError.unavailable {
-            errorMessage = String(
-                localized: "Writing help isn't available on this device.",
-                comment: "Rewrite unavailable")
         } catch {
-            errorMessage = String(
-                localized: "Couldn't rewrite that.", comment: "Rewrite failed")
+            switch IntelligenceError.classify(error) {
+            case .cancelled:
+                // The sheet closed; there is nobody to tell.
+                return
+            case .refused:
+                // Shown plainly. No retry loop, no prompt gymnastics.
+                errorMessage = String(
+                    localized: "Apple Intelligence didn't want to rewrite that.",
+                    comment: "Rewrite refused")
+            case .tooLong:
+                errorMessage = String(
+                    localized: "That didn't fit in your server's character limit.",
+                    comment: "Rewrite too long")
+            case .unavailable:
+                errorMessage = String(
+                    localized: "Writing help isn't available on this device.",
+                    comment: "Rewrite unavailable")
+            case .contextExceeded:
+                errorMessage = String(
+                    localized: "That's too long to rewrite on this device.",
+                    comment: "Rewrite input exceeded the on-device model's context")
+            case let other:
+                errorMessage =
+                    IntelligenceMessages.transient(other)
+                    ?? String(localized: "Couldn't rewrite that.", comment: "Rewrite failed")
+            }
         }
     }
 }
@@ -199,8 +210,46 @@ public struct SummarySheet: View {
         do {
             summary = try await intelligence.summarise(passages)
         } catch {
-            errorMessage = String(
-                localized: "Couldn't summarise that.", comment: "Summary failed")
+            switch IntelligenceError.classify(error) {
+            case .cancelled:
+                // The sheet closed before the summary was ready.
+                return
+            case .refused:
+                errorMessage = String(
+                    localized: "Apple Intelligence didn't want to summarise this.",
+                    comment: "Summary refused by the on-device model's guardrails")
+            case .contextExceeded:
+                errorMessage = String(
+                    localized: "This is too long to summarise on this device.",
+                    comment: "Summary input exceeded the on-device model's context")
+            case .unavailable:
+                errorMessage = String(
+                    localized: "Summaries aren't available on this device.",
+                    comment: "Summary unavailable")
+            case let other:
+                errorMessage =
+                    IntelligenceMessages.transient(other)
+                    ?? String(localized: "Couldn't summarise that.", comment: "Summary failed")
+            }
+        }
+    }
+}
+
+/// The failures that are about the moment rather than the text, worded the
+/// same for every feature that meets them.
+enum IntelligenceMessages {
+    static func transient(_ error: IntelligenceError) -> String? {
+        switch error {
+        case .modelUnavailable:
+            String(
+                localized: "The on-device model isn't ready yet. Try again once it has downloaded.",
+                comment: "On-device model assets missing or still downloading")
+        case .busy:
+            String(
+                localized: "Apple Intelligence is busy. Try again in a moment.",
+                comment: "On-device model rate-limited or handling another request")
+        default:
+            nil
         }
     }
 }

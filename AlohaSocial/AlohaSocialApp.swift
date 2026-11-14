@@ -69,6 +69,18 @@ struct AlohaSocialApp: App {
                 .environment(environment)
         }
         .modelContainer(environment.container)
+
+        #if os(visionOS)
+            // The media viewer and video player as windows of their own, so
+            // a video can be parked in space while reading continues in the
+            // main window (docs/09 §3). Everywhere else they are a cover.
+            WindowGroup(for: MediaWindowRequest.self) { $request in
+                MediaWindow(request: request)
+                    .environment(environment)
+            }
+            .modelContainer(environment.container)
+            .defaultSize(width: 1280, height: 800)
+        #endif
     }
 }
 

@@ -106,6 +106,31 @@ struct TimelineStorePersistenceTests {
         #expect(cached.compactMap(\.status).map(\.id) == (1...240).reversed().map { "\($0)" })
     }
 
+    /// A favourite tapped while a refresh is on the wire: the page carries
+    /// the post as it was before, and must not put that back.
+    @Test("A preserved status keeps its cached copy against a stale page")
+    func preservedCopySurvivesStalePage() async throws {
+        let (timelines, _, _, accountID) = makeStore()
+        _ = try await timelines.apply(
+            page: ["2", "1"].map { status($0) }, accountID: accountID,
+            timelineKey: "home:home", direction: .cold, pageWasFull: false)
+        var liked = status("2")
+        liked.favourited = true
+        try await timelines.updateStatus(accountID: accountID, status: liked, provisional: true)
+
+        let rows = try await timelines.apply(
+            page: ["3", "2", "1"].map { status($0) }, accountID: accountID,
+            timelineKey: "home:home", direction: .newer, pageWasFull: false,
+            preserving: ["2", "3"])
+
+        #expect(rows.compactMap(\.status).map(\.id) == ["3", "2", "1"])
+        #expect(rows.first { $0.id == "2" }?.status?.favourited == true)
+        let cached = try await timelines.statuses(accountID: accountID, ids: ["2", "3"])
+        #expect(cached["2"]?.favourited == true)
+        // Preserved but never cached: written from the page, not dropped.
+        #expect(cached["3"] != nil)
+    }
+
     @Test("A status is stored once and shared by two timelines")
     func statusesAreShared() async throws {
         let (timelines, _, _, accountID) = makeStore()
