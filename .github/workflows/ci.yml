@@ -304,12 +304,13 @@ jobs:
           - shard: stress
             tests: StressTourTests
           - shard: tours
-            tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
+            tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests DetailColumnTests
     env:
       ALL_SHARDS: >-
         AccessibilityAuditTests InteractionTourTests VideoPlaybackTests
         AddedScreensTourTests PseudolocalisationTourTests StressTourTests
         ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
+        DetailColumnTests
     steps:
       - uses: actions/checkout@v4
       - name: Every tour class is in a shard
