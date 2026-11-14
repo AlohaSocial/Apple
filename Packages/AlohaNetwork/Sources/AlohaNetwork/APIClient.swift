@@ -164,15 +164,19 @@ public actor APIClient {
 
         // Tokens, codes and verifiers never reach a log. OSLog's default for an
         // interpolation is already private; the point here is that the values
-        // are not in the message at all.
+        // are not in the message at all. The path is private too: it carries
+        // status, account and conversation ids, and a URL with an id in it
+        // says who somebody follows or what they read (docs/12 §7).
         logger.debug(
-            "\(endpoint.method.rawValue, privacy: .public) \(endpoint.path, privacy: .public)")
+            "\(endpoint.method.rawValue, privacy: .public) \(endpoint.path, privacy: .private)")
 
         let (data, http) =
             if let bodyFile {
                 try await transport.upload(request, fromFile: bodyFile)
-            } else {
+            } else if endpoint.waitsForConnectivity || followingURL != nil {
                 try await transport.send(request)
+            } else {
+                try await transport.sendFailingFast(request)
             }
 
         if let error = APIError.from(
@@ -182,7 +186,7 @@ public actor APIClient {
                 await rateLimiter.noteRateLimited(host: host, retryAfter: retryAfter)
             }
             logger.warning(
-                "\(endpoint.path, privacy: .public) failed with \(http.statusCode, privacy: .public)"
+                "\(endpoint.method.rawValue, privacy: .public) \(endpoint.path, privacy: .private) failed with \(http.statusCode, privacy: .public)"
             )
             throw error
         }
