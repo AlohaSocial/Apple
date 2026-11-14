@@ -334,12 +334,21 @@
                     (($0["content"] as? String) ?? "").lowercased().contains(q)
                 }
                 let tags = ["nextcloud", "fediverse", "photography"].filter { $0.contains(q) }
-                return respond(
-                    url: url, status: 200,
-                    json: [
-                        "accounts": accounts, "statuses": Array(statuses),
-                        "hashtags": tags.map { Fixtures.tag($0, host: host) },
-                    ])
+                var json: [String: Any] = [
+                    "accounts": accounts, "statuses": Array(statuses),
+                    "hashtags": tags.map { Fixtures.tag($0, host: host) },
+                ]
+                // Narrowed to one kind, the server pages it with `offset` and
+                // `limit` and leaves the other two empty, as Mastodon does.
+                if let type = query.first(where: { $0.name == "type" })?.value {
+                    let offset = Int(query.first { $0.name == "offset" }?.value ?? "") ?? 0
+                    let limit = Int(query.first { $0.name == "limit" }?.value ?? "") ?? 20
+                    for key in ["accounts", "statuses", "hashtags"] {
+                        let all = json[key] as? [Any] ?? []
+                        json[key] = key == type ? Array(all.dropFirst(offset).prefix(limit)) : []
+                    }
+                }
+                return respond(url: url, status: 200, json: json)
 
             case "api/v1/trends/tags":
                 return respond(
