@@ -35,6 +35,8 @@ struct ThemedAppShell: View {
     @State var selectedMode: FeedMode = .home
     @State var sidebarItem: SidebarItem = .mode(.home)
     @State var selectedSource: TimelineSource = .home
+    /// Search or Discover, on the phone's search tab.
+    @State var searchTabScope: SearchTabScope = .search
     /// What each phone tab has pushed, so leaving a tab and coming back
     /// finds the screen you left there. One shared path made a screen pushed
     /// on one tab turn up on the next.

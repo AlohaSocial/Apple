@@ -29,28 +29,28 @@ struct ShellLayoutTests {
     @Test("Unfolding keeps the tab and every tab's stack")
     func unfolding() {
         let state = ShellLayout.sidebarState(
-            tab: .notifications,
+            tab: .search,
             tabPaths: [
                 .mode(.home): [.thread(statusID: "1")],
-                .notifications: [.followRequests],
+                .search: [.hashtag("swift")],
             ])
-        #expect(state.item == .route(.notifications))
+        #expect(state.item == .route(.search(query: nil)))
         #expect(state.paths[.mode(.home)] == [.thread(statusID: "1")])
-        #expect(state.paths[.route(.notifications)] == [.followRequests])
+        #expect(state.paths[.route(.search(query: nil))] == [.hashtag("swift")])
     }
 
-    @Test("Folding keeps a feed or Activities where it was")
+    @Test("Folding keeps a feed or Search where it was")
     func foldingOntoATab() {
         let state = ShellLayout.tabState(
             item: .mode(.photos),
             sidebarPaths: [
                 .mode(.photos): [.profile(accountID: "7")],
-                .route(.notifications): [.notificationPolicy],
+                .route(.search(query: nil)): [.hashtag("swift")],
             ],
             feed: .home)
         #expect(state.tab == .mode(.photos))
         #expect(state.paths[.mode(.photos)] == [.profile(accountID: "7")])
-        #expect(state.paths[.notifications] == [.notificationPolicy])
+        #expect(state.paths[.search] == [.hashtag("swift")])
     }
 
     @Test("Folding on a place with no tab pushes it onto the feed, above what was there")

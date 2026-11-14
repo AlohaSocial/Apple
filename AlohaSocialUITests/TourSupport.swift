@@ -189,21 +189,35 @@ extension XCUICoordinate {
             return true
         }
 
-        /// Activities is a tab after the feeds.
+        /// Activities is a toolbar button on the feeds, beside Direct
+        /// messages; its label carries the unread count ("Activities, 2
+        /// unread").
         @discardableResult
         func openActivities() -> Bool {
-            let tab = tabBars.buttons["Activities"]
+            let button = buttons.matching(
+                NSPredicate(format: "label BEGINSWITH 'Activities'")
+            ).firstMatch
+            guard button.waitForExistence(timeout: 8) else { return false }
+            button.tap()
+            return true
+        }
+
+        /// Search is the tab bar's search tab, the last of the five.
+        @discardableResult
+        func openSearch() -> Bool {
+            let tab = tabBars.buttons["Search"].firstMatch
             guard tab.waitForExistence(timeout: 8) else { return false }
             tab.tap()
             return true
         }
 
-        /// Search is a button of its own in the top-right, not a menu item.
+        /// Discover shares the search tab, chosen at the top of it.
         @discardableResult
-        func openSearch() -> Bool {
-            let button = buttons["Search"].firstMatch
-            guard button.waitForExistence(timeout: 8) else { return false }
-            button.tap()
+        func openDiscover() -> Bool {
+            guard openSearch() else { return false }
+            let scope = segmentedControls.buttons["Discover"].firstMatch
+            guard scope.waitForExistence(timeout: 5) else { return false }
+            scope.tap()
             return true
         }
 

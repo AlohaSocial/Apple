@@ -28,9 +28,14 @@ extension ThemedAppShell {
             tabPaths[.mode(key.mode)] = []
             sidebarPaths[.mode(key.mode)] = []
         } else if !usesSidebar, route == .notifications {
-            // On a phone activities are a tab, not a push.
-            selectedTab = .notifications
-            tabPaths[.notifications] = []
+            // Activities is a toolbar button on a phone's feeds: it opens on
+            // the feed's own tab, once, however often it is asked for.
+            if tabPaths[selectedTab]?.last != .notifications { push(.notifications) }
+        } else if !usesSidebar, route == .search(query: nil) || route == .explore {
+            // On a phone Search and Discover share the search tab.
+            searchTabScope = route == .explore ? .discover : .search
+            selectedTab = .search
+            tabPaths[.search] = []
         } else if usesSidebar, rootRoutes.contains(route) {
             // On a split view these are sidebar rows, not pushes.
             sidebarItem = .route(route)

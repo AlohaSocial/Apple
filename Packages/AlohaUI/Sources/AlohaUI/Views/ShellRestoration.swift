@@ -3,14 +3,15 @@
 import AlohaModels
 import Foundation
 
-/// A tab on the phone's tab bar: a feed, or the activities.
+/// A tab on the phone's tab bar: a feed, or search.
 ///
 /// Its own type rather than tagging the extra tab with a `FeedMode`, which
-/// made them collide. Direct messages are a toolbar button on the feeds,
-/// not a tab, so every feed and Activities fit without "More".
+/// made them collide. Activities and Direct messages are toolbar buttons on
+/// the feeds, not tabs: the system counts the search tab among the five, so
+/// every feed and Search fit without "More".
 enum ShellTab: Hashable, Codable, Sendable {
     case mode(FeedMode)
-    case notifications
+    case search
 
     /// Apple's ceiling for a phone's tab bar. A sixth tab becomes "More",
     /// which hides two tabs behind one to show one more.
@@ -34,6 +35,7 @@ enum ShellTab: Hashable, Codable, Sendable {
         case .notifications: "aloha.tab.notifications"
         case .conversations: "aloha.tab.conversations"
         case .explore: "aloha.tab.explore"
+        case .profile: "aloha.tab.profile"
         default: "aloha.tab.other"
         }
     }

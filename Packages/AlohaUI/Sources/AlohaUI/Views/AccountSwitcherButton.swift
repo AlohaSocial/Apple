@@ -20,9 +20,10 @@ struct AccountMenuButton: View {
         Menu {
             if showsBrowseDestinations {
                 // No Activities: it is a tab or a sidebar row on every
-                // platform, as in Nextcloud Social's sidebar.
+                // platform, as in Nextcloud Social's sidebar. No Discover
+                // either: on a phone it shares the Search tab, and in a narrow
+                // iPad window it is one of the tabs.
                 Section {
-                    item("Discover", symbol: "safari", route: .explore)
                     item("Your lists", symbol: AlohaSymbol.list, route: .lists)
                     if session.capabilities.collections {
                         item(

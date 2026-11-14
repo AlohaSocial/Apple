@@ -46,9 +46,9 @@ enum ShellLayout {
     }
 
     /// Folding: each row that has a tab keeps its stack there. A place with
-    /// no tab of its own — Direct messages, Discover, Settings — is pushed
-    /// onto the feed's tab, above whatever was already on it, so the screen
-    /// on show stays on show and Back still leads somewhere.
+    /// no tab of its own — Activities, Direct messages, Discover, Settings —
+    /// is pushed onto the feed's tab, above whatever was already on it, so
+    /// the screen on show stays on show and Back still leads somewhere.
     static func tabState(
         item: SidebarItem, sidebarPaths: [SidebarItem: [Route]], feed: FeedMode
     ) -> (tab: ShellTab, paths: [ShellTab: [Route]]) {
@@ -66,14 +66,14 @@ enum ShellLayout {
     private static func sidebarItem(for tab: ShellTab) -> SidebarItem {
         switch tab {
         case .mode(let mode): .mode(mode)
-        case .notifications: .route(.notifications)
+        case .search: .route(.search(query: nil))
         }
     }
 
     private static func tab(for item: SidebarItem) -> ShellTab? {
         switch item {
         case .mode(let mode): .mode(mode)
-        case .route(.notifications): .notifications
+        case .route(.search(query: nil)): .search
         case .route: nil
         }
     }
