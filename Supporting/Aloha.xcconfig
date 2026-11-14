@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+//
+// Project-wide build settings that are a decision rather than a default.
+// The project's Debug and Release configurations are based on this file,
+// so every target inherits it; a target's own settings still win.
+
+// One switch for the app group and the keychain group (Supporting/README.md).
+//
+// NO, the default: every target is standalone. No `application-groups` or
+// `keychain-access-groups` entitlement, and `AlohaAppGroupEnabled` /
+// `AlohaKeychainSharingEnabled` false in every Info.plist, so a free Apple ID
+// can sign any target and CI (CODE_SIGNING_ALLOWED=NO) needs no profile. The
+// cost: widgets, the share sheet, the notification service, complications
+// and Top Shelf see no accounts, because each process has only its own
+// container.
+//
+// YES: every target is entitled to `group.social.aloha.app` and
+// `$(AppIdentifierPrefix)social.aloha.app` and says so in its Info.plist.
+// Needs a team that has registered that group (or the identifiers changed to
+// a group of your own).
+//
+// Set it in Supporting/Local.xcconfig (git-ignored) rather than here:
+//
+//     ALOHA_SHARED_CONTAINER = YES
+ALOHA_SHARED_CONTAINER = NO
+
+// What the switch selects. CODE_SIGN_ENTITLEMENTS names
+// `<Target>$(ALOHA_ENTITLEMENTS_SUFFIX).entitlements`, and the Info.plists
+// write `$(ALOHA_SHARED_CONTAINER)` into both keys, which `AppGroup` reads as
+// a boolean. Anything but YES is treated as NO.
+ALOHA_ENTITLEMENTS_SUFFIX_YES = -Shared
+ALOHA_ENTITLEMENTS_SUFFIX = $(ALOHA_ENTITLEMENTS_SUFFIX_$(ALOHA_SHARED_CONTAINER))
+
+// A contributor's own overrides, never committed. Optional: the build does
+// not need the file to exist.
+#include? "Local.xcconfig"

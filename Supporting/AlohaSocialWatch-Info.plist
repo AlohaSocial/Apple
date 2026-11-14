@@ -2,14 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- The watch app and its complications share the snapshot they draw
-	     from and the pairing's token (Supporting/README.md). -->
-	<!-- Standalone personal signing: no shared container or keychain group
-	     (Supporting/README.md). -->
+	<!-- Both follow ALOHA_SHARED_CONTAINER (Supporting/Aloha.xcconfig), the
+	     same switch that picks this target's entitlements, so the flags
+	     cannot claim a group the signature lacks or miss one it has. -->
 	<key>AlohaAppGroupEnabled</key>
-	<false/>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<key>AlohaKeychainSharingEnabled</key>
-	<false/>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<!-- A tapped complication opens the app on alohasocial://watch/… -->
 	<key>CFBundleURLTypes</key>
 	<array>
