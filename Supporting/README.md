@@ -24,20 +24,27 @@ One build setting decides whether the app and its extensions share anything:
 `ALOHA_SHARED_CONTAINER`, set in [`Aloha.xcconfig`](Aloha.xcconfig), which
 the project's Debug and Release configurations are based on.
 
-- **`NO` (the default): every target is standalone.** No
+- **`NO` (the default for Debug): every target is standalone.** No
   `application-groups` or `keychain-access-groups` entitlement anywhere, and
   `AlohaAppGroupEnabled` / `AlohaKeychainSharingEnabled` off in every
   Info.plist. Any Apple ID — a free one included — can sign any target, and
   CI builds with `CODE_SIGNING_ALLOWED=NO` need no profile. Each process keeps
   its store and tokens in its own container, so **widgets, the share sheet,
   the notification service, complications and Top Shelf see no accounts**.
-- **`YES`: every target shares** `group.social.aloha.app` and the keychain
-  group `$(AppIdentifierPrefix)social.aloha.app`, and its Info.plist says so.
+- **`YES` (the default for Release): every target shares**
+  `group.social.aloha.app` and the keychain group
+  `$(AppIdentifierPrefix)social.aloha.app`, and its Info.plist says so.
+  Release is what gets archived for TestFlight and the App Store, so a
+  shipped build has working widgets, share sheet and Top Shelf without anyone
+  remembering a switch; only a team that owns the group can sign it anyway.
 
-To turn sharing on, create `Supporting/Local.xcconfig` (git-ignored, included
-by `Aloha.xcconfig` when it exists) containing
+To turn sharing on for Debug as well — on a team that owns the group —
+create `Supporting/Local.xcconfig` (git-ignored, included by `Aloha.xcconfig`
+when it exists, and winning over it for both configurations) containing
 
     ALOHA_SHARED_CONTAINER = YES
+
+(`= NO` there makes Release standalone too, for archiving under another team)
 
 or pass `ALOHA_SHARED_CONTAINER=YES` to `xcodebuild`. Nothing else changes by
 hand. The setting drives two things, so they cannot disagree:
@@ -98,9 +105,9 @@ switch on.
 **Switching changes where data lives.** A process reads the group's container
 only while the switch is on. The first launch with it on moves what the app
 kept in its own container into the group (below); turning it off again does
-not move anything back, so the app starts from its own, older container. This
-includes the Mac app and the Apple TV, which shipped shared before the switch
-existed and are standalone in a default build now.
+not move anything back, so the app starts from its own, older container. The Mac
+app and the Apple TV were shared before the switch existed; they still are in
+Release, and are standalone in a Debug build unless the switch is turned on.
 
 The Apple TV shares the same group name with its Top Shelf extension; it is a
 different device, so nothing actually crosses between it and the phone. Its

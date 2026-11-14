@@ -19,10 +19,18 @@
 // Needs a team that has registered that group (or the identifiers changed to
 // a group of your own).
 //
-// Set it in Supporting/Local.xcconfig (git-ignored) rather than here:
+// Debug is NO so anyone can build and run; Release is YES, because Release
+// is what gets archived for the App Store and TestFlight, and a shipped build
+// whose widgets, share sheet and Top Shelf see no accounts is broken. Only
+// a team that owns the group can sign a Release build anyway; CI builds it
+// with CODE_SIGNING_ALLOWED=NO, where entitlements are not applied.
+//
+// To change either, set it in Supporting/Local.xcconfig (git-ignored)
+// rather than here:
 //
 //     ALOHA_SHARED_CONTAINER = YES
 ALOHA_SHARED_CONTAINER = NO
+ALOHA_SHARED_CONTAINER[config=Release] = YES
 
 // What the switch selects. CODE_SIGN_ENTITLEMENTS names
 // `<Target>$(ALOHA_ENTITLEMENTS_SUFFIX).entitlements`, and the Info.plists
