@@ -43,7 +43,8 @@ public enum TimelineMerge {
     }
 
     public enum Direction: Sendable, Hashable {
-        /// A refresh: `min_id` from the newest cached row.
+        /// A refresh: the head of the timeline, merged above the cache. A gap
+        /// opens only where the page does not reach the cache.
         case newer
         /// Infinite scroll: `max_id` from the oldest cached row.
         case older
@@ -117,6 +118,67 @@ public enum TimelineMerge {
             return Plan(slots: existing, insertedStatusIDs: [], closedGapIDs: [], openedGapIDs: [])
         }
 
+        // A refresh asks for the head of the timeline, not for what follows
+        // the newest cached row, so most pages reach back into the cache.
+        // Where one does, the page and the cache touch and there is nothing
+        // between them to load: opening a gap there, as every full page once
+        // did, put a "load more" row under each refresh that had nothing
+        // behind it.
+        guard let overlap = page.firstIndex(where: known.contains) else {
+            return planNewerWithoutOverlap(
+                existing: existing, page: fresh, pageWasFull: pageWasFull)
+        }
+
+        // Above the first cached row: newer than everything held, so on top,
+        // directly — the two ranges touch, so no room is reserved for a gap.
+        let above = Array(page[..<overlap])
+        let topPosition = existing.first?.position ?? 0
+        let head = numbered(above, from: topPosition + Int64(above.count), descending: true)
+
+        // Below it: rows the cache lacks between rows it has — a post that
+        // arrived late, or one a filter hid when the range was first fetched.
+        // Each goes under the cached row the page lists just above it.
+        var insertions: [String: [String]] = [:]
+        var anchor = page[overlap]
+        for id in page[(overlap + 1)...] {
+            if known.contains(id) {
+                anchor = id
+            } else {
+                insertions[anchor, default: []].append(id)
+            }
+        }
+
+        // The page is one contiguous range of the server's timeline, so a gap
+        // between two rows it lists is a hole it has just shown to be empty.
+        var closed: [String] = []
+        let firstListed = existing.firstIndex { $0.statusID == page[overlap] }
+        let lastListed = page.last(where: known.contains).flatMap { last in
+            existing.firstIndex { $0.statusID == last }
+        }
+        if let firstListed, let lastListed, firstListed < lastListed {
+            closed = existing[firstListed...lastListed].filter(\.isGapMarker).map(\.statusID)
+        }
+
+        var body: [Slot] = []
+        body.reserveCapacity(existing.count + fresh.count - above.count)
+        for slot in existing where !closed.contains(slot.statusID) {
+            body.append(slot)
+            // Positions one below the anchor's; where the row underneath is
+            // too close for them, the order check in `plan` renumbers.
+            for (offset, id) in (insertions[slot.statusID] ?? []).enumerated() {
+                body.append(Slot(statusID: id, position: slot.position - Int64(offset + 1)))
+            }
+        }
+
+        return Plan(
+            slots: head + body, insertedStatusIDs: fresh,
+            closedGapIDs: closed, openedGapIDs: [])
+    }
+
+    /// A page that shares no row with the cache: everything in it is newer.
+    private static func planNewerWithoutOverlap(
+        existing: [Slot], page fresh: [String], pageWasFull: Bool
+    ) -> Plan {
         let topPosition = existing.first?.position ?? 0
         let opensGap = pageWasFull && !existing.isEmpty
         // What fills the gap later lands between the page and the old top,
@@ -127,9 +189,9 @@ public enum TimelineMerge {
             fresh, from: topPosition + reserve + Int64(fresh.count) + 1, descending: true)
         var opened: [String] = []
 
-        // A full page from a min_id fetch means there may be more between what
-        // arrived and what was cached. Insert a gap rather than joining two
-        // ranges that may not touch.
+        // A full page that does not reach the newest cached row means there
+        // may be more between what arrived and what was cached. Insert a gap
+        // rather than joining two ranges that may not touch.
         if opensGap, let anchor = fresh.last {
             let gap = Slot.gap(below: anchor, position: (slots.last?.position ?? 0) - 1)
             slots.append(gap)
