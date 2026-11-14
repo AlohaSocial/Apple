@@ -72,6 +72,18 @@ struct AlohaSocialMacApp: App {
         .modelContainer(environment.container)
         .defaultSize(width: 760, height: 820)
 
+        // The composer in a window of its own, so the timeline stays usable
+        // while a post is written (docs/09 §2). Not restored at relaunch: a
+        // composer closed by quitting has already kept its words as a draft,
+        // and reopening it empty beside that draft would be a second copy.
+        WindowGroup(for: ComposeWindowRequest.self) { $request in
+            ComposeWindow(request: request)
+                .environment(environment)
+        }
+        .modelContainer(environment.container)
+        .defaultSize(width: 680, height: 640)
+        .restorationBehavior(.disabled)
+
         // The Mac's own preferences window (⌘,): the same settings form the
         // app shows in its sidebar destination, rather than a second
         // implementation of it. "Add account" cannot present from here —

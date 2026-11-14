@@ -68,6 +68,9 @@ struct ShellSheets: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #if os(macOS)
+        @Environment(\.openWindow) private var openWindow
+    #endif
 
     @Binding var signIn: SignInPresentation?
     @Binding var composing: ComposerPresentation?
@@ -87,29 +90,38 @@ struct ShellSheets: ViewModifier {
                         .frame(minWidth: 520, idealWidth: 560, minHeight: 480, idealHeight: 560)
                     #endif
             }
-            .sheet(item: whenSignedIn($composing)) { request in
-                if let session = environment.activeSession {
-                    Group {
-                        if let redraft = request.redraft {
-                            ComposerView(
-                                session: session, redrafting: redraft.status,
-                                source: redraft.source)
-                        } else {
-                            ComposerView(
-                                session: session, replyTo: request.replyTo,
-                                quoting: request.quoting, prefilledText: request.draftText)
-                        }
-                    }
-                    #if os(iOS)
-                        .composerPresentation()
-                    #elseif os(macOS)
-                        // The same writing surface on the Mac: a sheet that
-                        // hugs its content leaves the editor two lines tall.
-                        // A composer is a window for thinking, not a popover.
-                        .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 640)
-                    #endif
+            #if os(macOS)
+                // On the Mac the composer is a window, not a sheet over this
+                // one (docs/09 §2): every way the shell asks for it — New
+                // Post, Reply, Quote, Delete & redraft, a handed-off draft —
+                // opens a compose window instead, and the timeline stays
+                // usable beside it.
+                .onChange(of: composing?.id, initial: true) { _, _ in
+                    guard let request = composing else { return }
+                    composing = nil
+                    guard let session = environment.activeSession else { return }
+                    openWindow(value: ComposeWindowRequest(request, accountID: session.id))
                 }
-            }
+            #else
+                .sheet(item: whenSignedIn($composing)) { request in
+                    if let session = environment.activeSession {
+                        Group {
+                            if let redraft = request.redraft {
+                                ComposerView(
+                                    session: session, redrafting: redraft.status,
+                                    source: redraft.source)
+                            } else {
+                                ComposerView(
+                                    session: session, replyTo: request.replyTo,
+                                    quoting: request.quoting, prefilledText: request.draftText)
+                            }
+                        }
+                        #if os(iOS)
+                            .composerPresentation()
+                        #endif
+                    }
+                }
+            #endif
             .sheet(item: whenSignedIn($sheet)) { sheet in
                 if let session = environment.activeSession {
                     Group {
