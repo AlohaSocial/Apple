@@ -173,19 +173,20 @@ public final class SyncEngine {
     private func publishUnreadTotal() {
         let total = unreadCounts.values.reduce(0, +)
         AppGroup.defaults.set(total, forKey: AppGroup.unreadTotalKey)
+        guard Self.isAppProcess else { return }
         WidgetReloader.reloadAll()
         #if os(iOS)
             // The watch face counts the paired account only, not the total.
             WatchBridge.shared.sendUnread(unreadCounts)
         #endif
-        guard Self.hasNotificationCentre else { return }
         Task { await notifier.setBadge(total) }
     }
 
-    /// Whether this process has a notification centre to talk to. Outside an
-    /// app or extension bundle — a package's test runner — it does not, and
-    /// asking for one raises an exception rather than failing.
-    private static let hasNotificationCentre = ["app", "appex"].contains(
+    /// Whether this process is an app or an extension, with widgets, a
+    /// badge and a notification centre to tell. A package's test runner is
+    /// neither: asking it for a notification centre raises an exception
+    /// rather than failing, and its widget reloads go nowhere.
+    private static let isAppProcess = ["app", "appex"].contains(
         Bundle.main.bundleURL.pathExtension)
 
     public func noteTimelineVisible(for accountID: UUID) {
@@ -551,7 +552,7 @@ public final class SyncEngine {
                 startHour: session.settings.quietHoursStart,
                 endHour: session.settings.quietHoursEnd)
 
-            guard Self.hasNotificationCentre else { return }
+            guard Self.isAppProcess else { return }
             let announced = await notifier.announce(
                 fresh,
                 session: session,
