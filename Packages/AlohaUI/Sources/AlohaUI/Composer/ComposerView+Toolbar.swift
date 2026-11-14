@@ -359,6 +359,22 @@ extension ComposerView {
                 .disabled(model.text.isEmpty)
                 .accessibilityLabel(Text("Writing help", comment: "Composer action"))
             }
+
+            // Drafts were reachable only from Settings, which meant leaving
+            // the composer to find one (docs/07 §5).
+            if canOpenDrafts {
+                Divider()
+                Button {
+                    isShowingDrafts = true
+                } label: {
+                    Label {
+                        Text("Drafts", comment: "Composer action: open the saved drafts")
+                    } icon: {
+                        Image(systemName: "tray.full")
+                    }
+                }
+                .accessibilityLabel(Text("Drafts", comment: "Composer action"))
+            }
         } label: {
             Image(systemName: "ellipsis")
         }
