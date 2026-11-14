@@ -14,41 +14,57 @@ struct ShellRestorationTests {
         tab: ShellTab = .mode(.photos),
         tabPaths: [ShellTab: [Route]] = [:],
         sidebarItem: SidebarItem = .mode(.home),
-        sidebarPaths: [SidebarItem: [Route]] = [:]
+        sidebarPaths: [SidebarItem: [Route]] = [:],
+        detailPaths: [SidebarItem: [Route]] = [:]
     ) -> ShellRestoration {
         ShellRestoration(
             accountID: account, tab: tab, tabPaths: tabPaths,
-            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths)
+            sidebarItem: sidebarItem, sidebarPaths: sidebarPaths, detailPaths: detailPaths)
     }
 
     @Test("Each tab's stack and the sidebar's survive encoding")
     func roundTrip() throws {
         let original = restoration(
-            tab: .notifications,
+            tab: .search,
             tabPaths: [
                 .mode(.home): [.thread(statusID: "109"), .profile(accountID: "7")],
                 .mode(.photos): [.hashtag("swift")],
-                .notifications: [.notificationPolicy],
+                .search: [.hashtag("photography")],
             ],
             sidebarItem: .route(.explore),
             sidebarPaths: [
                 .route(.explore): [.hashtag("photography")],
                 .mode(.video): [.video(statusID: "42")],
-            ])
+            ],
+            detailPaths: [.mode(.home): [.thread(statusID: "5"), .profile(accountID: "9")]])
         let data = try #require(original.encoded())
         let restored = try #require(ShellRestoration.decode(data, for: account))
 
         #expect(restored == original)
-        #expect(restored.tab == .notifications)
+        #expect(restored.tab == .search)
         #expect(
             restored.tabPaths[.mode(.home)] == [.thread(statusID: "109"), .profile(accountID: "7")])
         #expect(restored.restoredSidebarPaths[.route(.explore)] == [.hashtag("photography")])
         #expect(restored.sidebarItem.item == .route(.explore))
+        #expect(
+            restored.restoredDetailPaths[.mode(.home)] == [
+                .thread(statusID: "5"), .profile(accountID: "9"),
+            ])
+    }
+
+    @Test("A restoration written before the detail column still reads")
+    func readsWithoutDetailPaths() throws {
+        let data = try #require(restoration(tabPaths: [.mode(.home): [.hashtag("a")]]).encoded())
+        let json = try #require(String(data: data, encoding: .utf8))
+        #expect(!json.contains("detailPaths"))
+        let restored = try #require(ShellRestoration.decode(data, for: account))
+        #expect(restored.restoredDetailPaths.isEmpty)
+        #expect(restored.tabPaths[.mode(.home)] == [.hashtag("a")])
     }
 
     @Test("Another account's restoration is ignored")
     func otherAccountIsIgnored() throws {
-        let data = try #require(restoration(tabPaths: [.notifications: [.hashtag("a")]]).encoded())
+        let data = try #require(restoration(tabPaths: [.search: [.hashtag("a")]]).encoded())
         #expect(ShellRestoration.decode(data, for: UUID()) == nil)
     }
 
@@ -61,15 +77,15 @@ struct ShellRestorationTests {
     @Test("Empty stacks are not stored, and deep ones keep only their newest screens")
     func trimming() {
         let deep = (0..<30).map { Route.thread(statusID: String($0)) }
-        let stored = restoration(tabPaths: [.notifications: [], .mode(.home): deep])
-        #expect(stored.tabPaths[.notifications] == nil)
+        let stored = restoration(tabPaths: [.search: [], .mode(.home): deep])
+        #expect(stored.tabPaths[.search] == nil)
         #expect(stored.tabPaths[.mode(.home)]?.count == ShellRestoration.maximumDepth)
         #expect(stored.tabPaths[.mode(.home)]?.last == .thread(statusID: "29"))
     }
 
-    @Test("Every feed and Activities fit the phone's tab bar")
-    func everyFeedAndActivitiesFit() {
-        // A sixth tab would turn the bar into "More".
+    @Test("Every feed and Search fit the phone's tab bar")
+    func everyFeedAndSearchFit() {
+        // A sixth tab would turn the bar into "More"; the search tab counts.
         #expect(FeedMode.offered.count + 1 <= ShellTab.phoneTabLimit)
     }
 }

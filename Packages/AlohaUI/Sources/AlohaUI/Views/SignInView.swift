@@ -18,17 +18,51 @@ public struct SignInView: View {
     /// fresh copy for this one attempt.
     @State private var typed: String
     @FocusState private var isFieldFocused: Bool
+    /// The account this attempt renews, when it is "sign in again" rather
+    /// than "add account".
+    private let reauthenticating: Reauthentication?
+    /// The web step starts by itself once, when the server has answered; a
+    /// cancelled or failed attempt waits for the person after that.
+    @State private var hasStartedReauthentication = false
+
+    /// An account already on this device whose sign-in has expired: who it
+    /// is, and where it signed in.
+    public struct Reauthentication: Sendable, Hashable {
+        public var handle: String
+        public var host: String
+        public var apiBase: URL
+
+        public init(handle: String, host: String, apiBase: URL) {
+            self.handle = handle
+            self.host = host
+            self.apiBase = apiBase
+        }
+    }
 
     /// Opens with the introduction's address, or with the server it already
     /// probed, so the address and the discovery are not repeated.
-    public init(address: String = "", outcome: ServerProbe.Outcome? = nil) {
-        _typed = State(initialValue: address)
+    ///
+    /// With `reauthenticating`, the sheet goes straight to the account's own
+    /// server and on to its approval page: the person has told the app where
+    /// they sign in once already, and an expired token is no reason to ask
+    /// again. Signing in to the same account there renews it in place
+    /// (`AppEnvironment.addAccount`), with its drafts and cache untouched.
+    public init(
+        address: String = "", outcome: ServerProbe.Outcome? = nil,
+        reauthenticating: Reauthentication? = nil
+    ) {
+        _typed = State(initialValue: reauthenticating?.host ?? address)
         _model = State(initialValue: SignInModel(preloaded: outcome))
+        self.reauthenticating = reauthenticating
     }
 
     public var body: some View {
         NavigationStack {
             Form {
+                if let reauthenticating {
+                    reauthenticationSection(reauthenticating)
+                }
+
                 switch model.phase {
                 case .idle, .failed:
                     entrySection
@@ -46,7 +80,7 @@ public struct SignInView: View {
             }
             .formStyle(.grouped)
             .alohaGround(palette)
-            .navigationTitle(Text("Add account", comment: "Sign-in screen title"))
+            .navigationTitle(title)
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -61,12 +95,57 @@ public struct SignInView: View {
             }
         }
         .onAppear {
-            if case .idle = model.phase { isFieldFocused = true }
+            if reauthenticating == nil, case .idle = model.phase { isFieldFocused = true }
         }
+        .task { await startReauthenticationIfNeeded() }
         .onDisappear { WebAuthenticator.shared.cancel() }
     }
 
+    private var title: Text {
+        reauthenticating == nil
+            ? Text("Add account", comment: "Sign-in screen title")
+            : Text("Sign in again", comment: "Sign-in screen title when renewing an account")
+    }
+
+    /// The account's server, found where it signed in last time, and then
+    /// its approval page — the same two steps a typed address and a tap on
+    /// "Sign in" take, without the typing or the tap.
+    private func startReauthenticationIfNeeded() async {
+        guard let reauthenticating, !hasStartedReauthentication else { return }
+        guard case .idle = model.phase else { return }
+        hasStartedReauthentication = true
+        await model.resolveKnownServer(
+            apiBase: reauthenticating.apiBase, host: reauthenticating.host,
+            environment: environment)
+        guard case .found = model.phase else { return }
+        await model.authorise(environment: environment) { dismiss() }
+    }
+
     // MARK: - Sections
+
+    /// Whose sign-in this is, so the approval page that follows is not a
+    /// surprise — and so it is clear nothing was lost.
+    private func reauthenticationSection(_ account: Reauthentication) -> some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(
+                        "Sign in as \(account.handle) to pick up where you left off.",
+                        comment: "Sign-in again explanation; the argument is the account's handle")
+                    Group {
+                        Text(
+                            "Your posts, drafts and settings are still here.",
+                            comment: "Sign-in again reassurance")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
+            } icon: {
+                Image(systemName: AlohaSymbol.warning)
+                    .foregroundStyle(palette.accent)
+            }
+        }
+    }
 
     private var entrySection: some View {
         Section {

@@ -10,14 +10,16 @@ extension ThemedAppShell {
     /// A screen, root or pushed. `isRoot` is for the sidebar shells, whose
     /// root already wears "New post" and (on iPad) the account menu: a pushed
     /// screen keeps "New post" — writing should never be a Back away — but
-    /// not the account menu, which sat beside the Back button there.
+    /// not the account menu, which sat beside the Back button there. Nor
+    /// does a screen in the iPad's detail column: the primary column beside
+    /// it is showing "New post" already, and two would also share ⌘N.
     func destination(
         _ route: Route, session: AccountSession, isRoot: Bool = false
     ) -> some View {
         AnyView(destinationContent(route, session: session))
             .modifier(ContinuityAdvertiser(route: route, session: session))
             .toolbar {
-                if usesSidebar && !isRoot { composeToolbar }
+                if usesSidebar && !isRoot && column == .primary { composeToolbar }
             }
     }
 

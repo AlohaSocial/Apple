@@ -26,38 +26,44 @@ extension ThemedAppShell {
                         // The filled spelling while selected, the outline
                         // otherwise — Apple's own apps switch weight rather
                         // than colour to say "this is the tab you are on".
-                        // No title under it: five labelled tabs quote the bar
-                        // to itself, and the symbols are distinct enough to
-                        // stand alone. The name stays as the spoken label.
-                        Image(
-                            systemName: selectedTab == .mode(mode)
-                                ? mode.selectedSymbolName : mode.symbolName
-                        )
-                        .accessibilityLabel(Text(modeTitle(mode)))
+                        // Titled: Photos, Videos and Shorts are all ways of
+                        // looking at pictures, and their symbols alone left
+                        // people guessing which tab was which.
+                        Label {
+                            Text(modeTitle(mode))
+                        } icon: {
+                            Image(
+                                systemName: selectedTab == .mode(mode)
+                                    ? mode.selectedSymbolName : mode.symbolName)
+                        }
                     }
                 }
 
-                // Activities follows the feeds, as in Nextcloud Social's
-                // sidebar. Direct messages are a toolbar button on the feeds
-                // (`timelineChrome`), which keeps the bar at five tabs or
-                // fewer with every feed switched on.
-                Tab(value: TabSelection.notifications) {
-                    NavigationStack(path: tabPath(.notifications)) {
-                        NotificationsView(session: session) { handle($0, session: session) }
+                // Search, one tap from anywhere, where the system puts it.
+                // It used to be a button on the feeds' toolbar, pushed over
+                // whatever feed you were reading. Discover shares the tab —
+                // finding people and finding posts are the same errand, and
+                // Discover used to be buried in the account menu.
+                //
+                // The system counts the search tab among the five a phone's
+                // bar holds before it turns the rest into "More", so the bar
+                // is the feeds and Search. What comes *to* you — Activities
+                // and Direct messages — sits at the top right of the feeds
+                // (`timelineChrome`), each with its unread count.
+                Tab(value: TabSelection.search, role: .search) {
+                    NavigationStack(path: tabPath(.search)) {
+                        searchTabRoot(session)
                             .navigationDestination(for: Route.self) {
                                 destination($0, session: session)
                             }
                     }
                 } label: {
-                    Image(
-                        systemName: selectedTab == .notifications
-                            ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications
-                    )
-                    .accessibilityLabel(Text("Activities", comment: "Tab title"))
+                    Label {
+                        Text("Search", comment: "Tab title")
+                    } icon: {
+                        Image(systemName: AlohaSymbol.search)
+                    }
                 }
-                // The count the app icon already wears, where it can be
-                // acted on. Zero draws no badge.
-                .badge(unreadNotifications(session))
             }
             .onChange(of: selectedTab) { _, tab in
                 if case .mode(let mode) = tab { selectedMode = mode }
@@ -76,6 +82,33 @@ extension ThemedAppShell {
     #endif
 
     #if os(iOS)
+        /// The phone's search tab: Search, or Discover beside it, chosen at
+        /// the top. Both screens are hosted as they are; the tab only
+        /// decides which one is showing (`searchTabScope`).
+        private func searchTabRoot(_ session: AccountSession) -> some View {
+            Group {
+                switch searchTabScope {
+                case .search: destination(.search(query: nil), session: session, isRoot: true)
+                case .discover: destination(.explore, session: session, isRoot: true)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Picker(selection: $searchTabScope) {
+                        Text("Search", comment: "Search tab scope").tag(SearchTabScope.search)
+                        Text("Discover", comment: "Search tab scope").tag(SearchTabScope.discover)
+                    } label: {
+                        Text("Show", comment: "Search tab scope picker")
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                }
+            }
+        }
+    #endif
+
+    #if os(iOS)
         /// The iPad's tab bar and sidebar, as one customisable set.
         ///
         /// Activities is a tab of its own with its unread count — it used to
@@ -86,10 +119,14 @@ extension ThemedAppShell {
         /// mode lets a person pin the ones they use (`TabViewCustomization`,
         /// kept per device).
         ///
-        /// No inspector for threads and profiles: every list in the app pushes
-        /// a `Route` onto the stack it lives in, and an inspector would need a
-        /// second, parallel notion of "what is selected" in each of them. The
-        /// reading column already keeps a thread at a readable width.
+        /// In a wide window a thread or a profile opens in a detail column
+        /// beside the list it came from, rather than pushed over it, with a
+        /// stack of its own so what is opened inside it stays there. Not an
+        /// inspector with a selection in every list: every list in the app
+        /// already hands its rows' actions to the shell, so the column is
+        /// decided once, where routes are pushed (`push`), and no list knows
+        /// it is there. A narrower window shows the same stack pushed, as
+        /// before (`sidebarPath`).
         func iPadShell(_ session: AccountSession) -> some View {
             TabView(selection: $sidebarItem) {
                 ForEach(session.visibleModes) { mode in
@@ -146,6 +183,13 @@ extension ThemedAppShell {
                 }
                 .customizationID("aloha.section.library")
                 TabSection("Account") {
+                    // Your own profile was only in the account menu at the
+                    // sidebar's foot, the one place a sidebar person never
+                    // looks for a destination.
+                    sidebarTab(
+                        "My profile", symbol: "person.crop.circle",
+                        route: .profile(accountID: session.snapshot.serverAccountID),
+                        session: session)
                     sidebarTab(
                         "Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks,
                         session: session)
@@ -185,6 +229,14 @@ extension ThemedAppShell {
             }
             .tabViewStyle(.sidebarAdaptable)
             .tabViewCustomization($tabCustomization)
+            // The window's width, not the column's: whether the sidebar is
+            // showing should not make an open thread jump between a column
+            // and a push.
+            .onGeometryChange(for: Bool.self) {
+                $0.size.width >= ShellLayout.detailColumnMinimumWidth
+            } action: { isAvailable in
+                isDetailColumnAvailable = isAvailable
+            }
             .tabViewSidebarBottomBar {
                 AccountMenuButton(
                     session: session, onOpen: open,
@@ -211,22 +263,76 @@ extension ThemedAppShell {
         }
 
         private func iPadDestination(_ item: SidebarItem, session: AccountSession) -> some View {
-            AnyView(
-                NavigationStack(path: sidebarPath(item)) {
-                    Group {
-                        switch item {
-                        case .mode(let mode): modeRoot(mode, session: session)
-                        case .route(let route): destination(route, session: session, isRoot: true)
+            let detailRoot = showsDetailColumn ? detailPaths[item]?.first : nil
+            return AnyView(
+                HStack(spacing: 0) {
+                    NavigationStack(path: sidebarPath(item)) {
+                        Group {
+                            switch item {
+                            case .mode(let mode): modeRoot(mode, session: session)
+                            case .route(let route):
+                                destination(route, session: session, isRoot: true)
+                            }
                         }
+                        .navigationDestination(for: Route.self) {
+                            destination($0, session: session)
+                        }
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            iPadAccountToolbar(session)
+                            composeToolbar
+                        }
+                        .alohaWindowGround(palette)
                     }
-                    .navigationDestination(for: Route.self) { destination($0, session: session) }
+                    .frame(maxWidth: .infinity)
+
+                    if let detailRoot {
+                        Divider()
+                            .ignoresSafeArea()
+                        detailColumn(item, root: detailRoot, session: session)
+                            .containerRelativeFrame(.horizontal) { width, _ in
+                                ShellLayout.detailColumnWidth(forWindowWidth: width)
+                            }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .animation(.smooth(duration: 0.25), value: detailRoot == nil))
+        }
+
+        /// The detail column: the post or profile opened from the primary
+        /// column, on a stack of its own. Its screens are built by a copy of
+        /// the shell marked `.detail`, so what they open is pushed here too.
+        private func detailColumn(
+            _ item: SidebarItem, root: Route, session: AccountSession
+        ) -> some View {
+            var detail = self
+            detail.column = .detail
+            return NavigationStack(path: detailPath(item)) {
+                detail.destination(root, session: session)
+                    // A different post is a different screen: every screen
+                    // keeps its model in `@State`, which a new route in the
+                    // same place would otherwise inherit.
+                    .id(root)
+                    .navigationDestination(for: Route.self) {
+                        detail.destination($0, session: session)
+                    }
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        iPadAccountToolbar(session)
-                        composeToolbar
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                closeDetailColumn(item)
+                            } label: {
+                                Label {
+                                    Text("Close", comment: "Detail column action")
+                                } icon: {
+                                    Image(systemName: "xmark")
+                                }
+                            }
+                            .help(Text("Close", comment: "Detail column action"))
+                        }
                     }
-                    .alohaWindowGround(palette)
-                })
+            }
+            .alohaWindowGround(palette)
         }
     #endif
 
@@ -460,9 +566,9 @@ extension ThemedAppShell {
                 // source could not be changed at all. iPad is inline already.
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar {
-                    // Only on the phone: the split shell carries both of these
-                    // in the sidebar — the account drawer at its foot, and a
-                    // search field at its head.
+                    // Only on the phone: the split shell carries the account
+                    // drawer at the sidebar's foot. Search is a tab of its own
+                    // on both.
                     if !usesSidebar {
                         ToolbarItem(placement: .topBarLeading) {
                             AccountMenuButton(
@@ -471,12 +577,16 @@ extension ThemedAppShell {
                                 onAddAccount: { presentSignIn() })
                         }
                         ToolbarItem(placement: .topBarTrailing) {
-                            NavigationLink(value: Route.search(query: nil)) {
-                                Image(systemName: AlohaSymbol.search)
+                            Button {
+                                open(.notifications)
+                            } label: {
+                                Image(systemName: AlohaSymbol.notifications)
                             }
-                            .keyboardShortcut("f", modifiers: .command)
-                            .accessibilityLabel(Text("Search", comment: "Toolbar button"))
-                            .help(Text("Search", comment: "Toolbar button"))
+                            // The count the app icon already wears, where it
+                            // can be acted on. Zero draws no badge.
+                            .badge(unreadNotifications(session))
+                            .accessibilityLabel(activitiesLabel(session))
+                            .help(Text("Activities", comment: "Toolbar button"))
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink(value: Route.conversations) {
@@ -486,9 +596,10 @@ extension ThemedAppShell {
                             .accessibilityLabel(directMessagesLabel)
                             .help(Text("Direct messages", comment: "Toolbar button"))
                         }
-                        // Finding and writing are different kinds of action;
-                        // the gap keeps them in separate glass groups rather
-                        // than one capsule that reads as a single control.
+                        // Reading what came in and writing are different kinds
+                        // of action; the gap keeps them in separate glass
+                        // groups rather than one capsule that reads as one
+                        // control.
                         ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         ToolbarItem(placement: .topBarTrailing) {
                             Button {
@@ -505,6 +616,13 @@ extension ThemedAppShell {
             #endif
     }
 
+    private func activitiesLabel(_ session: AccountSession) -> Text {
+        let unread = unreadNotifications(session)
+        return unread > 0
+            ? Text("Activities, \(unread) unread", comment: "Toolbar button with badge")
+            : Text("Activities", comment: "Toolbar button")
+    }
+
     private var directMessagesLabel: Text {
         unreadConversations > 0
             ? Text(
@@ -512,4 +630,10 @@ extension ThemedAppShell {
                 comment: "Toolbar button with badge")
             : Text("Direct messages", comment: "Toolbar button")
     }
+}
+
+/// Which of its two screens the phone's search tab is showing.
+enum SearchTabScope: Hashable {
+    case search
+    case discover
 }

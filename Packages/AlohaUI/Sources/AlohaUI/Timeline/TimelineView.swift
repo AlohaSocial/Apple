@@ -15,6 +15,7 @@ public struct TimelineView: View {
     @Environment(\.shellUsesTabBar) private var shellUsesTabBar
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.signInAgain) private var signInAgain
     /// The same scale `AvatarView` applies, for the prefetch's avatar size.
     @ScaledMetric(relativeTo: .body) private var typeScale: Double = 1
 
@@ -446,6 +447,18 @@ public struct TimelineView: View {
                 .foregroundStyle(palette.secondaryLabel)
             }
             Spacer()
+            // The banner said what to do and offered no way to do it; the
+            // sheet this opens goes straight to the account's own server.
+            Button {
+                signInAgain(session.id)
+            } label: {
+                Text("Sign in", comment: "Re-auth banner action")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .accessibilityHint(
+                Text(
+                    "Opens your server's sign-in page", comment: "Re-auth banner action hint"))
         }
         .padding(AlohaMetrics.space3)
         .background(palette.surfaceRaised)
