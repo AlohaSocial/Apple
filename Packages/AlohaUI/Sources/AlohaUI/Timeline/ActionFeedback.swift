@@ -8,7 +8,7 @@ import SwiftUI
 /// A favourite, boost or bookmark shows at once and is sent behind it
 /// (`StatusActions`). When the server refuses, the row flips back — which,
 /// unexplained, reads as a tap that did not register. So the failure is said:
-/// in a brief toast over the timeline on screen, and to VoiceOver wherever
+/// in a brief toast over the screen on display, and to VoiceOver wherever
 /// the reader is, because a button flipping back makes no sound.
 @MainActor
 @Observable
@@ -35,6 +35,31 @@ public final class ActionFeedback {
     func dismiss(_ id: Message.ID) {
         if message?.id == id { message = nil }
     }
+
+    /// The screens on display that can show the toast, newest last.
+    ///
+    /// A failure can come from any screen with post actions, and more than
+    /// one is on display at a time — a wide iPad shows a thread beside the
+    /// timeline it was opened from. Each would draw the same toast; only
+    /// the newest does, which is the one the reader just acted in or came to.
+    private(set) var hosts: [UUID] = []
+
+    func register(_ host: UUID) {
+        hosts.removeAll { $0 == host }
+        hosts.append(host)
+    }
+
+    func unregister(_ host: UUID) {
+        hosts.removeAll { $0 == host }
+    }
+}
+
+extension View {
+    /// Shows `ActionFeedback`'s toast over this screen while it is the newest
+    /// on display (`ActionFeedback.hosts`).
+    func actionFeedbackToast() -> some View {
+        overlay(alignment: .bottom) { ActionFeedbackToast() }
+    }
 }
 
 /// The toast `ActionFeedback` shows: at the bottom, out of the way of the
@@ -43,11 +68,13 @@ struct ActionFeedbackToast: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @State private var host = UUID()
+
     private var feedback: ActionFeedback { .shared }
 
     var body: some View {
         ZStack {
-            if let message = feedback.message {
+            if let message = feedback.message, feedback.hosts.last == host {
                 toast(message)
                     .transition(
                         reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
@@ -60,7 +87,10 @@ struct ActionFeedbackToast: View {
         }
         .animation(
             reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.3),
-            value: feedback.message)
+            value: feedback.message
+        )
+        .onAppear { feedback.register(host) }
+        .onDisappear { feedback.unregister(host) }
     }
 
     private func toast(_ message: ActionFeedback.Message) -> some View {

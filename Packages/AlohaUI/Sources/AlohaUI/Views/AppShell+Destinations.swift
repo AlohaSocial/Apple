@@ -18,6 +18,9 @@ extension ThemedAppShell {
     ) -> some View {
         AnyView(destinationContent(route, session: session))
             .modifier(ContinuityAdvertiser(route: route, session: session))
+            // Post actions fail on threads, profiles, Activities and search
+            // as well as the timeline; every screen can say so.
+            .actionFeedbackToast()
             .toolbar {
                 if usesSidebar && !isRoot && column == .primary { composeToolbar }
             }
