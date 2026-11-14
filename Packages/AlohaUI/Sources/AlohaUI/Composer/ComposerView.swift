@@ -38,6 +38,7 @@ public struct ComposerView: View {
     @State var trimmingVideoAt: URL?
     @State var rewritingStyle: RewriteStyle?
     @State var isShowingCamera = false
+    @State var isShowingDrafts = false
     @FocusState var isEditorFocused: Bool
     /// Set once the composer has ended on purpose — posted, or cancelled with
     /// the draft saved — so the disappearance that follows is not mistaken
@@ -254,6 +255,24 @@ public struct ComposerView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+            .sheet(isPresented: $isShowingDrafts) {
+                NavigationStack {
+                    DraftsView(
+                        session: model.session, excluding: model.draftSnapshot.id
+                    ) { draft in
+                        Task { await open(draft) }
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button {
+                                isShowingDrafts = false
+                            } label: {
+                                Text("Cancel", comment: "Sheet action")
+                            }
+                        }
+                    }
+                }
+            }
             .sheet(item: $filteringAttachment) { attachment in
                 PhotoFilterSheet(attachment: attachment, uploader: model.uploader)
             }
@@ -432,6 +451,30 @@ public struct ComposerView: View {
                 await model.saveDraftWhenUploadsSettle()
             }
         }
+    }
+
+    /// Whether this composer may switch to a saved draft. Not while editing
+    /// a post, which is not a draft and would be lost, nor for a redraft,
+    /// whose original is deleted only when it posts; nor in a share
+    /// extension, which is there to post what was shared.
+    var canOpenDrafts: Bool {
+        host == nil && model.editingStatus == nil && model.redrafting == nil
+    }
+
+    /// Puts a saved draft in this composer. What was being written is saved
+    /// as a draft of its own first — under its own id, so it is in Drafts
+    /// to come back to — and an upload still going up joins it when it
+    /// lands, as it would had the composer been closed.
+    private func open(_ draft: DraftSnapshot) async {
+        isShowingDrafts = false
+        let previous = model
+        await previous.saveDraftIfNeeded()
+        let next = ComposerModel(session: previous.session, draft: draft)
+        // A selection is a range in the old text, meaningless in the new.
+        selection = nil
+        model = next
+        Task { await previous.saveDraftWhenUploadsSettle() }
+        await next.prepare()
     }
 
     private var dismissal: ComposerDismissal {

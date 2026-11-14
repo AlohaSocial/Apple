@@ -14,9 +14,32 @@ public struct DraftsView: View {
     @State private var reopening: DraftSnapshot?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    /// Set when the list is opened from a composer: a chosen draft goes to
+    /// it rather than to a composer of its own.
+    private let onPick: ((DraftSnapshot) -> Void)?
+    /// The draft the opening composer is itself writing, left out of the
+    /// list: choosing it would only reopen what is already open.
+    private let excluding: UUID?
 
     public init(session: AccountSession) {
         self.session = session
+        self.onPick = nil
+        self.excluding = nil
+    }
+
+    /// The list as a picker, for the composer's Drafts entry (docs/07 §5).
+    init(
+        session: AccountSession, excluding: UUID?,
+        onPick: @escaping (DraftSnapshot) -> Void
+    ) {
+        self.session = session
+        self.onPick = onPick
+        self.excluding = excluding
+    }
+
+    private var shownDrafts: [DraftSnapshot] {
+        guard let excluding else { return drafts }
+        return drafts.filter { $0.id != excluding }
     }
 
     public var body: some View {
@@ -25,7 +48,7 @@ public struct DraftsView: View {
                 errorStrip(errorMessage)
             }
 
-            ForEach(drafts) { draft in
+            ForEach(shownDrafts) { draft in
                 Button {
                     Task { await reopen(draft) }
                 } label: {
@@ -36,11 +59,12 @@ public struct DraftsView: View {
                     Text("Opens the draft in the composer", comment: "Drafts row hint"))
             }
             .onDelete { offsets in
-                let targets = offsets.compactMap { drafts.indices.contains($0) ? drafts[$0] : nil }
+                let shown = shownDrafts
+                let targets = offsets.compactMap { shown.indices.contains($0) ? shown[$0] : nil }
                 Task { await delete(targets) }
             }
 
-            if drafts.isEmpty && !isLoading && errorMessage == nil {
+            if shownDrafts.isEmpty && !isLoading && errorMessage == nil {
                 ContentUnavailableView {
                     Text("No drafts", comment: "Empty drafts")
                 } description: {
@@ -52,7 +76,7 @@ public struct DraftsView: View {
         }
         .alohaGround(palette)
         .overlay {
-            if isLoading && drafts.isEmpty {
+            if isLoading && shownDrafts.isEmpty {
                 SkeletonListRow(text: 4)
             }
         }
@@ -124,7 +148,11 @@ public struct DraftsView: View {
             opened.queuedForSend = false
             _ = try? await session.supportStore.saveDraft(opened)
         }
-        reopening = opened
+        if let onPick {
+            onPick(opened)
+        } else {
+            reopening = opened
+        }
     }
 
     private func errorStrip(_ message: String) -> some View {
