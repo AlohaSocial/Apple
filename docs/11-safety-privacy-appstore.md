@@ -156,9 +156,9 @@ any future addition of analytics requires changing this document first.
 - The shared app group (`group.social.aloha.app`) and Keychain access group
   (`$(AppIdentifierPrefix)social.aloha.app`) are turned on and off together,
   for every target, by one build setting, `ALOHA_SHARED_CONTAINER`
-  (`Supporting/Aloha.xcconfig`). It defaults to off so any Apple ID —
-  including a free one, which cannot use those capabilities — can run every
-  target; each process then keeps the SwiftData store, the defaults and the
+  (`Supporting/Aloha.xcconfig`). It is on for Release, the configuration
+  that ships, and off for Debug so any Apple ID — including a free one, which
+  cannot use those capabilities — can run every target; with it off each process then keeps the SwiftData store, the defaults and the
   tokens in its own container. Either way all of it stays on this device;
   nothing in it leaves it. Which targets carry which entitlement, and what a
   build signed with another team changes, is in
