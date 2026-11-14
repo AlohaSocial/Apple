@@ -11,6 +11,7 @@ import SwiftUI
 public struct SettingsView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.alohaPalette) private var palette
+    @Environment(\.signInAgain) private var signInAgain
     @AppStorage(LinkOpening.externalKey) private var opensLinksExternally = false
 
     /// Eight sections in one scroll is a lot to read through for one switch.
@@ -1079,9 +1080,18 @@ extension SettingsView {
     /// one. Extracted from the accounts section because a builder this large
     /// is more than the compiler will check in one go — the check and the
     /// reauth badge are the part of the row that is a fact, not layout.
+    ///
+    /// An expired account's row signs it in again rather than only switching
+    /// to it: switching to an account that cannot load anything is never what
+    /// the red "Sign in again" beside it asked for, and success makes it the
+    /// active account anyway.
     private func accountRow(_ session: AccountSession, isActiveAccount: Bool) -> some View {
         Button {
-            environment.setActiveAccount(session.id)
+            if session.needsReauthentication {
+                signInAgain(session.id)
+            } else {
+                environment.setActiveAccount(session.id)
+            }
         } label: {
             HStack(spacing: AlohaMetrics.space3) {
                 AvatarView(
@@ -1098,9 +1108,14 @@ extension SettingsView {
                 }
                 Spacer()
                 if session.needsReauthentication {
-                    Text("Sign in again", comment: "Account state")
-                        .font(.caption)
-                        .foregroundStyle(palette.destructive)
+                    Label {
+                        Text("Sign in again", comment: "Account state")
+                    } icon: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(palette.destructive)
                 }
                 if isActiveAccount {
                     Image(systemName: "checkmark")
@@ -1113,6 +1128,18 @@ extension SettingsView {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accountLabel(session))
+        .accessibilityValue(
+            session.needsReauthentication
+                ? Text("Sign-in expired", comment: "Accessibility value for an expired account")
+                : Text(verbatim: "")
+        )
+        .accessibilityHint(
+            session.needsReauthentication
+                ? Text(
+                    "Opens your server's sign-in page",
+                    comment: "Accessibility hint for an expired account row")
+                : Text(verbatim: "")
+        )
         .accessibilityAddTraits(
             isActiveAccount
                 ? [.isButton, .isSelected] : .isButton

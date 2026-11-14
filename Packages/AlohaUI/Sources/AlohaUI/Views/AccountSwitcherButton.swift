@@ -7,6 +7,7 @@ import SwiftUI
 /// Native navigation menu and checked account picker, shared across platforms.
 struct AccountMenuButton: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.signInAgain) private var signInAgain
 
     let session: AccountSession
     let onOpen: (Route) -> Void
@@ -85,6 +86,22 @@ struct AccountMenuButton: View {
                     }
                 }
                 .pickerStyle(.menu)
+                // An expired account says so where accounts are chosen, with
+                // the way back beside it — switching to it alone would only
+                // show its cache under a banner.
+                ForEach(environment.sessions.filter(\.needsReauthentication)) { expired in
+                    Button {
+                        signInAgain(expired.id)
+                    } label: {
+                        Label {
+                            Text(
+                                "Sign in again as \(expired.snapshot.bestDisplayName)",
+                                comment: "Account menu action for an account whose sign-in expired")
+                        } icon: {
+                            Image(systemName: AlohaSymbol.warning)
+                        }
+                    }
+                }
                 Button(action: onAddAccount) {
                     Label {
                         Text("Add account…", comment: "Account switcher action")
