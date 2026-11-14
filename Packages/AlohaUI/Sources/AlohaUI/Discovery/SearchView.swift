@@ -246,7 +246,13 @@ public struct SearchView: View {
                             SearchHistory.clear()
                             recents = []
                         } label: {
+                            // Caption-sized text in a section header: the
+                            // target is widened to the 44-point minimum, or
+                            // the accessibility audit (rightly) calls it too
+                            // small to hit.
                             Text("Clear", comment: "Search history action")
+                                .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                                .contentShape(Rectangle())
                         }
                         .font(.caption)
                     }
