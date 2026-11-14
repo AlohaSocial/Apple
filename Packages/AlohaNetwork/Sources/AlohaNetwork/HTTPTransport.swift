@@ -9,6 +9,9 @@ public protocol HTTPTransport: Sendable {
     /// Sends `request` with its body streamed from `file`: a media upload,
     /// which may take far longer than an API call is allowed to.
     func upload(_ request: URLRequest, fromFile file: URL) async throws -> (Data, HTTPURLResponse)
+    /// Sends `request` without waiting for connectivity: offline, it fails
+    /// at once (`Endpoint.waitsForConnectivity`).
+    func sendFailingFast(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
     /// Forgets every response it kept, which were fetched with somebody's
     /// token — what signing out asks of it.
     func removeCachedResponses()
@@ -17,6 +20,11 @@ public protocol HTTPTransport: Sendable {
 extension HTTPTransport {
     /// Most transports keep nothing.
     public func removeCachedResponses() {}
+
+    /// A transport with no network of its own has nothing to wait for.
+    public func sendFailingFast(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await send(request)
+    }
 
     /// A transport with no network of its own — the mock server, a test's
     /// recorder — reads the body back and sees an ordinary request.
@@ -32,6 +40,10 @@ extension HTTPTransport {
 public struct URLSessionTransport: HTTPTransport {
     private let session: URLSession
     private let uploadSession: URLSession
+    /// `session`'s configuration, except that it does not wait for
+    /// connectivity. `waitsForConnectivity` belongs to a session rather than
+    /// a request, so the requests that must not wait need one of their own.
+    private let failFastSession: URLSession
 
     /// `uploadSession` carries the uploads. A session's resource timeout is
     /// the whole life of a task, and the two minutes an API call gets would
@@ -39,6 +51,11 @@ public struct URLSessionTransport: HTTPTransport {
     public init(session: URLSession, uploadSession: URLSession = URLSessionTransport.uploads) {
         self.session = session
         self.uploadSession = uploadSession
+        // A copy: the cache it names is the same object, so a response kept
+        // by one session is still forgotten by `removeCachedResponses()`.
+        let configuration = session.configuration
+        configuration.waitsForConnectivity = false
+        self.failFastSession = URLSession(configuration: configuration)
     }
 
     public init(configuration: URLSessionConfiguration = .aloha) {
@@ -56,6 +73,12 @@ public struct URLSessionTransport: HTTPTransport {
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try await answer {
             try await session.data(for: request, delegate: SameOriginRedirects.shared)
+        }
+    }
+
+    public func sendFailingFast(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await answer {
+            try await failFastSession.data(for: request, delegate: SameOriginRedirects.shared)
         }
     }
 

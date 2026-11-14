@@ -496,3 +496,39 @@ jobs:
           sudo xcode-select --switch "$latest/Contents/Developer"
       - name: Colour roles meet the contrast floor
         run: cd Packages/AlohaDesign && swift test
+
+  # The contract with a real server: the core read routes the app depends on,
+  # asked of a live instance and decoded with the app's own types
+  # (LiveServerContractTests). Opt-in, and the one job here that may skip
+  # without ALLOW_SKIP: it needs a server and an account nobody should have to
+  # provide, and pull requests from forks never see the secrets. With both
+  # secrets set it runs on every push and pull request, and a failure is a
+  # failure. Running it locally is described in docs/12 §2.
+  live-contract:
+    name: Live server contract (opt-in)
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      ALOHA_LIVE_SERVER_URL: ${{ secrets.ALOHA_LIVE_SERVER_URL }}
+      ALOHA_LIVE_TOKEN: ${{ secrets.ALOHA_LIVE_TOKEN }}
+    steps:
+      - name: Look for the server
+        id: server
+        run: |
+          if [ -n "$ALOHA_LIVE_SERVER_URL" ] && [ -n "$ALOHA_LIVE_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Live contract not run::Set the secrets ALOHA_LIVE_SERVER_URL and ALOHA_LIVE_TOKEN to check the app's routes against a real server."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.server.outputs.configured == 'true'
+      - name: Select the newest Xcode
+        if: steps.server.outputs.configured == 'true'
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          if [ -z "$latest" ]; then echo "No Xcode installed"; exit 1; fi
+          sudo xcode-select --switch "$latest/Contents/Developer"
+      - name: Ask the server
+        if: steps.server.outputs.configured == 'true'
+        run: cd Packages/AlohaNetwork && swift test --filter LiveServerContractTests

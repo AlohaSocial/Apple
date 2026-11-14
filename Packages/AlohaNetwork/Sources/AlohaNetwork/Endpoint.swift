@@ -45,6 +45,14 @@ public struct Endpoint: Sendable, Hashable {
     public var authentication: Authentication
     /// Sent as `Idempotency-Key`. What makes retry-on-timeout safe for a post.
     public var idempotencyKey: String?
+    /// Whether the request waits for a network that is not there yet.
+    ///
+    /// Almost everything does: a request made as the app comes back from the
+    /// background should wait for the radio rather than fail. A poll should
+    /// not. It is a question asked again in a minute anyway, and one left
+    /// waiting holds its account's poll loop for as long as the device is
+    /// offline — the loop pauses on the path update instead (docs/08 §3).
+    public var waitsForConnectivity = true
 
     public enum Body: Sendable, Hashable {
         case form([URLQueryItem])
@@ -69,6 +77,14 @@ public struct Endpoint: Sendable, Hashable {
         self.requiresAuthentication = requiresAuthentication
         self.authentication = authentication
         self.idempotencyKey = idempotencyKey
+    }
+
+    /// The same request, failing at once rather than waiting when there is
+    /// no network.
+    public func failingFast() -> Endpoint {
+        var copy = self
+        copy.waitsForConnectivity = false
+        return copy
     }
 
     public func adding(_ items: [URLQueryItem]) -> Endpoint {
