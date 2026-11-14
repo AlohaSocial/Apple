@@ -25,7 +25,8 @@ struct AccountMenuButton: View {
                     item("Your lists", symbol: AlohaSymbol.list, route: .lists)
                     if session.capabilities.collections {
                         item(
-                            "Albums", symbol: "rectangle.stack", route: .collections(accountID: nil)
+                            "Collections", symbol: "rectangle.stack",
+                            route: .collections(accountID: nil)
                         )
                     }
                 } header: {

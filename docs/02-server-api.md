@@ -69,8 +69,8 @@ Pixelfed's own surface is served at both `/api/v1.1/â€¦` and `/api/pixelfed/v1/â
 
 | Route | Use |
 |---|---|
-| `GET /api/v1/collections`, `/{id}`, `/{id}/items` | Albums. Read and write. |
-| `GET /api/v1/accounts/{id}/collections` | An account's albums. |
+| `GET /api/v1/collections`, `/{id}`, `/{id}/items` | Collections. Read and write. |
+| `GET /api/v1/accounts/{id}/collections` | An account's collections. |
 | `GET /api/v1.1/discover/posts/trending`, `/hashtags`, `/network/trending` | Photos-mode Explore. Backed by the same `TrendService` as the Mastodon trend routes, so results cannot disagree. |
 | `GET /api/v1.1/discover/accounts/popular` | People to follow in Photos mode. |
 | `GET /api/v1/places/search`, `/places/{id}`, `/places/{id}/statuses` | Geotagged posts. Optional. |

@@ -357,7 +357,7 @@ private struct ReactionChip: View {
 /// The overflow menu on every post.
 ///
 /// Reads the active session from the environment rather than taking it: the
-/// menu sits in eight places, and what it may offer — quote, album, archive,
+/// menu sits in eight places, and what it may offer — quote, collection, archive,
 /// delivery — depends on the server and on whose post this is, not on the
 /// screen that shows it.
 public struct StatusMenu: View {
@@ -500,7 +500,7 @@ public struct StatusMenu: View {
                 onAction(.addToCollection(status))
             } label: {
                 Label {
-                    Text("Add to album", comment: "Status menu item")
+                    Text("Add to collection", comment: "Status menu item")
                 } icon: {
                     Image(systemName: "rectangle.stack.badge.plus")
                 }

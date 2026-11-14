@@ -23,6 +23,7 @@ enum ShellTab: Hashable, Codable, Sendable {
         switch route {
         case .lists: "aloha.tab.lists"
         case .interests: "aloha.tab.interests"
+        // The feature was called Albums when this was first stored.
         case .collections: "aloha.tab.albums"
         case .bookmarks: "aloha.tab.bookmarks"
         case .favourites: "aloha.tab.favourites"

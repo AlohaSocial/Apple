@@ -1047,12 +1047,13 @@ public struct SidebarView: View {
                     comment: "Sidebar item")
                 if session.capabilities.collections {
                     row(
-                        "Albums", symbol: "rectangle.stack", route: .collections(accountID: nil),
+                        "Collections", symbol: "rectangle.stack",
+                        route: .collections(accountID: nil),
                         comment: "Sidebar item")
                 }
             } header: {
                 // "Explore" was wrong over these: Discover is already in the
-                // top group, and this section is lists and albums —
+                // top group, and this section is lists and collections —
                 // the things a person gathers, not where they stumble on new
                 // ones.
                 Text("Library", comment: "Sidebar section")

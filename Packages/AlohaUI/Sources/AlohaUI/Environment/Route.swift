@@ -56,7 +56,7 @@ public enum Route: Codable, Hashable, Sendable {
     case editProfile
     /// Video channels, the PeerTube notion.
     case channels
-    /// Albums. `nil` is the viewer's own.
+    /// Collections. `nil` is the viewer's own.
     case collections(accountID: String?)
     case followers(accountID: String)
     case following(accountID: String)

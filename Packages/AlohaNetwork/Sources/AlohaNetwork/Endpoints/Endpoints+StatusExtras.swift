@@ -84,7 +84,7 @@ extension Endpoint {
         }
     }
 
-    /// Writing to albums; reading them is `Endpoint.collections`.
+    /// Writing to collections; reading them is `Endpoint.collections`.
     public enum collectionsExtra {
         public static func create(_ draft: CollectionDraft) -> Endpoint {
             Endpoint(method: .post, path: "api/v1/collections", body: .form(items(draft)))

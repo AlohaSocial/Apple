@@ -184,7 +184,7 @@ public struct MediaGrid: View {
     }
 }
 
-/// One picture standing for a post's media — an album's square, a quote's
+/// One picture standing for a post's media — a collection's square, a quote's
 /// strip — under the reading policy `MediaGrid` keeps: covered when the post
 /// is sensitive and the reader has not chosen to see everything, and not
 /// drawn at all, not even its blurhash, under `hide_all`. Nothing reveals it

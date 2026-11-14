@@ -916,7 +916,7 @@
       }
     },
     "^[%lld post](inflect: true)" : {
-      "comment" : "Album post count\nFeatured tag use count\nHashtag usage count\nInstance post count\nMove here posts count\nReport badge",
+      "comment" : "Collection post count\nFeatured tag use count\nHashtag usage count\nInstance post count\nMove here posts count\nReport badge",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1975,13 +1975,13 @@
         }
       }
     },
-    "Add to album" : {
+    "Add to collection" : {
       "comment" : "Screen title\nStatus menu item",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zum Album hinzufügen"
+            "value" : "Zur Sammlung hinzufügen"
           }
         }
       }
@@ -2077,46 +2077,46 @@
         }
       }
     },
-    "Album name" : {
-      "comment" : "Album name placeholder",
+    "Collection name" : {
+      "comment" : "Collection name placeholder",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Albumname"
+            "value" : "Name der Sammlung"
           }
         }
       }
     },
-    "Albums" : {
+    "Collections" : {
       "comment" : "Profile tab\nScreen title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alben"
+            "value" : "Sammlungen"
           }
         }
       }
     },
-    "Albums group photos together." : {
-      "comment" : "Albums explanation",
+    "Collections group photos together." : {
+      "comment" : "Collections explanation",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alben fassen Fotos zusammen."
+            "value" : "Sammlungen fassen Fotos zusammen."
           }
         }
       }
     },
-    "Albums group photos together. Create one from any post's menu." : {
-      "comment" : "Albums explanation",
+    "Collections group photos together. Create one from any post's menu." : {
+      "comment" : "Collections explanation",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alben fassen Fotos zusammen. Erstelle eins über das Menü eines Beitrags."
+            "value" : "Sammlungen fassen Fotos zusammen. Erstelle eine über das Menü eines Beitrags."
           }
         }
       }
@@ -3220,7 +3220,7 @@
       "comment" : "Story camera state"
     },
     "Cancel" : {
-      "comment" : "Account note action\nAlbum action\nComposer action\nComposer schedule action\nDelete confirmation action\nInterests reset action\nModeration confirmation action\nNextcloud connect action\nRevoke app action\nSheet action\nSign-in\nStory delete action\nWithdraw confirmation action",
+      "comment" : "Account note action\nCollection action\nComposer action\nComposer schedule action\nDelete confirmation action\nInterests reset action\nModeration confirmation action\nNextcloud connect action\nRevoke app action\nSheet action\nSign-in\nStory delete action\nWithdraw confirmation action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4020,7 +4020,7 @@
       }
     },
     "Create" : {
-      "comment" : "Album action",
+      "comment" : "Collection action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4030,13 +4030,13 @@
         }
       }
     },
-    "Create album" : {
-      "comment" : "Album picker action",
+    "Create collection" : {
+      "comment" : "Collection picker action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Album erstellen"
+            "value" : "Sammlung erstellen"
           }
         }
       }
@@ -4201,13 +4201,13 @@
         }
       }
     },
-    "Delete album" : {
-      "comment" : "Album action",
+    "Delete collection" : {
+      "comment" : "Collection action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Album löschen"
+            "value" : "Sammlung löschen"
           }
         }
       }
@@ -7966,13 +7966,13 @@
     "New accounts" : {
       "comment" : "Policy row"
     },
-    "New album" : {
-      "comment" : "Album picker placeholder\nAlbums action",
+    "New collection" : {
+      "comment" : "Collection picker placeholder\nCollections action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neues Album"
+            "value" : "Neue Sammlung"
           }
         }
       }
@@ -8203,24 +8203,24 @@
     "No abuse, ever" : {
       "comment" : "Terms rule title"
     },
-    "No albums" : {
-      "comment" : "Empty albums",
+    "No collections" : {
+      "comment" : "Empty collections",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Alben"
+            "value" : "Keine Sammlungen"
           }
         }
       }
     },
-    "No albums yet." : {
-      "comment" : "Album picker empty state",
+    "No collections yet." : {
+      "comment" : "Collection picker empty state",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch keine Alben."
+            "value" : "Noch keine Sammlungen."
           }
         }
       }
@@ -8974,13 +8974,13 @@
         }
       }
     },
-    "Nothing in this album yet." : {
-      "comment" : "Empty album",
+    "Nothing in this collection yet." : {
+      "comment" : "Empty collection",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch nichts in diesem Album."
+            "value" : "Noch nichts in dieser Sammlung."
           }
         }
       }
@@ -9572,7 +9572,7 @@
       }
     },
     "Open post" : {
-      "comment" : "Album item action\nConversation bubble action\nTagged photo action",
+      "comment" : "Collection item action\nConversation bubble action\nTagged photo action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11180,13 +11180,13 @@
     "Remove choice" : {
       "comment" : "Poll editor action"
     },
-    "Remove from album" : {
-      "comment" : "Album item action",
+    "Remove from collection" : {
+      "comment" : "Collection item action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus Album entfernen"
+            "value" : "Aus der Sammlung entfernen"
           }
         }
       }
@@ -11294,7 +11294,7 @@
       }
     },
     "Rename" : {
-      "comment" : "Album action",
+      "comment" : "Collection action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11304,13 +11304,13 @@
         }
       }
     },
-    "Rename album" : {
-      "comment" : "Album action",
+    "Rename collection" : {
+      "comment" : "Collection action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Album umbenennen"
+            "value" : "Sammlung umbenennen"
           }
         }
       }
@@ -11741,7 +11741,7 @@
       }
     },
     "Save" : {
-      "comment" : "Account note action\nAlbum action\nMigration export action\nProfile editing action\nReschedule action\nSheet action\nWatch page bookmark pill",
+      "comment" : "Account note action\nCollection action\nMigration export action\nProfile editing action\nReschedule action\nSheet action\nWatch page bookmark pill",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12868,13 +12868,13 @@
         }
       }
     },
-    "Start a new album with this post" : {
-      "comment" : "Album picker section",
+    "Start a new collection with this post" : {
+      "comment" : "Collection picker section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neues Album mit diesem Beitrag beginnen"
+            "value" : "Neue Sammlung mit diesem Beitrag beginnen"
           }
         }
       }
@@ -16143,13 +16143,13 @@
         }
       }
     },
-    "Your albums" : {
-      "comment" : "Album picker section",
+    "Your collections" : {
+      "comment" : "Collection picker section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deine Alben"
+            "value" : "Deine Sammlungen"
           }
         }
       }

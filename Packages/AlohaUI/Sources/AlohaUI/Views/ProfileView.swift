@@ -10,7 +10,7 @@ import SwiftUI
 /// A profile the way Nextcloud Social lays one out: banner, avatar with a
 /// stories ring, name and handle, the note, the fields, featured hashtags, a
 /// twelve-week rhythm strip, pinned posts, then the tabs — Posts, Replies,
-/// Media, Videos, Albums and Tagged — all on one scrolling page (docs/05 §5).
+/// Media, Videos, Collections and Tagged — all on one scrolling page (docs/05 §5).
 public struct ProfileView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -48,7 +48,7 @@ public struct ProfileView: View {
 
     enum Tab: String, CaseIterable, Identifiable {
         // Nextcloud Social's own profile tabs, in its order (`useProfileKinds`).
-        case posts, photos, videos, tagged, albums
+        case posts, photos, videos, tagged, collections
         var id: String { rawValue }
     }
 
@@ -66,7 +66,7 @@ public struct ProfileView: View {
     private var availableTabs: [Tab] {
         var tabs: [Tab] = [.posts, .photos, .videos]
         if session.capabilities.isNextcloudSocial { tabs.append(.tagged) }
-        if session.capabilities.collections { tabs.append(.albums) }
+        if session.capabilities.collections { tabs.append(.collections) }
         return tabs
     }
 
@@ -200,7 +200,7 @@ public struct ProfileView: View {
         case .posts: Text("Posts", comment: "Profile tab")
         case .photos: Text("Photos", comment: "Profile tab")
         case .videos: Text("Videos", comment: "Profile tab")
-        case .albums: Text("Albums", comment: "Profile tab")
+        case .collections: Text("Collections", comment: "Profile tab")
         case .tagged: Text("Tagged", comment: "Profile tab")
         }
     }
@@ -219,8 +219,8 @@ public struct ProfileView: View {
             statusList(.photos, ProfilePostFilter(mediaKind: .image))
         case .videos:
             statusList(.video, ProfilePostFilter(mediaKind: .video))
-        case .albums:
-            albumsGrid
+        case .collections:
+            collectionsGrid
         case .tagged:
             TaggedGrid(accountID: accountID, session: session, onAction: onAction)
                 .padding(.top, AlohaMetrics.space2)
@@ -863,9 +863,9 @@ public struct ProfileView: View {
         .contextMenu { StatusMenu(status: status, onAction: onAction) }
     }
 
-    // MARK: - Albums tab
+    // MARK: - Collections tab
 
-    private var albumsGrid: some View {
+    private var collectionsGrid: some View {
         LazyVGrid(
             columns: [GridItem(.adaptive(minimum: 150), spacing: AlohaMetrics.space3)],
             spacing: AlohaMetrics.space3
@@ -886,7 +886,7 @@ public struct ProfileView: View {
                             .lineLimit(1)
                         Text(
                             "^[\(collection.postCount) post](inflect: true)",
-                            comment: "Album post count"
+                            comment: "Collection post count"
                         )
                         .font(.caption)
                         .foregroundStyle(palette.secondaryLabel)
@@ -899,9 +899,9 @@ public struct ProfileView: View {
         .overlay {
             if collections.isEmpty {
                 ContentUnavailableView {
-                    Text("No albums", comment: "Empty albums")
+                    Text("No collections", comment: "Empty collections")
                 } description: {
-                    Text("Albums group photos together.", comment: "Albums explanation")
+                    Text("Collections group photos together.", comment: "Collections explanation")
                 }
                 .padding(.top, AlohaMetrics.space6)
             }

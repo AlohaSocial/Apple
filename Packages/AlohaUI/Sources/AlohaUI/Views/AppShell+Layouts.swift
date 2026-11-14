@@ -140,7 +140,7 @@ extension ThemedAppShell {
                         session: session)
                     if session.capabilities.collections {
                         sidebarTab(
-                            "Albums", symbol: "rectangle.stack",
+                            "Collections", symbol: "rectangle.stack",
                             route: .collections(accountID: nil), session: session)
                     }
                 }
