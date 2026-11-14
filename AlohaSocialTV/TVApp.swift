@@ -33,7 +33,17 @@ struct TVRootView: View {
             } else {
                 TabView {
                     Tab {
-                        TVBrowseView()
+                        // The shelves' cards are navigation links, and a link
+                        // with no stack around it does nothing when selected.
+                        NavigationStack {
+                            TVBrowseView()
+                                .navigationDestination(for: TVPlayback.self) { playback in
+                                    TVPlayerView(status: playback.status, startAt: playback.startAt)
+                                        // The player has the screen; the tab
+                                        // bar would only float over the video.
+                                        .toolbar(.hidden, for: .tabBar)
+                                }
+                        }
                     } label: {
                         Label {
                             Text("Video", comment: "tvOS tab")
@@ -142,6 +152,14 @@ struct TVSignInView: View {
     }
 }
 
+/// What a shelf card opens: the video, and where to pick it up. Only a
+/// Continue Watching card carries a position; everything else starts at the
+/// beginning.
+struct TVPlayback: Hashable {
+    var status: Status
+    var startAt: Double?
+}
+
 /// Focus-driven shelves, with a preview that starts muted after a moment.
 struct TVBrowseView: View {
     @Environment(TVModel.self) private var model
@@ -152,36 +170,44 @@ struct TVBrowseView: View {
                 if !model.continueWatching.isEmpty {
                     shelf(
                         title: String(localized: "Continue watching", comment: "tvOS shelf"),
-                        statuses: model.continueWatching.compactMap(\.status))
+                        items: model.continueWatching.compactMap { item in
+                            item.status.map { TVPlayback(status: $0, startAt: item.position) }
+                        })
                 }
                 shelf(
                     title: String(localized: "Following", comment: "tvOS shelf"),
-                    statuses: model.home)
+                    items: model.home.map { TVPlayback(status: $0) })
                 shelf(
                     title: String(localized: "Everywhere", comment: "tvOS shelf"),
-                    statuses: model.federated)
+                    items: model.federated.map { TVPlayback(status: $0) })
             }
             .padding(60)
         }
         .task { await model.loadVideo() }
     }
 
-    private func shelf(title: String, statuses: [Status]) -> some View {
+    private func shelf(title: String, items: [TVPlayback]) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(title).font(.title2.weight(.semibold))
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 32) {
-                    ForEach(statuses) { status in
-                        NavigationLink {
-                            TVPlayerView(status: status)
-                        } label: {
-                            TVCard(status: status)
+                    ForEach(items, id: \.status.id) { item in
+                        NavigationLink(value: item) {
+                            TVCard(status: item.status)
                         }
                         .buttonStyle(.card)
                     }
                 }
+                .padding(.vertical, 24)
             }
+            // A focused card grows and lifts; clipped to the scroll view, its
+            // top and shadow were cut off at the shelf's edge.
+            .scrollClipDisabled()
         }
+        // Moving down from the far end of a long shelf onto a short one has
+        // no card directly below to land on. As a section, the shelf takes
+        // the focus anyway and hands it to its nearest card.
+        .focusSection()
     }
 }
 
@@ -214,12 +240,51 @@ struct TVPlayerView: View {
     var startAt: Double?
 
     @State private var player: AVPlayer?
+    @State private var ticker: Any?
 
     var body: some View {
         VideoPlayer(player: player)
             .ignoresSafeArea()
             .task { await prepare() }
-            .onDisappear { player?.pause() }
+            .onDisappear { finish() }
+    }
+
+    /// Leaving the player says where it stopped, then redraws the Continue
+    /// Watching shelf and the Top Shelf, so the video just watched is offered
+    /// back from there (docs/09 §5).
+    private func finish() {
+        guard let player else { return }
+        player.pause()
+        if let ticker { player.removeTimeObserver(ticker) }
+        ticker = nil
+        let position = player.currentTime().seconds
+        let duration = player.currentItem?.duration.seconds ?? .nan
+        let statusID = status.displayed.id
+        Task {
+            await model.reportWatched(
+                statusID: statusID, position: position, duration: duration, isFinal: true)
+            await model.loadContinueWatching()
+        }
+    }
+
+    /// Reports as the video goes, as the phone does, so a TV switched off
+    /// mid-film still left a position behind.
+    private func startReporting(_ player: AVPlayer) {
+        let statusID = status.displayed.id
+        let model = model
+        ticker = player.addPeriodicTimeObserver(
+            forInterval: CMTime(
+                seconds: WatchPositionRules.reportInterval, preferredTimescale: 600),
+            queue: .main
+        ) { [weak player] time in
+            let duration = player?.currentItem?.duration.seconds ?? .nan
+            _ = MainActor.assumeIsolated {
+                Task {
+                    await model.reportWatched(
+                        statusID: statusID, position: time.seconds, duration: duration)
+                }
+            }
+        }
     }
 
     private func prepare() async {
@@ -239,6 +304,7 @@ struct TVPlayerView: View {
         if let startAt, startAt > 0 {
             await created.seek(to: CMTime(seconds: startAt, preferredTimescale: 600))
         }
+        startReporting(created)
         created.play()
     }
 }

@@ -38,6 +38,14 @@ final class TVModel {
     private var accountID: UUID?
     /// A link that arrived before the account was restored.
     private var pendingLink: TopShelfLink?
+    /// Whether the server keeps watch positions at all. There is no
+    /// capability probe on the TV, so the Continue Watching route answers it:
+    /// a 404 there is a server without Nextcloud Social's video surface, and
+    /// reporting to it would only collect more 404s. `nil` until asked.
+    private var keepsWatchPositions: Bool?
+    /// When each video last reported, so a periodic tick and the report on
+    /// leaving the player never land within the server's coalescing gap.
+    private var lastReported: [String: Date] = [:]
 
     struct PresentedVideo: Identifiable {
         var status: Status
@@ -177,12 +185,55 @@ final class TVModel {
                 from: Endpoint.timelines.timeline(.federated, filters: filters, limit: 20)))?
             .elements.filter(hasVideo) ?? []
 
-        continueWatching =
-            (try? await client.decode(
-                LossyArray<ContinueWatchingItem>.self,
-                from: Endpoint.video.continueWatching()))?.elements ?? []
+        await loadContinueWatching()
+    }
 
+    /// The Continue Watching shelf and the Top Shelf it feeds. Also run when
+    /// the player closes, so the position just reported shows at once rather
+    /// than on the next launch.
+    func loadContinueWatching() async {
+        guard let client else { return }
+        do {
+            continueWatching =
+                try await client.decode(
+                    LossyArray<ContinueWatchingItem>.self,
+                    from: Endpoint.video.continueWatching()
+                ).elements
+            keepsWatchPositions = true
+        } catch APIError.notFound {
+            continueWatching = []
+            keepsWatchPositions = false
+        } catch {
+            // Offline or a server error says nothing about the route; the
+            // shelf keeps what it last showed.
+        }
         updateTopShelf()
+    }
+
+    /// Where the person got to in a video, by the phone's rules
+    /// (`WatchPositionRules`): nothing under ten seconds, never more than one
+    /// report in five seconds, and a position past 95 % is the server's cue
+    /// to forget it. Never federated, never shown to anybody else (docs/09 §5).
+    ///
+    /// - Parameter isFinal: the report made on leaving the player. It skips
+    ///   the gap: it is one request, and the last seconds are the ones that
+    ///   tell the server a video was finished.
+    func reportWatched(
+        statusID: String, position: Double, duration: Double, isFinal: Bool = false,
+        now: Date = Date()
+    ) async {
+        guard let client, keepsWatchPositions != false,
+            position.isFinite, duration.isFinite,
+            WatchPositionRules.shouldReport(position: position, duration: duration)
+        else { return }
+        if !isFinal, let last = lastReported[statusID],
+            now.timeIntervalSince(last) < WatchPositionRules.minimumReportGap
+        {
+            return
+        }
+        lastReported[statusID] = now
+        _ = try? await client.send(
+            Endpoint.video.reportWatched(statusID, position: position, duration: duration))
     }
 
     /// Hands the Top Shelf what this screen just loaded, and asks the system

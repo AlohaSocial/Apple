@@ -68,6 +68,9 @@ struct ShellSheets: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #if os(macOS) || os(visionOS)
+        @Environment(\.openWindow) private var openWindow
+    #endif
 
     @Binding var signIn: SignInPresentation?
     @Binding var composing: ComposerPresentation?
@@ -87,29 +90,38 @@ struct ShellSheets: ViewModifier {
                         .frame(minWidth: 520, idealWidth: 560, minHeight: 480, idealHeight: 560)
                     #endif
             }
-            .sheet(item: whenSignedIn($composing)) { request in
-                if let session = environment.activeSession {
-                    Group {
-                        if let redraft = request.redraft {
-                            ComposerView(
-                                session: session, redrafting: redraft.status,
-                                source: redraft.source)
-                        } else {
-                            ComposerView(
-                                session: session, replyTo: request.replyTo,
-                                quoting: request.quoting, prefilledText: request.draftText)
-                        }
-                    }
-                    #if os(iOS)
-                        .composerPresentation()
-                    #elseif os(macOS)
-                        // The same writing surface on the Mac: a sheet that
-                        // hugs its content leaves the editor two lines tall.
-                        // A composer is a window for thinking, not a popover.
-                        .frame(minWidth: 620, idealWidth: 680, minHeight: 560, idealHeight: 640)
-                    #endif
+            #if os(macOS)
+                // On the Mac the composer is a window, not a sheet over this
+                // one (docs/09 §2): every way the shell asks for it — New
+                // Post, Reply, Quote, Delete & redraft, a handed-off draft —
+                // opens a compose window instead, and the timeline stays
+                // usable beside it.
+                .onChange(of: composing?.id, initial: true) { _, _ in
+                    guard let request = composing else { return }
+                    composing = nil
+                    guard let session = environment.activeSession else { return }
+                    openWindow(value: ComposeWindowRequest(request, accountID: session.id))
                 }
-            }
+            #else
+                .sheet(item: whenSignedIn($composing)) { request in
+                    if let session = environment.activeSession {
+                        Group {
+                            if let redraft = request.redraft {
+                                ComposerView(
+                                    session: session, redrafting: redraft.status,
+                                    source: redraft.source)
+                            } else {
+                                ComposerView(
+                                    session: session, replyTo: request.replyTo,
+                                    quoting: request.quoting, prefilledText: request.draftText)
+                            }
+                        }
+                        #if os(iOS)
+                            .composerPresentation()
+                        #endif
+                    }
+                }
+            #endif
             .sheet(item: whenSignedIn($sheet)) { sheet in
                 if let session = environment.activeSession {
                     Group {
@@ -156,26 +168,38 @@ struct ShellSheets: ViewModifier {
                     #endif
                 }
             }
-            .fullScreenCoverIfAvailable(item: $mediaPresentation) { presentation in
-                MediaViewer(
-                    attachments: presentation.attachments,
-                    startIndex: presentation.index,
-                    statusID: presentation.statusID,
-                    apiBase: environment.activeSession?.capabilities.apiBase
-                        ?? URL(string: "https://invalid.invalid/")!,
-                    // The "Autoplay video" setting is the person's choice,
-                    // not the tap's: an explicitly opened viewer must not
-                    // override it either.
-                    autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
-                    session: environment.activeSession
-                )
-                // The photograph grows out of the cell that was tapped and
-                // shrinks back into it, rather than cutting.
-                .mediaTransitionDestination(
-                    id: presentation.attachments[safe: presentation.index]?.id
-                        ?? presentation.statusID,
-                    in: mediaTransition)
-            }
+            #if os(visionOS)
+                // A window of its own on visionOS, so a video can be parked in
+                // space while reading continues here (docs/09 §3).
+                .onChange(of: mediaPresentation?.id, initial: true) { _, _ in
+                    guard let presentation = mediaPresentation else { return }
+                    mediaPresentation = nil
+                    openWindow(
+                        value: MediaWindowRequest(
+                            presentation, accountID: environment.activeSession?.id))
+                }
+            #else
+                .fullScreenCoverIfAvailable(item: $mediaPresentation) { presentation in
+                    MediaViewer(
+                        attachments: presentation.attachments,
+                        startIndex: presentation.index,
+                        statusID: presentation.statusID,
+                        apiBase: environment.activeSession?.capabilities.apiBase
+                            ?? URL(string: "https://invalid.invalid/")!,
+                        // The "Autoplay video" setting is the person's choice,
+                        // not the tap's: an explicitly opened viewer must not
+                        // override it either.
+                        autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
+                        session: environment.activeSession
+                    )
+                    // The photograph grows out of the cell that was tapped and
+                    // shrinks back into it, rather than cutting.
+                    .mediaTransitionDestination(
+                        id: presentation.attachments[safe: presentation.index]?.id
+                            ?? presentation.statusID,
+                        in: mediaTransition)
+                }
+            #endif
     }
 
     /// A sheet builds its content from the active session, so with none there
