@@ -41,6 +41,17 @@ import XCTest
                 sleep(2)
                 try audit(name)
             }
+            // The Search tab opens with its field focused, and the keyboard's
+            // backdrop then covers the tab bar to the bottom of the screen: a
+            // tap on My Feed lands on the keyboard and changes nothing, as it
+            // would for a person. Close the search first, as they would.
+            let closeSearch = app.buttons["Close"].firstMatch
+            if app.keyboards.firstMatch.exists, closeSearch.exists {
+                closeSearch.tap()
+                XCTAssertTrue(
+                    app.keyboards.firstMatch.waitForNonExistence(timeout: 5),
+                    "Closing the search left the keyboard up")
+            }
             app.tabBars.buttons["My Feed"].tap()
             XCTAssertTrue(app.openActivities(), "Activities not reachable")
             sleep(2)
