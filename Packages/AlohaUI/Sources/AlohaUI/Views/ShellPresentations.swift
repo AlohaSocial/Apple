@@ -68,7 +68,7 @@ struct ShellSheets: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    #if os(macOS)
+    #if os(macOS) || os(visionOS)
         @Environment(\.openWindow) private var openWindow
     #endif
 
@@ -168,26 +168,38 @@ struct ShellSheets: ViewModifier {
                     #endif
                 }
             }
-            .fullScreenCoverIfAvailable(item: $mediaPresentation) { presentation in
-                MediaViewer(
-                    attachments: presentation.attachments,
-                    startIndex: presentation.index,
-                    statusID: presentation.statusID,
-                    apiBase: environment.activeSession?.capabilities.apiBase
-                        ?? URL(string: "https://invalid.invalid/")!,
-                    // The "Autoplay video" setting is the person's choice,
-                    // not the tap's: an explicitly opened viewer must not
-                    // override it either.
-                    autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
-                    session: environment.activeSession
-                )
-                // The photograph grows out of the cell that was tapped and
-                // shrinks back into it, rather than cutting.
-                .mediaTransitionDestination(
-                    id: presentation.attachments[safe: presentation.index]?.id
-                        ?? presentation.statusID,
-                    in: mediaTransition)
-            }
+            #if os(visionOS)
+                // A window of its own on visionOS, so a video can be parked in
+                // space while reading continues here (docs/09 §3).
+                .onChange(of: mediaPresentation?.id, initial: true) { _, _ in
+                    guard let presentation = mediaPresentation else { return }
+                    mediaPresentation = nil
+                    openWindow(
+                        value: MediaWindowRequest(
+                            presentation, accountID: environment.activeSession?.id))
+                }
+            #else
+                .fullScreenCoverIfAvailable(item: $mediaPresentation) { presentation in
+                    MediaViewer(
+                        attachments: presentation.attachments,
+                        startIndex: presentation.index,
+                        statusID: presentation.statusID,
+                        apiBase: environment.activeSession?.capabilities.apiBase
+                            ?? URL(string: "https://invalid.invalid/")!,
+                        // The "Autoplay video" setting is the person's choice,
+                        // not the tap's: an explicitly opened viewer must not
+                        // override it either.
+                        autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
+                        session: environment.activeSession
+                    )
+                    // The photograph grows out of the cell that was tapped and
+                    // shrinks back into it, rather than cutting.
+                    .mediaTransitionDestination(
+                        id: presentation.attachments[safe: presentation.index]?.id
+                            ?? presentation.statusID,
+                        in: mediaTransition)
+                }
+            #endif
     }
 
     /// A sheet builds its content from the active session, so with none there
