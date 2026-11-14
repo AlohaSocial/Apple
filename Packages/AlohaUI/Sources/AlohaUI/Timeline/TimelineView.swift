@@ -62,9 +62,7 @@ public struct TimelineView: View {
             }
         }
         .animation(pillAnimation, value: model.pendingNewCount > 0)
-        .overlay(alignment: .bottom) {
-            if isOnScreen { ActionFeedbackToast() }
-        }
+        .actionFeedbackToast()
         .background(palette.background.ignoresSafeArea())
         .timelineKeyboard(
             focusedID: $focusedStatusID,
