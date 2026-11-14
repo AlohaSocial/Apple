@@ -10,9 +10,14 @@ public struct TimelineStatusUpdate: Sendable {
     public static let notification = Notification.Name("aloha.timelineStatusUpdate")
     public let accountID: UUID
     public let status: Status
-    public init(accountID: UUID, status: Status) {
+    /// An optimistic copy the server has not answered for yet. A list holds
+    /// it against any page fetched meanwhile, until the final copy — the
+    /// server's, or the original put back — arrives as a later update.
+    public let isProvisional: Bool
+    public init(accountID: UUID, status: Status, isProvisional: Bool = false) {
         self.accountID = accountID
         self.status = status
+        self.isProvisional = isProvisional
     }
 }
 
@@ -93,13 +98,20 @@ public actor TimelineStore {
 
     /// Applies a fetched page. Returns the resulting rows so the caller can
     /// render without a second read.
+    ///
+    /// - Parameter preserving: statuses whose cached copy is newer than the
+    ///   page's — an interaction confirmed, or still in flight, after the page
+    ///   was asked for. Their cached copy is kept, in the store and in the
+    ///   rows returned, so a page that was already on the wire cannot revert
+    ///   a like the reader can see.
     @discardableResult
     public func apply(
         page: [Status],
         accountID: UUID,
         timelineKey: String,
         direction: TimelineMerge.Direction,
-        pageWasFull: Bool
+        pageWasFull: Bool,
+        preserving: Set<String> = []
     ) throws -> [TimelineRow] {
         let existing = try slots(accountID: accountID, timelineKey: timelineKey)
         let plan = TimelineMerge.plan(
@@ -109,31 +121,48 @@ public actor TimelineStore {
             pageWasFull: pageWasFull
         )
 
+        // Only where the cache really has the newer copy: a preserved status
+        // the cache never held is written from the page, or its row would
+        // point at nothing. A boost of a preserved post keeps the boost and
+        // carries the cached copy of the post inside it.
+        let kept =
+            preserving.isEmpty
+            ? [:] : try statuses(accountID: accountID, ids: Array(preserving))
+        let pageCopies: [Status] = page.compactMap { status in
+            if kept[status.id] != nil { return nil }
+            guard let inner = status.reblog?.value.id, let cachedInner = kept[inner] else {
+                return status
+            }
+            var boost = status
+            boost.reblog = Box(cachedInner)
+            return boost
+        }
+
         // Statuses are stored once and shared; a timeline only points at them.
-        for status in page where plan.insertedStatusIDs.contains(status.id) {
+        for status in pageCopies where plan.insertedStatusIDs.contains(status.id) {
             try upsert(status: status, accountID: accountID)
         }
         // A status already cached may have been edited or had its counts move.
-        for status in page where !plan.insertedStatusIDs.contains(status.id) {
+        for status in pageCopies where !plan.insertedStatusIDs.contains(status.id) {
             try upsert(status: status, accountID: accountID)
         }
 
         // Capped before the write rather than trimmed after it: a second
         // fetch with a `fetchOffset` does not see pending inserts the way the
         // offset implies, and would delete the rows just added.
-        let kept = Array(plan.slots.prefix(CachePolicy.limit(forTimelineKey: timelineKey)))
-        try replaceEntries(accountID: accountID, timelineKey: timelineKey, slots: kept)
+        let slots = Array(plan.slots.prefix(CachePolicy.limit(forTimelineKey: timelineKey)))
+        try replaceEntries(accountID: accountID, timelineKey: timelineKey, slots: slots)
         try modelContext.save()
 
-        assert(TimelineMerge.isWellFormed(kept), "timeline merge produced a malformed order")
+        assert(TimelineMerge.isWellFormed(slots), "timeline merge produced a malformed order")
 
         let statusesByID = Dictionary(
-            page.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+            pageCopies.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
         let cached = try statuses(
             accountID: accountID,
             ids: plan.slots.filter { !$0.isGapMarker }.map(\.statusID))
 
-        return kept.compactMap { slot in
+        return slots.compactMap { slot in
             if slot.isGapMarker { return .gap(id: slot.statusID) }
             if let status = statusesByID[slot.statusID] ?? cached[slot.statusID] {
                 return .status(status)
@@ -159,13 +188,23 @@ public actor TimelineStore {
         }
     }
 
-    /// An optimistic action that the server then confirmed or refused.
-    public func updateStatus(accountID: UUID, status: Status) throws {
+    /// An optimistic action, and then what the server confirmed or refused.
+    ///
+    /// Lists on screen are told even when the cache could not be written: a
+    /// provisional copy whose final one never announced itself would hold
+    /// the row against every refresh until it timed out.
+    ///
+    /// - Parameter provisional: the optimistic copy, before the server has
+    ///   answered (`TimelineStatusUpdate.isProvisional`).
+    public func updateStatus(accountID: UUID, status: Status, provisional: Bool = false) throws {
+        defer {
+            NotificationCenter.default.post(
+                name: TimelineStatusUpdate.notification,
+                object: TimelineStatusUpdate(
+                    accountID: accountID, status: status.displayed, isProvisional: provisional))
+        }
         try upsert(status: status, accountID: accountID)
         try modelContext.save()
-        NotificationCenter.default.post(
-            name: TimelineStatusUpdate.notification,
-            object: TimelineStatusUpdate(accountID: accountID, status: status.displayed))
     }
 
     /// A delete over streaming, or a 404 on refetch: the status goes, and so
@@ -435,14 +474,15 @@ public actor TimelineStore {
 public enum TimelineRow: Sendable, Hashable, Identifiable {
     case status(Status)
     case gap(id: String)
-    /// A "You're caught up" divider placed below the given status ID.
-    case caughtUpDivider(after: String)
+    /// A "You're caught up" divider placed above the given status ID: the
+    /// newest post the reader had seen, with everything above it new.
+    case caughtUpDivider(above: String)
 
     public var id: String {
         switch self {
         case .status(let status): status.id
         case .gap(let id): id
-        case .caughtUpDivider(let after): "caughtUp-\(after)"
+        case .caughtUpDivider(let above): "caughtUp-\(above)"
         }
     }
 
