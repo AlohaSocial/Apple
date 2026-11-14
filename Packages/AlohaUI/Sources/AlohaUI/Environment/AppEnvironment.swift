@@ -31,6 +31,10 @@ public final class AppEnvironment {
     public let transport: any HTTPTransport
     public let sync: SyncEngine
     public let notifier: LocalNotifier
+    /// Shared by every account's client. The buckets are per host, so two
+    /// accounts on one server wait on each other and a 429 to one holds the
+    /// other back too, as the server meant it to (docs/08 §3).
+    public let rateLimiter = RateLimiter()
     /// Posts written while the server was out of reach (docs/07 §7).
     public let sendQueue = SendQueue()
 
@@ -175,7 +179,8 @@ public final class AppEnvironment {
             transport: transport,
             timelines: timelines,
             support: support,
-            accounts: accounts
+            accounts: accounts,
+            rateLimiter: rateLimiter
         )
     }
 
