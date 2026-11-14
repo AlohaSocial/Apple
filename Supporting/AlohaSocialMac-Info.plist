@@ -40,6 +40,30 @@
 		<string>social.aloha.app.viewingProfile</string>
 		<string>social.aloha.app.composing</string>
 	</array>
+	<!-- "Post to Aloha Social" in the Services menu (docs/09 §2): selected
+	     text or a link opens a compose window with it written in.
+	     NSMessage is MacServiceProvider's selector; the port is the app. -->
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Post to Aloha Social</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>postToAlohaSocial</string>
+			<key>NSPortName</key>
+			<string>$(PRODUCT_NAME)</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>public.url</string>
+			</array>
+		</dict>
+	</array>
 	<!-- Export compliance: only Apple's own TLS (URLSession, Security.framework)
 	     is used, which is exempt. The iOS app says the same through
 	     INFOPLIST_KEY_ITSAppUsesNonExemptEncryption. -->
