@@ -56,7 +56,7 @@ enum SettingsSection: CaseIterable, Sendable {
         case .yourAccount:
             String(
                 localized:
-                    "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens",
+                    "profile edit name bio avatar header fields featured hashtags channels migration export import move alias authorized apps tokens",
                 comment:
                     "Settings search keywords for the Your account section, separated by spaces. Translate into the words people in your language would type."
             )

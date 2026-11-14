@@ -42,7 +42,7 @@ extension ThemedAppShell {
         case .interests, .memories, .heldPosts, .starterPacks, .starterPack, .place,
             .archived, .collections, .followers, .following, .tagged, .annualReport:
             nextcloudSocialDestination(route, session: session)
-        case .statistics, .portfolio, .migration, .authorizedApps, .featuredTags,
+        case .statistics, .migration, .authorizedApps, .featuredTags,
             .editProfile, .channels, .serverInfo, .deleteAccount:
             nextcloudAccountDestination(route, session: session)
         case .moderation, .moderationReports, .moderationReport, .moderationAccounts,
@@ -174,8 +174,6 @@ extension ThemedAppShell {
         switch route {
         case .statistics:
             StatisticsView(session: session)
-        case .portfolio:
-            PortfolioView(session: session)
         case .migration:
             MigrationView(session: session)
         case .authorizedApps:

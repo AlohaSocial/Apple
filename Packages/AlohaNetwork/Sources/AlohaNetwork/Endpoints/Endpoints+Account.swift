@@ -4,7 +4,7 @@ import AlohaModels
 import Foundation
 
 // The account-side routes: editing the profile, featured hashtags, authorized
-// apps, the portfolio, migration, statistics and channels. Everything past
+// apps, migration, statistics and channels. Everything past
 // `update_credentials` and `featured_tags` is Nextcloud Social's own.
 
 /// What `PATCH /api/v1/accounts/update_credentials` may change. Only the
@@ -153,35 +153,6 @@ extension Endpoint {
         public static func revoke(_ id: String) -> Endpoint {
             Endpoint(method: .delete, path: "api/v1/authorized_apps/\(id)")
         }
-    }
-
-    /// Pixelfed's portfolio page, served by Nextcloud Social.
-    public enum portfolio {
-        public static var own: Endpoint { Endpoint(path: "api/v1.1/portfolio") }
-
-        public static func save(_ settings: PortfolioSettings) -> Endpoint {
-            var items: [URLQueryItem] = [
-                URLQueryItem(name: "active", value: settings.active ? "1" : "0"),
-                URLQueryItem(name: "title", value: settings.title),
-                URLQueryItem(name: "intro", value: settings.intro),
-                URLQueryItem(name: "layout", value: settings.layout.rawValue),
-                URLQueryItem(name: "source", value: settings.source.rawValue),
-                URLQueryItem(name: "show_captions", value: settings.showCaptions ? "1" : "0"),
-                URLQueryItem(name: "show_places", value: settings.showPlaces ? "1" : "0"),
-                URLQueryItem(name: "show_dates", value: settings.showDates ? "1" : "0"),
-                URLQueryItem(name: "show_avatar", value: settings.showAvatar ? "1" : "0"),
-            ]
-            items += .optional("collection_id", settings.collectionID)
-            return Endpoint(method: .post, path: "api/v1.1/portfolio", body: .form(items))
-        }
-
-        /// The published page. Anybody may read it, so no token is needed.
-        public static func page(handle: String) -> Endpoint {
-            Endpoint(path: "api/v1.1/portfolio/\(handle)", requiresAuthentication: false)
-        }
-
-        /// The viewer's own albums, for the picture-source picker.
-        public static var ownCollections: Endpoint { Endpoint(path: "api/v1.1/collections/self") }
     }
 
     /// Taking the account somewhere else, or bringing one here.

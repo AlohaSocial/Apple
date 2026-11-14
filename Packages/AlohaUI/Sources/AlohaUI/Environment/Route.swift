@@ -50,7 +50,6 @@ public enum Route: Codable, Hashable, Sendable {
     /// Your own archived posts: off your profile, not deleted.
     case archived
     case statistics
-    case portfolio
     case migration
     case authorizedApps
     case featuredTags

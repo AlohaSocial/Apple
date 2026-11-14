@@ -1224,17 +1224,6 @@
     "A domain, a full URL, or a handle." : {
       "comment" : "Onboarding server field hint"
     },
-    "A draft is private. Once published, anybody with the address can see the page without signing in." : {
-      "comment" : "Portfolio publish explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Entwurf ist privat. Nach dem Veröffentlichen kann jede Person mit der Adresse die Seite ohne Anmeldung sehen."
-          }
-        }
-      }
-    },
     "A filter matches the words you give it. Warn folds the post away behind its title; hide takes it out of the timeline altogether." : {
       "comment" : "Filters explanation",
       "localizations" : {
@@ -1264,17 +1253,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ein Raster aus Bildern"
-          }
-        }
-      }
-    },
-    "A grid of squares" : {
-      "comment" : "Portfolio layout",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Raster aus Quadraten"
           }
         }
       }
@@ -1424,17 +1402,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eine Antwort auf einen Beitrag, den du aus einer Datei in deiner Nextcloud gemacht hast, wird auch als Kommentar an diese Datei angehängt."
-          }
-        }
-      }
-    },
-    "A sentence about the work" : {
-      "comment" : "Portfolio intro placeholder",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Satz über die Arbeit"
           }
         }
       }
@@ -2106,17 +2073,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "AirPlay"
-          }
-        }
-      }
-    },
-    "Album" : {
-      "comment" : "Portfolio field",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Album"
           }
         }
       }
@@ -3383,20 +3339,6 @@
           }
         }
       }
-    },
-    "Choose an album" : {
-      "comment" : "Portfolio album placeholder",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Album auswählen"
-          }
-        }
-      }
-    },
-    "Choose an album before publishing your portfolio." : {
-      "comment" : "Portfolio validation"
     },
     "Choose another filter to see more activities." : {
       "comment" : "Notification filter empty state guidance"
@@ -6914,7 +6856,7 @@
       }
     },
     "Layout" : {
-      "comment" : "Photos layout picker\nPortfolio field\nPortfolio section",
+      "comment" : "Photos layout picker",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7961,17 +7903,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Meine Interessen"
-          }
-        }
-      }
-    },
-    "My most recent public photos" : {
-      "comment" : "Portfolio source",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meine neuesten öffentlichen Fotos"
           }
         }
       }
@@ -9087,17 +9018,6 @@
         }
       }
     },
-    "Nothing on it yet" : {
-      "comment" : "Portfolio empty page\nPortfolio empty preview",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch nichts darauf"
-          }
-        }
-      }
-    },
     "Nothing posted this week yet." : {
       "comment" : "Weekly recap headline",
       "localizations" : {
@@ -9406,17 +9326,6 @@
         }
       }
     },
-    "On the page" : {
-      "comment" : "Portfolio section",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf der Seite"
-          }
-        }
-      }
-    },
     "On this day" : {
       "comment" : "Memories card title\nMemories section",
       "localizations" : {
@@ -9453,44 +9362,11 @@
         }
       }
     },
-    "Once you have public photos, or an album is chosen, they show here the way visitors will see them." : {
-      "comment" : "Portfolio empty preview detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sobald du öffentliche Fotos hast oder ein Album ausgewählt ist, erscheinen sie hier so, wie Besucher sie sehen."
-          }
-        }
-      }
-    },
-    "One at a time, at its own shape" : {
-      "comment" : "Portfolio layout",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einzeln, im jeweils eigenen Format"
-          }
-        }
-      }
-    },
     "One description couldn't be generated." : {
       "comment" : "Alt text generation failure"
     },
     "One description didn't come out usable." : {
       "comment" : "Alt text generation rejected"
-    },
-    "One of my albums" : {
-      "comment" : "Portfolio source",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eines meiner Alben"
-          }
-        }
-      }
     },
     "Only an administrator of this Nextcloud can act on reports and accounts. Everything else about running the instance stays in its administration page." : {
       "comment" : "Moderation section explanation",
@@ -10177,7 +10053,7 @@
       }
     },
     "Pictures" : {
-      "comment" : "Discover section\nGIF picker title\nPortfolio field\nPortfolio section\nProfile editing section\nStatistics section",
+      "comment" : "Discover section\nGIF picker title\nProfile editing section\nStatistics section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10360,20 +10236,6 @@
           }
         }
       }
-    },
-    "Portfolio" : {
-      "comment" : "Screen title\nSettings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Portfolio"
-          }
-        }
-      }
-    },
-    "Portfolio settings could not be loaded. Please try again." : {
-
     },
     "Post" : {
       "comment" : "App Intent parameter\nApp Intents type name\nComposer action\nThread screen title",
@@ -10726,17 +10588,6 @@
         }
       }
     },
-    "Preview" : {
-      "comment" : "Portfolio section",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorschau"
-          }
-        }
-      }
-    },
     "Previous photo" : {
       "comment" : "Photo carousel action",
       "localizations" : {
@@ -10814,13 +10665,13 @@
         }
       }
     },
-    "profile edit name bio avatar header fields featured hashtags portfolio channels migration export import move alias authorized apps tokens" : {
+    "profile edit name bio avatar header fields featured hashtags channels migration export import move alias authorized apps tokens" : {
       "comment" : "Settings search keywords for the Your account section, separated by spaces. Translate into the words people in your language would type.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "profil bearbeiten name bio avatar profilbild titelbild felder hervorgehobene hashtags portfolio kanäle umzug migration export import umziehen alias autorisierte apps token"
+            "value" : "profil bearbeiten name bio avatar profilbild titelbild felder hervorgehobene hashtags kanäle umzug migration export import umziehen alias autorisierte apps token"
           }
         }
       }
@@ -10931,17 +10782,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Meine Blockierungen veröffentlichen"
-          }
-        }
-      }
-    },
-    "Publish my portfolio" : {
-      "comment" : "Portfolio switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mein Portfolio veröffentlichen"
           }
         }
       }
@@ -11901,7 +11741,7 @@
       }
     },
     "Save" : {
-      "comment" : "Account note action\nAlbum action\nMigration export action\nPortfolio action\nProfile editing action\nReschedule action\nSheet action\nWatch page bookmark pill",
+      "comment" : "Account note action\nAlbum action\nMigration export action\nProfile editing action\nReschedule action\nSheet action\nWatch page bookmark pill",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11921,9 +11761,6 @@
           }
         }
       }
-    },
-    "Save your changes to preview photos from the newly selected source." : {
-      "comment" : "Portfolio preview guidance"
     },
     "Say something…" : {
       "comment" : "Text story field prompt",
@@ -12105,7 +11942,7 @@
       }
     },
     "Section" : {
-      "comment" : "Discover section picker\nPortfolio section picker",
+      "comment" : "Discover section picker",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12395,7 +12232,7 @@
       }
     },
     "Settings" : {
-      "comment" : "Portfolio section\nScreen title",
+      "comment" : "Screen title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12431,7 +12268,7 @@
       "comment" : "Thread share action"
     },
     "Share the address" : {
-      "comment" : "Migration action\nPortfolio action",
+      "comment" : "Migration action",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12535,17 +12372,6 @@
         }
       }
     },
-    "Show captions" : {
-      "comment" : "Portfolio switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildunterschriften anzeigen"
-          }
-        }
-      }
-    },
     "Show description" : {
       "comment" : "Media viewer action",
       "localizations" : {
@@ -12576,17 +12402,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Meine Aloha-Erwähnungen anzeigen"
-          }
-        }
-      }
-    },
-    "Show my picture at the top" : {
-      "comment" : "Portfolio switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mein Bild oben anzeigen"
           }
         }
       }
@@ -12641,17 +12456,6 @@
     "Show the introduction" : {
       "comment" : "Settings item"
     },
-    "Show the year" : {
-      "comment" : "Portfolio switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jahr anzeigen"
-          }
-        }
-      }
-    },
     "Show these" : {
       "comment" : "Notification request action",
       "localizations" : {
@@ -12670,17 +12474,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Kurzbefehle anzeigen"
-          }
-        }
-      }
-    },
-    "Show where each picture was taken" : {
-      "comment" : "Portfolio switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aufnahmeort jedes Bildes anzeigen"
           }
         }
       }
@@ -14688,17 +14481,6 @@
         }
       }
     },
-    "Title and introduction" : {
-      "comment" : "Portfolio section",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titel und Einleitung"
-          }
-        }
-      }
-    },
     "Today" : {
       "comment" : "Activity day heading\nConversation day separator\nTrend period",
       "localizations" : {
@@ -16245,17 +16027,6 @@
         }
       }
     },
-    "You have no albums yet." : {
-      "comment" : "Portfolio no albums",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du hast noch keine Alben."
-          }
-        }
-      }
-    },
     "You have no lists yet. Make one to put %@ on it." : {
       "comment" : "Empty lists in membership sheet",
       "localizations" : {
@@ -16663,9 +16434,6 @@
           }
         }
       }
-    },
-    "Your portfolio could not be saved. Please try again." : {
-
     },
     "Your post is with a moderator and will appear once it has been looked at. You can find it under Settings until then." : {
       "comment" : "Held for review detail",
