@@ -9,6 +9,7 @@ import SwiftUI
 
 public struct NotificationsView: View {
     @Environment(\.alohaPalette) private var palette
+    @Environment(AppEnvironment.self) private var environment
     @Namespace private var chipIndicator
 
     private let session: AccountSession
@@ -27,14 +28,12 @@ public struct NotificationsView: View {
     /// Notification policy (when the server supports it) — carries the count
     /// of filtered requests so we can show it at the top.
     @State private var notificationPolicy: NotificationPolicy?
-    /// The "caught up" marker for the notifications timeline — the last
-    /// notification ID the user had read. When present in the flat list, a
-    /// divider is inserted below it.
+    /// The notifications marker — the newest notification the reader has
+    /// read. It moves to the newest on load (`markAllRead`).
     @State private var caughtUpNotificationID: String?
     /// The marker the divider is drawn at, captured when the list loads.
-    /// `caughtUpNotificationID` advances as rows are seen, but moving the
-    /// line at the same time made it slide under the reader's thumb and
-    /// re-layout the list on every appearance.
+    /// `caughtUpNotificationID` moves to the newest when the list loads, but
+    /// the line stays where the reader left off.
     @State private var caughtUpDisplayID: String?
     /// The reader's filters, in the notifications context: an activity
     /// about a post a hide filter matched is left out, and one a warn filter
@@ -207,8 +206,7 @@ public struct NotificationsView: View {
     /// The flat list — which is what a Nextcloud server serves — with the same
     /// day headings as the grouped one and the optional "caught up" divider.
     /// When the marker notification is in the visible list, a divider is
-    /// inserted below it; the marker advances when the next notification
-    /// appears (handled in `flatRow`).
+    /// inserted below it.
     private var flatRowsWithMarker: some View {
         ForEach(flatActivityRows) { row in
             switch row {
@@ -370,24 +368,6 @@ public struct NotificationsView: View {
                     }
                 }
             }
-            .onAppear {
-                // Advance the marker past the divider's group: the marker
-                // names one notification, and a group's newest is the id the
-                // server reports for it. Where the group below this one has
-                // been seen, the reader has passed the divider.
-                if let markerID = caughtUpDisplayID,
-                    let idx = visibleGroups.firstIndex(where: {
-                        $0.mostRecentNotificationID == markerID
-                    }),
-                    idx + 1 < visibleGroups.count,
-                    visibleGroups[idx + 1].mostRecentNotificationID != markerID
-                {
-                    Task {
-                        await advanceCaughtUpNotificationMarker(
-                            to: visibleGroups[idx + 1].mostRecentNotificationID)
-                    }
-                }
-            }
         }
         .buttonStyle(.plain)
     }
@@ -512,17 +492,6 @@ public struct NotificationsView: View {
                                 : "Mute conversation",
                             systemImage: AlohaSymbol.mute)
                     }
-                }
-            }
-            .onAppear {
-                // Advance the "caught up" marker when the first notification
-                // below the divider appears.
-                if let markerID = caughtUpDisplayID,
-                    let idx = visibleFlat.firstIndex(where: { $0.id == markerID }),
-                    idx + 1 < visibleFlat.count,
-                    visibleFlat[idx + 1].id == notification.id
-                {
-                    Task { await advanceCaughtUpNotificationMarker(to: notification.id) }
                 }
             }
         }
@@ -697,6 +666,7 @@ public struct NotificationsView: View {
                 caughtUpDisplayID = caughtUpNotificationID
             }
             errorMessage = nil
+            await markAllRead()
         } catch {
             guard !Task.isCancelled, loadID == requestID else { return }
             await session.handle(error)
@@ -820,26 +790,44 @@ public struct NotificationsView: View {
             sample: [notification.account])
     }
 
-    /// Advances the notifications marker past the divider.
+    /// Marks every activity up to the newest one as read.
     ///
-    /// Async because the local marker lives in an actor: this is the one write
-    /// that must not be attempted from a synchronous function, and the server
-    /// sync folds into the same await rather than a Task inside a Task.
-    private func advanceCaughtUpNotificationMarker(to notificationID: String) async {
-        guard caughtUpNotificationID != nil,
-            caughtUpNotificationID != notificationID
+    /// The badge on the Activities tab and on the app icon is the server's
+    /// `unread_count`: the activities newer than the notifications marker.
+    /// Opening the list is reading it, so the marker moves to the newest
+    /// activity the list shows, and the badge is asked again at once rather
+    /// than at the next poll. The divider stays at `caughtUpDisplayID`.
+    ///
+    /// This used to advance only when the row below the divider scrolled into
+    /// view — which, in a newest-first list, named an *older* activity than
+    /// the marker, so the marker never reached the top. Where the server had
+    /// no marker yet it did not advance at all. Either way the badge stayed
+    /// on while the list showed nothing new.
+    private func markAllRead() async {
+        let ids =
+            session.capabilities.groupedNotifications
+            ? groups.map(\.mostRecentNotificationID) : flat.map(\.id)
+        guard
+            let newest = ids.max(by: { SupportStore.isNewer($1, than: $0) }),
+            !Task.isCancelled
         else { return }
-        caughtUpNotificationID = notificationID
 
-        // Whether the stored marker actually moved does not matter here: the
-        // server's copy is written either way, and it never moves backwards.
-        do {
-            _ = try await session.supportStore.advanceMarker(
-                accountID: session.id, timeline: "notifications", to: notificationID)
-        } catch {}
-
-        let endpoint = Endpoint.markers.write(home: nil, notifications: notificationID)
-        do { _ = try await session.client.send(endpoint) } catch {}
+        let alreadyRead =
+            caughtUpNotificationID.map {
+                !SupportStore.isNewer(newest, than: $0)
+            } ?? false
+        if !alreadyRead {
+            caughtUpNotificationID = newest
+            do {
+                _ = try await session.supportStore.advanceMarker(
+                    accountID: session.id, timeline: "notifications", to: newest)
+            } catch {}
+            let endpoint = Endpoint.markers.write(home: nil, notifications: newest)
+            do { _ = try await session.client.send(endpoint) } catch { return }
+        }
+        // Asked of the server rather than set to zero here: if it still counts
+        // something, the badge should go on saying so.
+        await environment.sync.poll(session, scope: .notificationsOnly)
     }
 
     private func caughtUpDivider(after notificationID: String) -> some View {
