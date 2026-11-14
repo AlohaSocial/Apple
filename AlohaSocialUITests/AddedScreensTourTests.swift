@@ -157,7 +157,7 @@ import XCTest
         // MARK: - Discover and the composer
 
         func testConstellationDraws() {
-            XCTAssertTrue(app.openFromAccountMenu("Discover"), "Discover not reachable")
+            XCTAssertTrue(app.openDiscover(), "Discover not reachable")
             let toggle = app.switches.containing(
                 NSPredicate(format: "label CONTAINS 'constellation'")
             ).firstMatch
