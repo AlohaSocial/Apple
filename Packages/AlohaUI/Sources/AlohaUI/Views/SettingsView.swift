@@ -101,6 +101,7 @@ public struct SettingsView: View {
                 }
                 if shows(.notifications) {
                     notificationsSection(session)
+                    syncSection(session)
                 }
                 if shows(.posting) {
                     composerSection(session)
@@ -833,6 +834,48 @@ public struct SettingsView: View {
         Task {
             await session.updateSettings(transform)
             await session.pushNotificationDelivery()
+        }
+    }
+
+    /// How often the account is checked for new activity, and on which
+    /// networks (docs/08 §3). Both lived in the settings model with nothing
+    /// to change them; the sync engine follows a change at once, a manual
+    /// account included, so there is nothing to restart here.
+    private func syncSection(_ session: AccountSession) -> some View {
+        Section {
+            Picker(
+                selection: Binding(
+                    get: { session.settings.pollFrequency },
+                    set: { value in
+                        Task { await session.updateSettings { $0.pollFrequency = value } }
+                    })
+            ) {
+                Text("Often", comment: "Sync frequency").tag(AccountSettings.PollFrequency.frequent)
+                Text("Normally", comment: "Sync frequency").tag(
+                    AccountSettings.PollFrequency.normal)
+                Text("To save battery", comment: "Sync frequency")
+                    .tag(AccountSettings.PollFrequency.batterySaver)
+                Text("Only when I refresh", comment: "Sync frequency")
+                    .tag(AccountSettings.PollFrequency.manual)
+            } label: {
+                Text("Check for new activity", comment: "Settings item")
+            }
+
+            Toggle(
+                isOn: Binding(
+                    get: { session.settings.syncOverWiFiOnly },
+                    set: { value in
+                        Task { await session.updateSettings { $0.syncOverWiFiOnly = value } }
+                    })
+            ) {
+                Text("Only on Wi-Fi", comment: "Settings item")
+            }
+        } header: {
+            Text("Checking for new activity", comment: "Settings section")
+        } footer: {
+            Text(
+                "Less often saves battery and data. On mobile data with \"Only on Wi-Fi\" on, notifications and the badge still update; timelines wait for Wi-Fi.",
+                comment: "Sync settings explanation")
         }
     }
 
