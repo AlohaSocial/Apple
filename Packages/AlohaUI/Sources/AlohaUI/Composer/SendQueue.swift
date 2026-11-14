@@ -209,6 +209,7 @@ extension DraftSnapshot {
             placeCountry: placeID == nil ? placeCountry : nil,
             postAs: postAs, videoTitle: videoTitle, videoCategory: videoCategory,
             videoLicence: videoLicence)
+        post.pollHideTotals = pollHideTotals
         if isNextcloud { post.replyPolicy = replyPolicy.flatMap(ReplyPolicy.init(rawValue:)) }
         return post
     }

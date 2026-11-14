@@ -165,7 +165,11 @@ public struct ComposerView: View {
                         Label {
                             Text("Edit poll", comment: "Composer action")
                         } icon: {
-                            Image(systemName: AlohaSymbol.poll)
+                            // Post is greyed out by a poll the server would
+                            // refuse; this says where to look.
+                            Image(
+                                systemName: model.pollProblem == nil
+                                    ? AlohaSymbol.poll : AlohaSymbol.warning)
                         }
                     }
                     .buttonStyle(.bordered)
