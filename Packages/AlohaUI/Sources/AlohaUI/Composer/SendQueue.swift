@@ -39,9 +39,13 @@ public final class SendQueue {
         let monitor = NWPathMonitor()
         // The first update reports the current path, which is itself a fine
         // moment to drain: the app has just started.
-        monitor.pathUpdateHandler = { [weak self] path in
+        //
+        // `@Sendable` by hand, for the reason `NextVideoPreloader` gives: the
+        // monitor calls this on its own queue, and a handler inferred
+        // main-actor-isolated traps there.
+        monitor.pathUpdateHandler = { @Sendable [weak self] path in
             guard path.status == .satisfied else { return }
-            Task { @MainActor in await self?.drainAll() }
+            Task { @MainActor [weak self] in await self?.drainAll() }
         }
         monitor.start(queue: DispatchQueue(label: "social.aloha.app.send-queue"))
         self.monitor = monitor
