@@ -26,6 +26,10 @@ public final class ComposerModel {
     public var showsContentWarningField = false
     public var pollOptions: [String] = []
     public var pollMultiple = false
+    /// How long the poll runs, in seconds; one of `pollDurations`.
+    public var pollExpiresIn = PollRules.defaultDuration
+    /// Whether the counts stay hidden until the poll ends.
+    public var pollHideTotals = false
     public var scheduledAt: Date?
     public var isShowingAltTextFor: MediaAttachment?
     public var completions: [String] = []
@@ -288,6 +292,8 @@ public final class ComposerModel {
         self.scheduledAt = draft.scheduledAt
         self.pollOptions = draft.pollOptions
         self.pollMultiple = draft.pollMultiple
+        self.pollExpiresIn = draft.pollExpiresIn ?? PollRules.defaultDuration
+        self.pollHideTotals = draft.pollHideTotals
         self.threadSegments = draft.threadSegments
         self.quotePolicy = draft.quotePolicy.flatMap(QuotePolicy.init(rawValue:)) ?? .public
         self.replyPolicy = draft.replyPolicy.flatMap(ReplyPolicy.init(rawValue:)) ?? .everyone
@@ -546,6 +552,9 @@ public final class ComposerModel {
     public var canPost: Bool {
         guard !isPosting, !isUploading else { return false }
         guard (remainingCharacters ?? 0) >= 0 else { return false }
+        // A poll the server would refuse is held here, where the editor can
+        // say why, rather than refused with the whole post.
+        guard pollProblem == nil else { return false }
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return hasText || !attachmentIDs.isEmpty || quoting != nil || restoredQuotedID != nil
     }
@@ -574,7 +583,17 @@ public final class ComposerModel {
             pollOptions = []
         } else {
             pollOptions = ["", ""]
+            pollExpiresIn = PollRules.closestDuration(to: pollExpiresIn, within: limits)
         }
+    }
+
+    /// The durations this server accepts, from five minutes to seven days
+    /// within its `min_expiration` and `max_expiration`.
+    public var pollDurations: [Int] { PollRules.durations(within: limits) }
+
+    /// Why the poll cannot be posted as it stands, if it cannot.
+    var pollProblem: PollRules.Problem? {
+        hasPoll ? PollRules.problem(options: pollOptions, limits: limits) : nil
     }
 
     public func addPollOption() {
@@ -743,7 +762,12 @@ public final class ComposerModel {
             inReplyToID: replyTo?.id ?? restoredReplyToID,
             mediaIDs: cardAttachmentID.map { [$0] } ?? attachmentIDs,
             pollOptions: pollOptions.filter { !$0.isEmpty },
+            // Snapped to what this server accepts: a draft from another
+            // server, or one saved before the bounds were known, may hold a
+            // duration this one would refuse.
+            pollExpiresIn: PollRules.closestDuration(to: pollExpiresIn, within: limits),
             pollMultiple: pollMultiple,
+            pollHideTotals: pollHideTotals,
             scheduledAt: scheduledAt,
             idempotencyKey: draftSnapshot.idempotencyKey(forPosition: threadBasePosition)
         )
@@ -984,7 +1008,8 @@ public final class ComposerModel {
             // Library pictures are attachments like any other once made, so
             // their ids travel too.
             uploadedMediaIDs: attachmentIDs,
-            pollOptions: pollOptions.filter { !$0.isEmpty }, pollMultiple: pollMultiple,
+            pollOptions: pollOptions.filter { !$0.isEmpty },
+            pollExpiresIn: hasPoll ? pollExpiresIn : nil, pollMultiple: pollMultiple,
             scheduledAt: scheduledAt, idempotencyKey: idempotencyKey,
             quotedID: quoting?.id ?? restoredQuotedID,
             quotePolicy: canQuote && quotePolicy != .public ? quotePolicy.rawValue : nil,
@@ -992,6 +1017,7 @@ public final class ComposerModel {
                 !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             })
         snapshot.threadPosition = threadBasePosition
+        snapshot.pollHideTotals = hasPoll && pollHideTotals
         snapshot.replyPolicy =
             isNextcloud && replyPolicy != .everyone ? replyPolicy.rawValue : nil
         snapshot.marksAsAIGenerated = isNextcloud && marksAsAIGenerated

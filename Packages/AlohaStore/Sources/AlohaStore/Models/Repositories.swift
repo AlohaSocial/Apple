@@ -154,6 +154,7 @@ public actor SupportStore {
         record.pollOptions = snapshot.pollOptions
         record.pollExpiresIn = snapshot.pollExpiresIn
         record.pollMultiple = snapshot.pollMultiple
+        record.pollHideTotals = snapshot.pollHideTotals
         record.scheduledAt = snapshot.scheduledAt
         record.queuedForSend = snapshot.queuedForSend
         record.idempotencyKey = snapshot.idempotencyKey
@@ -327,6 +328,8 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
     public var pollOptions: [String]
     public var pollExpiresIn: Int?
     public var pollMultiple: Bool
+    /// The poll's "hide totals until it ends" switch; see `DraftRecord`.
+    public var pollHideTotals = false
     public var scheduledAt: Date?
     public var idempotencyKey: String
     public var queuedForSend: Bool
@@ -374,6 +377,7 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
         rest.localMediaPaths = []
         rest.pollOptions = []
         rest.pollExpiresIn = nil
+        rest.pollHideTotals = false
         rest.quotedID = nil
         rest.quotePolicy = nil
         rest.scheduledAt = nil
@@ -438,6 +442,7 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
             quotePolicy: record.quotePolicy, threadSegments: record.threadSegments,
             lastSendError: record.lastSendError, updatedAt: record.updatedAt)
         threadPosition = record.threadPosition
+        pollHideTotals = record.pollHideTotals
         replyPolicy = record.replyPolicy
         marksAsAIGenerated = record.marksAsAIGenerated
         placeID = record.placeID

@@ -24,6 +24,11 @@ public struct ThreadView: View {
     @State private var focusedWasRemoved = false
     @State private var ancestors: [Status] = []
     @State private var descendants: [Status] = []
+    /// The replies' shape — depth, branches, folds — worked out whenever the
+    /// replies change rather than in the body (`ThreadLayout`).
+    @State private var layout = ThreadLayout()
+    /// Folds the reader opened, this visit.
+    @State private var expandedFolds: Set<String> = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     /// Hidden replies the reader chose to look at anyway, this visit.
@@ -72,17 +77,10 @@ public struct ThreadView: View {
                     }
                 }
 
-                if !descendants.isEmpty {
+                if !descendants.isEmpty, layout.count == descendants.count {
                     Section {
-                        ForEach(Array(descendants.enumerated()), id: \.element.id) { _, status in
-                            Group {
-                                if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
-                                    hiddenReplyRow(status)
-                                } else {
-                                    row(status, isFocused: false)
-                                }
-                            }
-                            .padding(.leading, indent(for: status))
+                        ForEach(layout.rows(expanded: expandedFolds)) { entry in
+                            replyRow(entry)
                         }
                     }
                 }
@@ -142,6 +140,7 @@ public struct ThreadView: View {
                 guard let reply = note.object as? Status,
                     let index = descendants.firstIndex(where: { $0.id == reply.id })
                 else { return }
+                // The same post in the same place: the shape is unchanged.
                 descendants[index] = reply
                 if reply.isHiddenByAuthor { revealedHidden.remove(reply.id) }
             }
@@ -171,7 +170,7 @@ public struct ThreadView: View {
                 }
                 withAnimation {
                     ancestors.removeAll { removal.removes($0) }
-                    descendants.removeAll { removal.removes($0) }
+                    setDescendants(descendants.filter { !removal.removes($0) })
                 }
             }
             .onAppear {
@@ -320,31 +319,63 @@ public struct ThreadView: View {
         .listRowBackground(palette.background)
     }
 
-    /// Indentation is capped at five levels; anything deeper reads as a flat
-    /// list rather than a staircase. Ancestors and the focused post count as
-    /// the chain, not only already-loaded descendants, so a reply whose
-    /// parent is above the focused post does not indent past it.
-    private func indent(for status: Status) -> Double {
-        var byID: [String: Status] = [:]
-        for known in ancestors + (focused.map { [$0] } ?? []) + descendants {
-            byID[known.id] = known
-        }
-        var depth = 0
-        var current: String? = status.inReplyToID
-        var seen = Set<String>()
+    /// The replies and their shape, always together, so the rows never read
+    /// a layout built for a different list. Editing a post in place keeps
+    /// its id and its parent, so `apply` and a hidden reply changing need
+    /// not come through here.
+    private func setDescendants(_ replies: [Status]) {
+        descendants = replies
+        layout = ThreadLayout(focusedID: statusID, descendants: replies)
+    }
 
-        while let parent = current, depth < 5, seen.insert(parent).inserted {
-            if parent == statusID { break }
-            guard let known = byID[parent] else { break }
-            current = known.inReplyToID
-            // Only steps below the focused post indent; ancestors stay flat.
-            if descendants.contains(where: { $0.id == known.id }) {
-                depth += 1
-            } else {
-                break
+    /// One row under the opened post: a reply with its thread lines, or the
+    /// fold a deep or long branch collapses into.
+    @ViewBuilder
+    private func replyRow(_ entry: ThreadLayout.Row) -> some View {
+        switch entry {
+        case .reply(let index, let indent, let depth):
+            if descendants.indices.contains(index) {
+                let status = descendants[index]
+                Group {
+                    if status.isHiddenByAuthor, !revealedHidden.contains(status.id) {
+                        hiddenReplyRow(status)
+                    } else {
+                        row(status, isFocused: false)
+                    }
+                }
+                .padding(.leading, ThreadLines.width(for: indent))
+                .background(alignment: .leading) { ThreadLines(levels: indent) }
+                // The indentation is drawn, so it is said as well: without
+                // it a screen reader hears a flat list of replies with no
+                // way to tell an answer to the post from an aside under one.
+                .accessibilityValue(
+                    depth > 1
+                        ? Text("Reply, level \(depth)", comment: "Thread reply depth")
+                        : Text("Reply", comment: "Thread reply depth"))
             }
+        case .more(let anchorID, let count, let indent):
+            Button {
+                withAnimation { _ = expandedFolds.insert(anchorID) }
+            } label: {
+                Label {
+                    Text(
+                        "Show ^[\(count) more reply](inflect: true)",
+                        comment: "Thread fold row: replies collapsed in a deep or long branch")
+                } icon: {
+                    Image(systemName: "arrow.turn.down.right")
+                }
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(palette.accent)
+                .padding(.vertical, AlohaMetrics.space3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, ThreadLines.width(for: indent))
+            .background(alignment: .leading) { ThreadLines(levels: indent) }
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+            .listRowBackground(palette.background)
         }
-        return Double(depth) * 12
     }
 
     /// The link preview of the focused post, for one the server had not built
@@ -395,7 +426,7 @@ public struct ThreadView: View {
                 await verdicts.warm(context.ancestors + context.descendants)
                 withAnimation(.easeOut(duration: 0.2)) {
                     ancestors = verdicts.kept(context.ancestors)
-                    descendants = verdicts.kept(context.descendants)
+                    setDescendants(verdicts.kept(context.descendants))
                 }
                 filling = SocialFilling(response)
                 attempt += 1
@@ -443,7 +474,7 @@ public struct ThreadView: View {
             }
             focused = status
             ancestors = verdicts.kept(context.ancestors)
-            descendants = verdicts.kept(context.descendants)
+            setDescendants(verdicts.kept(context.descendants))
             errorMessage = nil
 
             try? await session.timelineStore.updateStatus(
@@ -454,5 +485,33 @@ public struct ThreadView: View {
             errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
             return SocialFilling()
         }
+    }
+}
+
+/// The vertical rules left of an indented reply, one per level, so a reader
+/// can follow a branch down the screen rather than judge indentation by eye
+/// (docs/05 §4). Rows in a thread have no vertical inset, so the rules of
+/// consecutive replies meet and read as one line per branch.
+struct ThreadLines: View {
+    @Environment(\.alohaPalette) private var palette
+
+    /// Each level steps in by this much, as the indentation always has.
+    static let step: CGFloat = 12
+
+    let levels: Int
+
+    static func width(for levels: Int) -> CGFloat { CGFloat(levels) * step }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<max(levels, 0), id: \.self) { _ in
+                Rectangle()
+                    .fill(palette.separator)
+                    .frame(width: 1)
+                    .frame(maxHeight: .infinity)
+                    .frame(width: Self.step, alignment: .center)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }

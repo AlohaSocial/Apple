@@ -28,6 +28,19 @@ public struct SearchView: View {
     /// The reader's filters, in the public context: what a search finds is
     /// anyone's posts, as a public timeline is.
     @State private var verdicts = FilterVerdicts(context: .public)
+    /// All kinds at once, or one kind paged (`SearchScope`).
+    @State private var scope: SearchScope = .all
+    /// How many results of the scope's kind the server has sent so far: the
+    /// next page's `offset`. Counted as they arrive, before filters, so a
+    /// hidden post does not make the next page repeat one.
+    @State private var scopedOffset = 0
+    @State private var hasMoreInScope = false
+    @State private var isLoadingMore = false
+    @State private var moreError: String?
+    /// What is trending, for the empty field, where the server has trends.
+    @State private var trendingTags: [Tag] = []
+    @State private var trendingStatuses: [Status] = []
+    @State private var didLoadTrends = false
 
     private var shownStatuses: [Status] { verdicts.kept(results.statuses) }
 
@@ -51,61 +64,62 @@ public struct SearchView: View {
 
             if query.isEmpty {
                 recentsSection
+                trendsSections
             } else {
-                if isSearching, results.isEmpty {
+                // Nothing yet of what this scope shows: what another scope
+                // left on screen is not an answer to this one.
+                if isSearching,
+                    scope.resultType.map({ results.count(of: $0) == 0 }) ?? results.isEmpty
+                {
                     loadingRow
                 }
 
-                if !results.accounts.isEmpty {
+                if scope.shows(.accounts), !results.accounts.isEmpty {
                     Section {
-                        ForEach(results.accounts) { account in
-                            Button {
-                                onAction(.openProfile(account))
-                            } label: {
-                                AccountRow(
-                                    account: account, localHost: session.snapshot.instanceHost
-                                )
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .listRowBackground(palette.background)
+                        ForEach(
+                            scope == .all
+                                ? Array(results.accounts.prefix(SearchScope.allPreview))
+                                : results.accounts
+                        ) { account in
+                            accountRow(account)
                         }
                     } header: {
-                        Text("People", comment: "Search results section")
+                        sectionHeader(
+                            Text("People", comment: "Search results section"),
+                            seeAll: .accounts, count: results.accounts.count)
                     }
                 }
 
-                if !results.hashtags.isEmpty {
+                if scope.shows(.hashtags), !results.hashtags.isEmpty {
                     Section {
-                        ForEach(results.hashtags) { tag in
-                            NavigationLink(value: Route.hashtag(tag.name)) {
-                                HashtagRow(tag: tag)
-                            }
-                            .listRowBackground(palette.background)
+                        ForEach(
+                            scope == .all
+                                ? Array(results.hashtags.prefix(SearchScope.allPreview))
+                                : results.hashtags
+                        ) { tag in
+                            hashtagRow(tag)
                         }
                     } header: {
-                        Text("Hashtags", comment: "Search results section")
+                        sectionHeader(
+                            Text("Hashtags", comment: "Search results section"),
+                            seeAll: .hashtags, count: results.hashtags.count)
                     }
                 }
 
-                if !shownStatuses.isEmpty {
+                if scope.shows(.statuses), !shownStatuses.isEmpty {
                     Section {
                         ForEach(shownStatuses) { status in
-                            StatusRow(
-                                status: status,
-                                policy: session.settings.sensitiveMediaPolicy,
-                                localHost: session.snapshot.instanceHost,
-                                filterWarning: verdicts.warning(for: status),
-                                showActions: false,
-                                showsCounts: session.settings.showPopularityCounts,
-                                onAction: onAction
-                            )
-                            .statusRowInteractions(status, session: session, onAction: onAction)
-                            .listRowBackground(palette.background)
+                            statusRow(status)
                         }
                     } header: {
-                        Text("Posts", comment: "Search results section")
+                        sectionHeader(
+                            Text("Posts", comment: "Search results section"),
+                            seeAll: .statuses, count: results.statuses.count)
                     }
+                }
+
+                if scope != .all, !isSearching, hasMoreInScope || moreError != nil {
+                    moreRow
                 }
 
                 // One character is still typing, not searching: the empty
@@ -132,9 +146,21 @@ public struct SearchView: View {
         }
         .listStyle(.plain)
         .alohaGround(palette)
+        // In the content rather than `.searchScopes`: the system's scope bar
+        // belongs to the active search field, and the field is put away on
+        // Search so the keyboard leaves the results — taking the scopes
+        // with it, just when the results arrive to be narrowed.
+        .safeAreaBar(edge: .top, spacing: 0) {
+            if !query.isEmpty {
+                scopePicker
+                    .padding(.horizontal, AlohaMetrics.space4)
+                    .padding(.vertical, AlohaMetrics.space2)
+            }
+        }
         .environment(\.filterVerdicts, verdicts)
         .onStatusesRemoved(for: session) { removal in
             results.statuses.removeAll { removal.removes($0) }
+            trendingStatuses.removeAll { removal.removes($0) }
         }
         #if os(iOS)
             .searchable(
@@ -159,6 +185,11 @@ public struct SearchView: View {
             }
         }
         .onChange(of: query) { _, value in schedule(value) }
+        // A scope is the same question asked more narrowly, so it asks again
+        // the way the search on screen was asked — resolving if that did.
+        .onChange(of: scope) { _, _ in
+            schedule(query, immediately: true, resolving: resultsResolved)
+        }
         .onSubmit(of: .search) {
             remember(query)
             isFieldPresented = false
@@ -169,7 +200,10 @@ public struct SearchView: View {
         .refreshable {
             await schedule(query, immediately: true, resolving: true)?.value
         }
-        .task { recents = SearchHistory.load() }
+        .task {
+            recents = SearchHistory.load()
+            await loadTrends()
+        }
         .onDisappear {
             searchTask?.cancel()
             searchID = UUID()
@@ -179,7 +213,7 @@ public struct SearchView: View {
 
     private var recentsSection: some View {
         Group {
-            if recents.isEmpty {
+            if recents.isEmpty, trendingTags.isEmpty, trendingStatuses.isEmpty {
                 ContentUnavailableView {
                     Text("Search the fediverse", comment: "Search placeholder title")
                 } description: {
@@ -221,6 +255,130 @@ public struct SearchView: View {
         }
     }
 
+    /// What is trending, under the recent searches: something to start from
+    /// when the field is empty. A server without trends (GoToSocial, a
+    /// Mastodon that turned them off) answers an error or nothing, and the
+    /// sections simply are not there.
+    @ViewBuilder
+    private var trendsSections: some View {
+        if !trendingTags.isEmpty {
+            Section {
+                ForEach(trendingTags) { tag in
+                    hashtagRow(tag)
+                }
+            } header: {
+                Text("Trending hashtags", comment: "Search screen section, empty field")
+            }
+        }
+        if !trendingStatuses.isEmpty {
+            Section {
+                ForEach(trendingStatuses) { status in
+                    statusRow(status)
+                }
+            } header: {
+                Text("Trending posts", comment: "Search screen section, empty field")
+            }
+        }
+    }
+
+    private var scopePicker: some View {
+        Picker(selection: $scope) {
+            ForEach(SearchScope.allCases) { scope in
+                Text(scope.title).tag(scope)
+            }
+        } label: {
+            Text("Show", comment: "Search scope picker label")
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+    }
+
+    /// A section's heading, with "See all" where "All" holds results back
+    /// that the section's own scope would page through.
+    private func sectionHeader(
+        _ title: Text, seeAll target: SearchScope, count: Int
+    ) -> some View {
+        HStack {
+            title
+            Spacer()
+            if scope == .all, let type = target.resultType,
+                SearchScope.hasMore(than: count, of: type)
+            {
+                Button {
+                    scope = target
+                } label: {
+                    Text("See all", comment: "Search section action: show only this kind")
+                }
+                .font(.caption)
+                .accessibilityLabel(
+                    Text(
+                        "See all \(target.title)",
+                        comment: "Search section action. The argument is People, Hashtags or Posts."
+                    ))
+            }
+        }
+    }
+
+    private func accountRow(_ account: Account) -> some View {
+        Button {
+            onAction(.openProfile(account))
+        } label: {
+            AccountRow(account: account, localHost: session.snapshot.instanceHost)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(palette.background)
+    }
+
+    private func hashtagRow(_ tag: Tag) -> some View {
+        NavigationLink(value: Route.hashtag(tag.name)) {
+            HashtagRow(tag: tag)
+        }
+        .listRowBackground(palette.background)
+    }
+
+    private func statusRow(_ status: Status) -> some View {
+        StatusRow(
+            status: status,
+            policy: session.settings.sensitiveMediaPolicy,
+            localHost: session.snapshot.instanceHost,
+            filterWarning: verdicts.warning(for: status),
+            showActions: false,
+            showsCounts: session.settings.showPopularityCounts,
+            onAction: onAction
+        )
+        .statusRowInteractions(status, session: session, onAction: onAction)
+        .listRowBackground(palette.background)
+    }
+
+    /// The end of one scope's results: the next page loading as it comes
+    /// into view, or why it did not, with a way to ask again.
+    @ViewBuilder
+    private var moreRow: some View {
+        Group {
+            if let moreError {
+                AlohaErrorStrip(message: moreError) {
+                    self.moreError = nil
+                    Task { await loadMore() }
+                }
+            } else {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .accessibilityLabel(
+                            Text("Loading more results", comment: "Search paging"))
+                    Spacer()
+                }
+                .padding(.vertical, AlohaMetrics.space3)
+                // Asked again after each page, so while this row stays in
+                // view the pages keep coming, and once it leaves they stop.
+                .task(id: "\(searchID)|\(scopedOffset)") { await loadMore() }
+            }
+        }
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
     /// The shape of results arriving, not a spinner: three people, then a
     /// couple of lines. A lone spinner over a blank screen reads as "broken";
     /// the shape of the answer reads as "working".
@@ -230,7 +388,11 @@ public struct SearchView: View {
                 searchSkeleton(avatar: index == 0)
             }
         } header: {
-            Text("People", comment: "Search results section")
+            if scope == .all {
+                Text("People", comment: "Search results section")
+            } else {
+                Text(scope.title)
+            }
         }
     }
 
@@ -325,6 +487,8 @@ public struct SearchView: View {
             results = SearchResults()
             resultsResolved = false
             errorMessage = nil
+            hasMoreInScope = false
+            moreError = nil
             return nil
         }
         isSearching = true
@@ -332,12 +496,14 @@ public struct SearchView: View {
         searchTask = Task {
             if !immediately { try? await Task.sleep(for: .milliseconds(300)) }
             guard !Task.isCancelled else { return }
-            await search(trimmed, id: id, resolving: resolving)
+            await search(trimmed, id: id, resolving: resolving, scope: scope)
         }
         return searchTask
     }
 
-    private func search(_ value: String, id: UUID, resolving: Bool) async {
+    private func search(
+        _ value: String, id: UUID, resolving: Bool, scope: SearchScope
+    ) async {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else {
             isSearching = false
@@ -356,14 +522,26 @@ public struct SearchView: View {
         let resolve = resolving && isRemoteQuery(trimmed)
 
         do {
-            let response = try await session.client.decode(
-                SearchResults.self,
-                from: Endpoint.search.search(trimmed, resolve: resolve, limit: 20))
+            let endpoint =
+                scope.resultType.map {
+                    Endpoint.search.page(
+                        trimmed, type: $0, limit: SearchScope.pageSize, resolve: resolve)
+                }
+                ?? Endpoint.search.search(trimmed, resolve: resolve, limit: SearchScope.allLimit)
+            let response = try await session.client.decode(SearchResults.self, from: endpoint)
             await verdicts.prepare(response.statuses, session: session)
             guard !Task.isCancelled, searchID == id else { return }
             results = response
             resultsResolved = resolve
             errorMessage = nil
+            moreError = nil
+            if let type = scope.resultType {
+                scopedOffset = response.count(of: type)
+                hasMoreInScope = SearchPaging.mayHaveMore(received: scopedOffset)
+            } else {
+                scopedOffset = 0
+                hasMoreInScope = false
+            }
         } catch {
             // Superseded by the next keystroke, not a failure.
             guard !Task.isCancelled, searchID == id else { return }
@@ -375,6 +553,61 @@ public struct SearchView: View {
                     localized: "Search could not be run. Try again.",
                     comment: "Search failure")
         }
+    }
+
+    /// The next page of the scope on screen. Never resolving: other
+    /// servers were asked, if at all, by the first page. A newer search
+    /// meanwhile — a keystroke, another scope — owns the screen, and this
+    /// page is dropped.
+    private func loadMore() async {
+        guard let type = scope.resultType, hasMoreInScope, !isLoadingMore else { return }
+        let id = searchID
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let offset = scopedOffset
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let page = try await session.client.decode(
+                SearchResults.self,
+                from: Endpoint.search.page(
+                    trimmed, type: type, offset: offset, limit: SearchScope.pageSize))
+            await verdicts.prepare(page.statuses, session: session)
+            guard !Task.isCancelled, searchID == id else { return }
+            let received = page.count(of: type)
+            results = SearchPaging.appending(page, to: results, type: type)
+            scopedOffset = offset + received
+            hasMoreInScope = SearchPaging.mayHaveMore(received: received)
+            moreError = nil
+        } catch {
+            guard !Task.isCancelled, searchID == id else { return }
+            await session.handle(error)
+            moreError =
+                (error as? APIError)?.errorDescription
+                ?? String(
+                    localized: "More results could not be loaded. Try again.",
+                    comment: "Search paging failure")
+        }
+    }
+
+    /// Trending hashtags and posts for the empty field, once per visit.
+    /// Both are optional: a server that has no trends, or refuses them,
+    /// leaves the recent searches on their own rather than an error.
+    private func loadTrends() async {
+        guard !didLoadTrends else { return }
+        didLoadTrends = true
+        async let tags = try? await session.client.decode(
+            LossyArray<Tag>.self, from: Endpoint.search.trendingTags(limit: 10))
+        async let posts = try? await session.client.decode(
+            LossyArray<Status>.self, from: Endpoint.discovery.trendingStatuses(limit: 5))
+        let (tagPage, postPage) = await (tags, posts)
+        let statuses = postPage?.elements ?? []
+        await verdicts.prepare(statuses, session: session)
+        guard !Task.isCancelled else {
+            didLoadTrends = false
+            return
+        }
+        trendingTags = tagPage?.elements ?? []
+        trendingStatuses = verdicts.kept(statuses)
     }
 
     private func remember(_ value: String) {
