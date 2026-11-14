@@ -95,6 +95,9 @@ public final class SyncEngine {
     private func publishUnreadTotal() {
         let total = unreadCounts.values.reduce(0, +)
         AppGroup.defaults.set(total, forKey: AppGroup.unreadTotalKey)
+        AppGroup.defaults.set(
+            Dictionary(uniqueKeysWithValues: unreadCounts.map { ($0.key.uuidString, $0.value) }),
+            forKey: AppGroup.unreadByAccountKey)
         WidgetReloader.reloadAll()
         #if os(iOS)
             // The watch face counts the paired account only, not the total.

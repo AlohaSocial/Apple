@@ -86,6 +86,9 @@ public enum AppGroup {
     // Keys shared across processes.
     public static let activeAccountKey = "aloha.activeAccount"
     public static let unreadTotalKey = "aloha.unreadTotal"
+    /// The same count per account, as `[account id string: count]`, so a
+    /// widget set to one account shows that account's.
+    public static let unreadByAccountKey = "aloha.unreadByAccount"
     /// Mastodon notification ids a push already announced, per account
     /// (`[account id string: [id]]`), so the poll that finds the same
     /// notification later does not raise it a second time.
