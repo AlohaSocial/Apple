@@ -31,6 +31,12 @@ struct AlohaSocialMacApp: App {
 
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
 
+    /// Whether the menu bar extra is in the menu bar: off until the person
+    /// turns it on in Settings (docs/09 §2).
+    @AppStorage(MacMenuBarExtra.isShownKey) private var showsMenuBarExtra = false
+    /// The sync engine's unread total, which the Dock badge shows too.
+    @AppStorage(AppGroup.unreadTotalKey, store: AppGroup.defaults) private var unreadTotal = 0
+
     /// `-AlohaMockServer` boots into a populated timeline against the mock
     /// server, skipping OAuth. DEBUG only.
     private static func makeEnvironment() -> AppEnvironment {
@@ -55,6 +61,7 @@ struct AlohaSocialMacApp: App {
                     BackgroundWork.scheduleMaintenance()
                 }
                 .modifier(ContinuityReceiver(environment: environment))
+                .providesWindowOpener()
         }
         .modelContainer(environment.container)
         .commands { AlohaCommands() }
@@ -72,15 +79,49 @@ struct AlohaSocialMacApp: App {
         .modelContainer(environment.container)
         .defaultSize(width: 760, height: 820)
 
+        // The composer in a window of its own, so the timeline stays usable
+        // while a post is written (docs/09 §2). Not restored at relaunch: a
+        // composer closed by quitting has already kept its words as a draft,
+        // and reopening it empty beside that draft would be a second copy.
+        WindowGroup(for: ComposeWindowRequest.self) { $request in
+            ComposeWindow(request: request)
+                .environment(environment)
+        }
+        .modelContainer(environment.container)
+        .defaultSize(width: 680, height: 640)
+        .restorationBehavior(.disabled)
+
         // The Mac's own preferences window (⌘,): the same settings form the
         // app shows in its sidebar destination, rather than a second
         // implementation of it. "Add account" cannot present from here —
         // the sign-in sheet belongs to the main window — so it asks the
         // shell, which owns it, via the same notification mechanism every
         // other entry point uses.
+        //
+        // The Mac's own switches — the menu bar extra — sit in a tab of their
+        // own beside it, so the shared form stays the same on every platform.
         Settings {
-            SettingsView {
-                NotificationCenter.default.post(name: .alohaAddAccount, object: nil)
+            TabView {
+                Tab {
+                    SettingsView {
+                        NotificationCenter.default.post(name: .alohaAddAccount, object: nil)
+                    }
+                } label: {
+                    Label {
+                        Text("General", comment: "Mac Settings tab")
+                    } icon: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+                Tab {
+                    MacMenuBarSettings()
+                } label: {
+                    Label {
+                        Text("Menu Bar", comment: "Mac Settings tab")
+                    } icon: {
+                        Image(systemName: "menubar.rectangle")
+                    }
+                }
             }
             .environment(environment)
             .alohaTheme(
@@ -88,59 +129,16 @@ struct AlohaSocialMacApp: App {
                 accent: environment.serverAccent)
         }
 
-        // The menu bar extra: a way in from anywhere — new post, the three
-        // destinations — without bringing the window forward first. Each item
-        // posts what its menu-bar sibling posts, so the extra cannot behave
-        // differently from the menu bar it sits next to.
-        MenuBarExtra {
-            Button {
-                activate()
-                NotificationCenter.default.post(
-                    name: RouteResolver.composeRequested, object: nil)
-            } label: {
-                Text("New Post", comment: "Menu item")
-            }
-
-            Divider()
-
-            // The sidebar's order and names (`ShellPlace.sidebarOrder`).
-            Button {
-                openRoute(.notifications)
-            } label: {
-                Text("Activities", comment: "Menu item")
-            }
-
-            Button {
-                openRoute(.conversations)
-            } label: {
-                Text("Direct messages", comment: "Menu item")
-            }
-
-            Button {
-                openRoute(.explore)
-            } label: {
-                Text("Discover", comment: "Menu item")
-            }
+        // The menu bar extra: the unread count, the newest notifications and
+        // New Post, from anywhere, without bringing a window forward first.
+        MenuBarExtra(isInserted: $showsMenuBarExtra) {
+            MacMenuBarPanel()
+                .environment(environment)
+                .modelContainer(environment.container)
         } label: {
-            Label {
-                Text("Aloha Social", comment: "App name")
-            } icon: {
-                Image(systemName: "bubble.left.and.text.bubble.right")
-            }
+            MacMenuBarLabel(unread: unreadTotal)
         }
-    }
-
-    /// A menu-bar action lands in a running app whose window may be behind
-    /// forty others: bring it forward first, then navigate, so the
-    /// destination is actually seen.
-    private func activate() {
-        NSApplication.shared.activate(ignoringOtherApps: true)
-    }
-
-    private func openRoute(_ route: Route) {
-        activate()
-        NotificationCenter.default.post(
-            name: .alohaOpenRoute, object: nil, userInfo: ["route": route])
+        .menuBarExtraStyle(.window)
     }
 }
 
@@ -161,8 +159,64 @@ struct AlohaSocialMacAppIntents: AppIntentsPackage {
 /// forward and Reply, Favourite and Boost did nothing. What each one does is
 /// `NotificationResponder`'s, shared with the iOS app delegate.
 final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    /// Held for the life of the app: AppKit keeps no reference of its own.
+    private let services = MacServiceProvider()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
+        NSApplication.shared.servicesProvider = services
+    }
+
+    // MARK: - Dock menu
+
+    /// New Post, Activities and the accounts to switch between, from the
+    /// Dock (docs/09 §2). Built each time it opens, so the accounts and the
+    /// check beside the active one are current.
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        menu.addItem(
+            item(
+                String(localized: "New Post", comment: "Menu item"),
+                action: #selector(dockNewPost)))
+        menu.addItem(
+            item(
+                String(localized: "Activities", comment: "Menu item"),
+                action: #selector(dockActivities)))
+
+        let environment = AlohaSocialMacApp.environment
+        // Switching needs somewhere to switch to.
+        if environment.sessions.count > 1 {
+            menu.addItem(.separator())
+            for session in environment.sessions {
+                let entry = item(
+                    session.snapshot.bestDisplayName, action: #selector(dockSwitchAccount(_:)))
+                entry.toolTip = session.snapshot.qualifiedHandle
+                entry.representedObject = session.id
+                entry.state = session.id == environment.activeSession?.id ? .on : .off
+                menu.addItem(entry)
+            }
+        }
+        return menu
+    }
+
+    private func item(_ title: String, action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        return item
+    }
+
+    @objc private func dockNewPost() {
+        MacWindows.compose()
+    }
+
+    @objc private func dockActivities() {
+        MacWindows.open(.notifications)
+    }
+
+    @objc private func dockSwitchAccount(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        AlohaSocialMacApp.environment.setActiveAccount(id)
+        MacWindows.activate()
     }
 
     func userNotificationCenter(

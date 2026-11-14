@@ -26,27 +26,46 @@ import SwiftUI
 
         public var body: some Commands {
             // Replacing the group takes File > New Window with it, so it is
-            // put back — on ⌥⌘N, the way Mail pairs New Message with New
-            // Viewer Window, because ⌘N is the post.
+            // put back. Where each lands is docs/09's: on the Mac ⌘N is a new
+            // window and ⌥⌘N a new compose window (§2); on iPad ⌘N is the
+            // post (§1), and New Window moves to ⌥⌘N.
             CommandGroup(replacing: .newItem) {
-                Button {
-                    if let shell {
-                        shell.compose()
-                    } else {
-                        NotificationCenter.default.post(
-                            name: RouteResolver.composeRequested, object: nil)
+                #if os(macOS)
+                    Button {
+                        // A window of its own, for the active account; it
+                        // needs no main window to exist.
+                        openWindow(value: ComposeWindowRequest())
+                    } label: {
+                        Text("New Post", comment: "Menu item")
                     }
-                } label: {
-                    Text("New Post", comment: "Menu item")
-                }
-                .keyboardShortcut("n", modifiers: .command)
+                    .keyboardShortcut("n", modifiers: [.command, .option])
 
-                Button {
-                    openWindow(id: AlohaWindow.main)
-                } label: {
-                    Text("New Window", comment: "Menu item")
-                }
-                .keyboardShortcut("n", modifiers: [.command, .option])
+                    Button {
+                        openWindow(id: AlohaWindow.main)
+                    } label: {
+                        Text("New Window", comment: "Menu item")
+                    }
+                    .keyboardShortcut("n", modifiers: .command)
+                #else
+                    Button {
+                        if let shell {
+                            shell.compose()
+                        } else {
+                            NotificationCenter.default.post(
+                                name: RouteResolver.composeRequested, object: nil)
+                        }
+                    } label: {
+                        Text("New Post", comment: "Menu item")
+                    }
+                    .keyboardShortcut("n", modifiers: .command)
+
+                    Button {
+                        openWindow(id: AlohaWindow.main)
+                    } label: {
+                        Text("New Window", comment: "Menu item")
+                    }
+                    .keyboardShortcut("n", modifiers: [.command, .option])
+                #endif
             }
 
             CommandMenu(Text("Go", comment: "Menu title")) {

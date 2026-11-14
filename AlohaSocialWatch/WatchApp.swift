@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
-import AlohaHTML
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
@@ -26,8 +25,8 @@ struct AlohaSocialWatchApp: App {
 struct WatchRootView: View {
     @Environment(WatchLink.self) private var link
     @Environment(\.scenePhase) private var scenePhase
-    /// Where a tapped complication asked to go.
-    @State private var path: [WatchComplicationLink] = []
+    /// Where a tapped complication, or a toolbar button, asked to go.
+    @State private var path: [WatchDestination] = []
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -42,12 +41,31 @@ struct WatchRootView: View {
                     }
                 } else {
                     WatchTimelineView()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                NavigationLink(value: WatchDestination.mentions) {
+                                    Image(systemName: "at")
+                                }
+                                .accessibilityLabel(
+                                    Text("Mentions", comment: "Watch mentions screen title"))
+                            }
+                            ToolbarItem(placement: .topBarTrailing) {
+                                NavigationLink(value: WatchDestination.notifications) {
+                                    Image(systemName: AlohaSymbol.notifications)
+                                }
+                                .accessibilityLabel(
+                                    Text(
+                                        "Notifications", comment: "Watch notifications screen title"
+                                    ))
+                            }
+                        }
                 }
             }
             .navigationTitle(Text("Aloha", comment: "Watch app title"))
-            .navigationDestination(for: WatchComplicationLink.self) { destination in
+            .navigationDestination(for: WatchDestination.self) { destination in
                 switch destination {
                 case .mentions: WatchMentionsView()
+                case .notifications: WatchNotificationsView()
                 case .status(let id): WatchStatusLoader(statusID: id)
                 }
             }
@@ -55,8 +73,8 @@ struct WatchRootView: View {
         .serverTint(link.serverTheme)
         .task { link.activate() }
         .onOpenURL { url in
-            guard let destination = WatchComplicationLink(url: url) else { return }
-            path = [destination]
+            guard let link = WatchComplicationLink(url: url) else { return }
+            path = [WatchDestination(link)]
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             guard phase == .active else { return }
@@ -65,47 +83,59 @@ struct WatchRootView: View {
     }
 }
 
+/// The screens the watch app pushes: the complications' two, and the
+/// notifications list the timeline's toolbar opens.
+enum WatchDestination: Hashable {
+    case mentions
+    case notifications
+    case status(String)
+
+    init(_ link: WatchComplicationLink) {
+        switch link {
+        case .mentions: self = .mentions
+        case .status(let id): self = .status(id)
+        }
+    }
+}
+
 /// The newest mentions, which is what the mentions complication opens.
 struct WatchMentionsView: View {
     @Environment(WatchLink.self) private var link
-    @State private var mentions: [MastodonNotification] = []
-    @State private var isLoading = true
+    @State private var feed = WatchFeed<MastodonNotification>(.mentions)
 
     var body: some View {
         List {
-            ForEach(mentions) { mention in
+            ForEach(feed.items) { mention in
                 if let status = mention.status {
                     NavigationLink {
                         WatchStatusView(status: status)
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(mention.account.bestDisplayName)
-                                .font(.caption2.weight(.semibold))
-                                .lineLimit(1)
-                            Text(WatchText.body(of: status))
-                                .font(.caption2)
-                                .lineLimit(3)
-                        }
+                        WatchPostRow(status: status, title: mention.account.bestDisplayName)
                     }
                 }
             }
-            if mentions.isEmpty && !isLoading {
+            if feed.items.isEmpty && !feed.isLoading && !feed.isShowingCache {
                 Text("No mentions yet", comment: "Watch, empty mentions list").font(.caption2)
+            }
+            if feed.isShowingCache {
+                WatchUpdatedHint(updatedAt: feed.updatedAt)
             }
         }
         .navigationTitle(Text("Mentions", comment: "Watch mentions screen title"))
-        .task { await load() }
+        .task(id: link.credentials?.accountID) { await load() }
         .refreshable { await load() }
     }
 
     private func load() async {
-        isLoading = true
-        defer { isLoading = false }
-        guard let client = link.client else { return }
-        let page = try? await client.decode(
-            LossyArray<MastodonNotification>.self,
-            from: Endpoint.notifications.flat(limit: 20, types: ["mention"]))
-        mentions = page?.elements.filter { $0.type == .mention } ?? []
+        await feed.load(accountID: link.credentials?.accountID) {
+            guard let client = link.client else { throw APIError.invalidResponse }
+            let page = try await client.decode(
+                LossyArray<MastodonNotification>.self,
+                from: Endpoint.notifications.flat(limit: 20, types: ["mention"]))
+            // Filtered here as well: a server that ignores `types` answers
+            // with every kind.
+            return page.elements.filter { $0.type == .mention }
+        }
     }
 }
 
@@ -144,56 +174,37 @@ struct WatchStatusLoader: View {
 
 struct WatchTimelineView: View {
     @Environment(WatchLink.self) private var link
-    @State private var statuses: [Status] = []
-    @State private var isLoading = true
+    @State private var feed = WatchFeed<Status>(.timeline)
 
     var body: some View {
         List {
-            ForEach(statuses) { status in
+            ForEach(feed.items) { status in
                 NavigationLink {
                     WatchStatusView(status: status)
                 } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(status.displayed.account.bestDisplayName)
-                            .font(.caption2.weight(.semibold))
-                            .lineLimit(1)
-                        Text(WatchText.body(of: status))
-                            .font(.caption2)
-                            .lineLimit(3)
-                    }
+                    WatchPostRow(status: status)
                 }
             }
-            if statuses.isEmpty && !isLoading {
+            if feed.items.isEmpty && !feed.isLoading && !feed.isShowingCache {
                 Text("Nothing yet", comment: "Watch empty timeline").font(.caption2)
             }
+            if feed.isShowingCache {
+                WatchUpdatedHint(updatedAt: feed.updatedAt)
+            }
         }
-        .task { await load() }
+        .task(id: link.credentials?.accountID) { await load() }
         .refreshable { await load() }
     }
 
     private func load() async {
-        isLoading = true
-        defer { isLoading = false }
-        guard let client = link.client else { return }
-        // Text and thumbnails only; no video on the wrist.
-        statuses =
-            (try? await client.decode(
+        await feed.load(accountID: link.credentials?.accountID) {
+            guard let client = link.client else { throw APIError.invalidResponse }
+            // Text and thumbnails only; no video on the wrist.
+            return try await client.decode(
                 LossyArray<Status>.self,
-                from: Endpoint.timelines.timeline(.home, limit: 20)))?.elements ?? []
-    }
-}
-
-/// A status body as the watch draws it: the app's own parser, so emphasis,
-/// links, mentions and line breaks read as they do on the phone rather than
-/// as tags stripped to spaces.
-enum WatchText {
-    private static let parser = StatusHTMLParser()
-
-    static func body(of status: Status) -> AttributedString {
-        let target = status.displayed
-        return parser.parse(
-            target.content, mentions: target.mentions, tags: target.tags, emojis: target.emojis
-        ).attributedString
+                from: Endpoint.timelines.timeline(.home, limit: 20)
+            ).elements
+        }
     }
 }
 
@@ -220,14 +231,20 @@ struct WatchStatusView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(status.displayed.account.bestDisplayName)
                     .font(.caption.weight(.semibold))
-                Text(WatchText.body(of: status))
-                    .font(.caption2)
+                WatchPostBody(status: status)
 
                 HStack(spacing: 12) {
+                    // The app's own heart, not a star: a favourite is the
+                    // same act on the wrist as on the phone (`AlohaSymbol`).
                     Button {
                         toggle($isFavourited, on: .favourite, off: .unfavourite)
                     } label: {
-                        Image(systemName: isFavourited ? "star.fill" : "star")
+                        Image(
+                            systemName: isFavourited
+                                ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite
+                        )
+                        .foregroundStyle(
+                            isFavourited ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                     }
                     .accessibilityLabel(
                         isFavourited
@@ -236,7 +253,7 @@ struct WatchStatusView: View {
                     Button {
                         toggle($isBoosted, on: .reblog, off: .unreblog)
                     } label: {
-                        Image(systemName: "arrow.2.squarepath")
+                        Image(systemName: AlohaSymbol.boost)
                             .foregroundStyle(
                                 isBoosted ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                     }
@@ -253,7 +270,7 @@ struct WatchStatusView: View {
                     Label {
                         Text("Reply", comment: "Watch post action")
                     } icon: {
-                        Image(systemName: "arrowshape.turn.up.left")
+                        Image(systemName: AlohaSymbol.reply)
                     }
                 } onSubmit: { typed in
                     Task { await send(reply: typed) }
