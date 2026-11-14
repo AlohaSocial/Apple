@@ -98,6 +98,33 @@ A `MockAPIServer` in a test support package, serving the fixture corpus over a
 Every one of those configurations must produce a working app in the integration
 tests. **The no-rewrite configuration is the most important test in the suite.**
 
+### Live-server contract tests
+
+The mock server answers in the shapes its fixtures were captured in; it cannot
+notice a server changing them. `LiveServerContractTests` (in `AlohaNetwork`)
+asks a real server for the routes the app cannot work without — the instance,
+`verify_credentials`, the home timeline, notifications and
+`notifications/unread_count`, markers (read, and written back unchanged) and
+`conversations/unread_count` — and decodes each with the app's own types. A
+route the app has a fallback for may answer 404; anything that does not decode
+fails.
+
+The suite is skipped unless both variables are set:
+
+```sh
+cd Packages/AlohaNetwork
+ALOHA_LIVE_SERVER_URL=https://cloud.example.com \
+ALOHA_LIVE_TOKEN=<an access token for a test account> \
+swift test --filter LiveServerContractTests
+```
+
+The URL is the server as typed at sign-in; the API base is discovered as the
+app discovers it, so a Nextcloud without the rewrite rules works too. The token
+needs `read` and `write:statuses`; the only write is the notifications marker,
+posted back as it already was. Use a test account. In CI the `live-contract`
+job runs the same suite when the repository secrets `ALOHA_LIVE_SERVER_URL` and
+`ALOHA_LIVE_TOKEN` exist, and says it did not run otherwise.
+
 ### UI tests
 
 A small, stable set on iOS and macOS only: sign in (mocked), read the home
@@ -186,6 +213,7 @@ GitHub Actions, on every push and pull request.
 | `localisation` + `design-tokens` | The accessibility gate, as two jobs so each names its own failure: every user-facing string has a translator comment, and the design-token suite (§5) passes. |
 | `lint` | `swift-format --strict` with `.swift-format` at the repository root. |
 | `licence` | Asserts the SPDX header on every source file and that no SPM dependency has been added. |
+| `live-contract` | Opt-in: the live-server contract suite (§2), when the `ALOHA_LIVE_SERVER_URL` and `ALOHA_LIVE_TOKEN` secrets are set. The one job allowed to skip without `ALLOW_SKIP`. |
 
 **Skips are not passes.** A job that cannot do its work on the runner image —
 an Xcode that cannot open the objectVersion 110 project, no iPhone simulator,
