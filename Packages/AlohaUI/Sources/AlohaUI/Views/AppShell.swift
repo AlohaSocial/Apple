@@ -76,6 +76,9 @@ struct ThemedAppShell: View {
     /// The Focus filter last applied, so it is applied once per change.
     @State private var appliedFocus = FocusFilterState.none
     @Environment(\.scenePhase) private var scenePhase
+    /// This window's name to the sync engine, which runs while any window
+    /// is in the foreground.
+    @State private var syncSceneID = UUID()
     @Environment(\.openURL) var openURLAction
     #if os(iOS)
         @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -175,10 +178,15 @@ struct ThemedAppShell: View {
                 }
                 if let destination { open(destination) }
             }
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                // Only the background stops sync, and only once every window
+                // is there: a socket closes then, immediately, and
+                // BGAppRefreshTask takes over (docs/08 §6). Inactive — Control
+                // Center, Face ID, another window focused — is a moment.
+                environment.sync.scene(syncSceneID, didEnter: phase)
+            }
+            .onDisappear { environment.sync.sceneDidDisappear(syncSceneID) }
             .onChange(of: scenePhase) { _, phase in
-                // A socket closes on background immediately; BGAppRefreshTask
-                // takes over from there (docs/08 §6).
-                environment.sync.setForeground(phase == .active)
                 if phase == .active { Task { await environment.sendQueue.drainAll() } }
                 if phase == .active { refreshMemoriesWidget() }
                 // An intent with `openAppWhenRun` brings a running app to the
