@@ -36,11 +36,16 @@ import XCTest
         }
 
         func testEveryTabIsAccessible() throws {
-            for name in ["Photos", "Videos", "Activities"] {
+            for name in ["Photos", "Videos", "Search"] {
                 app.tabBars.buttons[name].tap()
                 sleep(2)
                 try audit(name)
             }
+            app.tabBars.buttons["My Feed"].tap()
+            XCTAssertTrue(app.openActivities(), "Activities not reachable")
+            sleep(2)
+            try audit("Activities")
+            // Tapping the tab on show pops it back to the feed.
             app.tabBars.buttons["My Feed"].tap()
             XCTAssertTrue(app.openDirectMessages(), "Direct messages not reachable")
             sleep(2)
@@ -96,12 +101,14 @@ import XCTest
         }
 
         func testDiscoveryScreensAreAccessible() throws {
-            XCTAssertTrue(app.openFromAccountMenu("Discover"), "Discover not reachable")
+            XCTAssertTrue(app.openDiscover(), "Discover not reachable")
             // People, not Tags: "nextcloud" is a hashtag on a tab this never
             // opens, so waiting for it audited a half-loaded screen at best.
             XCTAssertTrue(app.labelled("People to follow").waitForExistence(timeout: 10))
             try audit("Discover")
 
+            // Activities is on the feeds' toolbar, not the search tab's.
+            app.tabBars.buttons["My Feed"].tap()
             XCTAssertTrue(app.openActivities(), "Activities not reachable")
             sleep(2)
             try audit("Activities")
