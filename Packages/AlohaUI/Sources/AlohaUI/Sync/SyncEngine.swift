@@ -22,6 +22,18 @@ import Observation
 public final class SyncEngine {
     public private(set) var unreadCounts: [UUID: Int] = [:]
     public private(set) var lastPoll: [UUID: Date] = [:]
+    /// Bumped for an account whenever its home timeline is due a refresh: a
+    /// poll that found the timeline recently visible, or a post arriving
+    /// over the streaming socket. The timeline screen observes it and
+    /// refreshes; the engine itself never writes timeline rows, so a post
+    /// cannot land in the store without a place in the timeline.
+    public private(set) var timelineRefreshRequests: [UUID: Int] = [:]
+
+    /// Asks the visible home timeline of an account to refresh.
+    func requestTimelineRefresh(for accountID: UUID) {
+        guard isLive(accountID) else { return }
+        timelineRefreshRequests[accountID, default: 0] &+= 1
+    }
 
     private var tickTasks: [UUID: Task<Void, Never>] = [:]
     private var streams: [UUID: StreamingConnection] = [:]
