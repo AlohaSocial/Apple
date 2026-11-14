@@ -6,7 +6,7 @@ import AlohaNetwork
 import AlohaStore
 import SwiftUI
 
-/// Pixelfed albums, where the server has them. A real reason Photos mode
+/// Pixelfed collections, where the server has them. A real reason Photos mode
 /// exists rather than a filter (docs/06 §5).
 public struct CollectionsView: View {
     @Environment(\.alohaPalette) private var palette
@@ -22,7 +22,7 @@ public struct CollectionsView: View {
     @State private var draftTitle = ""
     @State private var errorMessage: String?
 
-    /// Only your own albums can be changed; somebody else's are read.
+    /// Only your own collections can be changed; somebody else's are read.
     private var isOwn: Bool {
         accountID == nil || accountID == session.snapshot.serverAccountID
     }
@@ -64,7 +64,7 @@ public struct CollectionsView: View {
                                 renaming = collection
                             } label: {
                                 Label {
-                                    Text("Rename", comment: "Album action")
+                                    Text("Rename", comment: "Collection action")
                                 } icon: {
                                     Image(systemName: AlohaSymbol.edit)
                                 }
@@ -73,7 +73,7 @@ public struct CollectionsView: View {
                                 Task { await delete(collection) }
                             } label: {
                                 Label {
-                                    Text("Delete album", comment: "Album action")
+                                    Text("Delete collection", comment: "Collection action")
                                 } icon: {
                                     Image(systemName: AlohaSymbol.delete)
                                 }
@@ -86,17 +86,17 @@ public struct CollectionsView: View {
 
             if collections.isEmpty && !isLoading {
                 ContentUnavailableView {
-                    Text("No albums", comment: "Empty albums")
+                    Text("No collections", comment: "Empty collections")
                 } description: {
                     Text(
-                        "Albums group photos together. Create one from any post's menu.",
-                        comment: "Albums explanation")
+                        "Collections group photos together. Create one from any post's menu.",
+                        comment: "Collections explanation")
                 }
                 .padding(.top, AlohaMetrics.space6)
             }
         }
         .background(palette.background)
-        .navigationTitle(Text("Albums", comment: "Screen title"))
+        .navigationTitle(Text("Collections", comment: "Screen title"))
         .toolbar {
             if isOwn {
                 ToolbarItem(placement: .primaryAction) {
@@ -105,47 +105,47 @@ public struct CollectionsView: View {
                         isCreating = true
                     } label: {
                         Label {
-                            Text("New album", comment: "Albums action")
+                            Text("New collection", comment: "Collections action")
                         } icon: {
                             Image(systemName: "plus")
                         }
                     }
-                    .accessibilityLabel(Text("New album", comment: "Albums action"))
+                    .accessibilityLabel(Text("New collection", comment: "Collections action"))
                 }
             }
         }
         .alert(
-            Text("New album", comment: "Albums action"), isPresented: $isCreating
+            Text("New collection", comment: "Collections action"), isPresented: $isCreating
         ) {
             TextField(
-                String(localized: "Album name", comment: "Album name placeholder"),
+                String(localized: "Collection name", comment: "Collection name placeholder"),
                 text: $draftTitle)
             Button {
                 Task { await create() }
             } label: {
-                Text("Create", comment: "Album action")
+                Text("Create", comment: "Collection action")
             }
             Button(role: .cancel) {
             } label: {
-                Text("Cancel", comment: "Album action")
+                Text("Cancel", comment: "Collection action")
             }
         }
         .alert(
-            Text("Rename album", comment: "Album action"),
+            Text("Rename collection", comment: "Collection action"),
             isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
         ) {
             TextField(
-                String(localized: "Album name", comment: "Album name placeholder"),
+                String(localized: "Collection name", comment: "Collection name placeholder"),
                 text: $draftTitle)
             Button {
                 if let renaming { Task { await rename(renaming) } }
             } label: {
-                Text("Save", comment: "Album action")
+                Text("Save", comment: "Collection action")
             }
             Button(role: .cancel) {
                 renaming = nil
             } label: {
-                Text("Cancel", comment: "Album action")
+                Text("Cancel", comment: "Collection action")
             }
         }
         .task { await load() }
@@ -210,7 +210,7 @@ public struct CollectionsView: View {
             Text(collection.title)
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
-            Text("^[\(collection.postCount) post](inflect: true)", comment: "Album post count")
+            Text("^[\(collection.postCount) post](inflect: true)", comment: "Collection post count")
                 .font(.caption)
                 .foregroundStyle(palette.secondaryLabel)
         }
@@ -268,7 +268,7 @@ public struct CollectionDetailView: View {
                     Button {
                         onAction(.openMedia(status: status.displayed, index: 0))
                     } label: {
-                        // An album is somebody's pictures, and a sensitive one
+                        // A collection is somebody's pictures, and a sensitive one
                         // is covered here as in the timeline. A grid has no
                         // room for a content warning, so a picture behind one
                         // is covered too rather than shown without it.
@@ -287,7 +287,7 @@ public struct CollectionDetailView: View {
                             onAction(.open(status))
                         } label: {
                             Label {
-                                Text("Open post", comment: "Album item action")
+                                Text("Open post", comment: "Collection item action")
                             } icon: {
                                 Image(systemName: "arrow.up.right.square")
                             }
@@ -297,7 +297,8 @@ public struct CollectionDetailView: View {
                                 Task { await remove(status) }
                             } label: {
                                 Label {
-                                    Text("Remove from album", comment: "Album item action")
+                                    Text(
+                                        "Remove from collection", comment: "Collection item action")
                                 } icon: {
                                     Image(systemName: "minus.circle")
                                 }
@@ -308,7 +309,7 @@ public struct CollectionDetailView: View {
             }
 
             if statuses.isEmpty {
-                Text("Nothing in this album yet.", comment: "Empty album")
+                Text("Nothing in this collection yet.", comment: "Empty collection")
                     .font(.footnote)
                     .foregroundStyle(palette.tertiaryLabel)
                     .padding(.top, AlohaMetrics.space6)

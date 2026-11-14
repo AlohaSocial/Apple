@@ -36,6 +36,24 @@ struct CallbackIsolationTests {
         }
     }
 
+    /// `NWPathMonitor` reports the path on its own queue. Under an SDK that
+    /// does not mark the handler `@Sendable`, a handler written in a
+    /// main-actor class was inferred isolated and trapped on the first
+    /// update — but only when the preloader lived long enough to get one,
+    /// which is why the package suite died now and then rather than always.
+    /// This one waits for that update.
+    @MainActor
+    @Test("The network monitor's first update arrives off the main thread without trapping")
+    func preloaderSurvivesItsFirstPathUpdate() async {
+        let preloader = NextVideoPreloader()
+        for _ in 0..<50 where !preloader.allowsPrefetch {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        // Reaching here is the assertion; the read keeps the preloader, and so
+        // its monitor, alive through the wait.
+        _ = preloader.allowsPrefetch
+    }
+
     @Test("A closed streaming connection never opens again")
     func closedStreamingConnectionStaysClosed() async throws {
         // A reconnect that was already sleeping used to reopen a socket that

@@ -3,7 +3,7 @@
 import Foundation
 
 // Entities behind Nextcloud Social's per-status extras: where a post got to,
-// who quoted it, and albums (docs/02 §2).
+// who quoted it, and collections (docs/02 §2).
 
 /// `GET /api/v1/statuses/{nid}/delivery` — one row per server the post was
 /// sent to, and the totals. Author only.

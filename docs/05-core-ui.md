@@ -16,7 +16,7 @@ has the same four scopes as a switch along its top.
 **iPhone** — `TabView` with a bottom bar: one tab per feed, then Activities.
 Every feed and Activities fit in five tabs. Direct messages are a toolbar
 button on the feeds, beside Search, with the unread count on it; compose is the
-toolbar's `+`. The account menu (the avatar) holds Discover, Lists, Albums,
+toolbar's `+`. The account menu (the avatar) holds Discover, Lists, Collections,
 My profile and the account places.
 
 **iPad** — a sidebar-adaptable `TabView`, **Mac and Vision Pro** — a
@@ -31,7 +31,7 @@ A large iPhone on its side is regular wide but compact tall, and keeps the tab
 bar.
 
 - *Sidebar*: the feeds, Activities, Direct messages and Discover; then the
-  Library — Lists and Albums. The search field is at the top, as it is on the
+  Library — Lists and Collections. The search field is at the top, as it is on the
   web, and the account menu is at the bottom. (Feed subscriptions were removed:
   the server dropped them in 0.26.95.)
 - *Account menu*: My profile, Follow requests, Liked posts, Bookmarks, Archived
@@ -233,7 +233,7 @@ exist undocumented.
   Block, Mute (with duration and "also mute notifications"), Report, Block
   domain, Add note.
 - Tabs, in the web app's order: Posts · Photos · Videos · Tagged (Nextcloud
-  Social) · Albums (where the server has collections).
+  Social) · Collections (where the server has them).
 - Own profile additionally: Edit profile (`PATCH /accounts/update_credentials`
   — name, avatar, header, note, fields, bot, locked, discoverable, and
   `source[privacy]`). **A Nextcloud with an external identity backend (LDAP,

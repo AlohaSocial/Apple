@@ -5,7 +5,7 @@
 
     extension MockAPIServer {
         /// Mock answers for the account surfaces: featured tags, authorized apps,
-        /// the portfolio, migration, statistics, channels and the profile-picture
+        /// migration, statistics, channels and the profile-picture
         /// routes. `nil` means "not mine".
         ///
         /// `api/v1/accounts/update_credentials` never arrives here: the main
@@ -61,37 +61,6 @@
                 var account = alice
                 account[route.hasSuffix("avatar") ? "avatar" : "header"] = ""
                 return respond(url: url, status: 200, json: account)
-
-            // MARK: Portfolio
-            case "api/v1.1/portfolio" where method == "GET":
-                return respond(
-                    url: url, status: 200,
-                    json: Fixtures.portfolio(host: host, statuses: statusFixtures))
-            case "api/v1.1/portfolio" where method == "POST":
-                let fields = formFields(body)
-                var portfolio = Fixtures.portfolio(host: host, statuses: statusFixtures)
-                for key in ["title", "intro", "layout", "source", "collection_id"] {
-                    if let value = fields[key] { portfolio[key] = value }
-                }
-                for key in ["active", "show_captions", "show_places", "show_dates", "show_avatar"] {
-                    if let value = fields[key] { portfolio[key] = value == "1" || value == "true" }
-                }
-                return respond(url: url, status: 200, json: portfolio)
-            case let route where route.hasPrefix("api/v1.1/portfolio/"):
-                var page = Fixtures.portfolio(host: host, statuses: statusFixtures)
-                page["handle"] = "alice"
-                page["avatar"] = "https://\(host)/avatars/alice.png"
-                return respond(url: url, status: 200, json: page)
-            case "api/v1.1/collections/self":
-                return respond(
-                    url: url, status: 200,
-                    json: [
-                        [
-                            "id": "col-1", "title": "Mountains", "description": "",
-                            "url": "https://\(host)/c/1",
-                            "post_count": 3, "thumbnail": "https://\(host)/media/998.jpg",
-                        ]
-                    ])
 
             // MARK: Migration
             case "api/v1/migration/export":
@@ -202,20 +171,6 @@
                     "id": "ft-2", "name": "photography", "url": "https://\(host)/tags/photography",
                     "statuses_count": "4", "last_status_at": NSNull(),
                 ],
-            ]
-        }
-
-        static func portfolio(host: String, statuses: [[String: Any]]) -> [String: Any] {
-            let pictures = statuses.filter { row in
-                let media = row["media_attachments"] as? [[String: Any]] ?? []
-                return media.contains { ($0["type"] as? String) == "image" }
-            }
-            return [
-                "active": true, "title": "Alice's pictures", "intro": "Mountains, mostly.",
-                "layout": "grid", "source": "recent", "collection_id": NSNull(),
-                "show_captions": true, "show_places": true, "show_dates": true, "show_avatar": true,
-                "url": "https://\(host)/@alice/portfolio",
-                "posts": Array(pictures.prefix(6)),
             ]
         }
 

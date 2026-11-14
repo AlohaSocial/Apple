@@ -4,7 +4,7 @@
     import Foundation
 
     extension MockAPIServer {
-        /// Mock answers for the per-status extras: archive, places, albums, and
+        /// Mock answers for the per-status extras: archive, places, collections, and
         /// the status sub-routes the main switch lets through. `nil` means "not
         /// mine".
         func statusExtrasMock(
@@ -46,7 +46,7 @@
                 }
             }
 
-            // MARK: Albums
+            // MARK: Collections
 
             if route == "api/v1/collections" {
                 if method == "POST" {
@@ -86,7 +86,7 @@
                 }
                 if parts.dropFirst().first == "items" {
                     if method == "GET" {
-                        // Album c1 holds the photo fixture; the others are empty.
+                        // Collection c1 holds the photo fixture; the others are empty.
                         let items =
                             id == "c1"
                             ? statusFixtures.filter {

@@ -325,7 +325,7 @@ public enum WatchPositionRules {
     }
 }
 
-/// A Pixelfed album. Read and write where the capability is present.
+/// A Pixelfed collection. Read and write where the capability is present.
 public struct Collection: Codable, Sendable, Hashable, Identifiable {
     @FlexibleID public var id: String
     public var title: String

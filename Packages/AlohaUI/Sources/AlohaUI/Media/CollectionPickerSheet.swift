@@ -5,11 +5,11 @@ import AlohaModels
 import AlohaNetwork
 import SwiftUI
 
-/// Put a post into one of your albums, take it out again, or start a new
-/// album with it (docs/06 §5).
+/// Put a post into one of your collections, take it out again, or start a new
+/// collection with it (docs/06 §5).
 ///
-/// The server does not say which albums already hold a post, so membership is
-/// read once from each album's items — a handful of small requests, and
+/// The server does not say which collections already hold a post, so membership is
+/// read once from each collection's items — a handful of small requests, and
 /// only when the sheet opens.
 public struct CollectionPickerSheet: View {
     @Environment(\.alohaPalette) private var palette
@@ -38,7 +38,8 @@ public struct CollectionPickerSheet: View {
                     HStack(spacing: AlohaMetrics.space2) {
                         TextField(
                             String(
-                                localized: "New album", comment: "Album picker placeholder"),
+                                localized: "New collection",
+                                comment: "Collection picker placeholder"),
                             text: $newTitle
                         )
                         .textFieldStyle(.plain)
@@ -54,10 +55,12 @@ public struct CollectionPickerSheet: View {
                         .foregroundStyle(canCreate ? palette.accent : palette.tertiaryLabel)
                         .disabled(!canCreate)
                         .accessibilityLabel(
-                            Text("Create album", comment: "Album picker action"))
+                            Text("Create collection", comment: "Collection picker action"))
                     }
                 } header: {
-                    Text("Start a new album with this post", comment: "Album picker section")
+                    Text(
+                        "Start a new collection with this post",
+                        comment: "Collection picker section")
                 }
 
                 Section {
@@ -70,15 +73,15 @@ public struct CollectionPickerSheet: View {
                         row(collection)
                     }
                     if collections.isEmpty && !isLoading {
-                        Text("No albums yet.", comment: "Album picker empty state")
+                        Text("No collections yet.", comment: "Collection picker empty state")
                             .font(.footnote)
                             .foregroundStyle(palette.tertiaryLabel)
                     }
                 } header: {
-                    Text("Your albums", comment: "Album picker section")
+                    Text("Your collections", comment: "Collection picker section")
                 }
             }
-            .navigationTitle(Text("Add to album", comment: "Screen title"))
+            .navigationTitle(Text("Add to collection", comment: "Screen title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -119,7 +122,7 @@ public struct CollectionPickerSheet: View {
                         .lineLimit(1)
                     Text(
                         "^[\(collection.postCount) post](inflect: true)",
-                        comment: "Album post count"
+                        comment: "Collection post count"
                     )
                     .font(AlohaType.meta)
                     .foregroundStyle(palette.secondaryLabel)
@@ -154,7 +157,7 @@ public struct CollectionPickerSheet: View {
             errorMessage = (error as? APIError)?.errorDescription
             return
         }
-        // Which albums already hold this post.
+        // Which collections already hold this post.
         await withTaskGroup(of: (String, Bool).self) { group in
             for collection in collections {
                 group.addTask {

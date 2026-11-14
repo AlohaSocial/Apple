@@ -190,7 +190,7 @@ rewrite, and to mastodon.social, from the same build.
   capability-gated server filters, the client-side fallback with over-fetching.
 - P5.2 `ContentClassifier` with its fixture corpus and the deferred
   reclassification path.
-- P5.3 Photos mode: grid and feed layouts, collections/albums, the Pixelfed
+- P5.3 Photos mode: grid and feed layouts, collections, the Pixelfed
   Explore surface.
 - P5.4 Video mode: cards, Continue Watching, the player with the three-step
   source ladder and mandatory fallback, watch-position reporting, comments,

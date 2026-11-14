@@ -365,13 +365,6 @@ public struct SettingsView: View {
                 }
             }
             if session.capabilities.isNextcloudSocial {
-                NavigationLink(value: Route.portfolio) {
-                    Label {
-                        Text("Portfolio", comment: "Settings item")
-                    } icon: {
-                        Image(systemName: "photo.on.rectangle.angled")
-                    }
-                }
                 NavigationLink(value: Route.channels) {
                     Label {
                         Text("Video channels", comment: "Settings item")

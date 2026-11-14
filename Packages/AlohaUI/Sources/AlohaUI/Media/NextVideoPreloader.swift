@@ -20,7 +20,12 @@ final class NextVideoPreloader {
     @ObservationIgnored private var requestID = UUID()
 
     init() {
-        monitor.pathUpdateHandler = { [weak self] path in
+        // `@Sendable` by hand: the monitor calls this on its own queue, and an
+        // SDK that does not mark the handler `@Sendable` (Xcode 26's) would
+        // otherwise infer it main-actor-isolated from this class — Swift's
+        // runtime isolation check then traps on the first path update
+        // (docs/14 §6). The body only hops to the main actor with a value.
+        monitor.pathUpdateHandler = { @Sendable [weak self] path in
             let allowed = path.status == .satisfied && !path.isExpensive && !path.isConstrained
             Task { @MainActor [weak self] in self?.allowsPrefetch = allowed }
         }
