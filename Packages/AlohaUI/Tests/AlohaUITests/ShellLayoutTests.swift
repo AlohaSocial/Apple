@@ -72,4 +72,50 @@ struct ShellLayoutTests {
         // has no tab to keep its stack in.
         #expect(state.paths.count == 1)
     }
+
+    // MARK: - The iPad's detail column
+
+    @Test("Posts and profiles open in the detail column; places of their own do not")
+    func whatOpensInTheDetailColumn() {
+        #expect(ShellLayout.opensInDetailColumn(.thread(statusID: "1")))
+        #expect(ShellLayout.opensInDetailColumn(.profile(accountID: "7")))
+        #expect(ShellLayout.opensInDetailColumn(.handle("@a@example.com")))
+        #expect(!ShellLayout.opensInDetailColumn(.hashtag("swift")))
+        #expect(!ShellLayout.opensInDetailColumn(.settings))
+    }
+
+    @Test("With the column, a post replaces what it showed and the list stays put")
+    func pushWithDetailColumn() {
+        let next = ShellLayout.push(
+            .thread(statusID: "2"), primary: [.hashtag("swift")],
+            detail: [.thread(statusID: "1"), .profile(accountID: "7")],
+            showsDetailColumn: true)
+        #expect(next.primary == [.hashtag("swift")])
+        #expect(next.detail == [.thread(statusID: "2")])
+
+        let place = ShellLayout.push(
+            .hashtag("photos"), primary: [], detail: [.thread(statusID: "1")],
+            showsDetailColumn: true)
+        #expect(place.primary == [.hashtag("photos")])
+        #expect(place.detail == [.thread(statusID: "1")])
+    }
+
+    @Test("Without the column, everything is pushed above what the column had open")
+    func pushWithoutDetailColumn() {
+        let next = ShellLayout.push(
+            .profile(accountID: "9"), primary: [.hashtag("swift")],
+            detail: [.thread(statusID: "1")], showsDetailColumn: false)
+        #expect(
+            next.primary == [
+                .hashtag("swift"), .thread(statusID: "1"), .profile(accountID: "9"),
+            ])
+        #expect(next.detail.isEmpty)
+    }
+
+    @Test("The detail column stays readable and never takes most of the window")
+    func detailColumnWidth() {
+        #expect(ShellLayout.detailColumnWidth(forWindowWidth: 1100) == 440)
+        #expect(ShellLayout.detailColumnWidth(forWindowWidth: 800) == 420)
+        #expect(ShellLayout.detailColumnWidth(forWindowWidth: 2000) == 600)
+    }
 }

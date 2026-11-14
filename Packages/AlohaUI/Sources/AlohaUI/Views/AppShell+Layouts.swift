@@ -119,10 +119,14 @@ extension ThemedAppShell {
         /// mode lets a person pin the ones they use (`TabViewCustomization`,
         /// kept per device).
         ///
-        /// No inspector for threads and profiles: every list in the app pushes
-        /// a `Route` onto the stack it lives in, and an inspector would need a
-        /// second, parallel notion of "what is selected" in each of them. The
-        /// reading column already keeps a thread at a readable width.
+        /// In a wide window a thread or a profile opens in a detail column
+        /// beside the list it came from, rather than pushed over it, with a
+        /// stack of its own so what is opened inside it stays there. Not an
+        /// inspector with a selection in every list: every list in the app
+        /// already hands its rows' actions to the shell, so the column is
+        /// decided once, where routes are pushed (`push`), and no list knows
+        /// it is there. A narrower window shows the same stack pushed, as
+        /// before (`sidebarPath`).
         func iPadShell(_ session: AccountSession) -> some View {
             TabView(selection: $sidebarItem) {
                 ForEach(session.visibleModes) { mode in
@@ -225,6 +229,14 @@ extension ThemedAppShell {
             }
             .tabViewStyle(.sidebarAdaptable)
             .tabViewCustomization($tabCustomization)
+            // The window's width, not the column's: whether the sidebar is
+            // showing should not make an open thread jump between a column
+            // and a push.
+            .onGeometryChange(for: Bool.self) {
+                $0.size.width >= ShellLayout.detailColumnMinimumWidth
+            } action: { isAvailable in
+                isDetailColumnAvailable = isAvailable
+            }
             .tabViewSidebarBottomBar {
                 AccountMenuButton(
                     session: session, onOpen: open,
@@ -251,22 +263,76 @@ extension ThemedAppShell {
         }
 
         private func iPadDestination(_ item: SidebarItem, session: AccountSession) -> some View {
-            AnyView(
-                NavigationStack(path: sidebarPath(item)) {
-                    Group {
-                        switch item {
-                        case .mode(let mode): modeRoot(mode, session: session)
-                        case .route(let route): destination(route, session: session, isRoot: true)
+            let detailRoot = showsDetailColumn ? detailPaths[item]?.first : nil
+            return AnyView(
+                HStack(spacing: 0) {
+                    NavigationStack(path: sidebarPath(item)) {
+                        Group {
+                            switch item {
+                            case .mode(let mode): modeRoot(mode, session: session)
+                            case .route(let route):
+                                destination(route, session: session, isRoot: true)
+                            }
                         }
+                        .navigationDestination(for: Route.self) {
+                            destination($0, session: session)
+                        }
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            iPadAccountToolbar(session)
+                            composeToolbar
+                        }
+                        .alohaWindowGround(palette)
                     }
-                    .navigationDestination(for: Route.self) { destination($0, session: session) }
+                    .frame(maxWidth: .infinity)
+
+                    if let detailRoot {
+                        Divider()
+                            .ignoresSafeArea()
+                        detailColumn(item, root: detailRoot, session: session)
+                            .containerRelativeFrame(.horizontal) { width, _ in
+                                ShellLayout.detailColumnWidth(forWindowWidth: width)
+                            }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .animation(.smooth(duration: 0.25), value: detailRoot == nil))
+        }
+
+        /// The detail column: the post or profile opened from the primary
+        /// column, on a stack of its own. Its screens are built by a copy of
+        /// the shell marked `.detail`, so what they open is pushed here too.
+        private func detailColumn(
+            _ item: SidebarItem, root: Route, session: AccountSession
+        ) -> some View {
+            var detail = self
+            detail.column = .detail
+            return NavigationStack(path: detailPath(item)) {
+                detail.destination(root, session: session)
+                    // A different post is a different screen: every screen
+                    // keeps its model in `@State`, which a new route in the
+                    // same place would otherwise inherit.
+                    .id(root)
+                    .navigationDestination(for: Route.self) {
+                        detail.destination($0, session: session)
+                    }
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        iPadAccountToolbar(session)
-                        composeToolbar
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                closeDetailColumn(item)
+                            } label: {
+                                Label {
+                                    Text("Close", comment: "Detail column action")
+                                } icon: {
+                                    Image(systemName: "xmark")
+                                }
+                            }
+                            .help(Text("Close", comment: "Detail column action"))
+                        }
                     }
-                    .alohaWindowGround(palette)
-                })
+            }
+            .alohaWindowGround(palette)
         }
     #endif
 

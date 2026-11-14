@@ -74,6 +74,9 @@ struct ShellRestoration: Codable, Hashable, Sendable {
     var tabPaths: [ShellTab: [Route]]
     var sidebarItem: StoredSidebarItem
     var sidebarPaths: [StoredSidebarItem: [Route]]
+    /// What each row had open in the iPad's detail column. Optional so a
+    /// restoration written before there was a detail column still reads.
+    var detailPaths: [StoredSidebarItem: [Route]]?
 
     /// A deep stack is somebody who kept tapping, not a place to return to.
     /// The newest screens are the ones worth having back.
@@ -81,22 +84,40 @@ struct ShellRestoration: Codable, Hashable, Sendable {
 
     init(
         accountID: UUID, tab: ShellTab, tabPaths: [ShellTab: [Route]],
-        sidebarItem: SidebarItem, sidebarPaths: [SidebarItem: [Route]]
+        sidebarItem: SidebarItem, sidebarPaths: [SidebarItem: [Route]],
+        detailPaths: [SidebarItem: [Route]] = [:]
     ) {
         self.accountID = accountID
         self.tab = tab
         self.tabPaths = tabPaths.compactMapValues(Self.trimmed)
         self.sidebarItem = StoredSidebarItem(sidebarItem)
-        self.sidebarPaths = Dictionary(
-            sidebarPaths.compactMap { item, path in
-                Self.trimmed(path).map { (StoredSidebarItem(item), $0) }
+        self.sidebarPaths = Self.stored(sidebarPaths)
+        let details = Self.stored(detailPaths)
+        self.detailPaths = details.isEmpty ? nil : details
+    }
+
+    var restoredSidebarPaths: [SidebarItem: [Route]] {
+        Self.restored(sidebarPaths)
+    }
+
+    var restoredDetailPaths: [SidebarItem: [Route]] {
+        Self.restored(detailPaths ?? [:])
+    }
+
+    private static func stored(
+        _ paths: [SidebarItem: [Route]]
+    ) -> [StoredSidebarItem: [Route]] {
+        Dictionary(
+            paths.compactMap { item, path in
+                trimmed(path).map { (StoredSidebarItem(item), $0) }
             },
             uniquingKeysWith: { _, last in last })
     }
 
-    var restoredSidebarPaths: [SidebarItem: [Route]] {
-        Dictionary(
-            sidebarPaths.map { ($0.key.item, $0.value) }, uniquingKeysWith: { _, last in last })
+    private static func restored(
+        _ paths: [StoredSidebarItem: [Route]]
+    ) -> [SidebarItem: [Route]] {
+        Dictionary(paths.map { ($0.key.item, $0.value) }, uniquingKeysWith: { _, last in last })
     }
 
     private static func trimmed(_ path: [Route]) -> [Route]? {
