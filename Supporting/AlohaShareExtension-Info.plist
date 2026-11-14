@@ -20,14 +20,22 @@
 	<dict>
 		<key>NSExtensionAttributes</key>
 		<dict>
+			<!-- Files (a picture or movie from Files or Finder, typed by its
+			     extension when it registers nothing else) and Safari's web
+			     page item, as well as plain images, movies, text and links
+			     (docs/09 §6). -->
 			<key>NSExtensionActivationRule</key>
 			<dict>
+				<key>NSExtensionActivationSupportsFileWithMaxCount</key>
+				<integer>4</integer>
 				<key>NSExtensionActivationSupportsImageWithMaxCount</key>
 				<integer>4</integer>
 				<key>NSExtensionActivationSupportsMovieWithMaxCount</key>
 				<integer>1</integer>
 				<key>NSExtensionActivationSupportsText</key>
 				<true/>
+				<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
+				<integer>1</integer>
 				<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
 				<integer>1</integer>
 			</dict>

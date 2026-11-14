@@ -319,7 +319,10 @@ public final class ComposerUploader {
         }
 
         do {
-            let attachment = try await upload(data: payload, filename: name, mimeType: type)
+            // Cancellable from the Live Activity (`CancelUploadIntent`).
+            let attachment = try await UploadActivityController.shared.cancellable {
+                try await self.upload(data: payload, filename: name, mimeType: type)
+            }
             attachments.append(attachment)
             rememberOriginal(payload, filename: name, mimeType: type, for: attachment.id)
             progress.finish(ticket)

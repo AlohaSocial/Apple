@@ -165,6 +165,10 @@ public enum SpotlightIndexer {
 
     /// Rebuilds one account's index when it is older than a day.
     public static func refreshIfStale(_ session: AccountSession, now: Date = Date()) async {
+        // The share extension loads the same environment as the app. Three
+        // server requests and an index rebuild are the app's work, not
+        // something to spend an extension's memory and seconds on.
+        guard Bundle.main.bundleURL.pathExtension != "appex" else { return }
         let key = "aloha.spotlight.\(session.id.uuidString)"
         if let last = UserDefaults.standard.object(forKey: key) as? Date,
             now.timeIntervalSince(last) < refreshInterval
