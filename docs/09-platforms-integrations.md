@@ -149,7 +149,13 @@ Target: `AlohaIntents`.
 - `AppShortcutsProvider` with phrases for the three most useful:
   "Post to Aloha Social", "Show my Aloha mentions", "Open Aloha Shorts".
 - Intents are donated on use so Spotlight and Siri suggestions learn them.
-- Control Center control (iOS): a compose control and a "latest mention" control.
+- Controls (Control Center, the Lock Screen, the Action button), each an
+  `alohasocial://` link handed over by `ControlLink`, so none needs the app
+  group: New post (`compose`), New story (`story`), Messages
+  (`conversations`), Scheduled posts (`scheduled`), Search (`search`) and
+  Story camera (`story?camera=1`), which opens the story composer with the
+  full-screen system camera already up for a picture or a video. The
+  composer's own canvas is a live viewfinder too, but it takes stills only.
 
 ## 8. Widgets
 

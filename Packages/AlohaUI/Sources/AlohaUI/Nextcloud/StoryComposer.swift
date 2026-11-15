@@ -23,6 +23,10 @@ public struct StoryComposerSheet: View {
     private let session: AccountSession
     private let onPosted: () -> Void
     private let preparer = MediaPreparer()
+    /// Opened from the "Story camera" control: the full-screen camera is up
+    /// before anything else, for a picture or a video. The canvas's own
+    /// viewfinder takes stills only.
+    private let startsWithCamera: Bool
 
     enum Kind: Hashable {
         case media, text
@@ -48,6 +52,8 @@ public struct StoryComposerSheet: View {
     @State private var errorMessage: String?
     /// The system photo picker, presented from the preview and from "See all".
     @State private var isPickingLibrary = false
+    /// The full-screen system camera, which also records video.
+    @State private var isShowingCamera = false
     /// The last few pictures in the library, for the strip under the preview.
     @State private var recents: [PHAsset] = []
     @State private var recentAccessDenied = false
@@ -58,8 +64,12 @@ public struct StoryComposerSheet: View {
     static let stickerTextLimit = 60
     static let emojiStickers = ["😂", "😍", "🔥", "🎉", "👍", "❤️", "😮", "✨"]
 
-    public init(session: AccountSession, onPosted: @escaping () -> Void = {}) {
+    public init(
+        session: AccountSession, startsWithCamera: Bool = false,
+        onPosted: @escaping () -> Void = {}
+    ) {
         self.session = session
+        self.startsWithCamera = startsWithCamera
         self.onPosted = onPosted
     }
 
@@ -117,6 +127,19 @@ public struct StoryComposerSheet: View {
             .onChange(of: pickedItem) { _, item in
                 Task { await load(item) }
             }
+            #if os(iOS)
+                .fullScreenCover(isPresented: $isShowingCamera) {
+                    CameraCapture { captured in
+                        Task { await use(captured) }
+                    }
+                    .ignoresSafeArea()
+                }
+                .task {
+                    // Once, on the way in; a device without a camera (the
+                    // simulator, an iPad app on a Mac) keeps the canvas.
+                    if startsWithCamera, CameraCapture.isAvailable { isShowingCamera = true }
+                }
+            #endif
         }
         #if os(macOS)
             .frame(minWidth: 520, minHeight: 640)
