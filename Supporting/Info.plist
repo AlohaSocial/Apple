@@ -31,6 +31,12 @@
 	     server at http://192.168.x.x[:port] or a .local name. Everything
 	     on the internet goes over https; the app upgrades a public http
 	     address and the media it loads (`URL.securedForLoading`). -->
+	<!-- "Share what's playing" reads the song playing in Apple Music
+	     (MusicKit), asked the first time it is used. Song cards look songs up
+	     in the catalog too, which needs the MusicKit service on the App ID
+	     (Supporting/README.md); without it they stay link cards. -->
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Aloha Social reads the song playing in Apple Music when you choose to share it in a post.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
