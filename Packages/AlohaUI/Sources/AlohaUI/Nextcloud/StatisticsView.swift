@@ -22,6 +22,9 @@ public struct StatisticsView: View {
     @State private var errorMessage: String?
     @State private var loadID = UUID()
     @State private var loadedDays: Int?
+    /// Pictures and descriptions counted on this device, for a server whose
+    /// statistics do not count them.
+    @State private var localAltText: AltTextCoverage?
 
     private static let windows: [(days: Int, title: LocalizedStringResource)] = [
         (30, LocalizedStringResource("30 days", comment: "Statistics window")),
@@ -46,6 +49,9 @@ public struct StatisticsView: View {
                 if let statistics, loadedDays == days {
                     hero(statistics)
                     engagement(statistics)
+                    // The one number on the page somebody can act on the same
+                    // afternoon, so it sits near the top rather than last.
+                    altText(statistics)
                     postsByMonth(statistics)
                     engagementByMonth(statistics)
                     activity(statistics)
@@ -64,7 +70,6 @@ public struct StatisticsView: View {
                     engagementSources(statistics)
                     audience(statistics)
                     reach(statistics)
-                    media(statistics)
                 } else if !isLoading && errorMessage == nil {
                     ContentUnavailableView {
                         Text("Nothing to count yet", comment: "Statistics empty")
@@ -438,27 +443,48 @@ public struct StatisticsView: View {
         }
     }
 
+    /// How many of the pictures posted carry a description: the server's
+    /// count where it makes one, otherwise one made here from the account's
+    /// latest posts — and the card says which.
     @ViewBuilder
-    private func media(_ statistics: AccountStatistics) -> some View {
-        let m = statistics.media
-        if !m.values.isEmpty {
+    private func altText(_ statistics: AccountStatistics) -> some View {
+        if let coverage = AltTextCoverage(statistics: statistics) ?? localAltText,
+            let share = coverage.share
+        {
             VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
-                Text("Pictures", comment: "Statistics section").font(AlohaType.section)
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 120), spacing: AlohaMetrics.space3)],
-                    spacing: AlohaMetrics.space3
-                ) {
-                    if let pictures = m["pictures"] ?? m["images"] ?? m["with_media"] {
-                        tile(pictures, Text("Posts with pictures", comment: "Statistics tile"))
-                    }
-                    if let described = m["described"] ?? m["with_alt"] ?? m["alt_text"] {
-                        tile(described, Text("With a description", comment: "Statistics tile"))
-                    }
-                    if let share = m["described_share"] ?? m["alt_share"] {
-                        tile(share, Text("Described", comment: "Statistics tile"), asPercent: true)
+                Text("Pictures with a description", comment: "Statistics section")
+                    .font(AlohaType.section)
+                HStack(alignment: .firstTextBaseline, spacing: AlohaMetrics.space2) {
+                    Text(share, format: .percent.precision(.fractionLength(0)))
+                        .font(.title.weight(.bold))
+                        .fontDesign(.rounded)
+                        .monospacedDigit()
+                    Text(
+                        "^[\(coverage.described) of \(coverage.pictures) picture](inflect: true)",
+                        comment: "Statistics: described pictures out of all pictures"
+                    )
+                    .font(AlohaType.meta)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
+                ProgressView(value: share)
+                    .tint(palette.accent)
+                    .accessibilityHidden(true)
+                Group {
+                    switch coverage.source {
+                    case .server:
+                        Text(
+                            "Counted by your server, picture by picture, over the period above.",
+                            comment: "Statistics: where the alt text figure comes from")
+                    case .recentPosts(let count):
+                        Text(
+                            "Your server doesn't count this, so it was counted on this device from your last ^[\(count) post](inflect: true) with media.",
+                            comment: "Statistics: where the alt text figure comes from")
                     }
                 }
+                .font(AlohaType.meta)
+                .foregroundStyle(palette.secondaryLabel)
             }
+            .accessibilityElement(children: .combine)
             .card(palette)
         }
     }
@@ -729,6 +755,9 @@ public struct StatisticsView: View {
             statistics = response
             loadedDays = requestedDays
             errorMessage = nil
+            if AltTextCoverage(statistics: response) == nil, localAltText == nil {
+                await countAltTextHere()
+            }
         } catch {
             guard !Task.isCancelled, loadID == request, days == requestedDays else { return }
             await session.handle(error)
@@ -737,6 +766,21 @@ public struct StatisticsView: View {
                 (error as? APIError)?.errorDescription
                 ?? String(localized: "Statistics could not be loaded. Please try again.")
         }
+    }
+
+    /// The fallback for a server whose statistics carry no picture count:
+    /// the account's own latest posts with media, one page of them. A failure
+    /// leaves the card out — it is a hint, not the page.
+    private func countAltTextHere() async {
+        let accountID = session.snapshot.serverAccountID
+        guard !accountID.isEmpty else { return }
+        guard
+            let posts = try? await session.client.decode(
+                LossyArray<Status>.self,
+                from: Endpoint.timelines.timeline(
+                    .account(id: accountID, includeReplies: true, onlyMedia: true), limit: 40))
+        else { return }
+        localAltText = AltTextCoverage(posts: posts.elements)
     }
 
     private func export() async {
