@@ -190,6 +190,10 @@ public enum SpotlightIndexer {
         do {
             try await refresh(session)
             UserDefaults.standard.set(now, forKey: key)
+            // The people followed have just been read; Siri learns their
+            // names for "What's new from <person>" from the same list
+            // (`PersonEntityQuery.suggestedEntities`).
+            AlohaShortcuts.updateAppShortcutParameters()
         } catch {
             // The index is a convenience: a failure tries again next launch.
             logger.debug("index refresh failed: \(String(describing: error), privacy: .public)")

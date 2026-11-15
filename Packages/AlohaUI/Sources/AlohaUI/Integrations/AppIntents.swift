@@ -250,10 +250,25 @@ public struct LatestMentionsIntent: AppIntent {
         // A mention whose post has since been deleted has nothing to open.
         let posts = page.elements.compactMap { $0.status.map(PostEntity.init) }
 
+        guard !posts.isEmpty else {
+            return .result(
+                value: posts,
+                dialog: IntentDialog(
+                    LocalizedStringResource("No mentions.", comment: "Siri answer")))
+        }
+        // Read out, not only counted: "Read my mentions" is asked of Siri
+        // by somebody who is not looking at a screen. The first few are
+        // spoken; all of them are in the result.
+        let spoken = SpokenPosts.summary(of: posts, includingAuthor: true)
         return .result(
             value: posts,
-            dialog: posts.isEmpty
-                ? "No mentions." : "You have \(posts.count) mentions.")
+            dialog: IntentDialog(
+                full: LocalizedStringResource(
+                    "^[\(posts.count) mention](inflect: true). \(spoken)",
+                    comment: "Siri answer reading the latest mentions aloud"),
+                supporting: LocalizedStringResource(
+                    "^[\(posts.count) mention](inflect: true).",
+                    comment: "Siri answer shown above the list of mentions")))
     }
 }
 
@@ -379,10 +394,21 @@ public enum FeedModeAppEnum: String, AppEnum {
 
 public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
     case noAccount
+    /// "Post my last photo" without access to the photo library.
+    case noPhotoAccess
+    /// An empty library, or a picture Photos would not hand over.
+    case noPhoto
 
     public var localizedStringResource: LocalizedStringResource {
         switch self {
         case .noAccount: "Add an account in Aloha Social first."
+        case .noPhotoAccess:
+            LocalizedStringResource(
+                "Allow Aloha Social to use your photos in Settings first.",
+                comment: "App Intent error")
+        case .noPhoto:
+            LocalizedStringResource(
+                "There's no photo in your library to post.", comment: "App Intent error")
         }
     }
 }
@@ -516,6 +542,7 @@ public struct AlohaShortcuts: AppShortcutsProvider {
             phrases: [
                 "Show my \(.applicationName) mentions",
                 "What did I miss in \(.applicationName)",
+                "Read my mentions in \(.applicationName)",
             ],
             shortTitle: "Mentions",
             systemImageName: "at")
@@ -531,5 +558,27 @@ public struct AlohaShortcuts: AppShortcutsProvider {
             phrases: ["Open \(.applicationName) Shorts"],
             shortTitle: "Shorts",
             systemImageName: "play.square.stack")
+
+        #if os(iOS) || os(visionOS)
+            AppShortcut(
+                intent: PostLastPhotoIntent(),
+                phrases: [
+                    "Post my last photo to \(.applicationName)",
+                    "Share my latest photo on \(.applicationName)",
+                ],
+                shortTitle: LocalizedStringResource(
+                    "Post last photo", comment: "App Shortcut title"),
+                systemImageName: "photo.badge.plus")
+        #endif
+
+        AppShortcut(
+            intent: LatestPostsFromPersonIntent(),
+            phrases: [
+                "What's new from \(\.$person) in \(.applicationName)",
+                "What's new from \(\.$person) on \(.applicationName)",
+                "What's new from someone in \(.applicationName)",
+            ],
+            shortTitle: LocalizedStringResource("What's new from…", comment: "App Shortcut title"),
+            systemImageName: "person.crop.circle.badge.clock")
     }
 }
