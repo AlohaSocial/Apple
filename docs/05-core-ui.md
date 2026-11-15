@@ -263,6 +263,20 @@ exist undocumented.
   Contrast or the high-contrast themes, nor for a picture behind a content
   warning or a sensitive one the reading policy covers: its colours would be
   a glimpse of it.
+- **Read as article.** Where the conversation holds a thread its author wrote
+  to themselves — the same author answering their own post at least three
+  times in a row — the opened post offers "Read all N posts as an article".
+  It unrolls that run into one scrolling page (`ThreadReaderView`): the
+  author's posts in order, their pictures, polls and link cards in place,
+  content warnings still closed, and everybody else's replies left out, with
+  "Read the replies" at the end leading back. The run is worked out from the
+  context the thread already fetched (`SelfThread`), from the top of the
+  opened post's own run or from the conversation's first post, whichever is
+  longer; where the author answered one post twice, the earlier answer
+  carries the thread on. A timeline post that answers its own author offers
+  the same from its menu. The thread's *first* post carries nothing that says
+  the author went on, and finding out would be a context request per row, so
+  it is not marked on the timeline.
 
 ## 5. Profile
 
