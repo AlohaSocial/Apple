@@ -45,7 +45,7 @@ import XCTest
 
         func testEveryTabOpens() {
             XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
-            for name in ["Photos", "Videos", "Shorts", "Activities"] {
+            for name in ["Photos", "Videos", "Shorts", "Search"] {
                 let tab = app.tabBars.buttons[name]
                 XCTAssertTrue(tab.waitForExistence(timeout: 5), "\(name) tab missing")
                 tab.tap()
@@ -100,7 +100,7 @@ import XCTest
 
         func testNotificationsListRenders() {
             XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
-            XCTAssertTrue(app.openActivities(), "Activities tab missing")
+            XCTAssertTrue(app.openActivities(), "Activities button missing")
             XCTAssertTrue(
                 app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Bob '")).firstMatch
                     .waitForExistence(timeout: 10),
@@ -119,7 +119,7 @@ import XCTest
 
         func testSearchOpens() {
             XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 10))
-            XCTAssertTrue(app.openSearch(), "No search button in the toolbar")
+            XCTAssertTrue(app.openSearch(), "No search tab")
             XCTAssertTrue(
                 app.searchFields.firstMatch.waitForExistence(timeout: 5), "No search field")
             sleep(1)

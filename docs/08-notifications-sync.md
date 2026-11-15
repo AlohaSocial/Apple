@@ -156,12 +156,14 @@ When `capabilities.webPushVAPIDKey != nil`:
 - The marker is what drives the "N new posts" pill, the unread dot in the
   sidebar, and the badge.
 - **Home timeline "You're caught up" divider** — on launch the home marker
-  (`home.last_read_id`) is read from the local store. If that post is in the
-  current timeline, a divider is inserted below it with the text "You're caught
-  up". When the reader scrolls past the divider (the first post below it
-  appears), the marker advances to that post locally and is synced to the
-  server. The notifications timeline has an identical divider driven by the
-  `notifications` marker (flat list only for now).
+  (`home.last_read_id`) is read from the local store, then from the server,
+  and the newer of the two wins. It names the newest post the reader had seen:
+  the timeline opens there, and a divider reading "You're caught up" sits
+  above it, with everything newer over it. The divider stays put for the
+  visit; a return from the background starts a new one. As the reader
+  scrolls, the topmost post on screen is saved as the marker, locally and on
+  the server — only ever forwards. The notifications timeline has a divider
+  driven by the `notifications` marker.
 
 ## 8. Notification digests
 
@@ -184,8 +186,10 @@ When `capabilities.webPushVAPIDKey != nil`:
 1. **Never insert a status into a timeline without an anchor.** Every fetch is
    either `min_id` from the newest cached entry, `max_id` from the oldest, or a
    cold load. Anything else risks an invisible gap.
-2. **A full page from a `min_id` fetch means there may be more** — insert a gap
-   marker rather than joining.
+2. **A full page that does not reach the cache means there may be more** —
+   insert a gap marker rather than joining. A refresh fetches the head of the
+   timeline, so a page that shares a post with the cache touches it, and no
+   gap opens there.
 3. **Deletions** (`delete` over streaming, or a 404 on refetch) remove the
    `StatusRecord` and every `TimelineEntry` pointing at it.
 4. **Edits** replace the `StatusRecord` in place, keeping timeline positions, and

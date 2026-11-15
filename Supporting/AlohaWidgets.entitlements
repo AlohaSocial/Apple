@@ -6,8 +6,9 @@
     <true/>
     <key>com.apple.security.network.client</key>
     <true/>
-    <!-- Standalone personal signing: no app group or shared keychain, so any
-         Apple ID (including a free one) can run this target
-         (Supporting/README.md). -->
+    <!-- Standalone (ALOHA_SHARED_CONTAINER = NO, the default): no app group
+         or shared keychain, so any Apple ID, including a free one, can sign
+         this target. The -Shared file beside it is the same plus both groups;
+         the build setting picks one (Supporting/README.md). -->
 </dict>
 </plist>

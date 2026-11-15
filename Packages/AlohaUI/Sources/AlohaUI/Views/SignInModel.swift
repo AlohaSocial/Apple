@@ -114,6 +114,39 @@ public final class SignInModel {
         currentCandidate = nil
     }
 
+    /// Finds the server of an account that is already on this device, for
+    /// signing it in again.
+    ///
+    /// The account remembers the API base it signed in at, which is a better
+    /// answer than discovery: discovery could settle on another candidate,
+    /// and a manual base from "Advanced" would not be found again at all. If
+    /// that base no longer answers — the server moved — discovery from the
+    /// host is the fallback, exactly as if the address had been typed.
+    public func resolveKnownServer(
+        apiBase: URL, host: String, environment: AppEnvironment
+    ) async {
+        typedHost = host
+        phase = .probing
+        currentCandidate = apiBase.absoluteString
+        let probe = ServerProbe(transport: environment.transport)
+        guard let resolved = await probe.resolveInstance(base: apiBase) else {
+            await self.probe(host, environment: environment)
+            return
+        }
+        let nodeInfo = await probe.fetchNodeInfo(origin: resolved.base.originString)
+        let known = ServerProbe.Outcome(
+            apiBase: resolved.base, instance: resolved.instance, nodeInfo: nodeInfo,
+            winningCandidate: ServerProbe.Candidate(
+                rank: 1, base: resolved.base,
+                explanation: String(
+                    localized: "the address this account signed in at",
+                    comment: "Known candidate explanation")),
+            attempted: [])
+        currentCandidate = nil
+        outcome = known
+        phase = .found(known)
+    }
+
     /// The documented-unsupported escape hatch for an unusual deployment.
     public func useManualBase(environment: AppEnvironment) async {
         guard var typed = URL(string: manualBase.trimmingCharacters(in: .whitespaces)) else {

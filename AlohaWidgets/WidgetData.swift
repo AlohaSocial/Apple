@@ -1,38 +1,62 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
+import CoreGraphics
 import Foundation
 import SwiftData
 
 /// Reads the shared store. Deliberately narrow: the widget process has a tight
 /// memory budget and must not stand up the app's whole object graph.
 enum WidgetData {
+    /// The account a Latest posts widget shows: the one picked, else the one
+    /// a configuration from before the picker named by handle, else the
+    /// account the app last had active.
     @MainActor
     static func account(matching configuration: WidgetAccount) async -> AccountStore.Snapshot? {
+        if let picked = configuration.account?.id { return await account(id: picked) }
+        guard let handle = configuration.handle, !handle.isEmpty else {
+            return await account(id: nil)
+        }
+        let store = AccountStore(modelContainer: StoreContainer.reader())
+        let snapshots = (try? await store.allAccounts()) ?? []
+        return snapshots.first { $0.qualifiedHandle == handle } ?? activeAccount(in: snapshots)
+    }
+
+    /// One account by id, or the active one when there is no id or the
+    /// account has since been removed.
+    @MainActor
+    static func account(id: UUID?) async -> AccountStore.Snapshot? {
         let store = AccountStore(modelContainer: StoreContainer.reader())
         guard let snapshots = try? await store.allAccounts() else { return nil }
-        if let handle = configuration.handle,
-            let match = snapshots.first(where: { $0.qualifiedHandle == handle })
-        {
-            return match
-        }
+        if let id, let match = snapshots.first(where: { $0.id == id }) { return match }
+        return activeAccount(in: snapshots)
+    }
+
+    private static func activeAccount(
+        in snapshots: [AccountStore.Snapshot]
+    ) -> AccountStore.Snapshot? {
         let stored = AppGroup.defaults
             .string(forKey: AppGroup.activeAccountKey)
             .flatMap(UUID.init(uuidString:))
         return snapshots.first { $0.id == stored } ?? snapshots.first
     }
 
+    /// The newest cached posts of one feed. Pictures come only from the app's
+    /// disk cache: an avatar the app has not shown yet is a monogram here.
     @MainActor
-    static func latestPosts(accountID: UUID, limit: Int) async -> [WidgetPost] {
+    static func latestPosts(
+        accountID: UUID, timelineKey: String, limit: Int, images: WidgetImages.Sizes
+    ) async -> [WidgetPost] {
         let timelines = TimelineStore(modelContainer: StoreContainer.reader())
         // Only the rows the widget shows are read and decoded, not the whole
         // cached timeline: the widget's memory budget is a few megabytes.
         guard
             let statuses = try? await timelines.latestStatuses(
-                accountID: accountID, timelineKey: "home:home", limit: limit)
+                accountID: accountID, timelineKey: timelineKey, limit: limit)
         else { return [] }
 
         return statuses.map { status in
@@ -48,7 +72,17 @@ enum WidgetData {
                 // A tap from the widget outranks a cache that has not heard
                 // about it yet.
                 favourited: WidgetFavourites.state(statusID: target.id, accountID: accountID)
-                    ?? target.favourited)
+                    ?? target.favourited,
+                avatar: images.avatar.flatMap { pixels in
+                    target.account.preferredAvatarURL.flatMap {
+                        WidgetImages.cached($0, pixels: pixels)
+                    }
+                },
+                thumbnail: images.thumbnail.flatMap { pixels in
+                    WidgetImages.thumbnailURL(of: target).flatMap {
+                        WidgetImages.cached($0, pixels: pixels)
+                    }
+                })
         }
     }
 
@@ -62,15 +96,16 @@ enum WidgetData {
             textHex: theme.textHex)
     }
 
-    /// The colour of the account the app last had active.
-    @MainActor
-    static func activeServerTheme() async -> AlohaThemeModifier.ServerTheme? {
-        await account(matching: WidgetAccount()).flatMap(serverTheme(of:))
-    }
-
-    @MainActor
-    static func unreadCount() async -> Int {
-        AppGroup.defaults.integer(forKey: AppGroup.unreadTotalKey)
+    /// Every account's unread notifications together, or one account's when
+    /// the widget is set to it. An account the app has not counted yet has
+    /// nothing unread as far as the widget can know.
+    static func unreadCount(accountID: UUID?) -> Int {
+        guard let accountID else {
+            return AppGroup.defaults.integer(forKey: AppGroup.unreadTotalKey)
+        }
+        let counts =
+            AppGroup.defaults.dictionary(forKey: AppGroup.unreadByAccountKey) as? [String: Int]
+        return counts?[accountID.uuidString] ?? 0
     }
 
     /// The newest mentions for one account, straight from the shared store.
@@ -79,7 +114,9 @@ enum WidgetData {
     /// so a row is a row: a mention widget is a plain list rather than a
     /// count, and the newest few are what a person opens their phone to see.
     @MainActor
-    static func latestMentions(accountID: UUID, limit: Int) async -> [WidgetMention] {
+    static func latestMentions(
+        accountID: UUID, limit: Int, avatarPixels: Int?
+    ) async -> [WidgetMention] {
         let container = StoreContainer.reader()
         var descriptor = FetchDescriptor<NotificationRecord>(
             predicate: #Predicate { $0.accountID == accountID && $0.kindRaw == "mention" },
@@ -112,7 +149,10 @@ enum WidgetData {
                 text: payload.body,
                 createdAt: record.createdAt,
                 statusID: payload.statusID,
-                favourited: favourited ?? false)
+                favourited: favourited ?? false,
+                avatar: avatarPixels.flatMap { pixels in
+                    payload.avatarURL.flatMap { WidgetImages.cached($0, pixels: pixels) }
+                })
         }
     }
 
@@ -140,6 +180,30 @@ enum WidgetData {
         html.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "&amp;", with: "&")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// Pictures for widget rows, from the disk cache the app fills as it shows
+/// them (`ImageLoader`), shrunk on the way in (docs/09 §8).
+enum WidgetImages {
+    /// The decode sizes a family can use, in pixels; nil where it shows none.
+    struct Sizes {
+        var avatar: Int?
+        var thumbnail: Int?
+
+        static let none = Sizes(avatar: nil, thumbnail: nil)
+    }
+
+    static func cached(_ url: URL, pixels: Int) -> CGImage? {
+        ImageLoader.cachedImage(for: url, maxPixels: pixels)
+    }
+
+    /// The first picture of a post, unless it is behind a warning: a Home
+    /// Screen is a more public place than the app (as `MemoriesWidgetWriter`).
+    static func thumbnailURL(of status: Status) -> URL? {
+        guard !status.sensitive, status.spoilerText.isEmpty else { return nil }
+        let image = status.mediaAttachments.first { $0.type == .image }
+        return image?.previewURL ?? image?.url
     }
 }
 

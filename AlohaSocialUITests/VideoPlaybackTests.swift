@@ -85,27 +85,55 @@ final class VideoPlaybackTests: XCTestCase {
         XCTAssertGreaterThan(motion, 0.01, "\(message): the picture never moved")
     }
 
-    /// Brings the system player's controls back when they have faded. AVKit
-    /// hides them a few seconds after they appear while the item plays, and a
-    /// slow runner can spend longer than that between two queries: the pause
-    /// control then "never appeared" although the player was fine. Only a
-    /// hidden set is revealed, because a tap on the picture while the
-    /// controls show hides them instead.
-    private func revealControls(on surface: XCUIElement) {
-        guard !app.buttons["Play/Pause"].exists else { return }
-        surface.tap()
-        _ = app.buttons["Play/Pause"].waitForExistence(timeout: 3)
+    // MARK: - The player's own controls
+    //
+    // AVKit fades its controls about three seconds after they appear while
+    // the item plays. On a hosted runner a single accessibility query can take
+    // a second or more, so "find the Pause button, then tap it" lost the race:
+    // the button was found, faded, and the tap's own lookup came back empty
+    // (run 43608049514). Nothing here looks a control up twice. It is read
+    // with `snapshot()`, which reports a faded control as absent rather than
+    // failing the test, and pressed by its place on the screen, which needs no
+    // second lookup. Whether a press took is read from the control afterwards.
+
+    /// The Play/Pause control as it is now, or nil while the controls are
+    /// faded.
+    private var playPauseNow: XCUIElementSnapshot? {
+        try? app.buttons["Play/Pause"].snapshot()
     }
 
-    /// Waits for one of the player's controls, revealing the set again
-    /// whenever it fades on the way.
-    private func waitForControl(
-        _ control: XCUIElement, on surface: XCUIElement, timeout: TimeInterval
+    /// Waits for the Play/Pause control, bringing faded controls back with a
+    /// tap on the picture — and only faded ones, because the same tap hides
+    /// controls that show. With `label`, waits for it to offer that.
+    private func waitForPlayPause(
+        _ label: String? = nil, on surface: XCUIElement, timeout: TimeInterval
+    ) -> XCUIElementSnapshot? {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if let control = playPauseNow {
+                if label == nil || control.label == label { return control }
+            } else {
+                surface.tap()
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+        } while Date() < deadline
+        return nil
+    }
+
+    /// Presses Play/Pause until it offers `label`. Every press follows a
+    /// reading of the control in the other state, so a press that took is
+    /// never undone by a second one; a press that landed while the controls
+    /// had faded only brought them back, and the next reading says so.
+    private func pressPlayPause(
+        at button: XCUICoordinate, until label: String, on surface: XCUIElement,
+        timeout: TimeInterval
     ) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         repeat {
-            revealControls(on: surface)
-            if control.waitForExistence(timeout: 1) { return true }
+            guard let control = waitForPlayPause(on: surface, timeout: 3) else { continue }
+            if control.label == label { return true }
+            button.tap()
+            Thread.sleep(forTimeInterval: 0.5)
         } while Date() < deadline
         return false
     }
@@ -129,33 +157,35 @@ final class VideoPlaybackTests: XCTestCase {
         // not about the player.
         let surface = app.otherElements["Video"].firstMatch
         XCTAssertTrue(surface.waitForExistence(timeout: 10), "No video surface to tap")
-        let playPause = app.buttons["Play/Pause"]
-        XCTAssertTrue(
-            waitForControl(playPause, on: surface, timeout: 10),
-            "No player controls appeared on the player")
+        guard let control = waitForPlayPause(on: surface, timeout: 10) else {
+            XCTFail("No player controls appeared on the player")
+            return
+        }
+        // The control sits in the middle of the picture and does not move, so
+        // its place, read once, is where every later press goes.
+        let button = app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: control.frame.midX, dy: control.frame.midY))
         // Ten seconds of fixture can end while a slow runner takes the
         // readings above; the control then offers Play, and pressing it on a
         // finished item does nothing. Rewind to the first frame so there is
-        // somewhere to play from, then start it again.
-        if playPause.label == "Play" {
+        // somewhere to play from, then start it again. A finished item is
+        // paused, and paused controls do not fade.
+        if control.label == "Play" {
             let rewind = app.buttons["Skip Backward"]
             if rewind.exists { rewind.tap() }
-            revealControls(on: surface)
-            if playPause.label == "Play" { playPause.tap() }
+            if waitForPlayPause("Pause", on: surface, timeout: 1) == nil {
+                _ = pressPlayPause(at: button, until: "Pause", on: surface, timeout: 10)
+            }
         }
-        let pause = app.buttons["Pause"]
-        XCTAssertTrue(
-            waitForControl(pause, on: surface, timeout: 10),
+        XCTAssertNotNil(
+            waitForPlayPause("Pause", on: surface, timeout: 10),
             "No pause control appeared on the player")
-        pause.tap()
-        let play = app.buttons["Play"]
         XCTAssertTrue(
-            waitForControl(play, on: surface, timeout: 5),
+            pressPlayPause(at: button, until: "Play", on: surface, timeout: 15),
             "Pausing did not turn the control into Play")
         shoot("61-video-file-paused")
-        play.tap()
         XCTAssertTrue(
-            waitForControl(pause, on: surface, timeout: 5),
+            pressPlayPause(at: button, until: "Pause", on: surface, timeout: 15),
             "Resuming did not turn the control into Pause")
         XCTAssertFalse(failureCard.exists, "Resuming put the failure card up")
         shoot("62-video-file-resumed")

@@ -177,10 +177,9 @@ import XCTest
             return candidates.element(boundBy: candidates.count)
         }
 
-        func testAccountMenuReachesDiscoverAndLists() {
+        func testDiscoverAndListsAreReachable() {
             launch()
-            XCTAssertTrue(
-                app.openFromAccountMenu("Discover"), "Discover missing from the account menu")
+            XCTAssertTrue(app.openDiscover(), "Discover missing from the search tab")
             // A section that only exists once the server has answered. This
             // used to wait for "nextcloud", which is a trending *hashtag* on
             // the Tags tab — Discover opens on People, so the wait could only
@@ -190,7 +189,8 @@ import XCTest
                 "Discover did not load")
             sleep(1)
             shoot("37-explore")
-            app.navigationBars.buttons.firstMatch.tap()
+            // The account menu is on the feeds, not on the search tab.
+            app.tabBars.buttons["My Feed"].tap()
             XCTAssertTrue(
                 app.openFromAccountMenu("Your lists"), "Your lists missing from the account menu")
             XCTAssertTrue(app.labelled("Colleagues").waitForExistence(timeout: 10), "Lists empty")

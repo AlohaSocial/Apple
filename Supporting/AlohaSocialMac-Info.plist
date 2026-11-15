@@ -2,10 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- The Mac app shares its store, keychain group and defaults with its
-	     widgets through group.social.aloha.app (AlohaSocialMac.entitlements). -->
+	<!-- Both follow ALOHA_SHARED_CONTAINER (Supporting/Aloha.xcconfig), the
+	     same switch that picks this target's entitlements, so the flags
+	     cannot claim a group the signature lacks or miss one it has. -->
 	<key>AlohaAppGroupEnabled</key>
-	<true/>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
+	<key>AlohaKeychainSharingEnabled</key>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<!-- The app's own links: a tapped widget row, a Control Center control
 	     and Spotlight all open the Mac app through alohasocial://. -->
 	<key>CFBundleURLTypes</key>
@@ -39,6 +42,30 @@
 		<string>social.aloha.app.viewingStatus</string>
 		<string>social.aloha.app.viewingProfile</string>
 		<string>social.aloha.app.composing</string>
+	</array>
+	<!-- "Post to Aloha Social" in the Services menu (docs/09 §2): selected
+	     text or a link opens a compose window with it written in.
+	     NSMessage is MacServiceProvider's selector; the port is the app. -->
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Post to Aloha Social</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>postToAlohaSocial</string>
+			<key>NSPortName</key>
+			<string>$(PRODUCT_NAME)</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>public.url</string>
+			</array>
+		</dict>
 	</array>
 	<!-- Export compliance: only Apple's own TLS (URLSession, Security.framework)
 	     is used, which is exempt. The iOS app says the same through

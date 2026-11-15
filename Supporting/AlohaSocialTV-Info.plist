@@ -2,10 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Shares the signed-in account and the Top Shelf snapshot with the Top
-	     Shelf extension (Supporting/README.md). -->
+	<!-- Both follow ALOHA_SHARED_CONTAINER (Supporting/Aloha.xcconfig), the
+	     same switch that picks this target's entitlements, so the flags
+	     cannot claim a group the signature lacks or miss one it has. -->
 	<key>AlohaAppGroupEnabled</key>
-	<true/>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
+	<key>AlohaKeychainSharingEnabled</key>
+	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<!-- A Top Shelf item opens the app with alohasocial://tv/play/<id>. -->
 	<key>CFBundleURLTypes</key>
 	<array>

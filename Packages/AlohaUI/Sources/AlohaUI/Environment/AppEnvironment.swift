@@ -31,6 +31,10 @@ public final class AppEnvironment {
     public let transport: any HTTPTransport
     public let sync: SyncEngine
     public let notifier: LocalNotifier
+    /// Shared by every account's client. The buckets are per host, so two
+    /// accounts on one server wait on each other and a 429 to one holds the
+    /// other back too, as the server meant it to (docs/08 §3).
+    public let rateLimiter = RateLimiter()
     /// Posts written while the server was out of reach (docs/07 §7).
     public let sendQueue = SendQueue()
 
@@ -175,7 +179,8 @@ public final class AppEnvironment {
             transport: transport,
             timelines: timelines,
             support: support,
-            accounts: accounts
+            accounts: accounts,
+            rateLimiter: rateLimiter
         )
     }
 
@@ -210,6 +215,9 @@ public final class AppEnvironment {
         let session = makeSession(snapshot)
         sessions.append(session)
         setActiveAccount(session.id)
+        // The engine was started for the accounts there were; this one would
+        // otherwise not be polled until the app next came to the foreground.
+        sync.startPolling(session)
 
         Task { await session.refreshServerState() }
         // The first account is the moment notifications become meaningful.
@@ -254,6 +262,9 @@ public final class AppEnvironment {
         }
         ReadingSignals.forget(session.id)
         setActiveAccount(renewed.id)
+        // The old session's loop polled with the old token, or not at all
+        // once it was refused; the renewed one replaces it.
+        sync.startPolling(renewed)
         Task { await renewed.refreshServerState() }
         return renewed
     }

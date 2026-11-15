@@ -245,6 +245,8 @@ public final class DraftRecord {
     public var videoTitle: String?
     public var videoCategory: String?
     public var videoLicence: String?
+    /// The poll's "hide totals until it ends" switch.
+    public var pollHideTotals: Bool = false
 
     public init(accountID: UUID, text: String = "") {
         self.accountID = accountID

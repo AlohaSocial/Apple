@@ -2,6 +2,7 @@
 
 import AlohaModels
 import AlohaNetwork
+import AlohaStore
 import Foundation
 import OSLog
 import UserNotifications
@@ -18,8 +19,11 @@ public struct NotificationReply: Sendable, Hashable {
 
     public init(actionIdentifier: String, userInfo: [AnyHashable: Any], typedText: String?) {
         self.actionIdentifier = actionIdentifier
-        self.accountID = (userInfo["accountID"] as? String).flatMap(UUID.init(uuidString:))
-        let status = userInfo["statusID"] as? String
+        // The keys every alert is written with, local or pushed
+        // (`NotificationAlert.userInfo`).
+        self.accountID = (userInfo[NotificationAlert.accountIDKey] as? String)
+            .flatMap(UUID.init(uuidString:))
+        let status = userInfo[NotificationAlert.statusIDKey] as? String
         self.statusID = status?.isEmpty == false ? status : nil
         self.typedText = typedText ?? ""
     }
@@ -86,7 +90,7 @@ public enum NotificationResponder {
     public nonisolated static func presentationOptions(
         forCategory category: String
     ) -> UNNotificationPresentationOptions {
-        category == "mention" ? [.banner, .list, .sound] : [.list]
+        category == NotificationAlert.mentionCategory ? [.banner, .list, .sound] : [.list]
     }
 
     /// Where a tap lands: the post the notification is about, or the
@@ -174,8 +178,9 @@ public enum NotificationResponder {
         content.title = String(
             localized: "Your reply wasn't sent", comment: "Notification title after a failed reply")
         content.body = text
-        content.categoryIdentifier = "generic"
-        content.userInfo = ["accountID": session.id.uuidString, "statusID": statusID]
+        content.categoryIdentifier = NotificationAlert.genericCategory
+        content.userInfo = NotificationAlert.userInfo(
+            accountID: session.id, statusID: statusID, notificationID: "unsent-\(statusID)")
         let request = UNNotificationRequest(
             identifier: "\(session.id.uuidString)-unsent-\(statusID)", content: content,
             trigger: nil)

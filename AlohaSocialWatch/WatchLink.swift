@@ -67,6 +67,9 @@ final class WatchLink: NSObject {
         if let previous = self.credentials?.accountID, previous != credentials.accountID {
             WatchComplicationSnapshot.clear()
             WidgetCenter.shared.reloadAllTimelines()
+            // The lists would not show another account's posts anyway (each
+            // file names its account), but they need not stay on the watch.
+            WatchCache.clear()
         }
         self.credentials = credentials
         self.client = APIClient(
@@ -79,6 +82,7 @@ final class WatchLink: NSObject {
         credentials = nil
         client = nil
         store.remove()
+        WatchCache.clear()
         WatchComplicationSnapshot.clear()
         WidgetCenter.shared.reloadAllTimelines()
     }
