@@ -24,8 +24,7 @@ public struct CapabilityDetector: Sendable {
         nodeInfo: NodeInfo?
     ) async -> ServerCapabilities {
         let softwareName = (nodeInfo?.software.name ?? "").lowercased()
-        let isNextcloudSocial =
-            softwareName.contains("nextcloud") && softwareName.contains("social")
+        let isNextcloudSocial = ServerCapabilities.isSocialSoftware(softwareName)
         let mastodonVersion = instance.mastodonAPIVersion
 
         // 4.x surfaces are announced rather than probed where the server states
