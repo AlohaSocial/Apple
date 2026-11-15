@@ -951,8 +951,87 @@ public enum SidebarItem: Hashable, Sendable {
     ]
 }
 
+extension View {
+    /// The selected sidebar row wears the server's colour in its words as
+    /// well as its symbol. The system's own selection is left as it is —
+    /// on the Mac that is a neutral capsule, which says "selected" and
+    /// nothing about whose app this is.
+    @ViewBuilder
+    fileprivate func sidebarSelectionAccent(_ isSelected: Bool) -> some View {
+        #if os(macOS)
+            modifier(SidebarSelectionAccent(isSelected: isSelected))
+        #else
+            self
+        #endif
+    }
+}
+
+#if os(macOS)
+    private struct SidebarSelectionAccent: ViewModifier {
+        @Environment(\.alohaPalette) private var palette
+        let isSelected: Bool
+
+        func body(content: Content) -> some View {
+            content
+                .foregroundStyle(isSelected ? AnyShapeStyle(palette.accent) : AnyShapeStyle(.primary))
+                .fontWeight(isSelected ? .semibold : .regular)
+        }
+    }
+#endif
+
+#if os(macOS)
+    /// What each place in the Mac's sidebar wears: a filled symbol on a
+    /// colour of its own.
+    enum SidebarTile {
+        static func symbol(for mode: FeedMode) -> String {
+            switch mode {
+            case .home: "house.fill"
+            case .photos: "photo.fill"
+            case .video: "play.fill"
+            case .shorts: "bolt.fill"
+            case .news: "newspaper.fill"
+            case .audio: "waveform"
+            }
+        }
+
+        static func colour(for mode: FeedMode) -> Color {
+            switch mode {
+            case .home: .blue
+            case .photos: .pink
+            case .video: .red
+            case .shorts: .orange
+            case .news: .indigo
+            case .audio: .purple
+            }
+        }
+
+        static func symbol(for route: Route) -> String {
+            switch route {
+            case .notifications: "bell.fill"
+            case .conversations: "paperplane.fill"
+            case .explore: "safari.fill"
+            case .lists: "list.bullet"
+            case .collections: "rectangle.stack.fill"
+            default: "circle.fill"
+            }
+        }
+
+        static func colour(for route: Route) -> Color {
+            switch route {
+            case .notifications: .yellow
+            case .conversations: .green
+            case .explore: .teal
+            case .lists: .cyan
+            case .collections: .brown
+            default: .gray
+            }
+        }
+    }
+#endif
+
 public struct SidebarView: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.alohaPalette) private var palette
 
     private let session: AccountSession
     @Binding private var selection: SidebarItem
@@ -999,11 +1078,18 @@ public struct SidebarView: View {
                 Label {
                     Text("Activities", comment: "Sidebar item")
                 } icon: {
-                    Image(
-                        systemName: selectedRoute == .notifications
+                    #if os(macOS)
+                        IconTile(
+                            SidebarTile.symbol(for: .notifications),
+                            colour: SidebarTile.colour(for: .notifications))
+                    #else
+                        Image(
+                            systemName: selectedRoute == .notifications
                             ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications)
+                    #endif
                 }
                 .badge(unreadActivities > 0 ? Text(verbatim: String(unreadActivities)) : nil)
+                .sidebarSelectionAccent(selectedRoute == .notifications)
                 .tag(SidebarItem.route(.notifications))
                 .accessibilityLabel(
                     unreadActivities > 0
@@ -1015,9 +1101,15 @@ public struct SidebarView: View {
                 Label {
                     Text("Direct messages", comment: "Sidebar item")
                 } icon: {
-                    Image(
-                        systemName: selectedRoute == .conversations
+                    #if os(macOS)
+                        IconTile(
+                            SidebarTile.symbol(for: .conversations),
+                            colour: SidebarTile.colour(for: .conversations))
+                    #else
+                        Image(
+                            systemName: selectedRoute == .conversations
                             ? AlohaSymbol.directMessageFilled : AlohaSymbol.directMessage)
+                    #endif
                 }
                 // `badge(0)` is not "no badge": it draws a zero, so every
                 // account with an empty inbox would wear one. The optional
@@ -1026,6 +1118,7 @@ public struct SidebarView: View {
                     unreadConversations > 0
                         ? Text(verbatim: String(unreadConversations)) : nil
                 )
+                .sidebarSelectionAccent(selectedRoute == .conversations)
                 .tag(SidebarItem.route(.conversations))
                 .accessibilityLabel(
                     unreadConversations > 0
@@ -1062,21 +1155,53 @@ public struct SidebarView: View {
         }
 
         .listStyle(.sidebar)
-        .searchable(
-            text: $searchText, placement: .sidebar,
-            prompt: Text("Search", comment: "Sidebar search field")
-        )
-        .onSubmit(of: .search, submitSearch)
+        #if !os(macOS)
+            .searchable(
+                text: $searchText, placement: .sidebar,
+                prompt: Text("Search", comment: "Sidebar search field")
+            )
+            .onSubmit(of: .search, submitSearch)
+        #endif
         .navigationTitle(Text("Aloha Social", comment: "App name"))
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+        #if os(macOS)
+            // The server's colour, as light from the top of the sidebar: the
+            // one place the window says whose Nextcloud this is before a
+            // word of it is read.
+            .overlay(alignment: .top) {
+                LinearGradient(
+                    colors: [palette.accent.opacity(0.20), palette.accent.opacity(0)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .frame(height: 200)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            // At the sidebar's foot, with the name beside the face, as on
+            // iPad. In the window's toolbar the system drew it as one more
+            // glass capsule beside the sidebar toggle, holding a pair of
+            // initials: a control that looked like nothing in particular.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 AccountMenuButton(
                     session: session,
                     onOpen: { selection = .route($0) },
                     onAddAccount: onAddAccount,
-                    showsBrowseDestinations: false)
+                    showsBrowseDestinations: false, showsName: true
+                )
+                .padding(.horizontal, AlohaMetrics.space3)
+                .padding(.vertical, AlohaMetrics.space2)
             }
-        }
+        #else
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    AccountMenuButton(
+                        session: session,
+                        onOpen: { selection = .route($0) },
+                        onAddAccount: onAddAccount,
+                        showsBrowseDestinations: false)
+                }
+            }
+        #endif
     }
 
     /// A mode row: the same Label the fixed destinations use, with the tag
@@ -1092,8 +1217,13 @@ public struct SidebarView: View {
         return Label {
             Text(title(for: mode))
         } icon: {
-            Image(systemName: isSelected ? mode.selectedSymbolName : mode.symbolName)
+            #if os(macOS)
+                IconTile(SidebarTile.symbol(for: mode), colour: SidebarTile.colour(for: mode))
+            #else
+                Image(systemName: isSelected ? mode.selectedSymbolName : mode.symbolName)
+            #endif
         }
+        .sidebarSelectionAccent(isSelected)
         .tag(SidebarItem.mode(mode))
         .accessibilityLabel(Text(title(for: mode)))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
@@ -1130,8 +1260,13 @@ public struct SidebarView: View {
         Label {
             Text(String(localized: title, comment: comment))
         } icon: {
-            Image(systemName: symbol)
+            #if os(macOS)
+                IconTile(SidebarTile.symbol(for: route), colour: SidebarTile.colour(for: route))
+            #else
+                Image(systemName: symbol)
+            #endif
         }
+        .sidebarSelectionAccent(selectedRoute == route)
         .tag(SidebarItem.route(route))
     }
 

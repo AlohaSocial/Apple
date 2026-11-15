@@ -76,7 +76,7 @@ extension ThemedAppShell {
     /// a wide window, and not a window opened for one destination, which is
     /// already that destination's column of its own (`RouteWindow`).
     var showsDetailColumn: Bool {
-        #if os(iOS)
+        #if os(iOS) || os(macOS)
             usesSidebar && isDetailColumnAvailable && initialRoute == nil
         #else
             false
@@ -158,7 +158,7 @@ extension ThemedAppShell {
     /// The menu bar's Back: one step off whichever stack is showing — the
     /// same one `push` adds to. With a detail column open, that is the
     /// column, and stepping back from its root closes it.
-    private func goBack() {
+    func goBack() {
         if showsDetailColumn, detailPaths[sidebarItem]?.isEmpty == false {
             detailPaths[sidebarItem]?.removeLast()
             if detailPaths[sidebarItem]?.isEmpty == true { detailPaths[sidebarItem] = nil }
@@ -186,6 +186,54 @@ extension ThemedAppShell {
             open: { open($0) },
             back: { goBack() },
             canGoBack: canGoBack,
+            jump: { withAnimation(.easeOut(duration: 0.15)) { isJumping = true } },
             places: ShellPlace.sidebarOrder(modes: session.visibleModes, modeTitle: modeTitle))
     }
 }
+
+#if os(macOS)
+    extension ThemedAppShell {
+        /// Everywhere the "Go to…" field can take a person: the sidebar's
+        /// places, then the screens kept in the account menu.
+        func jumpItems(_ session: AccountSession) -> [CommandPalette.Item] {
+            var items = ShellPlace.sidebarOrder(modes: session.visibleModes, modeTitle: modeTitle)
+                .enumerated().map { index, place in
+                    CommandPalette.Item(
+                        id: "place-\(index)", title: place.title,
+                        symbolName: "arrow.right.circle", route: place.route)
+                }
+            func add(_ id: String, _ title: String, _ symbol: String, _ route: Route) {
+                items.append(
+                    CommandPalette.Item(id: id, title: title, symbolName: symbol, route: route))
+            }
+            add(
+                "profile", String(localized: "My profile", comment: "Account menu item"),
+                "person.crop.circle", .profile(accountID: session.snapshot.serverAccountID))
+            add(
+                "lists", String(localized: "Your lists", comment: "Account menu item"),
+                AlohaSymbol.list, .lists)
+            add(
+                "bookmarks", String(localized: "Bookmarks", comment: "Account menu item"),
+                AlohaSymbol.bookmark, .bookmarks)
+            add(
+                "liked", String(localized: "Liked posts", comment: "Account menu item"),
+                AlohaSymbol.favourite, .favourites)
+            add(
+                "requests", String(localized: "Follow requests", comment: "Account menu item"),
+                "person.badge.clock", .followRequests)
+            add(
+                "drafts", String(localized: "Drafts", comment: "Settings item"),
+                "doc.text", .drafts)
+            add(
+                "scheduled", String(localized: "Scheduled posts", comment: "Settings item"),
+                "clock", .scheduledPosts)
+            add(
+                "filters", String(localized: "Filters", comment: "Settings item"),
+                "line.3.horizontal.decrease", .filters)
+            add(
+                "blocking", String(localized: "Blocking", comment: "Account menu item"),
+                "hand.raised", .safety)
+            return items
+        }
+    }
+#endif

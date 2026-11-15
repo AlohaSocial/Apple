@@ -21,12 +21,23 @@ public struct PhotosModeView: View {
 
     @State private var model: TimelineModel
     // Start with the photo feed; preserve a layout the person explicitly chose.
-    @AppStorage("aloha.photosLayout") private var layout: Layout = .feed
+    @AppStorage("aloha.photosLayout") private var layout: Layout = Layout.initial
     @State private var stories: [Story] = []
     @State private var playingStoriesFrom: Int?
 
     enum Layout: String, CaseIterable {
         case feed, grid
+
+        /// What a person sees before they have chosen. A phone reads one
+        /// picture at a time; a Mac window has room to show a wall of them,
+        /// and one picture per screen wastes it.
+        static var initial: Layout {
+            #if os(macOS)
+                .grid
+            #else
+                .feed
+            #endif
+        }
     }
 
     public init(
@@ -177,10 +188,8 @@ public struct PhotosModeView: View {
                     AlohaHint(
                         id: "photos-double-tap",
                         symbol: AlohaSymbol.favourite,
-                        title: Text("Double-tap to like", comment: "Photos hint title"),
-                        message: Text(
-                            "Double-tap a picture to like or unlike it. Tap it once to open it full size.",
-                            comment: "Photos hint")
+                        title: PhotosHintText.title,
+                        message: PhotosHintText.message
                     )
                     .padding(AlohaMetrics.space3)
                 }
@@ -219,9 +228,15 @@ public struct PhotosModeView: View {
     /// at both ends: six columns on an iPad in a narrow Stage Manager window,
     /// six on a Mac window as wide as the screen. A tile no smaller than
     /// 110pt gives a phone its three and lets everything wider fill.
-    static let columns = [
-        GridItem(.adaptive(minimum: 110, maximum: 240), spacing: gutter)
-    ]
+    static var columns: [GridItem] {
+        #if os(macOS)
+            // Larger on the Mac, where the window is wide and the pointer
+            // precise: a tile is something to look at before it is opened.
+            [GridItem(.adaptive(minimum: 180, maximum: 320), spacing: gutter)]
+        #else
+            [GridItem(.adaptive(minimum: 110, maximum: 240), spacing: gutter)]
+        #endif
+    }
 
     private var grid: some View {
         ScrollView {
@@ -1265,5 +1280,28 @@ struct StoryVideoSurface: View {
             player = nil
             isReady = false
         }
+    }
+}
+
+/// The Photos hint in the words of the device: a Mac is clicked, not tapped.
+private enum PhotosHintText {
+    static var title: Text {
+        #if os(macOS)
+            Text("Double-click to like", comment: "Photos hint title on the Mac")
+        #else
+            Text("Double-tap to like", comment: "Photos hint title")
+        #endif
+    }
+
+    static var message: Text {
+        #if os(macOS)
+            Text(
+                "Double-click a picture to like or unlike it. Click it once to open it full size.",
+                comment: "Photos hint on the Mac")
+        #else
+            Text(
+                "Double-tap a picture to like or unlike it. Tap it once to open it full size.",
+                comment: "Photos hint")
+        #endif
     }
 }

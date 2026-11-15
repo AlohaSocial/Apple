@@ -67,3 +67,28 @@ private struct WindowOpenerProvider: ViewModifier {
         content.onAppear { MacWindows.openWindow = openWindow }
     }
 }
+
+/// How the Mac's windows are drawn, as their own tab in the Settings window.
+struct MacWindowSettings: View {
+    /// Whether the ground around what is being read is the blurred desktop
+    /// rather than the theme's colour. On by default: a Mac window that lets
+    /// the desktop through is the platform's own look, and the reading
+    /// column stays solid either way.
+    static let isTranslucentKey = "aloha.mac.translucentWindow"
+
+    @AppStorage(MacWindowSettings.isTranslucentKey) private var isTranslucent = true
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: $isTranslucent) {
+                    Text("Translucent window", comment: "Mac setting")
+                    Text(
+                        "The desktop shows through around what you are reading. Posts stay on a solid ground.",
+                        comment: "Mac setting detail")
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}

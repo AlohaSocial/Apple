@@ -80,9 +80,13 @@ public struct ExploreView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            switcher
+            #if !os(macOS)
+                switcher
+            #endif
             if section == .hashtags && !categories.isEmpty { categoryChips }
-            Divider()
+            #if !os(macOS)
+                Divider()
+            #endif
 
             Group {
                 switch section {
@@ -99,6 +103,15 @@ public struct ExploreView: View {
         }
         .background(palette.background)
         .navigationTitle(Text("Discover", comment: "Screen title"))
+        #if os(macOS)
+            // The sections in the toolbar's centre, where every other screen
+            // has its filter (`toolbarFilter`).
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    sectionPicker.pickerStyle(.segmented).labelsHidden()
+                }
+            }
+        #endif
         .task { await load() }
         .task(id: directoryOrder) { await loadDirectory() }
         .task(id: period) { await loadTrendingTags() }
@@ -331,12 +344,17 @@ public struct ExploreView: View {
                         SkeletonListRow(person: 5)
                     } else if peopleError == nil {
                         ContentUnavailableView {
-                            Text("Nobody to suggest yet", comment: "Empty Discover people")
+                            Label {
+                                Text("Nobody to suggest yet", comment: "Empty Discover people")
+                            } icon: {
+                                Image(systemName: "person.2")
+                            }
                         } description: {
                             Text(
                                 "Follow a few people and the server will find more like them.",
                                 comment: "Empty Discover people detail")
                         }
+                        .frame(maxWidth: .infinity)
                         .listRowSeparator(.hidden)
                     }
                 }

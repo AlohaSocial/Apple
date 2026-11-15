@@ -28,7 +28,7 @@ public struct ListsView: View {
     }
 
     public var body: some View {
-        List {
+        GroupedList {
             if let errorMessage {
                 errorStrip(errorMessage)
             }
@@ -196,8 +196,13 @@ public struct ListsView: View {
 
                 if followedTags.isEmpty && !isLoading && errorMessage == nil {
                     ContentUnavailableView {
-                        Text("None yet", comment: "Empty followed hashtags")
+                        Label {
+                            Text("None yet", comment: "Empty followed hashtags")
+                        } icon: {
+                            Image(systemName: "number")
+                        }
                     }
+                    .frame(maxWidth: .infinity)
                     .listRowSeparator(.hidden)
                 }
             } header: {

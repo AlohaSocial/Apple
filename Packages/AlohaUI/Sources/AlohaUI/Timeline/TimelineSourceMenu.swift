@@ -22,6 +22,30 @@ struct TimelineSourceMenu: ViewModifier {
     func body(content: Content) -> some View {
         #if os(tvOS) || os(watchOS)
             content
+        #elseif os(macOS)
+            // On the Mac the sources are a control in the toolbar, where
+            // they can be seen. A menu under the title is a phone's answer
+            // to having no room: it needed a tip to say it was there, and a
+            // Mac window has the whole width of a toolbar to spend.
+            content
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Picker(selection: $source) {
+                            ForEach(Self.options(offersForYou: offersForYou), id: \.source) {
+                                option in
+                                Text(option.title).tag(option.source)
+                            }
+                        } label: {
+                            Text("Timeline source", comment: "Accessibility label")
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .help(Text("Timeline source", comment: "Accessibility label"))
+                    }
+                }
+                .onChange(of: source) {
+                    TimelineSourceTip().invalidate(reason: .actionPerformed)
+                }
         #else
             content
                 .toolbarTitleMenu {

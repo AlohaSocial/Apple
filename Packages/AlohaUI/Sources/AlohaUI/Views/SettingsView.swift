@@ -21,8 +21,14 @@ public struct SettingsView: View {
     /// might type looking for it, in their own language ("dark" finds
     /// Appearance, and so does "dunkel"). See `SettingsSection`.
     private func shows(_ section: SettingsSection) -> Bool {
-        section.matches(settingsQuery)
+        if let onlySection { return section == onlySection }
+        return section.matches(settingsQuery)
     }
+
+    /// The one section this form shows, where each has a pane of its own —
+    /// the Mac's Settings window (`SettingsWindowView`). `nil` is the whole
+    /// form in one scroll, with its search field.
+    private let onlySection: SettingsSection?
 
     private var hasAnyMatch: Bool {
         SettingsSection.allCases.contains(where: shows)
@@ -65,6 +71,12 @@ public struct SettingsView: View {
 
     public init(onAddAccount: @escaping () -> Void) {
         self.onAddAccount = onAddAccount
+        self.onlySection = nil
+    }
+
+    init(section: SettingsSection, onAddAccount: @escaping () -> Void) {
+        self.onAddAccount = onAddAccount
+        self.onlySection = section
     }
 
     public var body: some View {
@@ -313,11 +325,7 @@ public struct SettingsView: View {
         }
         .formStyle(.grouped)
         .alohaGround(palette)
-        .searchable(
-            text: $settingsQuery,
-            placement: .automatic,
-            prompt: Text("Search settings", comment: "Settings search field")
-        )
+        .modifier(SettingsSearchField(query: $settingsQuery, isShown: onlySection == nil))
         .navigationTitle(Text("Settings", comment: "Screen title"))
         .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .sheet(isPresented: $isShowingIntroduction) {
@@ -1230,5 +1238,91 @@ extension SettingsView {
         return Text(
             "\(session.snapshot.bestDisplayName), \(handle)",
             comment: "Accessibility label for an account row")
+    }
+}
+
+/// The form's own search field — left out where the form is one pane of
+/// several and the list of panes is what gets searched.
+private struct SettingsSearchField: ViewModifier {
+    @Binding var query: String
+    let isShown: Bool
+
+    func body(content: Content) -> some View {
+        if isShown {
+            content.searchable(
+                text: $query,
+                placement: .automatic,
+                prompt: Text("Search settings", comment: "Settings search field")
+            )
+        } else {
+            content
+        }
+    }
+}
+
+extension SettingsSection {
+    /// Whether the form has anything to show for this section right now: the
+    /// same conditions the form itself applies, so a list of sections does
+    /// not offer an empty pane.
+    @MainActor
+    func isAvailable(in environment: AppEnvironment) -> Bool {
+        let session = environment.activeSession
+        switch self {
+        case .accounts, .appearance, .storage, .content, .soundAndTouch, .about:
+            return true
+        case .yourAccount, .feeds, .timeline, .nextcloud, .media, .notifications, .posting:
+            return session != nil
+        case .intelligence:
+            return environment.intelligence.availability.shouldShowSettingsSection
+        case .moderation:
+            return session?.capabilities.isNextcloudSocial == true
+        case .deleteAccount:
+            guard let session else { return false }
+            if session.capabilities.isNextcloudSocial { return true }
+            return URL(string: session.capabilities.apiBase.originString)?.host != nil
+        }
+    }
+
+    /// The symbol on the section's tile in the Mac's Settings sidebar.
+    var tileSymbolName: String {
+        switch self {
+        case .accounts: "person.2.fill"
+        case .appearance: "paintbrush.fill"
+        case .yourAccount: "person.fill"
+        case .feeds: "square.stack.fill"
+        case .timeline: "list.bullet"
+        case .nextcloud: "cloud.fill"
+        case .media: "photo.fill"
+        case .notifications: "bell.badge.fill"
+        case .posting: "square.and.pencil"
+        case .intelligence: "sparkles"
+        case .storage: "internaldrive.fill"
+        case .content: "line.3.horizontal.decrease"
+        case .soundAndTouch: "speaker.wave.2.fill"
+        case .moderation: "shield.lefthalf.filled"
+        case .deleteAccount: "trash.fill"
+        case .about: "info"
+        }
+    }
+
+    var tileColour: Color {
+        switch self {
+        case .accounts: .blue
+        case .appearance: .indigo
+        case .yourAccount: .cyan
+        case .feeds: .orange
+        case .timeline: .blue
+        case .nextcloud: .teal
+        case .media: .pink
+        case .notifications: .red
+        case .posting: .green
+        case .intelligence: .purple
+        case .storage: .gray
+        case .content: .mint
+        case .soundAndTouch: .pink
+        case .moderation: .orange
+        case .deleteAccount: .red
+        case .about: .gray
+        }
     }
 }

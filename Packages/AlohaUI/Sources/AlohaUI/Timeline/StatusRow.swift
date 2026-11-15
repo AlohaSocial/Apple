@@ -44,6 +44,12 @@ public struct StatusRow: View {
     /// used to parse the HTML itself, on the main actor, in every evaluation
     /// of every row's body.
     @State private var spokenBody: String?
+    #if os(macOS)
+        /// Whether the pointer is over this row. A Mac row that does not
+        /// answer the pointer reads as a picture of a row.
+        @State private var isPointerOver = false
+        @Environment(\.accessibilityReduceMotion) private var reduceMotionOnHover
+    #endif
 
     public init(
         status: Status,
@@ -84,6 +90,17 @@ public struct StatusRow: View {
     }
 
     private var displayed: Status { status.displayed }
+
+    #if os(macOS)
+        /// Whether the action row tells the reader something without being
+        /// asked: a number, or a mark they left themselves.
+        private var actionsHaveSomethingToSay: Bool {
+            if displayed.favourited || displayed.reblogged || displayed.bookmarked { return true }
+            guard showsCounts else { return false }
+            return displayed.favouritesCount > 0 || displayed.reblogsCount > 0
+                || displayed.repliesCount > 0
+        }
+    #endif
 
     public var body: some View {
         Group {
@@ -141,12 +158,39 @@ public struct StatusRow: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHidden(true)
+                .profilePeek(displayed.account) { onAction(.openProfile(displayed.account)) }
 
                 VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
                     header
                     if displayed.hasContentWarning { spoilerRow }
                     if !displayed.hasContentWarning || isSpoilerRevealed { statusBody }
-                    if showActions { actionRow }
+                    if showActions {
+                        actionRow
+                            #if os(macOS)
+                                // A drawer, as on the web: the actions are
+                                // out of sight until the pointer is over the
+                                // post, then slide out of it on a tinted
+                                // shelf. A post with something to report — a
+                                // count, a like already given — keeps them in
+                                // view, dimmed. The row's height is the same
+                                // either way, so nothing under the pointer
+                                // moves.
+                                .padding(.horizontal, AlohaMetrics.space2)
+                                .background {
+                                    RoundedRectangle(
+                                        cornerRadius: AlohaMetrics.cornerSmall, style: .continuous
+                                    )
+                                    .fill(palette.accent.opacity(0.13))
+                                    .scaleEffect(
+                                        x: 1, y: isPointerOver ? 1 : 0.2, anchor: .top
+                                    )
+                                    .opacity(isPointerOver ? 1 : 0)
+                                }
+                                .padding(.horizontal, -AlohaMetrics.space2)
+                                .opacity(isPointerOver ? 1 : (actionsHaveSomethingToSay ? 0.6 : 0))
+                                .offset(y: isPointerOver || actionsHaveSomethingToSay ? 0 : -6)
+                            #endif
+                    }
                 }
             }
         }
@@ -167,6 +211,18 @@ public struct StatusRow: View {
         // Here rather than in each list, so every list of posts — thread,
         // search, profile, notifications — lights up on visionOS alike.
         .alohaRowHighlight()
+        #if os(macOS)
+            // The Mac's own answer to the pointer: a soft card behind the
+            // row it is over, wider than the words so it does not crowd them.
+            .background {
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                    .fill(palette.label.opacity(isPointerOver ? 0.05 : 0))
+                    .padding(.horizontal, -AlohaMetrics.space3)
+            }
+            .onHover { isPointerOver = $0 }
+            .animation(
+                reduceMotionOnHover ? nil : .easeOut(duration: 0.16), value: isPointerOver)
+        #endif
         // Not a `Button`: the row holds buttons and links of its own, and a
         // button around them swallows every tap on a mention or hashtag. A
         // tap opens the post; so does the row's default action, which is
@@ -848,6 +904,9 @@ struct QuotedStatusCard: View {
 
 public enum StatusRowAction: Sendable {
     case open(Status)
+    /// A look at the post without leaving the list: Space on the Mac, the
+    /// way Quick Look works in the Finder.
+    case peek(Status)
     /// The watch page rather than the thread: player first, comments under it.
     case watch(Status)
     case reply(Status)

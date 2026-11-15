@@ -25,6 +25,19 @@ import SwiftUI
         public init() {}
 
         public var body: some Commands {
+            #if os(macOS)
+                // The app menu's own Settings… item, on ⌘, as everywhere —
+                // opening the app's settings window rather than a `Settings`
+                // scene, whose window cannot be resized.
+                CommandGroup(replacing: .appSettings) {
+                    Button {
+                        openWindow(id: AlohaWindow.settings)
+                    } label: {
+                        Text("Settings…", comment: "Menu item")
+                    }
+                    .keyboardShortcut(",", modifiers: .command)
+                }
+            #endif
             // Replacing the group takes File > New Window with it, so it is
             // put back. Where each lands is docs/09's: on the Mac ⌘N is a new
             // window and ⌥⌘N a new compose window (§2); on iPad ⌘N is the
@@ -69,6 +82,17 @@ import SwiftUI
             }
 
             CommandMenu(Text("Go", comment: "Menu title")) {
+                #if os(macOS)
+                    Button {
+                        shell?.jump()
+                    } label: {
+                        Text("Go to…", comment: "Menu item: opens the command palette")
+                    }
+                    .keyboardShortcut("k", modifiers: .command)
+                    .disabled(shell == nil)
+
+                    Divider()
+                #endif
                 Button {
                     shell?.back()
                 } label: {

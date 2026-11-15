@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaDesign
 import AlohaNetwork
 import AlohaStore
 import AlohaUI
@@ -34,8 +35,27 @@ struct AlohaSocialMacApp: App {
     /// Whether the menu bar extra is in the menu bar: off until the person
     /// turns it on in Settings (docs/09 §2).
     @AppStorage(MacMenuBarExtra.isShownKey) private var showsMenuBarExtra = false
+    /// Whether the window's ground is the blurred desktop (`MacWindowSettings`).
+    @AppStorage(MacWindowSettings.isTranslucentKey) private var isWindowTranslucent = true
     /// The sync engine's unread total, which the Dock badge shows too.
     @AppStorage(AppGroup.unreadTotalKey, store: AppGroup.defaults) private var unreadTotal = 0
+
+    /// The menu bar extra's switch, written only when it really changes.
+    ///
+    /// `MenuBarExtra` writes its binding back every time the status item
+    /// reports its visibility, changed or not. Handed `$showsMenuBarExtra`
+    /// directly, each of those writes posted a defaults change, which
+    /// re-evaluated this `App`, which applied the visibility again, which
+    /// wrote the binding again: the main thread never came back, and the
+    /// window that had opened stayed empty.
+    private var menuBarExtraInserted: Binding<Bool> {
+        Binding(
+            get: { showsMenuBarExtra },
+            set: { isInserted in
+                guard isInserted != showsMenuBarExtra else { return }
+                showsMenuBarExtra = isInserted
+            })
+    }
 
     /// `-AlohaMockServer` boots into a populated timeline against the mock
     /// server, skipping OAuth. DEBUG only.
@@ -62,6 +82,7 @@ struct AlohaSocialMacApp: App {
                 }
                 .modifier(ContinuityReceiver(environment: environment))
                 .providesWindowOpener()
+                .environment(\.alohaTranslucentWindow, isWindowTranslucent)
         }
         .modelContainer(environment.container)
         .commands { AlohaCommands() }
@@ -75,6 +96,7 @@ struct AlohaSocialMacApp: App {
         WindowGroup(for: Route.self) { $route in
             RouteWindow(route: route)
                 .environment(environment)
+                .environment(\.alohaTranslucentWindow, isWindowTranslucent)
         }
         .modelContainer(environment.container)
         .defaultSize(width: 760, height: 820)
@@ -98,40 +120,50 @@ struct AlohaSocialMacApp: App {
         // shell, which owns it, via the same notification mechanism every
         // other entry point uses.
         //
-        // The Mac's own switches — the menu bar extra — sit in a tab of their
-        // own beside it, so the shared form stays the same on every platform.
-        Settings {
-            TabView {
-                Tab {
-                    SettingsView {
-                        NotificationCenter.default.post(name: .alohaAddAccount, object: nil)
-                    }
-                } label: {
-                    Label {
-                        Text("General", comment: "Mac Settings tab")
-                    } icon: {
-                        Image(systemName: "gearshape")
-                    }
-                }
-                Tab {
-                    MacMenuBarSettings()
-                } label: {
-                    Label {
-                        Text("Menu Bar", comment: "Mac Settings tab")
-                    } icon: {
-                        Image(systemName: "menubar.rectangle")
-                    }
-                }
+        // The Mac's own switches — the window's translucency, the menu bar
+        // extra — are panes of their own in its sidebar, so the shared form
+        // stays the same on every platform.
+        Window(Text("Settings", comment: "Screen title"), id: AlohaWindow.settings) {
+            SettingsWindowView(
+                panes: [
+                    SettingsWindowView.Pane(
+                        id: "window",
+                        title: String(localized: "Window", comment: "Mac Settings pane"),
+                        symbolName: "macwindow",
+                        keywords: String(
+                            localized: "window translucent transparent blur desktop glass",
+                            comment:
+                                "Settings search keywords for the Mac's Window pane, separated by spaces. Translate into the words people in your language would type.")
+                    ) { MacWindowSettings() },
+                    SettingsWindowView.Pane(
+                        id: "menu-bar",
+                        title: String(localized: "Menu Bar", comment: "Mac Settings pane"),
+                        symbolName: "menubar.rectangle",
+                        keywords: String(
+                            localized: "menu bar extra status unread icon",
+                            comment:
+                                "Settings search keywords for the Mac's Menu Bar pane, separated by spaces. Translate into the words people in your language would type.")
+                    ) { MacMenuBarSettings() },
+                ]
+            ) {
+                NotificationCenter.default.post(name: .alohaAddAccount, object: nil)
             }
             .environment(environment)
             .alohaTheme(
                 environment.theme, metrics: environment.metrics,
                 accent: environment.serverAccent)
         }
+        // A window of the app's own, not a `Settings` scene: that scene's
+        // window is fixed at one size whatever its content allows, and this
+        // one has a list of panes beside forms of every length. ⌘, and the
+        // app menu's Settings… item open it (`AlohaCommands`).
+        .defaultSize(width: 780, height: 620)
+        .windowResizability(.contentMinSize)
+        .restorationBehavior(.disabled)
 
         // The menu bar extra: the unread count, the newest notifications and
         // New Post, from anywhere, without bringing a window forward first.
-        MenuBarExtra(isInserted: $showsMenuBarExtra) {
+        MenuBarExtra(isInserted: menuBarExtraInserted) {
             MacMenuBarPanel()
                 .environment(environment)
                 .modelContainer(environment.container)

@@ -66,10 +66,8 @@ public struct NotificationsView: View {
             AlohaHint(
                 id: "activities-hold",
                 symbol: "hand.tap",
-                title: Text("Hold an activity", comment: "Activities hint title"),
-                message: Text(
-                    "Touch and hold a mention to mute the conversation it belongs to.",
-                    comment: "Activities hint")
+                title: Self.hintTitle,
+                message: Self.hintMessage
             )
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -143,11 +141,17 @@ public struct NotificationsView: View {
         // A bar, not an opaque inset: the system's scroll-edge effect keeps
         // the chips legible over the rows passing under them, the way a
         // toolbar does, instead of a slab of ground colour cutting the list.
-        .safeAreaBar(edge: .top, spacing: 0) {
-            filterChips
+        #if os(macOS)
+            .toolbarFilter(
+                Text("Filter", comment: "Notification filter picker"),
+                selection: singleKind, options: Self.kindOptions)
+        #else
+            .safeAreaBar(edge: .top, spacing: 0) {
+                filterChips
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
-        }
+            }
+        #endif
         .overlay {
             if isLoading && groups.isEmpty && flat.isEmpty {
                 SkeletonListRow(person: 4)
@@ -283,6 +287,48 @@ public struct NotificationsView: View {
         selected.isEmpty || selected.contains(kind)
             || (kind == .followRequest && selected.contains(.follow))
     }
+
+    private static var hintTitle: Text {
+        #if os(macOS)
+            Text("Right-click an activity", comment: "Activities hint title on the Mac")
+        #else
+            Text("Hold an activity", comment: "Activities hint title")
+        #endif
+    }
+
+    private static var hintMessage: Text {
+        #if os(macOS)
+            Text(
+                "Right-click a mention to mute the conversation it belongs to.",
+                comment: "Activities hint on the Mac")
+        #else
+            Text(
+                "Touch and hold a mention to mute the conversation it belongs to.",
+                comment: "Activities hint")
+        #endif
+    }
+
+    #if os(macOS)
+        /// The chips as one choice, for the Mac's toolbar control: all, or
+        /// one kind.
+        private var singleKind: Binding<NotificationKind?> {
+            Binding(
+                get: { selectedKinds.count == 1 ? selectedKinds.first : nil },
+                set: { kind in selectedKinds = kind.map { [$0] } ?? [] })
+        }
+
+        private static var kindOptions: [(value: NotificationKind?, title: String)] {
+            [
+                (nil, String(localized: "All", comment: "Notification filter")),
+                (.mention, String(localized: "Mentions", comment: "Notification filter")),
+                (.favourite, String(localized: "Favourites", comment: "Notification filter")),
+                (.reblog, String(localized: "Boosts", comment: "Notification filter")),
+                (.follow, String(localized: "Follows", comment: "Notification filter")),
+                (.poll, String(localized: "Polls", comment: "Notification filter")),
+                (.update, String(localized: "Edits", comment: "Notification filter")),
+            ]
+        }
+    #endif
 
     private var filterChips: some View {
         ScrollView(.horizontal) {
@@ -574,18 +620,32 @@ public struct NotificationsView: View {
                 if let date { activityDate(date) }
             }
         }
-        .padding(AlohaMetrics.space3)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            palette.surfaceRaised,
-            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-        )
-        // A hairline so the card reads as a layer over the scroll rather than
-        // as a slightly different colour — the app's own card language.
-        .overlay(
-            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+        #if os(macOS)
+            // A row, not a card, on the Mac: a column of activities is a
+            // list to run an eye down, and a raised tile around each one
+            // made five of them fill a window.
+            .padding(.vertical, AlohaMetrics.space2)
+            .padding(.horizontal, AlohaMetrics.space2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(palette.separator.opacity(0.4))
+                    .frame(height: 0.5)
+            }
+        #else
+            .padding(AlohaMetrics.space3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                palette.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+            )
+            // A hairline so the card reads as a layer over the scroll rather than
+            // as a slightly different colour — the app's own card language.
+            .overlay(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
                 .strokeBorder(palette.separator.opacity(0.5), lineWidth: 0.5)
-        )
+            )
+        #endif
         .contentShape(
             RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
     }
@@ -618,7 +678,11 @@ public struct NotificationsView: View {
             activityBadge(kind, size: 22)
                 .offset(x: 5, y: 5)
         }
-        .frame(width: 54, height: 48, alignment: .bottomLeading)
+        // As wide as the faces it holds. At a fixed 54pt a group of three
+        // ran 46pt past its frame, over the sentence beside it.
+        .frame(
+            width: 54 + CGFloat(max(0, min(accounts.count, 3) - 1)) * 29, height: 48,
+            alignment: .bottomLeading)
     }
 
     /// The kind of activity as a tinted disc: what happened, legible at a
@@ -634,9 +698,12 @@ public struct NotificationsView: View {
     }
 
     private func activityDate(_ date: Date) -> some View {
-        Text(date, style: .relative)
+        // "5 days ago", not a running count of days and hours: when it
+        // happened, said the way a person would, with the moment on hover.
+        Text(date, format: .relative(presentation: .named))
             .font(.caption)
             .foregroundStyle(palette.tertiaryLabel)
+            .help(Text(date, format: .dateTime.weekday().day().month().year().hour().minute()))
             .accessibilityLabel(Text(date, format: .dateTime.day().month().year().hour().minute()))
     }
 

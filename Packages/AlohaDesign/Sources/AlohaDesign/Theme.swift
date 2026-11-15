@@ -463,13 +463,13 @@ extension View {
     /// margins are the window's cool white; the System theme leaves the
     /// window's own, so a grouped list is not framed in a colour it does not
     /// have.
-    @ViewBuilder
+    ///
+    /// On a Mac with the translucent window switched on
+    /// (`alohaTranslucentWindow`) it is neither: the ground is the desktop
+    /// behind the window, blurred, and whatever is read sits on it in a
+    /// column that paints its own solid ground.
     public func alohaWindowGround(_ palette: AlohaPalette) -> some View {
-        if palette.usesSystemGrounds {
-            self
-        } else {
-            background(palette.background.ignoresSafeArea())
-        }
+        modifier(WindowGround(palette: palette))
     }
 
     /// The app's own ground beneath a scrolling container.
@@ -503,6 +503,59 @@ extension View {
         }
     }
 }
+
+private struct WindowGround: ViewModifier {
+    @Environment(\.alohaTranslucentWindow) private var isTranslucent
+    let palette: AlohaPalette
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+            if isTranslucent {
+                content.background(WindowBlur().ignoresSafeArea())
+            } else {
+                opaque(content)
+            }
+        #else
+            opaque(content)
+        #endif
+    }
+
+    @ViewBuilder
+    private func opaque(_ content: Content) -> some View {
+        if palette.usesSystemGrounds {
+            content
+        } else {
+            content.background(palette.background.ignoresSafeArea())
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// Whether the window's ground is the blurred desktop rather than the
+    /// theme's colour. Only the Mac sets it; everywhere else it is `false`.
+    @Entry public var alohaTranslucentWindow = false
+}
+
+#if os(macOS)
+    /// The desktop behind the window, blurred: what a Mac sidebar is made
+    /// of, used for the whole ground. The system turns it solid by itself
+    /// under Reduce Transparency. It stays active when the window is not in
+    /// front: the inactive material is a flat light grey, lighter than the
+    /// posts beside it, which read as two slabs bolted to the column.
+    public struct WindowBlur: NSViewRepresentable {
+        public init() {}
+
+        public func makeNSView(context: Context) -> NSVisualEffectView {
+            let view = NSVisualEffectView()
+            view.material = .sidebar
+            view.blendingMode = .behindWindow
+            view.state = .active
+            return view
+        }
+
+        public func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+    }
+#endif
 
 /// Modern glass material intensities for native UI layering.
 ///
@@ -617,5 +670,65 @@ extension View {
         #else
             self
         #endif
+    }
+}
+
+extension View {
+    /// A tile that rises to meet the pointer: the Mac's answer to a card
+    /// that can be clicked. Nothing on a platform without a pointer of this
+    /// kind, and nothing under Reduce Motion but the shadow.
+    @ViewBuilder
+    public func alohaHoverLift(scale: Double = 1.02) -> some View {
+        #if os(macOS)
+            modifier(HoverLift(scale: scale))
+        #else
+            self
+        #endif
+    }
+}
+
+#if os(macOS)
+    private struct HoverLift: ViewModifier {
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @State private var isPointerOver = false
+        let scale: Double
+
+        func body(content: Content) -> some View {
+            content
+                .scaleEffect(isPointerOver && !reduceMotion ? scale : 1)
+                .shadow(
+                    color: .black.opacity(isPointerOver ? 0.28 : 0),
+                    radius: isPointerOver ? 14 : 0, y: isPointerOver ? 6 : 0
+                )
+                .onHover { isPointerOver = $0 }
+                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: isPointerOver)
+        }
+    }
+#endif
+
+/// A symbol on a small coloured tile, the way System Settings and the
+/// Finder's sidebar draw a place: the colour finds the row before the word
+/// is read, where a column of outlines in one tint reads as one grey edge.
+public struct IconTile: View {
+    private let symbolName: String
+    private let colour: Color
+    private let size: Double
+
+    public init(_ symbolName: String, colour: Color, size: Double = 22) {
+        self.symbolName = symbolName
+        self.colour = colour
+        self.size = size
+    }
+
+    public var body: some View {
+        RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+            .fill(colour.gradient)
+            .frame(width: size, height: size)
+            .overlay {
+                Image(systemName: symbolName)
+                    .font(.system(size: size * 0.52, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .accessibilityHidden(true)
     }
 }

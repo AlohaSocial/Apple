@@ -46,6 +46,9 @@ extension View {
 /// The surrounding canvas must inherit the same theme as the reading surface.
 private struct ReaderColumn: ViewModifier {
     @Environment(\.alohaPalette) private var palette
+    #if os(macOS)
+        @Environment(\.alohaTranslucentWindow) private var isTranslucent
+    #endif
     #if !os(macOS)
         @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -55,11 +58,42 @@ private struct ReaderColumn: ViewModifier {
         if isCompact {
             content
         } else {
-            content
-                .frame(maxWidth: width)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .alohaWindowGround(palette)
+            #if os(macOS)
+                if isTranslucent {
+                    // Over the blurred desktop the column is a sheet of its
+                    // own: rounded, lifted off the ground by a shadow, and
+                    // clear of the window's edges — rather than a slab the
+                    // height of the window with the desktop either side.
+                    content
+                        .frame(maxWidth: width)
+                        .background(palette.background)
+                        .clipShape(panel)
+                        .overlay(panel.strokeBorder(palette.separator.opacity(0.35), lineWidth: 0.5))
+                        .shadow(color: .black.opacity(0.32), radius: 22, y: 8)
+                        .padding(.top, AlohaMetrics.space1)
+                        .padding(.bottom, AlohaMetrics.space3)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .alohaWindowGround(palette)
+                } else {
+                    plainColumn(content)
+                }
+            #else
+                plainColumn(content)
+            #endif
         }
+    }
+
+    #if os(macOS)
+        private var panel: RoundedRectangle {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+        }
+    #endif
+
+    private func plainColumn(_ content: Content) -> some View {
+        content
+            .frame(maxWidth: width)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .alohaWindowGround(palette)
     }
 
     private var isCompact: Bool {

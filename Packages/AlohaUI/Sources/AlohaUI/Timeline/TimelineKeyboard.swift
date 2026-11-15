@@ -179,6 +179,13 @@ struct TimelineKeyboardModifier: ViewModifier {
                     onAction(.open(status))
                     return .handled
                 }
+                .onKeyPress(.space) {
+                    guard let focused = focusedID, let status = status(focused) else {
+                        return .ignored
+                    }
+                    onAction(.peek(status))
+                    return .handled
+                }
                 .focusedSceneValue(\.timelineCommands, commands)
         #else
             content

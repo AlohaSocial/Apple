@@ -220,9 +220,15 @@ public struct LinkCardView: View {
             }
             .background(
                 cardTint,
-                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+            )
+            // The picture takes the card's corners rather than poking out of
+            // them, and the card rises under the pointer on the Mac.
+            .clipShape(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
         }
         .buttonStyle(.plain)
+        .alohaHoverLift(scale: 1.01)
         .modifier(CardLinkDrag(url: card.url))
     }
 }

@@ -234,7 +234,5 @@ struct MacMenuBarSettings: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }

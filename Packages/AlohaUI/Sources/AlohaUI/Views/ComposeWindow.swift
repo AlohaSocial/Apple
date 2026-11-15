@@ -78,6 +78,10 @@ import SwiftUI
                     accent: environment.serverAccent
                 )
                 .frame(minWidth: 520, idealWidth: 680, minHeight: 440, idealHeight: 640)
+                // A sheet of glass over whatever is behind it, rather than
+                // one more opaque window: a note being written beside the
+                // thing it is about.
+                .containerBackground(.thinMaterial, for: .window)
                 // The window can be the first thing to open — a Dock menu
                 // item or a service in an app with every window closed — and
                 // the accounts are the process's to load, once.

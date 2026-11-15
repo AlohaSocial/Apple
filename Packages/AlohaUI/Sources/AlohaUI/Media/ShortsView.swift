@@ -95,6 +95,34 @@ public struct ShortsView: View {
         }
     }
 
+    /// What is behind the column. Black on a phone, where the short fills
+    /// the screen. On the Mac the column has a window's worth of room either
+    /// side of it, and two black bars that size are most of what is on
+    /// screen — so they carry the short's own picture, out of focus, the way
+    /// a television fills the edges of a tall video.
+    private var backdrop: some View {
+        ZStack {
+            Color.black
+            #if os(macOS)
+                if let attachment = shorts.first(where: { $0.id == currentID })?
+                    .displayed.mediaAttachments.first(where: { $0.isVideo })
+                {
+                    RemoteImage(
+                        url: attachment.previewURL, blurhash: attachment.blurhash,
+                        contentMode: .fill
+                    )
+                    .blur(radius: 70)
+                    .opacity(0.6)
+                    .id(attachment.id)
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+                }
+            #endif
+        }
+        .clipped()
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.5), value: currentID)
+    }
+
     public var body: some View {
         GeometryReader { proxy in
             ZStack {
@@ -149,7 +177,7 @@ public struct ShortsView: View {
             }
             .ignoresSafeArea()
         }
-        .background { Color.black.ignoresSafeArea() }
+        .background { backdrop.ignoresSafeArea() }
         #if os(visionOS)
             // Paging by swipe and pausing by holding are a phone's gestures;
             // in a window you look at, the transport sits below it, where
