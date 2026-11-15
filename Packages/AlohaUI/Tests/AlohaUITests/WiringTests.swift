@@ -91,6 +91,7 @@ struct StatusActionCoverageTests {
             .showDelivery(status), .showEditHistory(status), .quoteControls(status),
             .tagPeople(status), .addToCollection(status), .addToList(account),
             .setReplyPolicy(status, .followers), .hideReply(status), .shareImage(status),
+            .read(status),
         ]
 
         for action in all {
