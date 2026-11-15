@@ -993,8 +993,8 @@
 		56A4A920306020030052D930 /* Debug configuration for PBXNativeTarget "AlohaSocial" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "AlohaIcon-Ocean AlohaIcon-Forest AlohaIcon-Grape AlohaIcon-Rose AlohaIcon-Slate";
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "AlohaIcon-Ocean AlohaIcon-Forest AlohaIcon-Grape AlohaIcon-Rose AlohaIcon-Slate";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "$(ALOHA_ALTERNATE_APP_ICONS)";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "$(ALOHA_ALTERNATE_APP_ICONS)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -1053,8 +1053,8 @@
 		56A4A921306020030052D930 /* Release configuration for PBXNativeTarget "AlohaSocial" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "AlohaIcon-Ocean AlohaIcon-Forest AlohaIcon-Grape AlohaIcon-Rose AlohaIcon-Slate";
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "AlohaIcon-Ocean AlohaIcon-Forest AlohaIcon-Grape AlohaIcon-Rose AlohaIcon-Slate";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "$(ALOHA_ALTERNATE_APP_ICONS)";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "$(ALOHA_ALTERNATE_APP_ICONS)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
