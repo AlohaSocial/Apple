@@ -59,6 +59,13 @@ compete with it. The iOS/macOS 27 material system is used as intended — floati
 translucent controls layered over content that scrolls beneath them, with the
 concentric corner radii the platform provides rather than hand-picked numbers.
 No custom blur stacks, no reimplemented navigation bars.
+What still floats over content without being a system bar wears the same
+glass rather than a material the app drew: the "N new posts" pill (glass
+tinted with the server's colour), the Audio mini player where the tab bar has
+no accessory to hold it (a glass capsule in a `safeAreaBar`), the Mac
+composer's suggestion strip, and the player's error card over a video.
+Rows and cards inside the content stay solid — glass is for the layer above
+it. Reduce Transparency is the system's to apply to all of it.
 
 ### Colour
 

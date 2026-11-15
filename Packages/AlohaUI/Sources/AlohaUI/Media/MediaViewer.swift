@@ -417,7 +417,8 @@ public struct VideoAttachmentPlayer: View {
                 }
                 .foregroundStyle(.primary)
                 .padding(20)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                // Glass over the video, as the player's own controls are.
+                .alohaGlassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
                 .padding()
             }
 

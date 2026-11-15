@@ -26,6 +26,9 @@ struct ComposerPresentation: Identifiable {
 
     /// Text the composer opens with: a draft handed off from another device.
     var draftText = ""
+    /// Opened by the toolbar's "New post" button, which the sheet then zooms
+    /// out of (`ComposeTransition`).
+    var fromComposeButton = false
 }
 
 /// A sign-in sheet's input: where the person wants to go, and the server the
@@ -128,6 +131,7 @@ struct ShellSheets: ViewModifier {
                         }
                         #if os(iOS)
                             .composerPresentation()
+                            .modifier(ComposerZoom(fromButton: request.fromComposeButton))
                         #endif
                     }
                 }
