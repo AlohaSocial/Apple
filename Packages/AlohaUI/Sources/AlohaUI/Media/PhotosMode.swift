@@ -598,6 +598,15 @@ public struct PhotoPostCard: View {
                     .font(.system(size: 88))
                     .foregroundStyle(.white)
                     .shadow(radius: 10)
+                    // The action row's own burst, at the big heart's scale:
+                    // one signature for a like, wherever it is given.
+                    .background {
+                        if !reduceMotion {
+                            CelebrationBurst(kind: .hearts, tint: .white) {}
+                                .frame(width: 18, height: 18)
+                                .scaleEffect(5)
+                        }
+                    }
                     .transition(
                         reduceMotion ? .opacity : .scale(scale: 0.4).combined(with: .opacity)
                     )
@@ -633,7 +642,9 @@ public struct PhotoPostCard: View {
                 onAction(.openMedia(status: displayed, index: page))
             }
         }
-        .alohaSensoryFeedback(.success, trigger: isHearting) { _, new in new }
+        // Liking taps through `Senses`, with the like's own tick, wherever
+        // it comes from; a second haptic here doubled it. Unliking has no
+        // cue there, so it keeps its light one.
         .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
