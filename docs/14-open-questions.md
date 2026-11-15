@@ -451,6 +451,22 @@ of seconds after a draft is saved or deleted, and on pull-to-refresh in Drafts.
   whose Nextcloud it is in. A file in a newer format, or one that will not
   read, is left exactly as it is.
 
+### Backup to Nextcloud
+
+Aloha Social can write a backup of the account — posts, follows, settings —
+into the person's own Files on a schedule, and keep the newest few. The server
+does the work; Settings → Nextcloud → Backup to Nextcloud shows whether it is
+on, daily or weekly, the folder, the last and next backup, the last error, and
+a **Back up now** button, polling every five seconds while one is running.
+
+`GET api/v1/social/backup` answers the state, `PATCH` changes `enabled` and
+`frequency` (a 422 carries the server's reason, shown as it is), and
+`POST api/v1/social/backup/run` starts one and answers 202. These are the
+Social app's own routes with the bearer token, not WebDAV, so no Nextcloud
+connection is needed. The row asks first and **draws nothing on a 404**, which
+is what a stock Mastodon and an Aloha Social from before backups answer; on
+any other failure it is shown, and the screen says what went wrong.
+
 ### Push, through Nextcloud's proxy
 
 Modelled on `nextcloud/ios` (`NCPushNotification.swift`) and its `NextcloudKit`
