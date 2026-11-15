@@ -6,6 +6,7 @@ import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import OSLog
+import QuickLook
 import SwiftUI
 
 /// One component, used from every mode and from the thread view. It knows
@@ -35,6 +36,11 @@ public struct MediaViewer: View {
     /// A tap on the picture puts the controls, the status bar and the home
     /// indicator away, so the photograph has the whole screen — and back.
     @State private var isChromeHidden = false
+    /// Pictures whose original is a spatial photo, by attachment id, with
+    /// the copy Quick Look opens: it shows both eyes in depth on Vision Pro
+    /// and as a spatial photo on iPhone and iPad.
+    @State private var spatialFiles: [String: URL] = [:]
+    @State private var quickLookURL: URL?
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -93,6 +99,14 @@ public struct MediaViewer: View {
             .persistentSystemOverlays(chromeHidden ? .hidden : .automatic)
         #endif
         .sheet(isPresented: $isShowingAltText) { altTextSheet }
+        .quickLookPreview($quickLookURL)
+        // Only the picture on screen is asked after, and each only once.
+        .task(id: index) {
+            guard let attachment = attachments[safe: index], spatialFiles[attachment.id] == nil,
+                let file = await SpatialOriginal.previewFile(for: attachment)
+            else { return }
+            spatialFiles[attachment.id] = file
+        }
         .accessibilityAction(.escape) { dismiss() }
         .onKeyPress(.escape) {
             dismiss()
@@ -204,6 +218,29 @@ public struct MediaViewer: View {
                     .accessibilityLabel(Text("Close", comment: "Media viewer action"))
 
                     Spacer()
+
+                    if let id = attachments[safe: index]?.id, let file = spatialFiles[id] {
+                        Button {
+                            quickLookURL = file
+                        } label: {
+                            Label {
+                                Text("Spatial", comment: "Badge on a spatial (3D) photo")
+                            } icon: {
+                                Image(systemName: "view.3d")
+                            }
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .alohaGlassEffect(Self.controlGlass, in: Capsule())
+                        }
+                        .accessibilityLabel(
+                            Text("Spatial photo", comment: "Media viewer action")
+                        )
+                        .accessibilityHint(
+                            Text(
+                                "Opens the photo in depth.",
+                                comment: "Media viewer action hint for a spatial photo"))
+                    }
 
                     if attachments.indices.contains(index), attachments[index].hasAltText {
                         Button {

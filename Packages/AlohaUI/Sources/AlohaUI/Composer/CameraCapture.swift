@@ -13,7 +13,9 @@
     /// picture straight to the uploader, a video through the trim sheet.
     struct CameraCapture: UIViewControllerRepresentable {
         enum Captured {
-            case photo(Data)
+            /// HEIC where the device can write it, JPEG where it cannot; the
+            /// uploader converts it for a server that takes neither.
+            case photo(Data, mimeType: String)
             /// A copy in the temporary directory: the picker's own file is
             /// removed once it is dismissed.
             case movie(URL)
@@ -67,12 +69,15 @@
                     if (try? FileManager.default.copyItem(at: url, to: copy)) != nil {
                         onCapture(.movie(copy))
                     }
-                } else if let image = info[.originalImage] as? UIImage,
-                    let data = image.jpegData(compressionQuality: 0.9)
-                {
-                    // JPEG rather than HEIC: every server takes it, and the
-                    // uploader's own preflight brings it under the ceiling.
-                    onCapture(.photo(data))
+                } else if let image = info[.originalImage] as? UIImage {
+                    // HEIC, the camera's own format, rather than JPEG: the
+                    // uploader sends it as it is to a server that takes HEIC
+                    // and converts it for one that does not (docs/07 §4).
+                    if let data = image.heicData() {
+                        onCapture(.photo(data, mimeType: "image/heic"))
+                    } else if let data = image.jpegData(compressionQuality: 0.9) {
+                        onCapture(.photo(data, mimeType: "image/jpeg"))
+                    }
                 }
                 dismiss()
             }

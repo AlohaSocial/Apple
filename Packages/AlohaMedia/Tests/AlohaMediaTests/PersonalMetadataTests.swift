@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AVFoundation
+import AlohaModels
 import CoreGraphics
 import CoreVideo
 import Foundation
@@ -247,18 +248,23 @@ struct ImageMetadataTests {
 
     @Test("A picture with nothing personal in it comes back byte for byte")
     func untouched() throws {
-        let original = try #require(MediaPreparer().prepareImage(try picture(.png), filename: "a"))
+        let original = try #require(
+            MediaPreparer().prepareImage(try picture(.png), filename: "a", format: .jpeg))
         let prepared = try #require(
             MediaPreparer().removingPersonalMetadata(
                 fromImage: original.data, filename: "a.jpg", mimeType: "image/jpeg"))
         #expect(prepared.data == original.data)
     }
 
-    @Test("A converted picture has no metadata, and is still the right way up")
-    func convertedIsClean() throws {
+    @Test(
+        "A converted picture has no metadata, and is still the right way up",
+        arguments: [ImageFormat.heic, .jpeg])
+    func convertedIsClean(_ format: ImageFormat) throws {
         let prepared = try #require(
             MediaPreparer().prepareImage(
-                try picture(.heic), filename: "photo.heic", quality: .original))
+                try picture(.tiff), filename: "photo.tiff", quality: .original, format: format))
+        #expect(prepared.mimeType == format.mimeType)
+        #expect(prepared.filename == "photo.\(format.fileExtension)")
         let kept = try properties(of: prepared.data)
         #expect(kept[kCGImagePropertyGPSDictionary] == nil)
         #expect(!MediaPreparer.carriesPersonalMetadata(prepared.data))
@@ -272,5 +278,217 @@ struct ImageMetadataTests {
         #expect(
             MediaPreparer().removingPersonalMetadata(
                 fromImage: Data("text".utf8), filename: "a.jpg", mimeType: "image/jpeg") == nil)
+    }
+}
+
+/// A spatial photo as ImageIO writes one: two pictures in a HEIC, grouped as
+/// a stereo pair, with the camera's model and position for each eye — and a
+/// location and a serial number to be removed.
+func spatialPhoto(size: Int = 64) throws -> Data {
+    func eye(_ red: CGFloat) throws -> CGImage {
+        let context = try #require(
+            CGContext(
+                data: nil, width: size, height: size * 3 / 4, bitsPerComponent: 8,
+                bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.displayP3)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        // Something with edges, so a recompression would change pixels.
+        for x in stride(from: 0, to: size, by: 4) {
+            context.setFillColor(
+                red: red, green: CGFloat(x) / CGFloat(size), blue: 0.3, alpha: 1)
+            context.fill(CGRect(x: x, y: 0, width: 2, height: size))
+        }
+        return try #require(context.makeImage())
+    }
+    func properties(left: Bool) -> [CFString: Any] {
+        [
+            kCGImagePropertyGroups: [
+                kCGImagePropertyGroupIndex: 0,
+                kCGImagePropertyGroupType: kCGImagePropertyGroupTypeStereoPair,
+                (left
+                    ? kCGImagePropertyGroupImageIsLeftImage
+                    : kCGImagePropertyGroupImageIsRightImage):
+                    true,
+                kCGImagePropertyGroupImageDisparityAdjustment: 0,
+            ],
+            kCGImagePropertyHEIFDictionary: [
+                kIIOMetadata_CameraModelKey: [
+                    kIIOCameraModel_Intrinsics: [1000.0, 0, 32, 0, 1000.0, 24, 0, 0, 1] as CFArray,
+                    kIIOCameraModel_ModelType: kIIOCameraModelType_SimplifiedPinhole,
+                ],
+                kIIOMetadata_CameraExtrinsicsKey: [
+                    kIIOCameraExtrinsics_Position: (left ? [0.0, 0, 0] : [0.064, 0, 0]) as CFArray,
+                    kIIOCameraExtrinsics_Rotation: [1.0, 0, 0, 0, 1, 0, 0, 0, 1] as CFArray,
+                ],
+            ],
+            kCGImagePropertyGPSDictionary: [
+                kCGImagePropertyGPSLatitude: 37.3349, kCGImagePropertyGPSLatitudeRef: "N",
+                kCGImagePropertyGPSLongitude: 122.009, kCGImagePropertyGPSLongitudeRef: "W",
+            ],
+            kCGImagePropertyExifDictionary: [kCGImagePropertyExifBodySerialNumber: "SN12345"],
+            kCGImagePropertyOrientation: 1,
+        ]
+    }
+    let output = NSMutableData()
+    let destination = try #require(
+        CGImageDestinationCreateWithData(output, UTType.heic.identifier as CFString, 2, nil))
+    CGImageDestinationAddImage(destination, try eye(1), properties(left: true) as CFDictionary)
+    CGImageDestinationAddImage(destination, try eye(0), properties(left: false) as CFDictionary)
+    #expect(CGImageDestinationFinalize(destination))
+    return output as Data
+}
+
+/// The decoded pixels of one picture in a file, to tell a lossless copy from
+/// a recompressed one.
+private func pixels(of data: Data, at index: Int) throws -> Data {
+    let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+    let image = try #require(CGImageSourceCreateImageAtIndex(source, index, nil))
+    return try #require(image.dataProvider?.data as Data?)
+}
+
+@Suite("Spatial photos and lossless copies")
+struct SpatialPhotoTests {
+
+    @Test("A stereo pair in a HEIC is a spatial photo; one picture is not")
+    func detection() throws {
+        let spatial = try spatialPhoto()
+        #expect(SpatialPhoto.isSpatial(spatial))
+        let flat = try #require(
+            MediaPreparer().prepareImage(spatial, filename: "a", format: .heic))
+        #expect(!SpatialPhoto.isSpatial(flat.data))
+        #expect(!SpatialPhoto.isSpatial(Data("not a picture".utf8)))
+    }
+
+    @Test("Losing its location keeps both eyes, the pair and every pixel")
+    func spatialStaysSpatial() throws {
+        let original = try spatialPhoto()
+        let prepared = try #require(
+            MediaPreparer().removingPersonalMetadata(
+                fromImage: original, filename: "spatial.heic", mimeType: "image/heic"))
+
+        #expect(prepared.mimeType == "image/heic")
+        #expect(SpatialPhoto.isSpatial(prepared.data))
+        #expect(!MediaPreparer.carriesPersonalMetadata(prepared.data))
+        #expect(prepared.data.range(of: Data("SN12345".utf8)) == nil)
+        let source = try #require(CGImageSourceCreateWithData(prepared.data as CFData, nil))
+        #expect(CGImageSourceGetCount(source) == 2)
+        for index in 0..<2 {
+            let kept = try #require(
+                CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any])
+            #expect(kept[kCGImagePropertyGPSDictionary] == nil)
+            // The cameras' model and positions are what make the pair
+            // viewable in depth; they are not personal and stay.
+            #expect(kept[kCGImagePropertyHEIFDictionary] != nil)
+            #expect(try pixels(of: prepared.data, at: index) == pixels(of: original, at: index))
+        }
+    }
+
+    @Test("A HEIC loses its location without being recompressed")
+    func heicIsLossless() throws {
+        let context = try #require(
+            CGContext(
+                data: nil, width: 48, height: 32, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        for x in stride(from: 0, to: 48, by: 3) {
+            context.setFillColor(red: CGFloat(x) / 48, green: 0.5, blue: 0.1, alpha: 1)
+            context.fill(CGRect(x: x, y: 0, width: 1, height: 32))
+        }
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.heic.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(
+            destination, try #require(context.makeImage()),
+            [
+                kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 48.1],
+                kCGImageDestinationLossyCompressionQuality: 0.5,
+            ] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+        let original = output as Data
+
+        let prepared = try #require(
+            MediaPreparer().removingPersonalMetadata(
+                fromImage: original, filename: "a.heic", mimeType: "image/heic"))
+        #expect(!MediaPreparer.carriesPersonalMetadata(prepared.data))
+        #expect(try pixels(of: prepared.data, at: 0) == pixels(of: original, at: 0))
+    }
+}
+
+@Suite("Pictures made ready for a server")
+struct PrepareForUploadTests {
+    private func limits(_ types: [String], imageLimit: Int = 10 * 1024 * 1024) -> ServerLimits {
+        ServerLimits(
+            maxStatusCharacters: 500, maxMediaAttachments: 4, charactersReservedPerURL: 23,
+            imageSizeLimit: imageLimit, videoSizeLimit: 40 * 1024 * 1024,
+            supportedMIMETypes: types, maxPollOptions: 4, maxPollOptionCharacters: 50,
+            minPollExpiration: 300, maxPollExpiration: 2_629_746, maxFeaturedTags: 10)
+    }
+
+    @Test("A spatial photo goes up spatial, without its location, on a server with HEIC")
+    func spatialOnModernServer() throws {
+        let result = MediaPreparer().prepareForUpload(
+            image: try spatialPhoto(), filename: "s.heic", mimeType: "image/heic",
+            limits: limits(["image/jpeg", "image/heic"]))
+        guard case .ready(let prepared, let isSpatial) = result else {
+            Issue.record("expected the photo to be sent")
+            return
+        }
+        #expect(isSpatial)
+        #expect(prepared.mimeType == "image/heic")
+        #expect(SpatialPhoto.isSpatial(prepared.data))
+        #expect(!MediaPreparer.carriesPersonalMetadata(prepared.data))
+    }
+
+    @Test("A HEIC becomes a JPEG only on a server without HEIC")
+    func jpegFallback() throws {
+        let result = MediaPreparer().prepareForUpload(
+            image: try spatialPhoto(), filename: "s.heic", mimeType: "image/heic",
+            limits: limits(["image/jpeg", "image/png"]))
+        guard case .ready(let prepared, let isSpatial) = result else {
+            Issue.record("expected the photo to be converted")
+            return
+        }
+        #expect(!isSpatial)
+        #expect(prepared.mimeType == "image/jpeg")
+        #expect(prepared.filename == "s.jpg")
+        #expect(!MediaPreparer.carriesPersonalMetadata(prepared.data))
+    }
+
+    @Test("A spatial photo over the limit is refused with the limit named")
+    func spatialTooLarge() throws {
+        let photo = try spatialPhoto()
+        let result = MediaPreparer().prepareForUpload(
+            image: photo, filename: "s.heic", mimeType: "image/heic",
+            limits: limits(["image/heic"], imageLimit: photo.count / 2))
+        guard case .refused(let message) = result else {
+            Issue.record("expected a refusal")
+            return
+        }
+        #expect(message.contains("spatial"))
+    }
+
+    @Test("A picture over the limit is shrunk to HEIC")
+    func shrinksToHEIC() throws {
+        let photo = try spatialPhoto(size: 1024)
+        // Flat, so it may be shrunk; and as a TIFF, so it is large.
+        let flat = try #require(
+            MediaPreparer().prepareImage(photo, filename: "f", quality: .original, format: .heic))
+        let source = try #require(CGImageSourceCreateWithData(flat.data as CFData, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let output = NSMutableData()
+        let destination = try #require(
+            CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        let png = output as Data
+
+        let result = MediaPreparer().prepareForUpload(
+            image: png, filename: "big.png", mimeType: "image/png",
+            limits: limits(["image/png", "image/heic", "image/jpeg"], imageLimit: png.count - 1))
+        guard case .ready(let prepared, _) = result else {
+            Issue.record("expected the picture to be shrunk")
+            return
+        }
+        #expect(prepared.mimeType == "image/heic")
+        #expect(prepared.data.count < png.count)
     }
 }
