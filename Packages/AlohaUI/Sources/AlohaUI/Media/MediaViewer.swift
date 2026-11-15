@@ -16,6 +16,8 @@ public struct MediaViewer: View {
     @Environment(\.alohaMetrics) private var metrics
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private let attachments: [MediaAttachment]
     private let statusID: String
@@ -35,6 +37,9 @@ public struct MediaViewer: View {
     /// A tap on the picture puts the controls, the status bar and the home
     /// indicator away, so the photograph has the whole screen — and back.
     @State private var isChromeHidden = false
+    /// The colours of the picture on show, for a deep backdrop in them
+    /// instead of plain black — only from what the app already holds.
+    @State private var photoColours: PhotoColours?
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -50,7 +55,7 @@ public struct MediaViewer: View {
 
     public var body: some View {
         ZStack {
-            Color.black
+            backdrop
                 .opacity(backdropOpacity)
                 .ignoresSafeArea()
                 .animation(.easeOut(duration: 0.2), value: backdropOpacity)
@@ -78,6 +83,7 @@ public struct MediaViewer: View {
                 .allowsHitTesting(!chromeHidden)
         }
         .animation(.easeInOut(duration: 0.2), value: chromeHidden)
+        .loadsPhotoColours(of: tintAttachment, into: $photoColours)
         .offset(dragOffset)
         // The zoom transition already lets a swipe shrink the picture back
         // into its cell, following the finger. A second, home-made swipe on
@@ -149,6 +155,38 @@ public struct MediaViewer: View {
             // the pager, which moves to the next picture.
             .gesture(panGesture(for: attachment), including: zoom > 1 ? .all : .subviews)
         }
+    }
+
+    /// Black, or a deep shade of the picture's own colours, as Music puts a
+    /// full-screen player in the colours of its album art. Plain black under
+    /// Reduce Transparency and Increase Contrast, for a video, and for a
+    /// picture there is nothing cached of yet.
+    @ViewBuilder
+    private var backdrop: some View {
+        ZStack {
+            Color.black
+            if let tint = backdropTint {
+                PhotoTintGround(tint)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// The picture on show, when it is one. The viewer only opens on what
+    /// the reader asked to see, so a sensitive picture here is already
+    /// revealed and its colours are no secret.
+    private var tintAttachment: MediaAttachment? {
+        guard let attachment = attachments[safe: index], attachment.type == .image else {
+            return nil
+        }
+        return attachment
+    }
+
+    private var backdropTint: PhotoTint? {
+        guard tintAttachment != nil, let photoColours,
+            PhotoTintSource.allows(reduceTransparency: reduceTransparency, contrast: contrast)
+        else { return nil }
+        return PhotoTint.backdrop(from: PhotoTintSource.swatches(photoColours))
     }
 
     /// The controls stay for VoiceOver: hiding them would leave nothing to
