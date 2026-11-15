@@ -381,12 +381,22 @@ Grouped, searchable (on platforms with settings search).
 - **Privacy & Safety** — blocked accounts, muted accounts, blocked domains,
   data & storage, clear cache.
 - **Your year** — the annual report, under Your account. Mastodon's
-  `#Wrapstodon` over `/api/v1/annual_reports`: an archetype in a sentence, a
-  month-by-month chart of posts and arrivals, the hashtags, and the three posts
-  that travelled furthest. Nextcloud serves this and its own web client
-  has no page for it, so the app is the first place it can be read. `generate`
-  is still called before reading — this server answers instantly with nothing to
-  do, and a server that does need it will act on it.
+  `#Wrapstodon` over `/api/v1/annual_reports`, told as a full-screen story:
+  the year and its archetype in a sentence, the posts written and the busiest
+  month, a month-by-month chart, the hashtags, and the posts that travelled
+  furthest — one card each, and only for what the year actually holds
+  (`AnnualReportStory`). Cards advance by themselves behind a progress bar; a
+  tap on the leading third goes back and anywhere else forward, a horizontal
+  swipe pages, and a resting finger pauses. Every gesture is also a button
+  along the bottom (back, pause, share, forward) and a VoiceOver action. Under
+  Reduce Motion or with VoiceOver running nothing advances on its own and the
+  cards cross-fade; paging by hand works the same. Each card shares as a
+  picture drawn with `ImageRenderer` from the same view, at story proportions
+  and the default text size. Follower figures follow "Show numbers". Nextcloud
+  serves this and its own web client has no page for it, so the app is the
+  first place it can be read. `generate` is still called before reading — this
+  server answers instantly with nothing to do, and a server that does need it
+  will act on it.
 - **About** — version, licences, source link, the keyboard shortcuts, the
   server's privacy policy and terms (`/instance/privacy_policy`,
   `/instance/terms_of_service`, both of which 404 where the administrator has
