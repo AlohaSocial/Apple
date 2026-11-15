@@ -46,6 +46,8 @@ public struct ComposerView: View {
     @State private var didFinish = false
     @State var selection: TextSelection?
     @State var isShowingImagePlayground = false
+    /// Why "Share what's playing" inserted nothing, until it is tried again.
+    @State var nowPlayingMessage: String?
     #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
         @Environment(\.supportsImagePlayground) var supportsImagePlayground
     #endif
@@ -156,6 +158,7 @@ public struct ComposerView: View {
                 }
                 if let message = model.uploader.errorMessage { uploadError(message) }
                 if let message = model.errorMessage { uploadError(message) }
+                if let message = nowPlayingMessage { uploadError(message) }
                 if let scheduledAt = model.scheduledAt { scheduleBanner(scheduledAt) }
                 if !model.attachments.isEmpty { mediaStrip }
                 if !model.threadSegments.isEmpty { threadEditor }

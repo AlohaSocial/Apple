@@ -432,7 +432,7 @@ public struct StatusRow: View {
             }
 
             if displayed.mediaAttachments.isEmpty, let card = displayed.card, card.url != nil {
-                LinkCardView(card: card) { onAction(.openCard(card)) }
+                StatusLinkCard(card: card) { onAction(.openCard(card)) }
             }
 
             if let quoted = displayed.quotedStatus ?? fetchedQuote {
