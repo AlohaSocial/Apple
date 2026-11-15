@@ -309,6 +309,21 @@ the poster's comment above, and a reader-friendly row height. Tapping the card
 opens the link in `SFSafariViewController` (iOS) / the default browser (Mac),
 with a Reader-mode preference. Tapping anything else opens the thread.
 
+**The reader view** builds on News rather than beside it. Any long post (about
+a couple of paragraphs) or post sharing a link offers **Reader view** in its
+menu and in the opened post's toolbar: one calm column, at most 640 points
+wide, with the post's own rich text in News's reader metrics, an estimated
+reading time (words at 230 a minute, never under a minute), a **serif** switch
+and a **text size** that steps up or down Dynamic Type's own sizes (−2…+4) rather
+than overriding them. Both are device preferences. A content warning is still a
+warning there: the post opens behind it. A shared link becomes the card the
+server built — provider, title, description — with **Read article**, which opens
+it in Safari's in-app browser straight into Reader (`entersReaderIfAvailable`)
+on iPhone and iPad, and in the browser on the Mac. The article is not fetched
+and re-laid out by the app: Safari's Reader does that properly, and a second,
+worse extractor would be a promise the app could not keep, so the reading time
+is the post's, not the article's.
+
 **Audio** — statuses whose attachments are `audio`. A list with inline players,
 a persistent mini-player docked above the tab bar / in the sidebar footer,
 background playback, `MPNowPlayingInfoCenter` metadata (title from the status

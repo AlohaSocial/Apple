@@ -896,4 +896,6 @@ public enum StatusRowAction: Sendable {
     case hideReply(Status)
     /// Draw the post as a picture and share that (`ShareImageSheet`).
     case shareImage(Status)
+    /// Read a long post, or the link it shares, in the calm reader layout.
+    case read(Status)
 }
