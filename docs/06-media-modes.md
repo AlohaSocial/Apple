@@ -365,6 +365,14 @@ One component, used from every mode and from the thread view.
   the controls and a double tap still zooms. Not on visionOS yet.
 - Video attachments inside the viewer use the same source-selection ladder as
   Video mode (§3).
+- **Spatial photos**: for the picture on screen, and only where its original
+  may be a HEIC (a `url` ending in `.heic`, `.heif` or nothing), the original
+  is fetched into the image cache without being decoded and its container
+  checked for a stereo pair group. A spatial one gets a **Spatial** button
+  that opens it in Quick Look, which shows it in depth on Vision Pro and as a
+  spatial photo on iPhone and iPad. The preview is always one flat JPEG, so
+  only the original can tell; a server that keeps HEIC originals serves them
+  at `url` (docs/02).
 - Keyboard on Mac/iPad: arrows to move, space to play/pause, `+`/`-` to zoom,
   escape to dismiss.
 - The viewer is a single `MediaViewerScene` taking `[MediaAttachment]` and a

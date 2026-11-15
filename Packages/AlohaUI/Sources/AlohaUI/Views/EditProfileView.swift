@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import PhotosUI
@@ -590,13 +591,34 @@ public struct EditProfileView: View {
         let type = item.supportedContentTypes.first
         let mimeType = type?.preferredMIMEType ?? "image/jpeg"
         let ext = type?.preferredFilenameExtension ?? "jpg"
-        let preview = Self.image(from: data)
+        // A profile picture is the most public picture there is, and went up
+        // with its location in it until now. It loses it the way a post's
+        // pictures do, copied without recompressing (docs/07 §4); one in a
+        // format that cannot be written becomes a JPEG, which every server
+        // takes for an avatar.
+        guard
+            let cleaned = await Self.removingPersonalMetadata(
+                from: data, filename: "\(name).\(ext)", mimeType: mimeType)
+        else {
+            photoError = String(
+                localized: "That image couldn't be converted.", comment: "Upload failure")
+            return nil
+        }
+        let preview = Self.image(from: cleaned.data)
         guard !Task.isCancelled,
             name == "avatar" ? avatarItem == item : headerItem == item
         else { return nil }
         if name == "avatar" { avatarPreview = preview } else { headerPreview = preview }
         return CredentialsUpdate.Picture(
-            data: data, filename: "\(name).\(ext)", mimeType: mimeType)
+            data: cleaned.data, filename: cleaned.filename, mimeType: cleaned.mimeType)
+    }
+
+    @concurrent
+    private static func removingPersonalMetadata(
+        from data: Data, filename: String, mimeType: String
+    ) async -> MediaPreparer.Prepared? {
+        MediaPreparer().removingPersonalMetadata(
+            fromImage: data, filename: filename, mimeType: mimeType, fallback: .jpeg)
     }
 
     private func fieldBinding(

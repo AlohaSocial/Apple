@@ -363,11 +363,12 @@ public struct ComposerView: View {
                 .fullScreenCover(isPresented: $isShowingCamera) {
                     CameraCapture { captured in
                         switch captured {
-                        case .photo(let data):
+                        case .photo(let data, let mimeType):
+                            let ext = mimeType == "image/heic" ? "heic" : "jpg"
                             Task {
                                 await model.uploader.add(
-                                    data: data, filename: "camera-\(UUID().uuidString).jpg",
-                                    mimeType: "image/jpeg")
+                                    data: data, filename: "camera-\(UUID().uuidString).\(ext)",
+                                    mimeType: mimeType)
                             }
                         case .movie(let url):
                             // The same trim sheet a picked video goes through.

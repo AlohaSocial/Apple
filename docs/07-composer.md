@@ -120,8 +120,36 @@ choose is worse than saying so.
   an image whole into memory and copies a video a chunk at a time. Exceeding
   either produces an in-app explanation and an offer to downscale or trim —
   never a server 422 the person has to interpret.
-- **HEIC/HEIF and ProRAW are transcoded to JPEG** before upload unless the
-  server's supported types include them. Live Photos post as the still.
+- **Originals go up as they are.** A picture whose type the server lists —
+  HEIC and HEIF included — is sent unchanged apart from its personal
+  metadata (below). Only a type the server does not list is written again:
+  as **HEIC** where the server takes HEIC, and as **JPEG only for a server
+  that takes neither** — the one, explicit fallback
+  (`ImageFormat.target(for:)`). GIF and WebP are never converted, since they
+  would arrive as their first frame. A picture over `image_size_limit` is
+  shrunk once, to 2048 pixels, in the same format a conversion would use.
+  The decisions are one pure function, `UploadPreflight.imagePlan`, tested
+  case by case. Live Photos post as the still. The camera hands over HEIC,
+  the share sheet hands over what it was given, and Shortcuts go the same
+  way as the composer (`MediaPreparer.prepareForUpload`).
+- **Location never leaves the device.** GPS, IPTC, maker notes and the EXIF
+  and TIFF fields that name a person or a device are removed from every
+  picture before upload — a post's, a Shortcut's (which used to send the file
+  as it came) and a profile picture or header (which did too); the
+  orientation stays. JPEG, HEIC/HEIF, PNG and TIFF
+  are copied with `CGImageDestinationCopyImageSource` and replacement
+  metadata, so nothing is recompressed and nothing in the container that is
+  not metadata is lost — a spatial photo's second eye, a depth map, a gain
+  map, the colour profile. (`kCGImageMetadataShouldExcludeGPS` alone, without
+  replacement metadata, leaves the GPS where it was.) Other kinds are drawn
+  again without it. There is no setting to keep a location.
+- **Spatial photos** (a stereo pair group in a HEIC, from an iPhone 15 Pro or
+  later or Apple Vision Pro) go up with both eyes on a server that takes HEIC,
+  and the composer marks them **Spatial**. One is never written again to make
+  it smaller — that would keep one eye — so a spatial photo over the limit is
+  refused, with the limit named. On a server that takes no HEIC at all it
+  cannot stay spatial whatever is done, and goes up as an ordinary picture.
+  Filters are not offered on one, for the same reason.
 - Upload via `POST /api/v2/media` (fall back to `/api/v1/media` on 404), one at
   a time with a concurrency cap of 2, on a **background `URLSession`** so an
   upload survives the app being suspended, driving a **Live Activity** on iOS
@@ -142,8 +170,9 @@ the kind that ruins a photograph.
 
 The preview is a shader over the thumbnail already on screen, so flicking
 through the row costs nothing; only Save redraws the pixels, through Core Image.
-JPEG in, JPEG out at quality 0.92; PNG stays PNG so a screenshot does not gain a
-black background where its alpha was; GIF and animated WebP are left alone,
+JPEG stays JPEG and PNG stays PNG, so a screenshot does not gain a black
+background where its alpha was; a HEIC or TIFF comes back as HEIC, or JPEG on a
+server without HEIC; all at quality 0.92 and with their orientation; GIF and animated WebP are left alone,
 since they would come back as their first frame. Never throws: a filter is a
 decoration, and losing somebody's upload because Core Image would not cooperate
 is not a trade worth making.

@@ -216,6 +216,38 @@ public actor ImageLoader {
         }
     }
 
+    // MARK: - Originals
+
+    /// The file behind `url`, as the server sent it, on disk: from the cache
+    /// when a picture was already drawn from it, downloaded otherwise.
+    ///
+    /// Nothing is decoded, so asking costs a download and no memory. The
+    /// media viewer asks for the one picture on screen, to tell a spatial
+    /// photo (`SpatialPhoto`) from a flat one and to hand it to Quick Look,
+    /// which needs the file itself — both eyes are in the original, never
+    /// in the preview.
+    public func original(for url: URL) async -> URL? {
+        guard let directory = diskDirectory else { return nil }
+        let file = Self.diskURL(in: directory, resource: Self.resourceKey(url))
+        if FileManager.default.fileExists(atPath: file.path()) { return file }
+        return await Self.download(url, to: file, session: session)
+    }
+
+    @concurrent
+    private static func download(_ url: URL, to file: URL, session: URLSession) async -> URL? {
+        var request = URLRequest(url: url)
+        request.setValue("image/heic,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 30
+        guard let (data, response) = try? await session.data(for: request),
+            let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+            // The same rule as the cache: only bytes ImageIO reads as a picture.
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            CGImageSourceGetCount(source) > 0,
+            (try? data.write(to: file, options: .atomic)) != nil
+        else { return nil }
+        return file
+    }
+
     /// Decode straight to the size that will be drawn. This is the single
     /// biggest lever on memory in a scrolling list.
     static func downsample(_ data: Data, maxPixels: Int) -> CGImage? {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaMedia
 import Foundation
 import SwiftUI
 
@@ -85,9 +86,11 @@ public enum PhotoFilter: String, Sendable, Hashable, CaseIterable, Identifiable 
     /// the preview is a shader on the thumbnail, so flicking through eight
     /// filters costs nothing, and only the send needs pixels.
     ///
-    /// JPEG in, JPEG out, at a quality chosen to be visually lossless. PNG stays
-    /// PNG, so a screenshot or a picture with transparency does not gain a black
-    /// background where its alpha was. An animated picture comes back untouched:
+    /// JPEG stays JPEG and PNG stays PNG, so a screenshot or a picture with
+    /// transparency does not gain a black background where its alpha was;
+    /// anything else — a HEIC, a TIFF — comes back as `format`, which is HEIC
+    /// unless the server does not take it. The quality is chosen to be
+    /// visually lossless, and the picture keeps its orientation. An animated picture comes back untouched:
     /// it would otherwise return as its first frame, which is not what anybody
     /// meant by "apply a filter".
     ///
@@ -103,7 +106,7 @@ public enum PhotoFilter: String, Sendable, Hashable, CaseIterable, Identifiable 
         ]
 
         public static func apply(
-            _ filter: PhotoFilter, to data: Data, mimeType: String
+            _ filter: PhotoFilter, to data: Data, mimeType: String, format: ImageFormat
         ) -> (data: Data, mimeType: String, fileExtension: String)? {
             guard filter.changesAnything, filterable.contains(mimeType.lowercased()) else {
                 return nil
@@ -119,21 +122,34 @@ public enum PhotoFilter: String, Sendable, Hashable, CaseIterable, Identifiable 
                 return nil
             }
 
-            // PNG keeps its alpha; everything else — including a HEIC the
-            // server would rather not have — lands as JPEG.
-            let keepsPNG = mimeType.lowercased() == "image/png"
-            let type = keepsPNG ? UTType.png : UTType.jpeg
-            let outMime = keepsPNG ? "image/png" : "image/jpeg"
-            let ext = keepsPNG ? "png" : "jpg"
+            let type: UTType
+            let outMime: String
+            let ext: String
+            switch mimeType.lowercased() {
+            case "image/png": (type, outMime, ext) = (.png, "image/png", "png")
+            case "image/jpeg": (type, outMime, ext) = (.jpeg, "image/jpeg", "jpg")
+            default:
+                (type, outMime, ext) = (
+                    format == .heic ? .heic : .jpeg, format.mimeType, format.fileExtension
+                )
+            }
+
+            // The pixels are drawn as stored, so the stored orientation goes
+            // with them; without it a portrait photo would arrive on its side.
+            var properties: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.92]
+            if let orientation =
+                (CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
+                as? [CFString: Any])?[kCGImagePropertyOrientation]
+            {
+                properties[kCGImagePropertyOrientation] = orientation
+            }
 
             let buffer = NSMutableData()
             guard
                 let destination = CGImageDestinationCreateWithData(
                     buffer, type.identifier as CFString, 1, nil)
             else { return nil }
-            CGImageDestinationAddImage(
-                destination, rendered,
-                [kCGImageDestinationLossyCompressionQuality: 0.92] as CFDictionary)
+            CGImageDestinationAddImage(destination, rendered, properties as CFDictionary)
             guard CGImageDestinationFinalize(destination) else { return nil }
 
             return (buffer as Data, outMime, ext)

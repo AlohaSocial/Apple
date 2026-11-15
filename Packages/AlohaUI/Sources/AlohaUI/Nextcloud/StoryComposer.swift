@@ -267,7 +267,9 @@ public struct StoryComposerSheet: View {
             if CameraCapture.isAvailable {
                 StoryCameraCanvas(
                     onCapture: { data in
-                        Task { await use(CameraCapture.Captured.photo(data)) }
+                        Task {
+                            await use(CameraCapture.Captured.photo(data, mimeType: "image/heic"))
+                        }
                     },
                     onPickLibrary: { isPickingLibrary = true }
                 )
@@ -404,7 +406,7 @@ public struct StoryComposerSheet: View {
         private func use(_ captured: CameraCapture.Captured) async {
             errorMessage = nil
             switch captured {
-            case .photo(let data):
+            case .photo(let data, _):
                 guard let image = Self.decodeImage(data) else {
                     errorMessage = String(
                         localized: "That picture couldn't be read.",
@@ -699,12 +701,13 @@ public struct StoryComposerSheet: View {
             case .text:
                 let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard
-                    let jpeg = await render(
+                    let rendered = await render(
                         TextStoryCard(
                             text: trimmed, gradient: gradients[backgroundIndex], scale: 1))
                 else { throw StoryComposerError.rendering }
                 let attachment = try await upload(
-                    jpeg, filename: "story.jpg", mimeType: "image/jpeg")
+                    rendered, filename: "story.\(storyFormat.fileExtension)",
+                    mimeType: storyFormat.mimeType)
                 // The words are the picture's description, so a reader who
                 // cannot see it still gets them.
                 _ = try? await session.client.send(
@@ -713,7 +716,7 @@ public struct StoryComposerSheet: View {
             case .media:
                 if let picture {
                     guard
-                        let jpeg = await render(
+                        let rendered = await render(
                             StoryPictureCanvas(
                                 picture: picture, stickers: .constant(stickers),
                                 selected: .constant(nil),
@@ -721,7 +724,8 @@ public struct StoryComposerSheet: View {
                                 zoom: pictureZoom, offset: pictureOffset))
                     else { throw StoryComposerError.rendering }
                     let attachment = try await upload(
-                        jpeg, filename: "story.jpg", mimeType: "image/jpeg")
+                        rendered, filename: "story.\(storyFormat.fileExtension)",
+                        mimeType: storyFormat.mimeType)
                     mediaID = attachment.id
                 } else if let movie {
                     let prepared = try await prepareStoryVideo(at: movie)
@@ -823,7 +827,13 @@ public struct StoryComposerSheet: View {
         }
     }
 
-    /// Draws a story-sized view to JPEG bytes.
+    /// What a drawn story is written as: HEIC where the server takes it,
+    /// JPEG only where it does not (docs/07 §4).
+    private var storyFormat: ImageFormat {
+        ImageFormat.target(for: session.capabilities.limits) ?? .jpeg
+    }
+
+    /// Draws a story-sized view to bytes in `storyFormat`.
     @MainActor
     private func render<Content: View>(_ content: Content) async -> Data? {
         let renderer = ImageRenderer(
@@ -834,7 +844,8 @@ public struct StoryComposerSheet: View {
         renderer.proposedSize = ProposedViewSize(Self.canvas)
         renderer.scale = 1
         guard let image = renderer.cgImage else { return nil }
-        return Self.encodeJPEG(image)
+        return MediaPreparer.encode(image, as: storyFormat, quality: 0.88)
+            ?? Self.encodeJPEG(image)
     }
 
     static func encodeJPEG(_ image: CGImage, quality: CGFloat = 0.88) -> Data? {
