@@ -11,7 +11,7 @@ public nonisolated enum AlohaSymbol {
     public static let bookmark = "bookmark"
     public static let bookmarkFilled = "bookmark.fill"
     public static let more = "ellipsis"
-    public static let share = "paperplane"
+    public static let share = "square.and.arrow.up"
     public static let compose = "plus"
     public static let refresh = "arrow.clockwise"
     public static let search = "magnifyingglass"
@@ -42,7 +42,13 @@ public nonisolated enum AlohaSymbol {
     public static let video = "video"
     public static let globe = "globe"
     public static let lock = "lock"
-    public static let envelope = "envelope"
+    /// The DM inbox and "send a message" actions. Not `envelope`: that reads
+    /// as email, and Nextcloud ships a Mail app.
+    public static let directMessage = "paperplane"
+    public static let directMessageFilled = "paperplane.fill"
+    /// A post with direct visibility: on the fediverse that is a private
+    /// mention, so it wears the mention sign rather than the inbox icon.
+    public static let directVisibility = "at"
     public static let sparkles = "sparkles"
     public static let offline = "wifi.slash"
 }
