@@ -140,14 +140,18 @@ Target: `AlohaIntents`.
 | `PostStatusIntent` | text, visibility, media, account | Posts directly, or opens the composer when `requestValueDialog` is needed. Donatable. |
 | `OpenTimelineIntent` | mode, source | Opens the app on that timeline. |
 | `SearchIntent` | query, type | Opens search results. |
-| `LatestMentionsIntent` | count, account | Returns mentions as an entity list, usable in Shortcuts and readable by Siri. |
+| `LatestMentionsIntent` | count, account | Returns mentions as an entity list, usable in Shortcuts, and Siri reads the first three aloud with their authors ("Read my mentions"). |
+| `PostLastPhotoIntent` | caption, visibility, account | "Post my last photo" (iPhone, iPad, Vision Pro): the newest picture in the library, with the caption, after a confirmation naming the account. Goes the composer's way: no location, HEIC kept, spatial kept. |
+| `LatestPostsFromPersonIntent` | person | "What's new from <person>?": their latest posts, the first three read aloud. The people Siri knows are the ones the account follows, refreshed with the Spotlight index (`updateAppShortcutParameters`). |
 | `FavouriteStatusIntent` | status entity | For automations. |
 | `NextShortIntent` | — | Opens Shorts mode. |
 
 - `AppEntity` conformances for `AccountEntity`, `StatusEntity`, `TimelineEntity`
   with `DisplayRepresentation` and `EntityQuery`, so Shortcuts can browse them.
-- `AppShortcutsProvider` with phrases for the three most useful:
-  "Post to Aloha Social", "Show my Aloha mentions", "Open Aloha Shorts".
+- `AppShortcutsProvider` with phrases for the most useful: "Post to Aloha
+  Social", "Show my Aloha mentions" / "Read my mentions in Aloha Social",
+  "Search Aloha Social", "Open Aloha Shorts", "Post my last photo to Aloha
+  Social" and "What's new from <person> in Aloha Social".
 - Intents are donated on use so Spotlight and Siri suggestions learn them.
 - Control Center control (iOS): a compose control and a "latest mention" control.
 
