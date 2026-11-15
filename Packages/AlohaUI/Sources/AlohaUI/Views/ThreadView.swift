@@ -27,6 +27,9 @@ public struct ThreadView: View {
     /// The replies' shape — depth, branches, folds — worked out whenever the
     /// replies change rather than in the body (`ThreadLayout`).
     @State private var layout = ThreadLayout()
+    /// How many posts the author's own run through this conversation has —
+    /// worked out with the replies' shape, not in the body (`SelfThread`).
+    @State private var selfThreadLength = 0
     /// Folds the reader opened, this visit.
     @State private var expandedFolds: Set<String> = []
     @State private var isLoading = true
@@ -74,6 +77,9 @@ public struct ThreadView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(palette.background)
                         .listRowSeparator(.hidden)
+                        if selfThreadLength >= SelfThread.minimumLength {
+                            readAsArticleRow
+                        }
                     }
                 }
 
@@ -326,6 +332,35 @@ public struct ThreadView: View {
     private func setDescendants(_ replies: [Status]) {
         descendants = replies
         layout = ThreadLayout(focusedID: statusID, descendants: replies)
+        selfThreadLength =
+            focused.map {
+                SelfThread.unroll(
+                    ancestors: ancestors, focused: $0.displayed, descendants: replies
+                ).count
+            } ?? 0
+    }
+
+    /// Where the author wrote a thread to themselves, it can be read in one
+    /// go: their posts as one article, everybody else's replies left out.
+    private var readAsArticleRow: some View {
+        NavigationLink(value: Route.threadReader(statusID: statusID)) {
+            Label {
+                Text(
+                    "Read all \(selfThreadLength) posts as an article",
+                    comment: "Thread screen: unroll the author's own thread")
+            } icon: {
+                Image(systemName: "doc.plaintext")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(palette.accent)
+            .padding(.vertical, AlohaMetrics.space2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     /// One row under the opened post: a reply with its thread lines, or the
