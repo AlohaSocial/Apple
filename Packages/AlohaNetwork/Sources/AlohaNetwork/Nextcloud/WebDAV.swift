@@ -69,7 +69,7 @@ public struct WebDAVClient: Sendable {
         self.transport = transport
     }
 
-    public enum WebDAVError: Error, Sendable {
+    public enum WebDAVError: Error, Sendable, Equatable {
         case unauthorised
         case notFound
         case malformedResponse
@@ -190,6 +190,61 @@ public struct WebDAVClient: Sendable {
             if response.statusCode == 405 { continue }
             try Self.check(response.statusCode)
         }
+    }
+
+    /// Uploads a file into `folder` under `preferredName`, or under
+    /// "name (2).ext", "name (3).ext"… when that is taken, and answers the
+    /// path it was saved at. The folder is made first if it is not there.
+    ///
+    /// A free name is looked for before the upload, so a large file is sent
+    /// once; the `PUT` then carries `If-None-Match: *`, so a file that
+    /// appeared under that name in the meantime is never written over —
+    /// the next name is tried instead.
+    public func saveNew(
+        file: URL, inFolder folder: String, preferredName: String, contentType: String,
+        progress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> String {
+        try await createFolder(path: folder)
+        let base = Self.trimmed(folder)
+        var attempt = 1
+        while attempt <= Self.maximumNameAttempts {
+            let name = Self.candidateName(preferredName, attempt: attempt)
+            let path = base.isEmpty ? name : "\(base)/\(name)"
+            attempt += 1
+            guard try await !exists(path: path) else { continue }
+
+            var request = request("PUT", path: path)
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+            request.setValue("*", forHTTPHeaderField: "If-None-Match")
+            let (_, response) = try await transport.upload(
+                request, fromFile: file, progress: progress)
+            if response.statusCode == 412 { continue }
+            try Self.check(response.statusCode)
+            return path
+        }
+        throw WebDAVError.alreadyExists
+    }
+
+    /// Enough for any folder a person keeps by hand; past it something is
+    /// wrong and saying so beats looping.
+    static let maximumNameAttempts = 100
+
+    /// "photo.jpg", then "photo (2).jpg", "photo (3).jpg" — the way Files
+    /// itself names a copy.
+    static func candidateName(_ name: String, attempt: Int) -> String {
+        let cleaned = name.replacingOccurrences(of: "/", with: "-")
+        guard attempt > 1 else { return cleaned }
+        let ext = (cleaned as NSString).pathExtension
+        let stem = (cleaned as NSString).deletingPathExtension
+        return ext.isEmpty ? "\(stem) (\(attempt))" : "\(stem) (\(attempt)).\(ext)"
+    }
+
+    /// `HEAD`: whether anything is at `path`.
+    func exists(path: String) async throws -> Bool {
+        let (_, response) = try await transport.send(request("HEAD", path: path))
+        if response.statusCode == 404 { return false }
+        try Self.check(response.statusCode)
+        return true
     }
 
     /// Nextcloud sends both `ETag` and `OC-ETag`; either will do, quoted or

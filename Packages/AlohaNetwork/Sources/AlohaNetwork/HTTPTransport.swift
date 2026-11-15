@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import Foundation
+import Synchronization
 
 /// What actually puts bytes on the wire. The one seam the mock server uses, so
 /// every configuration in docs/12 §2 can be exercised without a network.
@@ -15,6 +16,18 @@ public protocol HTTPTransport: Sendable {
     /// Forgets every response it kept, which were fetched with somebody's
     /// token — what signing out asks of it.
     func removeCachedResponses()
+    /// `upload(_:fromFile:)`, reporting how much of the body has gone, from
+    /// 0 to 1: what a "Save to Nextcloud" bar follows.
+    func upload(
+        _ request: URLRequest, fromFile file: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (Data, HTTPURLResponse)
+    /// Fetches into a temporary file the caller owns and removes, reporting
+    /// how much has arrived. For a file too large to hold in memory, such as
+    /// a video's original.
+    func download(
+        _ request: URLRequest, progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (URL, HTTPURLResponse)
 }
 
 extension HTTPTransport {
@@ -34,6 +47,27 @@ extension HTTPTransport {
         var request = request
         request.httpBody = try Data(contentsOf: file)
         return try await send(request)
+    }
+
+    /// Without a network of its own there is nothing to watch: done is done.
+    public func upload(
+        _ request: URLRequest, fromFile file: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (Data, HTTPURLResponse) {
+        let answer = try await upload(request, fromFile: file)
+        progress(1)
+        return answer
+    }
+
+    public func download(
+        _ request: URLRequest, progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (URL, HTTPURLResponse) {
+        let (data, response) = try await send(request)
+        let file = FileManager.default.temporaryDirectory
+            .appending(path: "aloha-download-\(UUID().uuidString)")
+        try data.write(to: file)
+        progress(1)
+        return (file, response)
     }
 }
 
@@ -91,6 +125,37 @@ public struct URLSessionTransport: HTTPTransport {
         }
     }
 
+    /// On the transfer session, which gives a large file as long as it keeps
+    /// moving rather than an API call's two minutes.
+    public func upload(
+        _ request: URLRequest, fromFile file: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (Data, HTTPURLResponse) {
+        try await answer {
+            try await uploadSession.upload(
+                for: request, fromFile: file, delegate: TransferProgress(progress))
+        }
+    }
+
+    public func download(
+        _ request: URLRequest, progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> (URL, HTTPURLResponse) {
+        do {
+            let (location, response) = try await uploadSession.download(
+                for: request, delegate: TransferProgress(progress))
+            guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            // Moved somewhere of the caller's own: the session's file is
+            // its to clean up.
+            let file = FileManager.default.temporaryDirectory
+                .appending(path: "aloha-download-\(UUID().uuidString)")
+            try FileManager.default.moveItem(at: location, to: file)
+            return (file, http)
+        } catch let error as URLError {
+            if error.code == .cancelled { throw APIError.cancelled }
+            throw APIError.transport(error)
+        }
+    }
+
     private func answer(
         _ task: () async throws -> (Data, URLResponse)
     ) async throws -> (Data, HTTPURLResponse) {
@@ -137,6 +202,43 @@ final class SameOriginRedirects: NSObject, URLSessionTaskDelegate, Sendable {
             request.setValue(credential, forHTTPHeaderField: "Authorization")
         }
         return request
+    }
+}
+
+/// Reports a transfer's progress, from the task's own `Progress`, which
+/// counts the body going up for an upload and the bytes coming down for a
+/// download alike. Redirects are followed as `SameOriginRedirects` does.
+final class TransferProgress: NSObject, URLSessionTaskDelegate, Sendable {
+    private let report: @Sendable (Double) -> Void
+    private let observation = Mutex<NSKeyValueObservation?>(nil)
+
+    init(_ report: @escaping @Sendable (Double) -> Void) {
+        self.report = report
+    }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        let report = report
+        let token = task.progress.observe(\.fractionCompleted, options: [.new]) { progress, _ in
+            report(min(max(progress.fractionCompleted, 0), 1))
+        }
+        observation.withLock { $0 = token }
+    }
+
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest
+    ) async -> URLRequest? {
+        guard let original = task.originalRequest else { return request }
+        return SameOriginRedirects.redirect(request, from: original)
+    }
+
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?
+    ) {
+        observation.withLock {
+            $0?.invalidate()
+            $0 = nil
+        }
     }
 }
 

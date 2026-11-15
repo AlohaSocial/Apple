@@ -330,6 +330,11 @@ One component, used from every mode and from the thread view.
   absent — never a fake one.
 - Actions: Save to Photos (with the usage description and a permission-denied
   path), Share, Copy, Open in Browser, and — for video — PiP and AirPlay.
+- **Save to Nextcloud**, where the account's Nextcloud is connected: the
+  attachment's original file, byte for byte, into `Aloha Social/Saved/` in
+  the person's Files, with a progress bar, a "Saved as …" confirmation that
+  VoiceOver announces, and a numbered copy rather than an overwrite when the
+  name is taken ([14-open-questions.md](14-open-questions.md) §7).
 - Video attachments inside the viewer use the same source-selection ladder as
   Video mode (§3).
 - Keyboard on Mac/iPad: arrows to move, space to play/pause, `+`/`-` to zoom,

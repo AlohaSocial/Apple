@@ -410,6 +410,20 @@ Picking a file sends its **path** to `POST /api/v1/media/from-file`; the bytes
 never touch the device. Without a connection the picker degrades to the path
 field, which still works because the server resolves the path.
 
+### Saving media into Files
+
+The media viewer's **Save to Nextcloud** puts the attachment's original —
+`url`, or `remote_url` where there is no local copy, never the preview and
+never re-encoded — into `Aloha Social/Saved/`. The file is fetched to a
+temporary file on the transfer session (with the account's token only for its
+own server's media) and streamed up with a WebDAV `PUT`, so a long video is
+never held in memory; the bar is half fetch, half upload, from each task's own
+`Progress`. The folders are made with `MKCOL` as needed. A free name is found
+with `HEAD` first — "photo (2).jpg", as Files itself names a copy — so a large
+file is sent once, and the `PUT` carries `If-None-Match: *`, so a file that
+appeared under that name meanwhile is never overwritten. Offered only where a
+Nextcloud is connected.
+
 ### Drafts, synced through Files
 
 Where a Nextcloud is connected, each account's drafts are kept in its Files as

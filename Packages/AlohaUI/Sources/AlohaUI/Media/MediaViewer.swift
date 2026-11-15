@@ -16,6 +16,8 @@ public struct MediaViewer: View {
     @Environment(\.alohaMetrics) private var metrics
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppEnvironment.self) private var environment
 
     private let attachments: [MediaAttachment]
     private let statusID: String
@@ -35,6 +37,8 @@ public struct MediaViewer: View {
     /// A tap on the picture puts the controls, the status bar and the home
     /// indicator away, so the photograph has the whole screen — and back.
     @State private var isChromeHidden = false
+    /// "Save to Nextcloud", for the attachment on screen (docs/14 §7).
+    @State private var saver = SaveToNextcloud()
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -76,6 +80,19 @@ public struct MediaViewer: View {
             controls
                 .opacity(chromeHidden ? 0 : 1)
                 .allowsHitTesting(!chromeHidden)
+
+            // Over the chrome rather than part of it: a save under way stays
+            // in sight when a tap puts the controls away.
+            VStack {
+                Spacer()
+                if saver.phase != .idle {
+                    SaveToNextcloudStatus(saver: saver)
+                        .padding(.bottom, AlohaMetrics.space6)
+                        .transition(
+                            reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(reduceMotion ? nil : .spring(duration: 0.3), value: saver.phase)
         }
         .animation(.easeInOut(duration: 0.2), value: chromeHidden)
         .offset(dragOffset)
@@ -151,6 +168,12 @@ public struct MediaViewer: View {
         }
     }
 
+    /// Only where the account's Nextcloud is connected: saving is a WebDAV
+    /// upload with its app password.
+    private var canSaveToNextcloud: Bool {
+        session?.hasNextcloudConnection == true
+    }
+
     /// The controls stay for VoiceOver: hiding them would leave nothing to
     /// close the viewer with.
     private var chromeHidden: Bool { isChromeHidden && !isVoiceOverOn }
@@ -217,6 +240,26 @@ public struct MediaViewer: View {
                         }
                         .accessibilityLabel(
                             Text("Show description", comment: "Media viewer action"))
+                    }
+
+                    if canSaveToNextcloud, let attachment = attachments[safe: index],
+                        attachment.url ?? attachment.remoteURL != nil
+                    {
+                        Button {
+                            if let session {
+                                saver.save(attachment, session: session, environment: environment)
+                            }
+                        } label: {
+                            Image(systemName: "icloud.and.arrow.up")
+                                .font(.body.weight(.semibold))
+                                .padding(10)
+                                .alohaGlassEffect(Self.controlGlass, in: Circle())
+                        }
+                        .disabled(saver.isWorking)
+                        .accessibilityLabel(
+                            Text("Save to Nextcloud", comment: "Media viewer action")
+                        )
+                        .help(Text("Save to Nextcloud", comment: "Media viewer action"))
                     }
 
                     if let url = attachments[safe: index]?.url {
