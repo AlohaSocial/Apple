@@ -7,8 +7,12 @@ import SwiftUI
 /// tapping it feel like something happened.
 ///
 /// Favouriting is the most repeated gesture in the app and it used to be
-/// instant and silent. Here it springs, throws a short burst of sparks in the
-/// action's own colour, and taps back through the Taptic Engine.
+/// instant and silent. Here the heart bounces and throws a ring and a fan of
+/// small hearts, a boost turns its arrows once round, and a bookmark throws
+/// sparks — each in the action's own colour, landing with the tick and the
+/// tap `Senses` plays for the same action (`StatusActions.cue`). Under
+/// Reduce Motion none of it moves: the glyph fills and takes its tint, and
+/// that is the whole answer.
 struct StatusActionButton: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -43,7 +47,9 @@ struct StatusActionButton: View {
     let action: () -> Void
 
     enum Style {
-        /// Bounces and throws sparks. Favourite, bookmark.
+        /// Bounces and throws a ring of hearts. Favourite.
+        case heart
+        /// Bounces and throws sparks. Bookmark.
         case pop
         /// Turns. Boost.
         case spin
@@ -60,6 +66,9 @@ struct StatusActionButton: View {
     /// the glyph — undoing a favourite is not a celebration.
     @State private var burst = 0
     @State private var spin = 0
+    /// The celebration on screen, if one is playing. Mounted per tap and
+    /// gone when done, so an idle row carries none of it (`CelebrationBurst`).
+    @State private var playingBurst: Int?
 
     private var minimumHeight: Double { prominence == .row ? 32 : 44 }
     private var iconSide: Double { prominence == .row ? 18 : 24 }
@@ -121,7 +130,9 @@ struct StatusActionButton: View {
         .onChange(of: isOn) { _, new in
             guard new else { return }
             switch style {
-            case .pop: burst += 1
+            case .heart, .pop:
+                burst += 1
+                if Self.celebrates(style, reduceMotion: reduceMotion) { playingBurst = burst }
             case .spin: spin += 1
             case .plain: break
             }
@@ -150,11 +161,21 @@ struct StatusActionButton: View {
                 .symbolEffect(.rotate.clockwise, options: .nonRepeating, value: spin)
                 .symbolEffectsRemoved(reduceMotion)
 
-            if style == .pop, !reduceMotion {
-                SparkBurst(trigger: burst, tint: tint)
+            if let playing = playingBurst {
+                CelebrationBurst(kind: style == .heart ? .hearts : .sparks, tint: tint) {
+                    if playingBurst == playing { playingBurst = nil }
+                }
+                .id(playing)
             }
         }
         .frame(width: iconSide, height: iconSide)
+    }
+
+    /// Whether turning this action on throws a burst: the favourite and the
+    /// bookmark do, and nothing does under Reduce Motion.
+    static func celebrates(_ style: Style, reduceMotion: Bool) -> Bool {
+        guard !reduceMotion else { return false }
+        return style == .heart || style == .pop
     }
 
     private func countText(_ count: Int) -> some View {
@@ -232,63 +253,5 @@ extension View {
         #else
             self
         #endif
-    }
-}
-
-/// A handful of sparks thrown outward once, then gone.
-private struct SparkBurst: View {
-    let trigger: Int
-    let tint: Color
-
-    private static let count = 8
-
-    var body: some View {
-        ZStack {
-            ForEach(0..<Self.count, id: \.self) { index in
-                Circle()
-                    .fill(tint)
-                    .frame(width: 3, height: 3)
-                    .modifier(
-                        SparkFlight(
-                            angle: .degrees(Double(index) / Double(Self.count) * 360),
-                            progress: trigger == 0 ? 0 : 1))
-            }
-        }
-        .animation(.easeOut(duration: 0.45), value: trigger)
-        .allowsHitTesting(false)
-    }
-}
-
-/// Animating one value keeps the whole burst on a single spring rather than
-/// eight competing ones.
-private struct SparkFlight: ViewModifier, @preconcurrency Animatable {
-    let angle: Angle
-    var progress: Double
-
-    var animatableData: Double {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    func body(content: Content) -> some View {
-        // Out and gone: a spark that lingers reads as a rendering bug.
-        let distance = 14 * eased
-        return
-            content
-            .offset(x: cos(angle.radians) * distance, y: sin(angle.radians) * distance)
-            .opacity(fade)
-            .scaleEffect(1 - eased * 0.4)
-    }
-
-    /// The flight is one-shot: `progress` goes 0 → 1 and stays there, so the
-    /// sparks must fade out on their own within that single pass.
-    private var eased: Double {
-        let cycled = progress.truncatingRemainder(dividingBy: 1)
-        return cycled == 0 && progress > 0 ? 1 : cycled
-    }
-
-    private var fade: Double {
-        guard progress > 0 else { return 0 }
-        return max(0, 1 - eased * 1.6)
     }
 }
