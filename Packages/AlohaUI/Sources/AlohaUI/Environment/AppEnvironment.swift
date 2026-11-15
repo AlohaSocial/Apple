@@ -547,6 +547,8 @@ public final class AppEnvironment {
         // Direct messages, requests and the rest of the snapshot widgets, in
         // what is left of the refresh's time.
         await WidgetSnapshotWriter.refreshAll(self, budget: .seconds(8))
+        // A countdown whose poll closed or post went out ends (docs/09 §9).
+        await EventLiveActivities.endFinished()
         // Drafts last, and briefly: they wait happily for the next launch.
         await DraftSync.shared.syncAll(ifOlderThan: 15 * 60, within: .seconds(5))
         return fresh

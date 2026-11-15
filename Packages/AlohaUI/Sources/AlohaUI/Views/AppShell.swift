@@ -575,6 +575,9 @@ struct ThemedAppShell: View {
         // The snapshot widgets too; a no-op within ten minutes of the last.
         Task(priority: .utility) {
             await WidgetSnapshotWriter.refreshAll(environment, budget: .seconds(20))
+            // The countdowns read the snapshot just written; ActivityKit
+            // only starts one while the app is in front (docs/09 §9).
+            await EventLiveActivities.update(environment)
         }
     }
 
