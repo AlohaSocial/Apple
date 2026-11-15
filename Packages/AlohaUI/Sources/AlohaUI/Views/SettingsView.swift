@@ -831,6 +831,10 @@ public struct SettingsView: View {
                         comment: "Hourly notification bundles explanation")
                 }
             }
+
+            #if os(iOS)
+                LiveActivitySettingsSection()
+            #endif
         } header: {
             Text("Notifications", comment: "Settings section")
         } footer: {
