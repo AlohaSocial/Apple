@@ -227,7 +227,11 @@ mobile connection this is the difference between possible and not.
   runs Login Flow v2 and grants an app password), the picker is a real WebDAV
   browser over `/remote.php/dav/files/{loginName}/`: folders, thumbnails from
   Nextcloud's own preview endpoint, and only the file types this server's
-  `supported_mime_types` accepts. See
+  `supported_mime_types` accepts. A file over the server's size ceiling for
+  its type is shown but marked and not pickable. The browser opens in the
+  folder the last attachment came from, falling back to the top when that
+  folder has gone, and it browses the Files of the account the composer
+  posts as, not of whichever account happens to be active. See
   [14-open-questions.md](14-open-questions.md) §7.
 - Without that connection it degrades to a path field with recent paths, which
   still works because the server resolves the path itself.
