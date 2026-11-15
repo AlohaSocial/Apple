@@ -15,7 +15,9 @@ private func draft(
     DraftSnapshot(id: id, accountID: accountID, text: text, updatedAt: time)
 }
 
-private func draft(_ text: String, at time: Date = t0, accountID: UUID = account)
+private func draft(
+    _ text: String, at time: Date = t0, accountID: UUID = account
+)
     -> DraftSnapshot
 {
     draft(UUID(), text, at: time, accountID: accountID)
@@ -25,7 +27,9 @@ private func remote(_ file: DraftSyncFile, etag: String? = "e1") -> DraftMerge.R
     DraftMerge.Remote(etag: etag, file: file)
 }
 
-private func entry(_ stamp: Date, deleted: Bool = false, etag: String? = "e1")
+private func entry(
+    _ stamp: Date, deleted: Bool = false, etag: String? = "e1"
+)
     -> DraftSyncLedger.Entry
 {
     DraftSyncLedger.Entry(stamp: stamp, deleted: deleted, etag: etag)

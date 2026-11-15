@@ -172,9 +172,13 @@ public final class AppEnvironment {
         }
 
         // Drafts follow the person between devices through their Nextcloud
-        // (docs/14 §7): from now on after every save, and once now.
-        await DraftSync.shared.attach(to: self)
-        Task { await DraftSync.shared.syncAll() }
+        // (docs/14 §7): from now on after every save, and once now. Only in
+        // the app: the share extension has a post to send and little memory
+        // to spare, and what it saves is synced when the app next opens.
+        if Bundle.main.bundleURL.pathExtension == "app" {
+            await DraftSync.shared.attach(to: self)
+            Task { await DraftSync.shared.syncAll() }
+        }
     }
 
     private func makeSession(_ snapshot: AccountStore.Snapshot) -> AccountSession {

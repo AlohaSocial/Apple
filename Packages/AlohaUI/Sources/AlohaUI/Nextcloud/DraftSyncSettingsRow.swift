@@ -35,9 +35,10 @@ struct DraftSyncSettingsRow: View {
 
             Text(
                 "Keeps your drafts in the Aloha Social/Drafts folder of your Nextcloud, so a post started on one device can be finished on another. Pictures already uploaded go with them.",
-                comment: "Settings explanation for syncing drafts through Nextcloud")
-                .font(.footnote)
-                .foregroundStyle(palette.secondaryLabel)
+                comment: "Settings explanation for syncing drafts through Nextcloud"
+            )
+            .font(.footnote)
+            .foregroundStyle(palette.secondaryLabel)
 
             if session.settings.syncsDraftsThroughNextcloud {
                 status
@@ -64,7 +65,8 @@ struct DraftSyncSettingsRow: View {
         } else if let last = state.lastSyncedAt {
             Text(
                 "Last synced \(last.formatted(.relative(presentation: .named)))",
-                comment: "Draft sync status. The argument is a relative time, such as '2 minutes ago'."
+                comment:
+                    "Draft sync status. The argument is a relative time, such as '2 minutes ago'."
             )
             .foregroundStyle(palette.secondaryLabel)
         }

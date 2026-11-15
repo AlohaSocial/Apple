@@ -171,7 +171,8 @@ public final class DraftSync {
                 : nil
             if outcome.changedLocally { state.revision += 1 }
             if outcome.conflicts > 0 {
-                logger.notice("draft sync kept \(outcome.conflicts, privacy: .public) conflict copies")
+                logger.notice(
+                    "draft sync kept \(outcome.conflicts, privacy: .public) conflict copies")
             }
         } catch WebDAVClient.WebDAVError.unauthorised {
             state.lastError = String(

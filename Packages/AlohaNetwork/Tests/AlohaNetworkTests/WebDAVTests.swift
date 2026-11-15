@@ -335,7 +335,8 @@ struct WebDAVWriteTests {
     func createFolder() async throws {
         let transport = ScriptedDAVTransport { request in
             // The parent exists already; WebDAV says so with 405.
-            request.url!.path().hasSuffix("Aloha%20Social") ? (405, [:], Data()) : (201, [:], Data())
+            request.url!.path().hasSuffix("Aloha%20Social")
+                ? (405, [:], Data()) : (201, [:], Data())
         }
         let client = WebDAVClient(credentials: credentials, transport: transport)
 
