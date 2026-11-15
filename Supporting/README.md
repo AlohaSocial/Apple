@@ -174,3 +174,27 @@ at runtime and degrades.
   developer token from that; there is no key to keep in the repository.
   Until it is enabled every lookup fails, and song links stay ordinary link
   cards.
+
+## SharePlay
+
+"Watch together" (a video post, the watch page, a run of shorts) uses
+SharePlay, which needs the **Group Activities** entitlement
+(`com.apple.developer.group-session`), which needs that capability on the
+App ID. A profile without it cannot sign a build that claims it, so the
+entitlement is behind its own switch, `ALOHA_SHAREPLAY` in
+[`Aloha.xcconfig`](Aloha.xcconfig), **off by default** for both
+configurations:
+
+- **`NO`**: the apps' entitlements are the files above, and
+  `AlohaSharePlayEnabled` is `NO` in their Info.plists, so no Watch together
+  button is drawn. Everything else works.
+- **`YES`**: `AlohaSocial` and `AlohaSocialMac` take
+  `<Target>[-Shared]-SharePlay.entitlements` — the same file plus the
+  group-session key — and their Info.plists say `YES`. The widgets and
+  extensions are unaffected.
+
+To turn it on: Certificates, Identifiers & Profiles → Identifiers →
+`social.aloha.app` and `social.aloha.app.mac` → **Group Activities** ✓, then
+`ALOHA_SHAREPLAY = YES` in `Supporting/Local.xcconfig` (or in
+`Aloha.xcconfig` once the capability is on for the team that ships). Keep
+each `-SharePlay` file in step with the file it extends.

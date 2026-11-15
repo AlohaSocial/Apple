@@ -552,6 +552,18 @@ public struct VideoAttachmentPlayer: View {
                 VStack {
                     HStack {
                         Spacer()
+                        if let video = SharedVideo(attachment) {
+                            WatchTogetherButton(
+                                activity: WatchTogetherActivity(
+                                    kind: .video, videos: [video], startIndex: 0)
+                            ) {
+                                Image(systemName: "shareplay")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(10)
+                                    .alohaGlassEffect(MediaViewer.controlGlass, in: Circle())
+                            }
+                        }
                         // A video with neither a file nor a poster has nothing
                         // to share, so the button is not drawn rather than
                         // pointing at a URL that isn't there.

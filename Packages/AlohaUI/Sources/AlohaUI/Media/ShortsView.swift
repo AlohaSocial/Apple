@@ -619,6 +619,15 @@ public struct ShortsView: View {
             .alohaLargeContentViewer(
                 symbol: AlohaSymbol.share, label: Text("Share", comment: "Shorts action"))
 
+            if let activity = watchTogether(from: status) {
+                WatchTogetherButton(activity: activity) {
+                    railLabel(symbol: "shareplay", tint: .white, count: nil)
+                }
+                .buttonStyle(.plain)
+                .alohaLargeContentViewer(
+                    symbol: "shareplay", label: Text("Watch together", comment: "SharePlay action"))
+            }
+
             Menu {
                 StatusMenu(status: status, onAction: onAction)
             } label: {
@@ -639,6 +648,15 @@ public struct ShortsView: View {
                 symbol: AlohaSymbol.more, label: Text("More actions", comment: "Shorts action"))
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
+    }
+
+    /// The run of shorts from this one on, as the call will watch it: what
+    /// this person's feed holds, so everybody sees the same next one.
+    private func watchTogether(from status: Status) -> WatchTogetherActivity? {
+        guard let start = shorts.firstIndex(where: { $0.id == status.id }) else { return nil }
+        let videos = shorts[start...].prefix(25).compactMap { SharedVideo($0) }
+        guard !videos.isEmpty else { return nil }
+        return WatchTogetherActivity(kind: .shorts, videos: Array(videos), startIndex: 0)
     }
 
     private func railButton(
