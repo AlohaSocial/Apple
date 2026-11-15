@@ -35,4 +35,30 @@ struct DeepLinkTests {
         #expect(RouteResolver.presentation(for: try url("https://example.com/compose")) == nil)
         #expect(RouteResolver.presentation(for: try url("other://story")) == nil)
     }
+
+    @Test("A widget's screen opens under the account its link names")
+    func accountScopedScreens() throws {
+        let id = UUID()
+        let screens: [(String, Route)] = [
+            ("conversations", .conversations), ("scheduled", .scheduledPosts),
+            ("drafts", .drafts), ("follow-requests", .followRequests),
+            ("notification-requests", .notificationRequests), ("statistics", .statistics),
+            ("reports", .moderationReports), ("notifications", .notifications),
+            ("explore", .explore), ("year", .annualReport),
+        ]
+        for (host, route) in screens {
+            let scoped = RouteResolver.destination(
+                for: try url("alohasocial://\(host)/\(id.uuidString)"))
+            #expect(scoped == RouteDestination(accountID: id, route: route))
+            let bare = RouteResolver.destination(for: try url("alohasocial://\(host)"))
+            #expect(bare == RouteDestination(accountID: nil, route: route))
+        }
+    }
+
+    @Test("A path that is not an account is no account")
+    func malformedAccount() throws {
+        let destination = RouteResolver.destination(
+            for: try url("alohasocial://conversations/not-a-uuid"))
+        #expect(destination == RouteDestination(accountID: nil, route: .conversations))
+    }
 }

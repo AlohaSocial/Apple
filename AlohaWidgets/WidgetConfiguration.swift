@@ -111,6 +111,10 @@ struct WidgetListQuery: EntityQuery {
     @IntentParameterDependency<WidgetAccount>(\.$account)
     var configuration
 
+    /// The same, when the list is a Photo frame's source.
+    @IntentParameterDependency<PhotoFrameConfiguration>(\.$account)
+    var photoConfiguration
+
     func entities(for identifiers: [String]) async throws -> [WidgetListEntity] {
         let titles = Self.cachedTitles()
         return identifiers.map { id in
@@ -122,7 +126,9 @@ struct WidgetListQuery: EntityQuery {
     }
 
     func suggestedEntities() async throws -> [WidgetListEntity] {
-        guard let snapshot = await WidgetData.account(id: configuration?.account.id),
+        guard
+            let snapshot = await WidgetData.account(
+                id: configuration?.account.id ?? photoConfiguration?.account.id),
             let token = try CredentialStore.shared.token(for: snapshot.id)
         else { return [] }
         let client = APIClient(

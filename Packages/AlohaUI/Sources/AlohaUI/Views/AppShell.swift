@@ -560,7 +560,7 @@ struct ThemedAppShell: View {
     }
 
     /// Writes today's "on this day" for the Memories widget, once per day and
-    /// account; a no-op when it is already there.
+    /// account, and the snapshot widgets' data; each a no-op when fresh.
     private func refreshMemoriesWidget() {
         #if DEBUG
             // The tours' mock server has no memories worth a widget.
@@ -568,6 +568,10 @@ struct ThemedAppShell: View {
         #endif
         guard let session = environment.activeSession else { return }
         Task(priority: .utility) { await MemoriesWidgetWriter.refreshIfStale(session) }
+        // The snapshot widgets too; a no-op within ten minutes of the last.
+        Task(priority: .utility) {
+            await WidgetSnapshotWriter.refreshAll(environment, budget: .seconds(20))
+        }
     }
 
     /// Applies the Focus filter once per change: the account it keeps the app
