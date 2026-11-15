@@ -571,7 +571,7 @@ public final class ComposerModel {
         case .public: "globe"
         case .unlisted: "eye.slash"
         case .private: "lock"
-        case .direct: "envelope"
+        case .direct: "at"
         case .unknownCase: "questionmark"
         }
     }

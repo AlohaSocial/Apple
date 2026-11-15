@@ -169,7 +169,7 @@ public struct ConversationsView: View {
                     Label {
                         Text("Mark all as read", comment: "Conversations action")
                     } icon: {
-                        Image(systemName: "envelope.open")
+                        Image(systemName: "checkmark.message")
                     }
                 }
                 .disabled(unreadCount == 0)
@@ -533,7 +533,7 @@ struct ConversationAvatar: View {
         } else if let first = accounts.first {
             AvatarView(account: first, size: size)
         } else {
-            Image(systemName: AlohaSymbol.envelope)
+            Image(systemName: AlohaSymbol.directMessage)
                 .font(.title3)
                 .frame(width: size, height: size)
                 .background(.quaternary, in: Circle())

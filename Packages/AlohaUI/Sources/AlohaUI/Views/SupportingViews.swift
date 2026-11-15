@@ -1017,7 +1017,7 @@ public struct SidebarView: View {
                 } icon: {
                     Image(
                         systemName: selectedRoute == .conversations
-                            ? "envelope.fill" : AlohaSymbol.envelope)
+                            ? AlohaSymbol.directMessageFilled : AlohaSymbol.directMessage)
                 }
                 // `badge(0)` is not "no badge": it draws a zero, so every
                 // account with an empty inbox would wear one. The optional

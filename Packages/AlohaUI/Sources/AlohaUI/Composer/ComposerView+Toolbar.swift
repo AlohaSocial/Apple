@@ -102,7 +102,7 @@ extension ComposerView {
                 Label {
                     Text("Direct", comment: "Visibility")
                 } icon: {
-                    Image(systemName: AlohaSymbol.envelope)
+                    Image(systemName: AlohaSymbol.directVisibility)
                 }.tag(Visibility.direct)
             } label: {
                 Text("Visibility", comment: "Composer picker")

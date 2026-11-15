@@ -156,7 +156,7 @@ extension ThemedAppShell {
                 .badge(unreadNotifications(session))
                 .customizationID("aloha.tab.notifications")
                 Tab(
-                    "Direct messages", systemImage: "envelope",
+                    "Direct messages", systemImage: AlohaSymbol.directMessage,
                     value: SidebarItem.route(.conversations)
                 ) {
                     LazyShellContent(isSelected: sidebarItem == .route(.conversations)) {
@@ -590,7 +590,7 @@ extension ThemedAppShell {
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             NavigationLink(value: Route.conversations) {
-                                Image(systemName: AlohaSymbol.envelope)
+                                Image(systemName: AlohaSymbol.directMessage)
                             }
                             .badge(unreadConversations)
                             .accessibilityLabel(directMessagesLabel)

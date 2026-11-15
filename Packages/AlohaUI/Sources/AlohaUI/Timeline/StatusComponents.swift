@@ -660,7 +660,7 @@ public struct StatusMenu: View {
                 Label {
                     Text("Delivery", comment: "Status menu item")
                 } icon: {
-                    Image(systemName: "paperplane")
+                    Image(systemName: "point.3.connected.trianglepath.dotted")
                 }
             }
 
