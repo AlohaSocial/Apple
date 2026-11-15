@@ -340,7 +340,9 @@ than what it does.
   messages, one row per conversation with the last message and unread state;
   opening it shows the thread and a reply field pre-filled with the
   participants and visibility locked to direct. Mark read via
-  `POST /conversations/{id}/read`.
+  `POST /conversations/{id}/read`. Where the connected Nextcloud has Talk,
+  the thread's bar offers **Start a call**: a public Talk room whose link is
+  posted into the conversation ([14-open-questions.md](14-open-questions.md) §7).
 
 ## 9. Settings
 
