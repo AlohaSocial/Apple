@@ -39,6 +39,21 @@ ALOHA_SHARED_CONTAINER[config=Release] = YES
 ALOHA_ENTITLEMENTS_SUFFIX_YES = -Shared
 ALOHA_ENTITLEMENTS_SUFFIX = $(ALOHA_ENTITLEMENTS_SUFFIX_$(ALOHA_SHARED_CONTAINER))
 
+// Signing. The project names no team, and every target's bundle id
+// derives from one prefix, so nobody's personal team or App IDs are
+// committed — each contributor used to overwrite the last one's, and an App
+// ID registered by one team cannot be signed by another. Set yours in
+// Supporting/Local.xcconfig:
+//
+//     DEVELOPMENT_TEAM = ABCDE12345
+//     ALOHA_APP_BUNDLE_IDENTIFIER = com.example.aloha   // only if social.aloha.app is not yours
+//
+// The targets append `.share`, `.widgets`, `.notificationservice`, `.watch`,
+// `.watch.widgets`, `.uitests`, `.mac`, `.mac.share`, `.mac.widgets`, `.tv`
+// and `.tv.topshelf`.
+ALOHA_APP_BUNDLE_IDENTIFIER = social.aloha.app
+DEVELOPMENT_TEAM =
+
 // A contributor's own overrides, never committed. Optional: the build does
 // not need the file to exist.
 #include? "Local.xcconfig"

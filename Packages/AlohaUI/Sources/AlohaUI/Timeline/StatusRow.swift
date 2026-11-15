@@ -374,7 +374,7 @@ public struct StatusRow: View {
             Image(systemName: AlohaSymbol.lock).font(.caption2).foregroundStyle(
                 palette.tertiaryLabel)
         case .direct:
-            Image(systemName: AlohaSymbol.envelope).font(.caption2).foregroundStyle(
+            Image(systemName: AlohaSymbol.directVisibility).font(.caption2).foregroundStyle(
                 palette.tertiaryLabel)
         case .unlisted:
             Image(systemName: "eye.slash").font(.caption2).foregroundStyle(palette.tertiaryLabel)

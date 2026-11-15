@@ -997,7 +997,7 @@ public struct ProfileView: View {
                 Label {
                     Text("Message", comment: "Profile action")
                 } icon: {
-                    Image(systemName: AlohaSymbol.envelope)
+                    Image(systemName: AlohaSymbol.directMessage)
                 }
             }
             Button {
