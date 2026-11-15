@@ -230,6 +230,26 @@ from it:
 The settings screen states the cost in one line under the toggle: "Videos play
 automatically, including on cellular."
 
+### Watch together
+
+On a FaceTime call, a video post (its watch page, or the media viewer) or a
+run of shorts can be watched together with SharePlay (GroupActivities).
+While a call is on, "Watch together" starts it straight away — the system
+asks whether to share or watch alone, as it does for every app; with no
+call, the button is the share sheet's SharePlay row, which starts one with
+the people chosen. Everybody joins into the same full-screen player.
+
+- What travels is each video's public file address, not a post id: the
+  people on a call are on different servers. A file only the account's
+  token opens cannot be shared.
+- Playback is kept in step by `AVPlayerPlaybackCoordinator`; items are told
+  apart by their file's address. For shorts the run is the sharer's next 25,
+  and moving to the next or previous one — by swipe or button — moves the
+  whole call (a `GroupSessionMessenger` message).
+- Leave takes this person out; the others carry on.
+- It needs the Group Activities entitlement, behind `ALOHA_SHAREPLAY`
+  (Supporting/README.md). Without it the button is not drawn.
+
 ## 5. Photos mode
 
 For Pixelfed-style image posts.
