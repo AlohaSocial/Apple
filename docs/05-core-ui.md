@@ -162,6 +162,13 @@ Rules:
 - **Long-press** on a row opens a context menu with every action including
   Share, Copy Link, Open in Browser, Translate, Report, Mute Conversation, and
   (own posts) Edit, Delete, Delete & Redraft, Pin.
+- **Share as image** (in the same menu) draws the post as a card with
+  `ImageRenderer` — the author and avatar, the words, the first picture or the
+  poll with its results, framed in the server's colour, with a QR code
+  (Core Image) that opens the post's URL — previews it, and hands it to the
+  share sheet as a PNG. Text behind a content warning and a sensitive picture
+  stay out of it unless the reader opened them, in the timeline
+  (`RevealedContent`, session memory only) or in the sheet itself.
 - **Swipe actions** are configurable: leading pair and trailing pair, each
   chosen from reply / boost / favourite / bookmark / share / none.
 

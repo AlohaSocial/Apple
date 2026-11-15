@@ -21,7 +21,7 @@ public enum StatusActionRouting {
         case .open, .watch, .openProfile, .openMedia, .openCard, .followLink,
             .reply, .report, .share, .translate, .edit, .delete, .redraft, .block, .mute,
             .quote, .showDelivery, .showEditHistory, .quoteControls, .tagPeople,
-            .addToCollection, .addToList:
+            .addToCollection, .addToList, .shareImage:
             .shell
         case .boost, .favourite, .bookmark, .muteConversation, .vote, .react,
             .archive, .pin, .dislike, .setReplyPolicy, .hideReply:

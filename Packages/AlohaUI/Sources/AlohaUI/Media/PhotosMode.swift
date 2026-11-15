@@ -629,6 +629,7 @@ public struct PhotoPostCard: View {
         .onTapGesture {
             if isCovered {
                 withAnimation { isRevealed = true }
+                RevealedContent.shared.revealMedia(attachments.map(\.id))
             } else {
                 onAction(.openMedia(status: displayed, index: page))
             }
