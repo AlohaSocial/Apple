@@ -66,15 +66,20 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
   `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`) and the
   latest mention (`.accessoryRectangular`, showing the content warning rather
   than the post where there is one). A tap opens the mention, or the
-  mentions list.
+  mentions list. Unread direct messages (`.accessoryCircular`,
+  `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`): a paper
+  plane and the number of conversations with something unread. A tap opens
+  the watch app, which has no messages list of its own.
 - The complications draw from one snapshot in the watch's app group
   (`WatchComplicationSnapshot`), kept current three ways: the watch app
   refreshes it whenever it comes to the front; the phone pushes the paired
   account's unread count with `transferCurrentComplicationUserInfo` when it
   changes, only while a complication is on the face and within the daily
-  budget; and the complication's own timeline asks the server directly when
-  the snapshot is older than fifteen minutes, with the token the watch app
-  keeps in the shared Keychain group.
+  budget, with the active account's unread conversation count
+  (`AppGroup.unreadConversationsKey`) riding along, sent again when only
+  that count changes; and the complication's own timeline asks the server
+  directly when the snapshot is older than fifteen minutes, with the token
+  the watch app keeps in the shared Keychain group.
 - No modes, no media viewer, no settings beyond notification toggles.
 
 ## 5. tvOS

@@ -89,7 +89,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             // category carries Reply, Favourite and Boost, the thread groups
             // a conversation, the account is what a Focus filters on, and the
             // status id is what a tap opens.
-            bestAttempt.categoryIdentifier = NotificationAlert.category(for: resolved.kind)
+            bestAttempt.categoryIdentifier = NotificationAlert.category(
+                for: resolved.kind, isDirect: resolved.isDirect)
             bestAttempt.interruptionLevel =
                 NotificationAlert.isActive(resolved.kind) ? .active : .passive
             bestAttempt.sound = NotificationAlert.isActive(resolved.kind) ? .default : nil
@@ -126,6 +127,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         /// A digest or an hourly bundle rather than news of one notification
         /// (`NextcloudPushPayload.isSummary`).
         var isSummary = false
+        /// A direct message, which wears the direct-message category.
+        var isDirect = false
     }
 
     /// The system gives an extension a few seconds; whatever has been worked
@@ -200,6 +203,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
                 if let decoded = NotificationPayload.decode(NotificationPayload.encode(found)) {
                     resolved.body = decoded.body
                     resolved.statusID = decoded.statusID
+                    resolved.isDirect = decoded.isDirect
                     if resolved.title.isEmpty { resolved.title = decoded.title }
                 }
                 NotificationAlert.notePushAnnounced(found.id, accountID: snapshot.id)

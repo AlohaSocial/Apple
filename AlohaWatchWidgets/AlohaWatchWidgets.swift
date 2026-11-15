@@ -5,13 +5,15 @@ import AlohaNetwork
 import SwiftUI
 import WidgetKit
 
-/// The watch face's complications (docs/09 §4): the unread count and the
-/// newest mentions of the account the phone paired.
+/// The watch face's complications (docs/09 §4): the unread count, the
+/// newest mentions and the unread direct messages of the account the phone
+/// paired.
 @main
 struct AlohaWatchWidgets: WidgetBundle {
     var body: some Widget {
         UnreadComplication()
         MentionsComplication()
+        DirectMessagesComplication()
     }
 }
 

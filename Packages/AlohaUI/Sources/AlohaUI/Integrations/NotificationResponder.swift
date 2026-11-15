@@ -90,7 +90,7 @@ public enum NotificationResponder {
     public nonisolated static func presentationOptions(
         forCategory category: String
     ) -> UNNotificationPresentationOptions {
-        category == NotificationAlert.mentionCategory ? [.banner, .list, .sound] : [.list]
+        NotificationAlert.isConversation(category: category) ? [.banner, .list, .sound] : [.list]
     }
 
     /// Where a tap lands: the post the notification is about, or the

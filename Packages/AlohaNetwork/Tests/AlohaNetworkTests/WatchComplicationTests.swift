@@ -56,11 +56,37 @@ struct WatchComplicationTests {
         let update = try #require(WatchComplicationSnapshot.unreadUpdate(from: info))
         #expect(update.accountID == accountID)
         #expect(update.count == 7)
+        #expect(update.conversations == nil)
         #expect(WatchComplicationSnapshot.unreadUpdate(from: ["count": 7]) == nil)
 
         let applied = snapshot().applying(unreadCount: 7)
         #expect(applied.unreadCount == 7)
         #expect(applied.mentions == snapshot().mentions)
+    }
+
+    @Test("The unread conversation count rides along, and a push without one keeps the last")
+    func conversations() throws {
+        let info = WatchComplicationSnapshot.unreadUserInfo(
+            accountID: accountID, count: 7, conversations: 2)
+        let update = try #require(WatchComplicationSnapshot.unreadUpdate(from: info))
+        #expect(update.conversations == 2)
+
+        let withTwo = snapshot().applying(unreadCount: 7, conversations: 2)
+        #expect(withTwo.unreadConversations == 2)
+        #expect(withTwo.applying(unreadCount: 8).unreadConversations == 2)
+        #expect(withTwo.applying(unreadCount: 8, conversations: 0).unreadConversations == 0)
+    }
+
+    @Test("A snapshot an older build wrote decodes, with no conversation count")
+    func olderSnapshot() throws {
+        let json = """
+            {"accountID":"\(accountID.uuidString)","unreadCount":4,"mentions":[],
+             "updatedAt":0}
+            """
+        let decoded = try JSONDecoder().decode(
+            WatchComplicationSnapshot.self, from: Data(json.utf8))
+        #expect(decoded.unreadCount == 4)
+        #expect(decoded.unreadConversations == nil)
     }
 
     @Test("Links round-trip, and foreign links are not ours")
@@ -107,6 +133,8 @@ struct WatchComplicationTests {
 
         #expect(fresh.unreadCount == 3)
         #expect(fresh.updatedAt == now)
+        // The mock's `conversations/unread_count`.
+        #expect(fresh.unreadConversations == 1)
         // The mock's page is favourite, boost, mention: only the last is one.
         #expect(fresh.mentions.count == 1)
         #expect(fresh.mentions.first?.id == "8998")
