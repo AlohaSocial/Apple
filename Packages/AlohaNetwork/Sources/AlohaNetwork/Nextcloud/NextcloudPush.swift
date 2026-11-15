@@ -279,6 +279,22 @@ public struct NextcloudPushPayload: Codable, Sendable, Hashable {
     }
 
     public var isWithdrawal: Bool { delete == true || deleteAll == true }
+
+    /// Whether this push sums up several notifications — a digest, or the
+    /// hourly bundle of favourites, boosts and follows — rather than
+    /// announcing one.
+    ///
+    /// Social names the push for one notification by the SHA-1 of that
+    /// notification's id (`NotificationService::objectId`, forty hex
+    /// characters), and a summary by something else (`digest-<time>`). The
+    /// shape is what is checked, not a list of prefixes, so a summary kind
+    /// added later is still not taken for news of one post. A summary must
+    /// not be labelled with the newest notification: that is one of the
+    /// many it counts, and the alert would show the wrong post.
+    public var isSummary: Bool {
+        guard app == "social", type == "notification", let id, !id.isEmpty else { return false }
+        return !(id.count == 40 && id.allSatisfy(\.isHexDigit))
+    }
 }
 
 /// Converting between the two RSA key encodings Security and OpenSSL use.
