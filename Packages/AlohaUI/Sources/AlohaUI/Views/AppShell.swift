@@ -76,6 +76,9 @@ struct ThemedAppShell: View {
     @State private var chosenModes: Set<FeedMode>?
     @State var composing: ComposerPresentation?
     @State private var isComposingStory = false
+    /// Whether the story composer opens on the full-screen camera: the
+    /// "Story camera" control rather than "New story".
+    @State private var storyStartsWithCamera = false
     @Namespace private var mediaTransition
     /// The compose button's zoom into the composer (`ComposeTransition`).
     @Namespace var composeTransition
@@ -240,11 +243,25 @@ struct ThemedAppShell: View {
                 guard initialRoute == nil,
                     environment.activeSession?.capabilities.stories == true
                 else { return }
+                storyStartsWithCamera = false
+                isComposingStory = true
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(for: RouteResolver.storyCameraRequested)
+            ) { _ in
+                // The same rule as "New story"; the composer itself falls back
+                // to its canvas where there is no camera.
+                guard initialRoute == nil,
+                    environment.activeSession?.capabilities.stories == true
+                else { return }
+                storyStartsWithCamera = true
                 isComposingStory = true
             }
             .sheet(isPresented: $isComposingStory) {
                 if let session = environment.activeSession {
-                    StoryComposerSheet(session: session, onPosted: {})
+                    StoryComposerSheet(
+                        session: session, startsWithCamera: storyStartsWithCamera,
+                        onPosted: {})
                 }
             }
             // SharePlay: a session started here or joined from a FaceTime
