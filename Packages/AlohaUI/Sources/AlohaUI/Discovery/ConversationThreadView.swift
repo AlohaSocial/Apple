@@ -16,6 +16,8 @@ import SwiftUI
 public struct ConversationThreadView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.openURL) private var openURL
 
     private let conversation: Conversation
     private let session: AccountSession
@@ -31,6 +33,11 @@ public struct ConversationThreadView: View {
     /// the text.
     @State private var sendError: String?
     @FocusState private var isFieldFocused: Bool
+    /// The account's Nextcloud Talk, when it can start calls: what puts
+    /// "Start a call" in the bar (docs/14 §7).
+    @State private var talk: NextcloudTalk.Capabilities?
+    @State private var isConfirmingCall = false
+    @State private var isStartingCall = false
 
     public init(
         conversation: Conversation, session: AccountSession,
@@ -110,8 +117,97 @@ public struct ConversationThreadView: View {
         #endif
         .toolbar {
             ToolbarItem(placement: .principal) { header }
+            if talk != nil, !others.isEmpty {
+                ToolbarItem(placement: .primaryAction) { callButton }
+            }
         }
         .refreshable { await load() }
+        .task(id: session.hasNextcloudConnection) {
+            talk = await TalkCall.capabilities(for: session, environment: environment)
+        }
+        .alert(
+            Text("Start a call?", comment: "Talk call confirmation title"),
+            isPresented: $isConfirmingCall
+        ) {
+            Button {
+                Task { await startCall() }
+            } label: {
+                Text("Start call", comment: "Talk call confirmation action")
+            }
+            Button(role: .cancel) {
+            } label: {
+                Text("Cancel", comment: "Talk call confirmation cancel")
+            }
+        } message: {
+            Text(
+                "A Nextcloud Talk call named “\(callName)” is made on your Nextcloud and its link is posted here. Anyone with the link can join, including people on other servers.",
+                comment:
+                    "Talk call confirmation. The argument is the call's name, made of the participants' names."
+            )
+        }
+    }
+
+    // MARK: - Calls
+
+    private var callName: String {
+        TalkCall.roomName(
+            others: others.map(\.bestDisplayName), you: session.snapshot.bestDisplayName)
+    }
+
+    private var callButton: some View {
+        Button {
+            isConfirmingCall = true
+        } label: {
+            if isStartingCall {
+                ProgressView()
+            } else {
+                Label {
+                    Text(
+                        "Start a call", comment: "Conversation action: start a Nextcloud Talk call")
+                } icon: {
+                    Image(systemName: "video")
+                }
+            }
+        }
+        .disabled(isStartingCall || isSending)
+        .help(Text("Start a call", comment: "Conversation action: start a Nextcloud Talk call"))
+    }
+
+    /// Makes the room, posts its link here so everybody in the conversation
+    /// can join, then opens it. The link goes out before the call opens: a
+    /// call nobody else knows about is one the person sits in alone.
+    private func startCall() async {
+        guard let talk, !isStartingCall else { return }
+        isStartingCall = true
+        defer { isStartingCall = false }
+        do {
+            let call = try await TalkCall.start(
+                named: callName, capabilities: talk, session: session, environment: environment)
+            let text = String(
+                localized: "Join the call on Nextcloud Talk: \(call.joinURL.absoluteString)",
+                comment:
+                    "Message posted into a conversation when a call starts. The argument is the call's link."
+            )
+            do {
+                try await post(text)
+                sendError = nil
+            } catch {
+                await session.handle(error)
+                sendError = String(
+                    localized:
+                        "The call was made, but its link couldn't be posted here. It opens now; share the link from Talk.",
+                    comment: "Talk call link could not be posted")
+            }
+            await TalkCall.open(call, with: openURL)
+        } catch NextcloudTalk.TalkError.unauthorised {
+            sendError = String(
+                localized: "Your Nextcloud connection has expired. Reconnect it in Settings.",
+                comment: "WebDAV auth failure")
+        } catch {
+            sendError = String(
+                localized: "The call couldn't be started on your Nextcloud.",
+                comment: "Talk call creation failure")
+        }
     }
 
     // MARK: - Header
@@ -492,16 +588,11 @@ public struct ConversationThreadView: View {
         isSending = true
         defer { isSending = false }
 
-        let post = StatusPost(
-            text: addressed(text), visibility: .direct, inReplyToID: messages.last?.id)
         do {
-            let sent = try await session.client.decode(
-                Status.self, from: Endpoint.composing.post(post))
+            try await post(text)
             // Preserve anything typed while the previous message was sending.
             if draft == submittedDraft { draft = "" }
             sendError = nil
-            merge([sent])
-            try? await session.timelineStore.updateStatus(accountID: session.id, status: sent)
         } catch {
             await session.handle(error)
             sendError =
@@ -511,6 +602,17 @@ public struct ConversationThreadView: View {
                         "Your message could not be sent. Your text has been kept; please try again."
                 )
         }
+    }
+
+    /// Posts `text` into this conversation: direct, addressed to everybody in
+    /// it, as a reply to the last message.
+    private func post(_ text: String) async throws {
+        let post = StatusPost(
+            text: addressed(text), visibility: .direct, inReplyToID: messages.last?.id)
+        let sent = try await session.client.decode(
+            Status.self, from: Endpoint.composing.post(post))
+        merge([sent])
+        try? await session.timelineStore.updateStatus(accountID: session.id, status: sent)
     }
 
     /// A direct message reaches only who it names, so every participant is
