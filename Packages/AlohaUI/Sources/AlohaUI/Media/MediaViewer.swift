@@ -133,6 +133,13 @@ public struct MediaViewer: View {
                 accessibilityText: attachment.description
             )
             .modifier(ImageDragSource(url: attachment.url))
+            // Inside the zoom, so selected text stays under the finger as
+            // the picture is pinched and moved.
+            .liveText(
+                url: attachment.url ?? attachment.displayImageURL,
+                isActive: attachments[safe: index]?.id == attachment.id,
+                isChromeHidden: chromeHidden
+            )
             .scaleEffect(zoom, anchor: .center)
             .offset(offset)
             .onTapGesture(count: 2) {

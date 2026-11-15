@@ -330,6 +330,16 @@ One component, used from every mode and from the thread view.
   absent — never a fake one.
 - Actions: Save to Photos (with the usage description and a permission-denied
   path), Share, Copy, Open in Browser, and — for video — PiP and AirPlay.
+- **Live Text and Visual Look Up** on pictures (iPhone, iPad and the Mac):
+  text in a photograph or a screenshot can be selected, copied, translated
+  and looked up, links and numbers in it followed, and a subject looked up,
+  through VisionKit (`ImageAnalysisInteraction`, `ImageAnalysisOverlayView`
+  on the Mac). Only the picture on screen is analysed, on the device, and
+  only once it is there; swiping on cancels it. The original at `url` is
+  analysed at the screen's size rather than the preview, which is often too
+  small for a screenshot's text. The overlay is the picture's own size and
+  only takes a touch that lands on something it found, so a tap still hides
+  the controls and a double tap still zooms. Not on visionOS yet.
 - Video attachments inside the viewer use the same source-selection ladder as
   Video mode (§3).
 - Keyboard on Mac/iPad: arrows to move, space to play/pause, `+`/`-` to zoom,
