@@ -460,6 +460,9 @@ public final class ComposerModel {
     }
 
     public func prepare() async {
+        // Whatever sync brings in for this draft waits until this composer
+        // has closed and saved it (docs/14 §7).
+        DraftSync.shared.noteOpen(draftID, by: self)
         // An edit already carries everything from `/source`; re-deriving the
         // defaults here would overwrite what the person wrote.
         guard editingStatus == nil, !isPrepared else { return }

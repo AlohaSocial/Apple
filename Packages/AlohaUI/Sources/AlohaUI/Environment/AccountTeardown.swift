@@ -23,6 +23,7 @@ enum AccountTeardown {
         widgets: WidgetSnapshotStore? = .shared
     ) {
         defaults.removeObject(forKey: pushRegistrationKey(for: id))
+        DraftSyncLedgerStore.remove(for: id, in: defaults)
         WidgetFavourites.removeAll(accountID: id, in: defaults)
         WidgetBookmarks.removeAll(accountID: id, in: defaults)
         WidgetWants.removeAll(accountID: id, in: defaults)

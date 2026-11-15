@@ -498,6 +498,10 @@ public struct SettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(palette.boost)
             }
+
+            if session.hasNextcloudConnection {
+                DraftSyncSettingsRow(session: session)
+            }
         } header: {
             Text("Nextcloud", comment: "Settings section")
         } footer: {

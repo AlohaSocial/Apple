@@ -304,3 +304,103 @@ private actor OCSUserTransport: HTTPTransport {
         HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: [:])!
     }
 }
+
+/// Answers each request by method and path from a script, and keeps them.
+private actor ScriptedDAVTransport: HTTPTransport {
+    private(set) var requests: [URLRequest] = []
+    private let answer: @Sendable (URLRequest) -> (Int, [String: String], Data)
+
+    init(answer: @escaping @Sendable (URLRequest) -> (Int, [String: String], Data)) {
+        self.answer = answer
+    }
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        requests.append(request)
+        let (status, headers, body) = answer(request)
+        let response = HTTPURLResponse(
+            url: request.url!, statusCode: status, httpVersion: "HTTP/1.1",
+            headerFields: headers)!
+        return (body, response)
+    }
+}
+
+@Suite("WebDAV writes")
+struct WebDAVWriteTests {
+
+    private let credentials = NextcloudLoginFlow.Credentials(
+        server: URL(string: "https://cloud.example.test/")!, loginName: "alice",
+        appPassword: "secret")
+
+    @Test("Creating a folder makes each missing level, and one already there is fine")
+    func createFolder() async throws {
+        let transport = ScriptedDAVTransport { request in
+            // The parent exists already; WebDAV says so with 405.
+            request.url!.path().hasSuffix("Aloha%20Social") ? (405, [:], Data()) : (201, [:], Data())
+        }
+        let client = WebDAVClient(credentials: credentials, transport: transport)
+
+        try await client.createFolder(path: "/Aloha Social/Drafts/")
+
+        let requests = await transport.requests
+        #expect(requests.map(\.httpMethod) == ["MKCOL", "MKCOL"])
+        #expect(
+            requests.map { $0.url!.path() } == [
+                "/remote.php/dav/files/alice/Aloha%20Social",
+                "/remote.php/dav/files/alice/Aloha%20Social/Drafts",
+            ])
+        #expect(
+            requests.allSatisfy {
+                $0.value(forHTTPHeaderField: "Authorization") == credentials.basicAuthorization
+            })
+    }
+
+    @Test("A write answers the new ETag without its quotes, and never reads the cache")
+    func uploadAnswersETag() async throws {
+        let transport = ScriptedDAVTransport { _ in (201, ["ETag": "\"abc123\""], Data()) }
+        let client = WebDAVClient(credentials: credentials, transport: transport)
+
+        let etag = try await client.upload(
+            Data("{}".utf8), to: "Aloha Social/Drafts/x.json", contentType: "application/json")
+
+        #expect(etag == "abc123")
+        let request = try #require(await transport.requests.first)
+        #expect(request.httpMethod == "PUT")
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
+    }
+
+    @Test("Deleting something already gone succeeds; a refused credential does not")
+    func deleteOutcomes() async throws {
+        let gone = WebDAVClient(
+            credentials: credentials,
+            transport: ScriptedDAVTransport { _ in (404, [:], Data()) })
+        try await gone.delete(path: "Aloha Social/Drafts/x.json")
+
+        let refused = WebDAVClient(
+            credentials: credentials,
+            transport: ScriptedDAVTransport { _ in (401, [:], Data()) })
+        await #expect(throws: WebDAVClient.WebDAVError.self) {
+            try await refused.delete(path: "Aloha Social/Drafts/x.json")
+        }
+    }
+
+    @Test("A listing's ETags are read, in the same spelling a write answers")
+    func listingETags() throws {
+        let body = Data(
+            """
+            <?xml version="1.0"?>
+            <d:multistatus xmlns:d="DAV:">
+              <d:response>
+                <d:href>/remote.php/dav/files/alice/Aloha%20Social/Drafts/a.json</d:href>
+                <d:propstat><d:prop>
+                  <d:getetag>"abc123"</d:getetag>
+                  <d:resourcetype/>
+                </d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat>
+              </d:response>
+            </d:multistatus>
+            """.utf8)
+        let files = try MultiStatusParser.parse(body, rootPath: "/remote.php/dav/files/alice/")
+        #expect(files.first?.etag == "abc123")
+        #expect(WebDAVClient.normalisedETag("W/\"abc123\"") == "abc123")
+    }
+}

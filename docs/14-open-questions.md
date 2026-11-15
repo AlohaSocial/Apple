@@ -410,6 +410,47 @@ Picking a file sends its **path** to `POST /api/v1/media/from-file`; the bytes
 never touch the device. Without a connection the picker degrades to the path
 field, which still works because the server resolves the path.
 
+### Drafts, synced through Files
+
+Where a Nextcloud is connected, each account's drafts are kept in its Files as
+well as on the device: one JSON file per draft, `Aloha Social/Drafts/<id>.json`,
+readable and sorted so a person can open their own file. Settings → Nextcloud
+has the switch, **on by default**: it only ever acts after the person has
+connected their Nextcloud, which is already a choice to let this app into their
+Files, and the drafts go to no server but their own.
+
+Sync runs when the app comes to the front (at most once a minute), in the
+background refresh (at most every 15 minutes, five seconds at most), a couple
+of seconds after a draft is saved or deleted, and on pull-to-refresh in Drafts.
+`DraftSync` decides when; `DraftMerge` decides what, and is pure and tested.
+
+- **Three-way.** A ledger per account (app-group defaults) records the time and
+  `ETag` both sides last agreed on, draft by draft. Changed here means
+  different from the ledger; changed there means the file is. A file whose
+  `ETag` matches the ledger is not downloaded.
+- **Newest wins** where only one side changed, or both made the same change.
+- **Nothing is lost silently.** Two different changes keep both: the newer
+  version keeps the draft, the older becomes a copy beside it with a fresh
+  idempotency key, marked in Drafts as the older version.
+- **Deletions travel as tombstones** — the same file with `deletedAt` and no
+  content — applied only to a draft untouched since the last sync. An edit
+  made after a deletion elsewhere brings the draft back. Tombstones are
+  cleared after 60 days; a file removed by hand is put back, not taken as a
+  deletion.
+- **A draft open in a composer is left alone** until it closes, because the
+  composer saves what it shows on closing. A write is also skipped if the
+  draft changed between sync reading it and writing it.
+- **The send queue stays per device.** A draft queued to send arrives on the
+  other device as a plain draft, so two devices never both send it; its
+  idempotency key travels, so the server would recognise a second send anyway.
+- **Media.** Already-uploaded attachments travel as their `media_id`s: they are
+  the account's, on its own server, and reopening the draft on the other
+  device fetches them, or says they expired. Files never uploaded stay on
+  their device; their number travels, and Drafts says they stayed behind.
+- Account ids are per device, so a file carries none: a draft is the account's
+  whose Nextcloud it is in. A file in a newer format, or one that will not
+  read, is left exactly as it is.
+
 ### Push, through Nextcloud's proxy
 
 Modelled on `nextcloud/ios` (`NCPushNotification.swift`) and its `NextcloudKit`

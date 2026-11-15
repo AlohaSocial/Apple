@@ -208,6 +208,7 @@ struct ThemedAppShell: View {
                 // what it left behind; this does.
                 if phase == .active, let pending = IntentNavigation.take() { open(pending) }
                 if phase == .active { applyFocusFilter() }
+                if phase == .active { Task { await DraftSync.shared.syncAll(ifOlderThan: 60) } }
             }
             .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.focusChanged)) {
                 _ in applyFocusFilter()
