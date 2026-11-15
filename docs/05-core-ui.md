@@ -121,7 +121,15 @@ favourite amber and bookmark violet never move: they carry meaning.
 
 The **app icon** is still a choice (`AlohaIconVariant`), because an icon is
 about finding the app on a crowded Home Screen rather than about the server.
-The icon's colour never feeds into the accent.
+The icon's colour never feeds into the accent. Settings → Appearance offers
+the primary icon, **Midnight** (its dark appearance, always), **Coral** (the
+colours inside out), five colourways of the flower — Ocean, Forest, Grape,
+Rose, Slate — and **Mono**, graphite and paper. Every one is recoloured from
+the one source drawing by `tools/make-icons.sh`, carries its own dark and
+tinted appearances, and is listed once, in `ALOHA_ALTERNATE_APP_ICONS` in
+`Supporting/Aloha.xcconfig`. iOS and iPadOS only: the Mac has no alternate
+app icons. There are no seasonal icons; a recolour is all the script can
+make well, and a seasonal mark needs drawing.
 
 ## 3. Timeline
 

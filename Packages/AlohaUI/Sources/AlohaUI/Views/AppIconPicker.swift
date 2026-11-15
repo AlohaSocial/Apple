@@ -8,11 +8,16 @@ import SwiftUI
 
     /// Which mark sits on the Home Screen.
     ///
-    /// The previews are drawn rather than loaded: an alternate icon lives in
-    /// the asset catalog as an *icon*, which `UIImage(named:)` will not reliably
-    /// hand back. Each one tints the one-colour mark (`AlohaMark`, the @ cut
-    /// out) on the icon's sand ground, which is how the icons are recoloured
-    /// too.
+    /// An alternate icon lives in the asset catalog as an *icon*, which
+    /// `UIImage(named:)` will not reliably hand back, so `tools/make-icons.sh`
+    /// writes each one out a second time as an ordinary preview image
+    /// (`AppIconPreview-…`). Where that is missing — a build whose catalog
+    /// has not been regenerated — the preview is drawn instead: the
+    /// one-colour mark (`AlohaMark`, the @ cut out) tinted on the icon's
+    /// ground, which is how the icons are recoloured too.
+    ///
+    /// iOS and iPadOS only: the Mac has no alternate app icons, and its Dock
+    /// icon is the app bundle's.
     struct AppIconPicker: View {
         @Environment(\.alohaPalette) private var palette
 
@@ -29,12 +34,12 @@ import SwiftUI
                             } label: {
                                 IconPreview(
                                     accent: choice,
-                                    isSelected: current == Self.iconName(for: choice))
+                                    isSelected: current == choice.alternateIconName)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(Text(choice.displayName))
                             .accessibilityAddTraits(
-                                current == Self.iconName(for: choice)
+                                current == choice.alternateIconName
                                     ? [.isButton, .isSelected] : .isButton)
                         }
                     }
@@ -47,13 +52,9 @@ import SwiftUI
         }
 
         /// `nil` is the primary icon; every other name matches an icon set in
-        /// the catalog and the build setting that lists them.
-        private static func iconName(for accent: AlohaIconVariant) -> String? {
-            accent == .aloha ? nil : "AlohaIcon-\(accent.rawValue.capitalized)"
-        }
-
+        /// the catalog and `ALOHA_ALTERNATE_APP_ICONS` in Supporting/Aloha.xcconfig.
         private func select(_ accent: AlohaIconVariant) {
-            let name = Self.iconName(for: accent)
+            let name = accent.alternateIconName
             guard UIApplication.shared.supportsAlternateIcons, name != current else { return }
             UIApplication.shared.setAlternateIconName(name) { error in
                 Task { @MainActor in
@@ -74,15 +75,30 @@ import SwiftUI
 
         var body: some View {
             RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-                .fill(Color(red: 0.984, green: 0.957, blue: 0.918))
+                .fill(accent.ground)
                 .frame(width: 60, height: 60)
                 .overlay {
-                    Image("AlohaMark", bundle: .module)
-                        .resizable()
-                        .renderingMode(.template)
-                        .scaledToFit()
-                        .frame(width: 36, height: 36)
-                        .foregroundStyle(accent.swatch)
+                    if let preview = UIImage(named: accent.previewImageName) {
+                        Image(uiImage: preview)
+                            .resizable()
+                            .scaledToFill()
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
+                    } else {
+                        Image("AlohaMark", bundle: .module)
+                            .resizable()
+                            .renderingMode(.template)
+                            .scaledToFit()
+                            .frame(width: 36, height: 36)
+                            .foregroundStyle(accent.swatch)
+                    }
+                }
+                // A hairline, so the paler tiles do not melt into a light
+                // Settings page.
+                .overlay {
+                    RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                        .strokeBorder(palette.separator, lineWidth: 0.5)
                 }
                 // Drawn inside the frame: a ring that hung outside the tile
                 // overlapped its neighbour at the spacing this row uses.
