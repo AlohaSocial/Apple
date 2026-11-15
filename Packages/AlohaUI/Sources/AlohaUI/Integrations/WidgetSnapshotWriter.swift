@@ -94,6 +94,9 @@ public enum WidgetSnapshotWriter {
             try store.write(snapshot, images: images)
             if publishesBadge, let messages = snapshot.messages {
                 AppGroup.defaults.set(messages.unread, forKey: AppGroup.unreadConversationsKey)
+                #if os(iOS)
+                    WatchBridge.shared.sendConversationsChanged()
+                #endif
             }
             for kind in WidgetSnapshotStore.widgetKinds { WidgetReloader.reload(kind: kind) }
         } catch {

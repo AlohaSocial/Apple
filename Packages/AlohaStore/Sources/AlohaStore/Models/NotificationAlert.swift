@@ -20,6 +20,11 @@ public enum NotificationAlert {
     public static let mentionCategory = "mention"
     /// Everything else: a tap opens it, and there are no actions.
     public static let genericCategory = "generic"
+    /// A direct message: Reply, Favourite and Mute conversation, but no
+    /// Boost — a direct post cannot be boosted, and the button would only
+    /// fail. Reply is a text field, so a mirrored alert on Apple Watch
+    /// offers dictation, Scribble and emoji for it.
+    public static let directMessageCategory = "direct"
 
     /// `userInfo` keys `NotificationReply` reads back when the person acts.
     public static let accountIDKey = "accountID"
@@ -31,8 +36,15 @@ public enum NotificationAlert {
 
     /// A reply is a mention: Mastodon's own API has no separate "reply" kind,
     /// and the mention category carries the actions people want on both.
-    public static func category(for kind: NotificationKind?) -> String {
-        kind == .mention ? mentionCategory : genericCategory
+    public static func category(for kind: NotificationKind?, isDirect: Bool = false) -> String {
+        guard kind == .mention else { return genericCategory }
+        return isDirect ? directMessageCategory : mentionCategory
+    }
+
+    /// The categories whose alerts are somebody talking to you: they get a
+    /// banner and a sound even while the app is in front.
+    public static func isConversation(category: String) -> Bool {
+        category == mentionCategory || category == directMessageCategory
     }
 
     /// Somebody talking to you interrupts; favourites, boosts and follows

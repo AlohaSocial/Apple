@@ -90,14 +90,14 @@ final class WatchLink: NSObject {
     /// The count the phone just polled. Only for the paired account, and
     /// only onto a snapshot that exists or a fresh one: the mentions keep
     /// the age they had.
-    private func apply(unread count: Int, for accountID: UUID) {
+    private func apply(unread count: Int, conversations: Int?, for accountID: UUID) {
         guard credentials?.accountID == accountID else { return }
         let current =
             WatchComplicationSnapshot.load(for: accountID)
             ?? WatchComplicationSnapshot(
                 accountID: accountID, unreadCount: nil, mentions: [],
                 updatedAt: .distantPast)
-        current.applying(unreadCount: count).save()
+        current.applying(unreadCount: count, conversations: conversations).save()
         WidgetCenter.shared.reloadAllTimelines()
     }
 }
@@ -125,9 +125,13 @@ extension WatchLink: WCSessionDelegate {
     }
 
     /// `transferCurrentComplicationUserInfo` from the phone: the unread
-    /// count, so the face moves when the phone's badge does.
+    /// count, and the unread conversations where the phone knows them, so
+    /// the face moves when the phone's badges do.
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         guard let update = WatchComplicationSnapshot.unreadUpdate(from: userInfo) else { return }
-        Task { @MainActor in self.apply(unread: update.count, for: update.accountID) }
+        Task { @MainActor in
+            self.apply(
+                unread: update.count, conversations: update.conversations, for: update.accountID)
+        }
     }
 }
