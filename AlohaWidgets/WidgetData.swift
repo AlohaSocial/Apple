@@ -73,6 +73,8 @@ enum WidgetData {
                 // about it yet.
                 favourited: WidgetFavourites.state(statusID: target.id, accountID: accountID)
                     ?? target.favourited,
+                bookmarked: WidgetBookmarks.state(statusID: target.id, accountID: accountID)
+                    ?? target.bookmarked,
                 avatar: images.avatar.flatMap { pixels in
                     target.account.preferredAvatarURL.flatMap {
                         WidgetImages.cached($0, pixels: pixels)
@@ -141,6 +143,10 @@ enum WidgetData {
                 WidgetFavourites.state(statusID: id, accountID: accountID)
                     ?? cached[id]?.displayed.favourited
             }
+            let bookmarked = payload.statusID.flatMap { id in
+                WidgetBookmarks.state(statusID: id, accountID: accountID)
+                    ?? cached[id]?.displayed.bookmarked
+            }
             return WidgetMention(
                 id: record.serverID,
                 accountID: accountID,
@@ -150,6 +156,7 @@ enum WidgetData {
                 createdAt: record.createdAt,
                 statusID: payload.statusID,
                 favourited: favourited ?? false,
+                bookmarked: bookmarked ?? false,
                 avatar: avatarPixels.flatMap { pixels in
                     payload.avatarURL.flatMap { WidgetImages.cached($0, pixels: pixels) }
                 })
@@ -230,6 +237,25 @@ enum WidgetActions {
         let status = try await client.decode(
             Status.self,
             from: Endpoint.statuses.action(statusID, favourite ? .favourite : .unfavourite))
+        try? await TimelineStore(modelContainer: container).updateStatus(
+            accountID: accountID, status: status)
+    }
+
+    /// Bookmarks or removes the bookmark, the same way.
+    @MainActor
+    static func setBookmark(_ bookmark: Bool, statusID: String, accountID: UUID) async throws {
+        let container = StoreContainer.make()
+        guard
+            let snapshot = try await AccountStore(modelContainer: container).account(id: accountID)
+        else { throw Failure.noAccount }
+        guard let token = try CredentialStore.shared.token(for: accountID) else {
+            throw Failure.notSignedIn
+        }
+        let client = APIClient(
+            accountID: accountID, apiBase: snapshot.capabilities.apiBase, accessToken: token)
+        let status = try await client.decode(
+            Status.self,
+            from: Endpoint.statuses.action(statusID, bookmark ? .bookmark : .unbookmark))
         try? await TimelineStore(modelContainer: container).updateStatus(
             accountID: accountID, status: status)
     }

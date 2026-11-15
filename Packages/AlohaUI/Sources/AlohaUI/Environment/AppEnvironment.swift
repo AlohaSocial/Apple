@@ -534,6 +534,9 @@ public final class AppEnvironment {
         // A new day can begin while the app sleeps; the Memories widget
         // should not wait for the app to be opened to turn it over.
         if let activeSession { await MemoriesWidgetWriter.refreshIfStale(activeSession) }
+        // Direct messages, requests and the rest of the snapshot widgets, in
+        // what is left of the refresh's time.
+        await WidgetSnapshotWriter.refreshAll(self, budget: .seconds(8))
         return fresh
     }
 }
