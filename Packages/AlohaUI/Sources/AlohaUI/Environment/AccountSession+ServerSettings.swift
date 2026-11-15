@@ -75,6 +75,42 @@ extension AccountSession {
             await handle(error)
         }
     }
+
+    /// Whether the server bundles favourites, boosts and follows into one
+    /// push an hour; `nil` where it has not said, or has no such setting.
+    /// Lives only on the server: it is the server that holds the pushes back,
+    /// and this app's own polled alerts have the digest for the same wish.
+    public var hourlyBatching: Bool? { serverNotificationDelivery?.hourlyBatching }
+
+    /// Reads the server's delivery setting once, for a settings screen opened
+    /// before the session's own refresh got to it.
+    public func loadNotificationDeliveryIfNeeded() async {
+        guard capabilities.isNextcloudSocial, serverNotificationDelivery == nil else { return }
+        serverNotificationDelivery = try? await client.decode(
+            NotificationDeliverySettings.self, from: .readerSettings.notificationDelivery)
+    }
+
+    /// Turns the hourly bundles on or off. The switch moves at once and goes
+    /// back if the server refuses, like "Show numbers"; the rest of the
+    /// setting goes with it as this app holds it, because the server writes
+    /// nothing when one field of a PATCH fails to validate.
+    public func setHourlyBatching(_ on: Bool) async {
+        guard capabilities.isNextcloudSocial, var server = serverNotificationDelivery,
+            server.hourlyBatching != nil
+        else { return }
+        let previous = server
+        server.hourlyBatching = on
+        serverNotificationDelivery = server
+        let outgoing = settings.serverDelivery(keeping: server)
+        do {
+            serverNotificationDelivery = try await client.decode(
+                NotificationDeliverySettings.self,
+                from: .readerSettings.setNotificationDelivery(outgoing))
+        } catch {
+            serverNotificationDelivery = previous
+            await handle(error)
+        }
+    }
 }
 
 /// A value transform on a store type: no isolation of its own, so the

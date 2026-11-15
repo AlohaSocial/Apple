@@ -20,6 +20,8 @@
             "mode": "instant", "times": ["08:00"],
             "passthrough": ["direct": true, "mentions_from_followed": true],
             "quiet": ["from": "", "to": ""],
+            // A current server: the hourly bundles switch exists, and is off.
+            "hourly_batching": false,
         ]
         var feeds: [[String: Any]] = [
             [

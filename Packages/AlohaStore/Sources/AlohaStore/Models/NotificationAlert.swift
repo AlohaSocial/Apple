@@ -47,6 +47,15 @@ public enum NotificationAlert {
         statusID.flatMap { $0.isEmpty ? nil : $0 } ?? notificationID
     }
 
+    /// One thread per account for summaries — the server's digest, its
+    /// hourly bundle of favourites, boosts and follows, and this app's own
+    /// digest — so each hour's summary stacks on the last instead of
+    /// spreading down Notification Centre, and never joins a conversation's
+    /// thread.
+    public static func summaryThreadIdentifier(accountID: UUID) -> String {
+        "summary-\(accountID.uuidString)"
+    }
+
     /// What the alert carries for a tap or an action to act on. The account
     /// is also the alert's `filterCriteria`, which a Focus set to one account
     /// matches (`AlohaFocusFilter.appContext`).

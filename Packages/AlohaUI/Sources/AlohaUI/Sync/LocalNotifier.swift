@@ -215,6 +215,9 @@ public struct LocalNotifier: Sendable {
         content.sound = nil
         content.interruptionLevel = .passive
         content.filterCriteria = session.id.uuidString
+        // The same thread the server's digest and hourly bundle use, so
+        // summaries stack together whichever side wrote them.
+        content.threadIdentifier = NotificationAlert.summaryThreadIdentifier(accountID: session.id)
         content.userInfo = [
             NotificationAlert.accountIDKey: session.id.uuidString,
             "digestCounts": totals,

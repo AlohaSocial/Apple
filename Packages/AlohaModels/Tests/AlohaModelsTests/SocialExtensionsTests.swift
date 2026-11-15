@@ -255,6 +255,31 @@ struct SocialSettingsDecodingTests {
         #expect(decoded.quietFrom.isEmpty)
     }
 
+    @Test("Hourly bundles are known only when the server names them")
+    func hourlyBatching() throws {
+        // An older server: no key, so no switch, and nothing sent back.
+        let older = try decode(NotificationDeliverySettings.self, #"{"mode": "instant"}"#)
+        #expect(older.hourlyBatching == nil)
+        let olderOut = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(older)) as? [String: Any])
+        #expect(olderOut["hourly_batching"] == nil)
+
+        let on = try decode(NotificationDeliverySettings.self, #"{"hourly_batching": true}"#)
+        #expect(on.hourlyBatching == true)
+        let off = try decode(NotificationDeliverySettings.self, #"{"hourly_batching": false}"#)
+        #expect(off.hourlyBatching == false)
+        // Present but unreadable is the server's default, off.
+        let odd = try decode(NotificationDeliverySettings.self, #"{"hourly_batching": null}"#)
+        #expect(odd.hourlyBatching == false)
+        #expect(
+            try decode(NotificationDeliverySettings.self, #"{"hourly_batching": 1}"#)
+                .hourlyBatching == true)
+
+        let onOut = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(on)) as? [String: Any])
+        #expect(onOut["hourly_batching"] as? Bool == true)
+    }
+
     @Test("Hours go to and from the server's HH:MM")
     func wireTimes() {
         #expect(NotificationDeliverySettings.wireTime(hour: 8) == "08:00")

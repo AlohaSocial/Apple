@@ -180,6 +180,18 @@ When `capabilities.webPushVAPIDKey != nil`:
   time outside quiet hours is used). If all digest times fall in quiet hours,
   the notification is delivered immediately.
 - The in-app Notifications list is unaffected — it stays real-time.
+- **Hourly bundles** (Aloha Social servers whose `notification_delivery`
+  answer carries `hourly_batching`): a switch under Notifications, "Bundle
+  favourites, boosts and follows into one notification an hour". It is the
+  server's setting alone — the server holds those pushes back and sends one
+  summary an hour; mentions, direct messages and follow requests still push
+  at once. The switch is hidden where the key is absent (an older server),
+  and the key is only sent back where it was read. The notification service
+  extension recognises a summary push (Social names one notification's push
+  by a 40-character SHA-1 and a summary by anything else, such as
+  `digest-<time>`), shows the server's sentence quietly, does not label it
+  with the newest notification, and threads every summary of an account
+  together (`summary-<account>`), the app's own digest included.
 
 ## 9. Sync correctness rules
 
