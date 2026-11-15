@@ -16,13 +16,16 @@ public struct NextcloudFile: Sendable, Hashable, Identifiable {
     /// Nextcloud's own file id, used for the preview endpoint.
     public var fileID: String?
     public var hasPreview: Bool
+    /// Changes whenever the file's content does. What lets draft sync skip
+    /// downloading a file it already has.
+    public var etag: String?
 
     public var id: String { path }
 
     public init(
         path: String, name: String, isDirectory: Bool, size: Int = 0,
         contentType: String? = nil, modifiedAt: Date? = nil,
-        fileID: String? = nil, hasPreview: Bool = false
+        fileID: String? = nil, hasPreview: Bool = false, etag: String? = nil
     ) {
         self.path = path
         self.name = name
@@ -32,6 +35,7 @@ public struct NextcloudFile: Sendable, Hashable, Identifiable {
         self.modifiedAt = modifiedAt
         self.fileID = fileID
         self.hasPreview = hasPreview
+        self.etag = etag
     }
 
     /// Whether this is worth offering as a post attachment.
@@ -45,11 +49,13 @@ public struct NextcloudFile: Sendable, Hashable, Identifiable {
     }
 }
 
-/// Browses a Nextcloud's Files over WebDAV.
+/// Reads and writes a Nextcloud's Files over WebDAV.
 ///
-/// Read-only and deliberately narrow: this exists so somebody can pick a file
-/// that is already on their server and attach it without it travelling to the
-/// phone and back (docs/07 §6). It is not a file manager.
+/// Deliberately narrow. Reading exists so somebody can pick a file that is
+/// already on their server and attach it without it travelling to the phone
+/// and back (docs/07 §6). Writing exists for the few things this app keeps in
+/// the person's own files: synced drafts and saved media (docs/14 §7), each
+/// in a folder of its own under `Aloha Social/`. It is not a file manager.
 public struct WebDAVClient: Sendable {
     private let credentials: NextcloudLoginFlow.Credentials
     private let transport: any HTTPTransport
@@ -68,6 +74,9 @@ public struct WebDAVClient: Sendable {
         case notFound
         case malformedResponse
         case transport(Int)
+        /// A conditional write found the condition false: something is
+        /// already at that path (`If-None-Match: *`).
+        case alreadyExists
     }
 
     /// Each segment is appended as it is and encoded once, by `URL`: one
@@ -82,28 +91,55 @@ public struct WebDAVClient: Sendable {
             .appending(component: credentials.filesUserID)
     }
 
-    /// `PROPFIND` with `Depth: 1` — one directory, not the whole tree.
-    public func list(path: String) async throws -> [NextcloudFile] {
-        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    /// The URL of a path relative to the user's files root, one component
+    /// at a time so each is encoded exactly once.
+    func url(for path: String) -> URL {
         var url = filesRoot
-        for component in trimmed.split(separator: "/") where !component.isEmpty {
+        for component in Self.trimmed(path).split(separator: "/") where !component.isEmpty {
             url = url.appending(component: String(component))
         }
+        return url
+    }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "PROPFIND"
-        request.setValue("1", forHTTPHeaderField: "Depth")
+    static func trimmed(_ path: String) -> String {
+        path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    /// A request against the user's files, signed with the app password.
+    ///
+    /// Never answered from the URL cache: a draft read back from a cached
+    /// `GET` is a draft from before the last sync, and Nextcloud's WebDAV
+    /// answers carry an `ETag` but no `Cache-Control` that would rule out a
+    /// heuristic reuse.
+    func request(_ method: String, path: String) -> URLRequest {
+        var request = URLRequest(url: url(for: path))
+        request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue(credentials.basicAuthorization, forHTTPHeaderField: "Authorization")
+        return request
+    }
+
+    /// The status codes every WebDAV call shares the meaning of.
+    private static func check(_ status: Int) throws {
+        switch status {
+        case 200..<300: return
+        case 401, 403: throw WebDAVError.unauthorised
+        case 404: throw WebDAVError.notFound
+        case 412: throw WebDAVError.alreadyExists
+        default: throw WebDAVError.transport(status)
+        }
+    }
+
+    /// `PROPFIND` with `Depth: 1` — one directory, not the whole tree.
+    public func list(path: String) async throws -> [NextcloudFile] {
+        let trimmed = Self.trimmed(path)
+        var request = request("PROPFIND", path: path)
+        request.setValue("1", forHTTPHeaderField: "Depth")
         request.setValue("application/xml; charset=utf-8", forHTTPHeaderField: "Content-Type")
         request.httpBody = Data(Self.propfindBody.utf8)
 
         let (data, response) = try await transport.send(request)
-        switch response.statusCode {
-        case 401, 403: throw WebDAVError.unauthorised
-        case 404: throw WebDAVError.notFound
-        case 200, 207: break
-        default: throw WebDAVError.transport(response.statusCode)
-        }
+        try Self.check(response.statusCode)
 
         // Decoded, as each `href` is before it is compared with it: Nextcloud
         // encodes more than `URL` does (`@`, for one), so the encoded forms
@@ -112,6 +148,65 @@ public struct WebDAVClient: Sendable {
             data, rootPath: filesRoot.path(percentEncoded: false))
         // The first entry is the directory itself; a listing of it is the rest.
         return parsed.filter { $0.path != trimmed }
+    }
+
+    /// `GET`: one file's bytes, for the small files this app writes itself.
+    /// Media is never read this way — it would be held whole in memory.
+    public func download(path: String) async throws -> Data {
+        let (data, response) = try await transport.send(request("GET", path: path))
+        try Self.check(response.statusCode)
+        return data
+    }
+
+    /// `PUT`, replacing whatever is there. Answers the new `ETag`, when the
+    /// server sends one, so the next listing can tell this write from the
+    /// next device's.
+    @discardableResult
+    public func upload(_ data: Data, to path: String, contentType: String) async throws -> String? {
+        var request = request("PUT", path: path)
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.httpBody = data
+        let (_, response) = try await transport.send(request)
+        try Self.check(response.statusCode)
+        return Self.etag(of: response)
+    }
+
+    /// `DELETE`. Something already gone is what was asked for.
+    public func delete(path: String) async throws {
+        let (_, response) = try await transport.send(request("DELETE", path: path))
+        if response.statusCode == 404 { return }
+        try Self.check(response.statusCode)
+    }
+
+    /// `MKCOL` for each folder along `path` that is not there yet, so
+    /// `Aloha Social/Drafts` can be asked for in one call on a Nextcloud
+    /// that has neither. `405 Method Not Allowed` is WebDAV's answer for a
+    /// folder that already exists, which is the outcome wanted.
+    public func createFolder(path: String) async throws {
+        var built = ""
+        for component in Self.trimmed(path).split(separator: "/") where !component.isEmpty {
+            built += built.isEmpty ? String(component) : "/\(component)"
+            let (_, response) = try await transport.send(request("MKCOL", path: built))
+            if response.statusCode == 405 { continue }
+            try Self.check(response.statusCode)
+        }
+    }
+
+    /// Nextcloud sends both `ETag` and `OC-ETag`; either will do, quoted or
+    /// not — the value is only ever compared with another of its kind.
+    static func etag(of response: HTTPURLResponse) -> String? {
+        let raw =
+            response.value(forHTTPHeaderField: "OC-ETag")
+            ?? response.value(forHTTPHeaderField: "ETag")
+        return raw.map(normalisedETag)
+    }
+
+    /// A weak-validator prefix and the quotes are spelling, not identity: a
+    /// listing and a `PUT` answer can write the same tag differently.
+    static func normalisedETag(_ raw: String) -> String {
+        var value = raw.trimmingCharacters(in: .whitespaces)
+        if value.hasPrefix("W/") { value.removeFirst(2) }
+        return value.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
     }
 
     /// A thumbnail for the picker. Nextcloud's own preview endpoint, so a
@@ -141,6 +236,7 @@ public struct WebDAVClient: Sendable {
             <d:getlastmodified/>
             <d:getcontentlength/>
             <d:getcontenttype/>
+            <d:getetag/>
             <d:resourcetype/>
             <oc:fileid/>
             <nc:has-preview/>
@@ -178,6 +274,7 @@ enum MultiStatusParser {
         private var modifiedAt: Date?
         private var fileID: String?
         private var hasPreview = false
+        private var etag: String?
 
         init(rootPath: String) {
             self.rootPath = rootPath
@@ -197,6 +294,7 @@ enum MultiStatusParser {
                 modifiedAt = nil
                 fileID = nil
                 hasPreview = false
+                etag = nil
             }
             if name == "collection" { isDirectory = true }
         }
@@ -218,6 +316,7 @@ enum MultiStatusParser {
             case "getlastmodified": modifiedAt = Self.rfc1123.date(from: value)
             case "fileid": fileID = value.isEmpty ? nil : value
             case "has-preview": hasPreview = value == "true"
+            case "getetag": etag = value.isEmpty ? nil : WebDAVClient.normalisedETag(value)
             case "response":
                 if let file = makeFile() { files.append(file) }
             default: break
@@ -242,7 +341,7 @@ enum MultiStatusParser {
             return NextcloudFile(
                 path: relative, name: name, isDirectory: isDirectory, size: size,
                 contentType: contentType, modifiedAt: modifiedAt,
-                fileID: fileID, hasPreview: hasPreview)
+                fileID: fileID, hasPreview: hasPreview, etag: etag)
         }
 
         static let rfc1123: DateFormatter = {
