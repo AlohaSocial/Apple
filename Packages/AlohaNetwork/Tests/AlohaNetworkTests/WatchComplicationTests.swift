@@ -91,7 +91,7 @@ struct WatchComplicationTests {
 
     @Test("Links round-trip, and foreign links are not ours")
     func links() throws {
-        for link in [WatchComplicationLink.mentions, .status("123")] {
+        for link in [WatchComplicationLink.mentions, .status("123"), .messages] {
             #expect(WatchComplicationLink(url: link.url) == link)
         }
         #expect(
