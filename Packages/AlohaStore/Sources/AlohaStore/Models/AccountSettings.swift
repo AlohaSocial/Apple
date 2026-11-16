@@ -66,6 +66,14 @@ public struct AccountSettings: Codable, Sendable, Hashable {
     /// the default single digest at 08:00.
     public var digestTimes: [Int]
 
+    // Nextcloud
+    /// Keep this account's drafts in its own Nextcloud, so they follow the
+    /// person between devices (docs/14 §7). Only ever acts once the person
+    /// has connected their Nextcloud, which is a choice already made; on by
+    /// default because of that, and because the drafts go nowhere but the
+    /// person's own server.
+    public var syncsDraftsThroughNextcloud = true
+
     public enum PollFrequency: String, Codable, Sendable, Hashable, CaseIterable {
         case frequent, normal, batterySaver, manual
 
@@ -188,6 +196,8 @@ public struct AccountSettings: Codable, Sendable, Hashable {
             notificationDeliveryMode: value(
                 .notificationDeliveryMode, defaults.notificationDeliveryMode),
             digestTimes: value(.digestTimes, defaults.digestTimes))
+        syncsDraftsThroughNextcloud = value(
+            .syncsDraftsThroughNextcloud, defaults.syncsDraftsThroughNextcloud)
     }
 
     /// Adopts what the server says this account's own defaults are. A client

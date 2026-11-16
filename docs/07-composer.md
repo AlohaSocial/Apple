@@ -199,7 +199,10 @@ media sweep to collect.
   Keep Editing. Drafts list is reachable from the composer and from Settings.
   Drafts carry their media as **local file references plus any already-uploaded
   `media_id`s** — re-opening a draft does not re-upload what is already on the
-  server unless the id has expired.
+  server unless the id has expired. Where the account's Nextcloud is
+  connected, drafts also sync through it, one JSON file per draft in
+  `Aloha Social/Drafts/`; the merge rules are in
+  [14-open-questions.md](14-open-questions.md) §7.
 - **Scheduled posts**: `POST /api/v1/statuses` accepts `scheduled_at` at least
   five minutes ahead, and answers 422 for anything sooner or malformed
   (`ScheduledStatusService::requestedTime`); a cron publishes them. A date picker with a minimum of

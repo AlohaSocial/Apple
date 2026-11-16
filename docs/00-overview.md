@@ -108,8 +108,10 @@ Full treatment in [06-media-modes.md](06-media-modes.md).
 - **No custom server-side feed algorithm.** Ordering is the server's.
 - **No cross-account merged timeline** in 1.0. Deferred, noted in
   [14-open-questions.md](14-open-questions.md).
-- **No cloud sync of app state.** Settings and drafts are device-local in 1.0;
-  iCloud sync is a post-1.0 consideration.
+- **No cloud sync of app state.** Settings are device-local in 1.0; iCloud
+  sync is a post-1.0 consideration. Drafts are the one exception, and not
+  through iCloud: where the person has connected their Nextcloud, they sync
+  through its Files ([14-open-questions.md](14-open-questions.md) §7).
 
 ## 7. Vocabulary
 
