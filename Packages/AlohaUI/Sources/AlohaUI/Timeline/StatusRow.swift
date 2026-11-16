@@ -92,6 +92,25 @@ public struct StatusRow: View {
     private var displayed: Status { status.displayed }
 
     #if os(macOS)
+        /// The actions of a post with no numbers to show, as a small glass
+        /// bar over its corner while the pointer is on it.
+        @ViewBuilder
+        private var hoverActions: some View {
+            if showActions, !actionsHaveSomethingToSay, isPointerOver {
+                HStack(spacing: 0) {
+                    actions
+                    moreMenu
+                }
+                .frame(width: 300)
+                .padding(.horizontal, AlohaMetrics.space2)
+                .padding(.vertical, 2)
+                .background(.regularMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(palette.separator.opacity(0.4), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+                .transition(.opacity.combined(with: .offset(y: 4)))
+            }
+        }
+
         /// Whether the action row tells the reader something without being
         /// asked: a number, or a mark they left themselves.
         private var actionsHaveSomethingToSay: Bool {
@@ -165,31 +184,34 @@ public struct StatusRow: View {
                     if displayed.hasContentWarning { spoilerRow }
                     if !displayed.hasContentWarning || isSpoilerRevealed { statusBody }
                     if showActions {
-                        actionRow
-                            #if os(macOS)
-                                // A drawer, as on the web: the actions are
-                                // out of sight until the pointer is over the
-                                // post, then slide out of it on a tinted
-                                // shelf. A post with something to report — a
-                                // count, a like already given — keeps them in
-                                // view, dimmed. The row's height is the same
-                                // either way, so nothing under the pointer
-                                // moves.
-                                .padding(.horizontal, AlohaMetrics.space2)
-                                .background {
-                                    RoundedRectangle(
-                                        cornerRadius: AlohaMetrics.cornerSmall, style: .continuous
-                                    )
-                                    .fill(palette.accent.opacity(0.13))
-                                    .scaleEffect(
-                                        x: 1, y: isPointerOver ? 1 : 0.2, anchor: .top
-                                    )
-                                    .opacity(isPointerOver ? 1 : 0)
-                                }
-                                .padding(.horizontal, -AlohaMetrics.space2)
-                                .opacity(isPointerOver ? 1 : (actionsHaveSomethingToSay ? 0.6 : 0))
-                                .offset(y: isPointerOver || actionsHaveSomethingToSay ? 0 : -6)
-                            #endif
+                        #if os(macOS)
+                            // Only a row with something to report keeps its
+                            // actions in line — a count, a like already
+                            // given — dimmed until the pointer is over the
+                            // post. A row with nothing to say holds no band
+                            // for them at all: they arrive over its corner
+                            // (`hoverActions`), so posts sit an even distance
+                            // apart whatever their numbers.
+                            if actionsHaveSomethingToSay {
+                                actionRow
+                                    .padding(.horizontal, AlohaMetrics.space2)
+                                    .background {
+                                        RoundedRectangle(
+                                            cornerRadius: AlohaMetrics.cornerSmall,
+                                            style: .continuous
+                                        )
+                                        .fill(palette.accent.opacity(0.13))
+                                        .scaleEffect(
+                                            x: 1, y: isPointerOver ? 1 : 0.2, anchor: .top
+                                        )
+                                        .opacity(isPointerOver ? 1 : 0)
+                                    }
+                                    .padding(.horizontal, -AlohaMetrics.space2)
+                                    .opacity(isPointerOver ? 1 : 0.6)
+                            }
+                        #else
+                            actionRow
+                        #endif
                     }
                 }
             }
@@ -218,6 +240,14 @@ public struct StatusRow: View {
                 RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
                 .fill(palette.label.opacity(isPointerOver ? 0.05 : 0))
                 .padding(.horizontal, -AlohaMetrics.space3)
+            }
+            .overlay(alignment: .bottomTrailing) { hoverActions }
+            // A hairline between posts, so each reads as one thing.
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                .fill(palette.separator.opacity(0.3))
+                .frame(height: 0.5)
+                .offset(y: AlohaMetrics.space1)
             }
             .onHover { isPointerOver = $0 }
             .animation(

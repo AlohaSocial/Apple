@@ -706,29 +706,49 @@ extension View {
     }
 #endif
 
-/// A symbol on a small coloured tile, the way System Settings and the
-/// Finder's sidebar draw a place: the colour finds the row before the word
-/// is read, where a column of outlines in one tint reads as one grey edge.
+/// A place's symbol on a tile, for a sidebar: one colour, the app's accent —
+/// which is the server's — as a soft wash behind the symbol, and solid with
+/// the symbol knocked out of it for the row that is selected.
+///
+/// The tiles were a different system colour each: yellow, brown, pink, mint.
+/// Nine saturated squares down a sidebar read as a toy box, and none of them
+/// was the colour of the Nextcloud the app is signed in to. One hue in two
+/// strengths is quieter, says which row is current at a glance, and belongs
+/// to the rest of the window.
 public struct IconTile: View {
+    @Environment(\.alohaPalette) private var palette
+
     private let symbolName: String
-    private let colour: Color
+    private let isSelected: Bool
     private let size: Double
 
-    public init(_ symbolName: String, colour: Color, size: Double = 22) {
+    public init(_ symbolName: String, isSelected: Bool = false, size: Double = 28) {
         self.symbolName = symbolName
-        self.colour = colour
+        self.isSelected = isSelected
         self.size = size
     }
 
     public var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-            .fill(colour.gradient)
+        let shape = RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+        return
+            shape
+            .fill(
+                isSelected
+                    ? AnyShapeStyle(palette.accent.gradient)
+                    : AnyShapeStyle(palette.accent.opacity(0.15))
+            )
             .frame(width: size, height: size)
             .overlay {
                 Image(systemName: symbolName)
-                    .font(.system(size: size * 0.52, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: size * 0.5, weight: .semibold))
+                    .foregroundStyle(isSelected ? palette.onAccent : palette.accent)
             }
+            // A hairline of light on the edge, so the tile reads as a
+            // surface rather than a flat swatch.
+            .overlay(shape.strokeBorder(.white.opacity(isSelected ? 0.22 : 0.08), lineWidth: 0.5))
+            .shadow(
+                color: palette.accent.opacity(isSelected ? 0.35 : 0), radius: 5, y: 2
+            )
             .accessibilityHidden(true)
     }
 }

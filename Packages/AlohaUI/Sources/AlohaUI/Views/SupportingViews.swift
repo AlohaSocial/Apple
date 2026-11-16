@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
+import AlohaHTML
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
@@ -968,65 +969,97 @@ extension View {
 
 #if os(macOS)
     private struct SidebarSelectionAccent: ViewModifier {
-        @Environment(\.alohaPalette) private var palette
         let isSelected: Bool
 
         func body(content: Content) -> some View {
+            // The tile carries the colour; the words stay the label's own
+            // and only gain weight, at a size that sits with a larger tile.
             content
-                .foregroundStyle(
-                    isSelected ? AnyShapeStyle(palette.accent) : AnyShapeStyle(.primary)
-                )
-                .fontWeight(isSelected ? .semibold : .regular)
+                .labelStyle(SidebarRowLabelStyle())
+                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                .padding(.vertical, 2)
         }
     }
 #endif
 
 #if os(macOS)
-    /// What each place in the Mac's sidebar wears: a filled symbol on a
-    /// colour of its own.
-    enum SidebarTile {
-        static func symbol(for mode: FeedMode) -> String {
-            switch mode {
-            case .home: "house.fill"
-            case .photos: "photo.fill"
-            case .video: "play.fill"
-            case .shorts: "bolt.fill"
-            case .news: "newspaper.fill"
-            case .audio: "waveform"
+    /// A sidebar row with room between its tile and its words: the system's
+    /// label spacing is cut for a bare symbol, and a tile nearly twice that
+    /// width sat hard against the text.
+    private struct SidebarRowLabelStyle: LabelStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(spacing: 10) {
+                configuration.icon
+                configuration.title
             }
         }
+    }
 
-        static func colour(for mode: FeedMode) -> Color {
-            switch mode {
-            case .home: .blue
-            case .photos: .pink
-            case .video: .red
-            case .shorts: .orange
-            case .news: .indigo
-            case .audio: .purple
-            }
+    /// A place's symbol in the Mac's sidebar: the system's own, in the
+    /// accent, a little larger than a list's default and with no tile behind
+    /// it — the sidebar of Mail and Notes, which is the quietest thing a
+    /// sidebar can be and the one a Mac user already reads without looking.
+    struct SidebarGlyph: View {
+        @Environment(\.alohaPalette) private var palette
+        private let symbolName: String
+
+        init(_ symbolName: String) {
+            self.symbolName = symbolName
         }
 
-        static func symbol(for route: Route) -> String {
-            switch route {
-            case .notifications: "bell.fill"
-            case .conversations: "paperplane.fill"
-            case .explore: "safari.fill"
-            case .lists: "list.bullet"
-            case .collections: "rectangle.stack.fill"
-            default: "circle.fill"
-            }
+        var body: some View {
+            Image(systemName: symbolName)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(palette.accent)
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
         }
+    }
 
-        static func colour(for route: Route) -> Color {
-            switch route {
-            case .notifications: .yellow
-            case .conversations: .green
-            case .explore: .teal
-            case .lists: .cyan
-            case .collections: .brown
-            default: .gray
+    /// A sidebar row that says what is behind it: a count in the accent, a
+    /// line of detail under the title, and the faces of who it is from.
+    struct LiveSidebarRow: View {
+        @Environment(\.alohaPalette) private var palette
+
+        let title: Text
+        let symbolName: String
+        let isSelected: Bool
+        let count: Int
+        var detail: Text?
+        var faces: [Account] = []
+
+        var body: some View {
+            HStack(spacing: 10) {
+                SidebarGlyph(symbolName)
+                VStack(alignment: .leading, spacing: 1) {
+                    title
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                        .lineLimit(1)
+                    if let detail {
+                        detail
+                            .font(.system(size: 11))
+                            .foregroundStyle(palette.secondaryLabel)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 4)
+                if !faces.isEmpty {
+                    HStack(spacing: -6) {
+                        ForEach(faces.prefix(3)) { account in
+                            AvatarView(account: account, size: 18)
+                        }
+                    }
+                }
+                if count > 0 {
+                    Text(count, format: .number)
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(palette.onAccent)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(palette.accent, in: Capsule())
+                }
             }
+            .padding(.vertical, 2)
         }
     }
 #endif
@@ -1042,6 +1075,16 @@ public struct SidebarView: View {
     /// the mode's screen rather than of the navigation.
     @Binding private var selectedSource: TimelineSource
     @State private var searchText = ""
+    #if os(macOS)
+        @State private var pinnedLists: [AccountList] = []
+        @State private var pinnedTags: [Tag] = []
+        /// The newest few conversations, for the line and the faces on the
+        /// Direct messages row.
+        @State private var recentConversations: [Conversation] = []
+        /// Who wrote last and the start of what they wrote, worked out when
+        /// the conversations arrive rather than each time the row is drawn.
+        @State private var latestMessage: String?
+    #endif
     /// How many conversations are unread, for the badge on "Direct messages".
     /// The messages list writes it to the app group so this and the widgets
     /// read the same number (docs/05 §5). Observed, not read once on appear:
@@ -1077,57 +1120,87 @@ public struct SidebarView: View {
                     modeRow(mode)
                 }
 
-                Label {
-                    Text("Activities", comment: "Sidebar item")
-                } icon: {
-                    #if os(macOS)
-                        IconTile(
-                            SidebarTile.symbol(for: .notifications),
-                            colour: SidebarTile.colour(for: .notifications))
-                    #else
+                #if os(macOS)
+                    // On the Mac these two rows say what is waiting behind
+                    // them: how many, and for messages who and what, so the
+                    // sidebar is worth a glance without opening either.
+                    LiveSidebarRow(
+                        title: Text("Activities", comment: "Sidebar item"),
+                        symbolName: selectedRoute == .notifications
+                            ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications,
+                        isSelected: selectedRoute == .notifications,
+                        count: unreadActivities,
+                        detail: unreadActivities > 0
+                            ? Text(
+                                "^[\(unreadActivities) new activity](inflect: true)",
+                                comment: "Sidebar row detail: unread activities")
+                            : nil
+                    )
+                    .tag(SidebarItem.route(.notifications))
+                    .accessibilityLabel(
+                        unreadActivities > 0
+                            ? Text(
+                                "Activities, \(unreadActivities) unread",
+                                comment: "Sidebar item with badge")
+                            : Text("Activities", comment: "Sidebar item"))
+
+                    LiveSidebarRow(
+                        title: Text("Direct messages", comment: "Sidebar item"),
+                        symbolName: selectedRoute == .conversations
+                            ? AlohaSymbol.directMessageFilled : AlohaSymbol.directMessage,
+                        isSelected: selectedRoute == .conversations,
+                        count: unreadConversations,
+                        detail: latestMessageLine,
+                        faces: recentCorrespondents
+                    )
+                    .tag(SidebarItem.route(.conversations))
+                    .accessibilityLabel(
+                        unreadConversations > 0
+                            ? Text(
+                                "Direct messages, \(unreadConversations) unread",
+                                comment: "Sidebar item with badge")
+                            : Text("Direct messages", comment: "Sidebar item"))
+                #else
+                    Label {
+                        Text("Activities", comment: "Sidebar item")
+                    } icon: {
                         Image(
                             systemName: selectedRoute == .notifications
                                 ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications)
-                    #endif
-                }
-                .badge(unreadActivities > 0 ? Text(verbatim: String(unreadActivities)) : nil)
-                .sidebarSelectionAccent(selectedRoute == .notifications)
-                .tag(SidebarItem.route(.notifications))
-                .accessibilityLabel(
-                    unreadActivities > 0
-                        ? Text(
-                            "Activities, \(unreadActivities) unread",
-                            comment: "Sidebar item with badge")
-                        : Text("Activities", comment: "Sidebar item"))
+                    }
+                    .badge(unreadActivities > 0 ? Text(verbatim: String(unreadActivities)) : nil)
+                    .sidebarSelectionAccent(selectedRoute == .notifications)
+                    .tag(SidebarItem.route(.notifications))
+                    .accessibilityLabel(
+                        unreadActivities > 0
+                            ? Text(
+                                "Activities, \(unreadActivities) unread",
+                                comment: "Sidebar item with badge")
+                            : Text("Activities", comment: "Sidebar item"))
 
-                Label {
-                    Text("Direct messages", comment: "Sidebar item")
-                } icon: {
-                    #if os(macOS)
-                        IconTile(
-                            SidebarTile.symbol(for: .conversations),
-                            colour: SidebarTile.colour(for: .conversations))
-                    #else
+                    Label {
+                        Text("Direct messages", comment: "Sidebar item")
+                    } icon: {
                         Image(
                             systemName: selectedRoute == .conversations
                                 ? AlohaSymbol.directMessageFilled : AlohaSymbol.directMessage)
-                    #endif
-                }
-                // `badge(0)` is not "no badge": it draws a zero, so every
-                // account with an empty inbox would wear one. The optional
-                // `Text` overload is the one that can mean "nothing at all".
-                .badge(
-                    unreadConversations > 0
-                        ? Text(verbatim: String(unreadConversations)) : nil
-                )
-                .sidebarSelectionAccent(selectedRoute == .conversations)
-                .tag(SidebarItem.route(.conversations))
-                .accessibilityLabel(
-                    unreadConversations > 0
-                        ? Text(
-                            "Direct messages, \(unreadConversations) unread",
-                            comment: "Sidebar item with badge")
-                        : Text("Direct messages", comment: "Sidebar item"))
+                    }
+                    // `badge(0)` is not "no badge": it draws a zero, so every
+                    // account with an empty inbox would wear one. The optional
+                    // `Text` overload is the one that can mean "nothing at all".
+                    .badge(
+                        unreadConversations > 0
+                            ? Text(verbatim: String(unreadConversations)) : nil
+                    )
+                    .sidebarSelectionAccent(selectedRoute == .conversations)
+                    .tag(SidebarItem.route(.conversations))
+                    .accessibilityLabel(
+                        unreadConversations > 0
+                            ? Text(
+                                "Direct messages, \(unreadConversations) unread",
+                                comment: "Sidebar item with badge")
+                            : Text("Direct messages", comment: "Sidebar item"))
+                #endif
                 row(
                     "Discover", symbol: selectedRoute == .explore ? "safari.fill" : "safari",
                     route: .explore,
@@ -1154,6 +1227,44 @@ public struct SidebarView: View {
                 Text("Library", comment: "Sidebar section")
             }
 
+            #if os(macOS)
+                // The reader's own lists and the hashtags they follow, one
+                // click away rather than two screens in: a Mac sidebar has
+                // the height for them.
+                if !pinnedLists.isEmpty {
+                    Section {
+                        ForEach(pinnedLists.prefix(6)) { list in
+                            let route = Route.timeline(
+                                TimelineKey(mode: .home, source: .list(id: list.id)))
+                            Label {
+                                Text(verbatim: list.title)
+                            } icon: {
+                                SidebarGlyph("list.bullet")
+                            }
+                            .sidebarSelectionAccent(selectedRoute == route)
+                            .tag(SidebarItem.route(route))
+                        }
+                    } header: {
+                        Text("Lists", comment: "Lists section")
+                    }
+                }
+                if !pinnedTags.isEmpty {
+                    Section {
+                        ForEach(pinnedTags.prefix(6)) { tag in
+                            Label {
+                                Text(verbatim: tag.name)
+                            } icon: {
+                                SidebarGlyph("number")
+                            }
+                            .sidebarSelectionAccent(selectedRoute == .hashtag(tag.name))
+                            .tag(SidebarItem.route(.hashtag(tag.name)))
+                        }
+                    } header: {
+                        Text("Followed hashtags", comment: "Lists section")
+                    }
+                }
+            #endif
+
         }
 
         .listStyle(.sidebar)
@@ -1166,6 +1277,30 @@ public struct SidebarView: View {
         #endif
         .navigationTitle(Text("Aloha Social", comment: "App name"))
         #if os(macOS)
+            .task(id: session.id) {
+                async let lists = try? session.client.decode(
+                    LossyArray<AccountList>.self, from: Endpoint.lists.all)
+                async let tags = try? session.client.decode(
+                    LossyArray<Tag>.self, from: Endpoint.tags.followed(limit: 20))
+                pinnedLists = await lists?.elements ?? []
+                pinnedTags = await tags?.elements ?? []
+            }
+            // Asked again whenever the unread count moves, so the line under
+            // Direct messages is the message that moved it.
+            .task(id: MessagesKey(account: session.id, unread: unreadConversations)) {
+                let page = try? await session.client.decode(
+                    LossyArray<Conversation>.self, from: Endpoint.timelines.conversations(limit: 3))
+                recentConversations = page?.elements ?? []
+                latestMessage = recentConversations.first?.lastStatus.flatMap { last in
+                    let status = last.displayed
+                    let words =
+                        status.spoilerText.isEmpty
+                        ? StatusHTMLParser().plainText(status.content)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        : status.spoilerText
+                    return words.isEmpty ? nil : status.account.bestDisplayName + ": " + words
+                }
+            }
             // The server's colour, as light from the top of the sidebar: the
             // one place the window says whose Nextcloud this is before a
             // word of it is read.
@@ -1192,6 +1327,22 @@ public struct SidebarView: View {
                 )
                 .padding(.horizontal, AlohaMetrics.space3)
                 .padding(.vertical, AlohaMetrics.space2)
+                // A link or a passage dragged onto your own face starts a
+                // post with it.
+                .dropDestination(for: String.self) { items, _ in
+                    guard let dropped = items.first, !dropped.isEmpty else { return false }
+                    NotificationCenter.default.post(
+                        name: RouteResolver.composeRequested, object: nil,
+                        userInfo: ["draft": dropped])
+                    return true
+                }
+                .dropDestination(for: URL.self) { items, _ in
+                    guard let dropped = items.first else { return false }
+                    NotificationCenter.default.post(
+                        name: RouteResolver.composeRequested, object: nil,
+                        userInfo: ["draft": dropped.absoluteString])
+                    return true
+                }
             }
         #else
             .toolbar {
@@ -1220,7 +1371,7 @@ public struct SidebarView: View {
             Text(title(for: mode))
         } icon: {
             #if os(macOS)
-                IconTile(SidebarTile.symbol(for: mode), colour: SidebarTile.colour(for: mode))
+                SidebarGlyph(isSelected ? mode.selectedSymbolName : mode.symbolName)
             #else
                 Image(systemName: isSelected ? mode.selectedSymbolName : mode.symbolName)
             #endif
@@ -1230,6 +1381,26 @@ public struct SidebarView: View {
         .accessibilityLabel(Text(title(for: mode)))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
+
+    #if os(macOS)
+        private struct MessagesKey: Hashable {
+            let account: UUID
+            let unread: Int
+        }
+
+        /// The people in the newest conversations, other than the reader.
+        private var recentCorrespondents: [Account] {
+            var seen = Set<String>()
+            return recentConversations.flatMap(\.accounts).filter {
+                $0.id != session.snapshot.serverAccountID && seen.insert($0.id).inserted
+            }
+        }
+
+        /// "Nina: see you at five" — who wrote last, and the start of it.
+        private var latestMessageLine: Text? {
+            latestMessage.map { Text(verbatim: $0) }
+        }
+    #endif
 
     /// Submitting the system's search bar navigates to the results, rather
     /// than leaving the typed query where the system put it.
@@ -1263,7 +1434,7 @@ public struct SidebarView: View {
             Text(String(localized: title, comment: comment))
         } icon: {
             #if os(macOS)
-                IconTile(SidebarTile.symbol(for: route), colour: SidebarTile.colour(for: route))
+                SidebarGlyph(symbol)
             #else
                 Image(systemName: symbol)
             #endif

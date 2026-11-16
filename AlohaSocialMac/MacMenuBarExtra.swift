@@ -24,12 +24,24 @@ enum MacMenuBarExtra {
 struct MacMenuBarLabel: View {
     let unread: Int
 
+    /// The Aloha hibiscus, not a pair of speech bubbles that could be any
+    /// chat app's. The bubbles stay as the fallback for a build whose mark
+    /// did not load.
+    @ViewBuilder
+    private var mark: some View {
+        if let image = AlohaBrand.menuBarImage {
+            Image(nsImage: image)
+        } else {
+            Image(systemName: "bubble.left.and.text.bubble.right")
+        }
+    }
+
     var body: some View {
         if unread > 0 {
             Label {
                 Text(unread, format: .number)
             } icon: {
-                Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                mark
             }
             .labelStyle(.titleAndIcon)
             .accessibilityLabel(
@@ -38,7 +50,7 @@ struct MacMenuBarLabel: View {
             Label {
                 Text("Aloha Social", comment: "App name")
             } icon: {
-                Image(systemName: "bubble.left.and.text.bubble.right")
+                mark
             }
             .labelStyle(.iconOnly)
         }
@@ -70,7 +82,12 @@ struct MacMenuBarPanel: View {
             Divider()
 
             if let session = environment.activeSession {
+                QuickPostField(session: session) { words in
+                    MacWindows.compose(draftText: words)
+                }
                 MacRecentNotifications(accountID: session.id)
+                Divider()
+                MacLatestPosts(session: session)
             } else {
                 Text("Sign in to see your activities.", comment: "Menu bar panel, signed out")
                     .font(.callout)
@@ -234,5 +251,46 @@ struct MacMenuBarSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The newest few posts of the home timeline, in the menu bar panel: a look
+/// at what is going on without a window. A click opens the post.
+struct MacLatestPosts: View {
+    let session: AccountSession
+
+    @State private var statuses: [Status] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+            Text("My Feed", comment: "Timeline source")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ForEach(statuses.prefix(4)) { status in
+                Button {
+                    MacWindows.open(.thread(statusID: status.displayed.id))
+                } label: {
+                    HStack(alignment: .top, spacing: AlohaMetrics.space2) {
+                        AvatarView(account: status.displayed.account, size: 24)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(verbatim: status.displayed.account.bestDisplayName)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(1)
+                            StatusPlainLine(status: status.displayed)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .task(id: session.id) {
+            let page = try? await session.client.decode(
+                LossyArray<Status>.self, from: Endpoint.timelines.timeline(.home, limit: 4))
+            statuses = page?.elements ?? []
+        }
     }
 }

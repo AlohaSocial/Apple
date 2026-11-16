@@ -54,6 +54,10 @@ enum ShellLayout {
     /// both fit at a readable measure.
     nonisolated static let macDetailColumnMinimumWidth: CGFloat = 1320
 
+    /// The window width from which the Mac's context column fits beside the
+    /// feed without squeezing it.
+    nonisolated static let contextColumnMinimumWidth: CGFloat = 1100
+
     /// The detail column's width for a window this wide: enough for a
     /// thread at a readable measure, never so much that the list it was
     /// opened from becomes the narrow one.
