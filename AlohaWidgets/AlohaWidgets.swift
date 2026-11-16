@@ -513,7 +513,7 @@ struct AlohaWidgetBundle: WidgetBundle {
         NewPostControl()
         NewStoryControl()
         #if os(iOS)
-            UploadLiveActivity()
+            LiveActivityWidgets().body
         #endif
         LockScreenWidgets().body
         HomeScreenWidgets().body
