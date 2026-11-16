@@ -104,6 +104,16 @@ Because the server cannot push, the app raises its own from what polling finds.
 - `interruptionLevel`: `.active` for mentions and DMs, `.passive` for
   favourites, boosts and follows.
 - Notification actions: Reply (text input), Favourite, Boost, Open.
+  A direct message (a mention whose post is direct) wears its own category
+  (`direct`): Reply, Favourite and Mute conversation, with no Boost, which a
+  direct post refuses. Pushes get the same category from the service
+  extension. A reply typed into either is posted by `NotificationResponder`
+  under the alert's account, in reply to its post, addressed to everyone in
+  the conversation, and never less restrictive than what it answers, so a
+  reply to a direct message stays direct. Reply is a text-input action, so
+  on Apple Watch a mirrored alert offers dictation, Scribble and emoji for
+  it with no watch-side code. The watch app registers no categories of its
+  own, so the typed reply comes back to the iPhone app, which sends it.
 - **Deduplicate ruthlessly.** A notification is raised at most once per
   `serverID`; the raised set is persisted. Grouped (v2) notifications raise one
   local notification per group and update it in place as the group grows, using

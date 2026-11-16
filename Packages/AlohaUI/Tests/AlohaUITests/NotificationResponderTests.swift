@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaModels
+import AlohaStore
 import Foundation
 import Testing
 import UserNotifications
@@ -79,6 +80,41 @@ struct NotificationResponderTests {
         #expect(
             !NotificationResponder.presentationOptions(forCategory: "generic").contains(.banner))
         #expect(NotificationResponder.presentationOptions(forCategory: "generic").contains(.list))
+        // A direct message is somebody talking to you too.
+        #expect(
+            NotificationResponder.presentationOptions(
+                forCategory: NotificationAlert.directMessageCategory
+            ).contains(.banner))
+    }
+
+    @Test("A direct message wears its own category; other mentions the mention one")
+    func directMessageCategory() {
+        #expect(NotificationAlert.category(for: .mention, isDirect: true) == "direct")
+        #expect(NotificationAlert.category(for: .mention) == "mention")
+        // Only a mention can be a direct message to answer.
+        #expect(NotificationAlert.category(for: .favourite, isDirect: true) == "generic")
+    }
+
+    @Test("A reply to a direct message from the Lock Screen or the watch stays direct")
+    func directReplyStaysDirect() {
+        let draft = NotificationResponder.replyDraft(
+            typed: "on my way", to: status(visibility: .direct), viewerHandle: "me",
+            defaultVisibility: .public)
+        #expect(draft.visibility == .direct)
+        #expect(draft.inReplyToID == "42")
+        #expect(draft.text == "@alice@remote.test on my way")
+    }
+
+    @Test("A stored notification knows whether its post is a direct message")
+    func payloadVisibility() throws {
+        let payload = NotificationPayload(
+            title: "", body: "", avatarURL: nil, accountHandle: "", statusID: "42",
+            visibility: .direct)
+        let data = try AlohaJSON.encoder.encode(payload)
+        #expect(NotificationPayload.decode(data)?.isDirect == true)
+        // Bytes an older build stored have no visibility, and are no DM.
+        let older = Data(#"{"title":"","body":"","accountHandle":"","statusID":"1"}"#.utf8)
+        #expect(NotificationPayload.decode(older)?.isDirect == false)
     }
 }
 
