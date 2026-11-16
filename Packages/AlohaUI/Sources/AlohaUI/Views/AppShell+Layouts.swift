@@ -440,7 +440,7 @@ extension ThemedAppShell {
     var composeToolbar: some ToolbarContent {
         ToolbarItem(id: "compose-post", placement: composeToolbarPlacement) {
             Button {
-                composing = ComposerPresentation()
+                composing = ComposerPresentation(fromComposeButton: true)
             } label: {
                 Label {
                     Text("New post", comment: "Toolbar action")
@@ -451,6 +451,9 @@ extension ThemedAppShell {
             .keyboardShortcut("n", modifiers: .command)
             .help(Text("New post", comment: "Toolbar action"))
         }
+        #if os(iOS)
+            .matchedTransitionSource(id: ComposeTransition.sourceID, in: composeTransition)
+        #endif
     }
 
     private var composeToolbarPlacement: ToolbarItemPlacement {
@@ -603,7 +606,7 @@ extension ThemedAppShell {
                         ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         ToolbarItem(placement: .topBarTrailing) {
                             Button {
-                                composing = ComposerPresentation()
+                                composing = ComposerPresentation(fromComposeButton: true)
                             } label: {
                                 Image(systemName: AlohaSymbol.compose)
                             }
@@ -611,6 +614,8 @@ extension ThemedAppShell {
                             .accessibilityLabel(Text("New post", comment: "Toolbar action"))
                             .help(Text("New post", comment: "Toolbar action"))
                         }
+                        .matchedTransitionSource(
+                            id: ComposeTransition.sourceID, in: composeTransition)
                     }
                 }
             #endif

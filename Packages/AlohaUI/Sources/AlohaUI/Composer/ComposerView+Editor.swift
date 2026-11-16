@@ -51,7 +51,16 @@ extension ComposerView {
             #else
                 .overlay(alignment: .bottom) {
                     if !model.completions.isEmpty {
-                        completionBar.background(.thinMaterial)
+                        // Floating glass over the text, as the iPhone's
+                        // keyboard bar is, rather than a strip of material
+                        // drawn edge to edge across the editor.
+                        completionBar
+                        .alohaGlassEffect(
+                            .regular,
+                            in: RoundedRectangle(
+                                cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+                        )
+                        .padding(AlohaMetrics.space2)
                     }
                 }
             #endif

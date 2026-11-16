@@ -421,8 +421,11 @@ public struct TimelineView: View {
             .foregroundStyle(palette.onAccent)
             .padding(.horizontal, AlohaMetrics.space4)
             .padding(.vertical, AlohaMetrics.space2)
-            .background(palette.accent, in: Capsule())
-            .shadow(color: palette.accent.opacity(0.3), radius: 8, y: 3)
+            // Glass in the server's colour, floating over the posts like the
+            // bars above and below it, instead of a painted capsule with a
+            // drop shadow of its own. Under Reduce Transparency the system
+            // makes the glass opaque, and the accent still carries it.
+            .alohaGlassEffect(.regular.tint(palette.accent).interactive(), in: Capsule())
         }
         .buttonStyle(.plain)
         .padding(.top, AlohaMetrics.space2)
