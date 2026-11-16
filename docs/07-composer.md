@@ -222,6 +222,22 @@ media sweep to collect.
 - A short posted from vertical capture gets `#shorts` appended only if the
   person opts in, once, with a remembered choice — never silently.
 
+### Now playing
+
+"Share what's playing" (iPhone, iPad, Vision Pro) inserts the song playing in
+Apple Music — "Listening to <title> by <artist>" and its music.apple.com link
+— read from `SystemMusicPlayer.shared.queue.currentEntry` after the person
+allows Apple Music access once. A song from their own library has no
+catalog link, and is found in the catalog by title and artist. The Mac has
+no system player MusicKit can read, so it has no such action.
+
+In timelines a card whose link is an Apple Music song (`/song/…/<id>`, or
+`/album/…?i=<id>`) becomes a song card: artwork, title, artist, and a button
+that plays Apple's 30-second preview (`previewAssets`), holding the app's
+audio session as a track in Audio mode does. It needs the MusicKit service
+on the App ID (Supporting/README.md); until then, or when Apple Music access
+is turned off in Settings, the card stays the ordinary link card.
+
 ## 5. Polls, threads, drafts, scheduling
 
 - **Polls**: 2 to `configuration.polls.max_options` options,
