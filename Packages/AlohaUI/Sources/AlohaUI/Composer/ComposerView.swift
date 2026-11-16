@@ -327,7 +327,8 @@ public struct ComposerView: View {
                 if let credentials = nextcloudCredentials {
                     NextcloudFileBrowser(
                         credentials: credentials,
-                        acceptedTypes: model.limits.supportedMIMETypes
+                        acceptedTypes: model.limits.supportedMIMETypes,
+                        limits: model.limits
                     ) { file in
                         Task {
                             await model.uploader.addFromNextcloudFiles(
@@ -551,9 +552,11 @@ public struct ComposerView: View {
         .padding(.vertical, AlohaMetrics.space3)
     }
 
+    /// The composer's own account's, not the active one's: a reply written
+    /// as another account browses that account's Files, whose paths are the
+    /// ones its server can copy from.
     private var nextcloudCredentials: NextcloudLoginFlow.Credentials? {
-        guard let session = environment.activeSession else { return nil }
-        return (try? environment.credentials.nextcloudCredentials(for: session.id)) ?? nil
+        (try? environment.credentials.nextcloudCredentials(for: model.session.id)) ?? nil
     }
 
     private func close() {

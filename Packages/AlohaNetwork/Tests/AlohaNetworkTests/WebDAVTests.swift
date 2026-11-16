@@ -405,3 +405,89 @@ struct WebDAVWriteTests {
         #expect(WebDAVClient.normalisedETag("W/\"abc123\"") == "abc123")
     }
 }
+
+@Suite("Saving a file into Nextcloud")
+struct WebDAVSaveTests {
+
+    private let credentials = NextcloudLoginFlow.Credentials(
+        server: URL(string: "https://cloud.example.test/")!, loginName: "alice",
+        appPassword: "secret")
+
+    private func scratchFile() throws -> URL {
+        let file = FileManager.default.temporaryDirectory
+            .appending(path: "webdav-save-\(UUID().uuidString).jpg")
+        try Data("original bytes".utf8).write(to: file)
+        return file
+    }
+
+    @Test("Copies are named the way Files names them")
+    func candidateNames() {
+        #expect(WebDAVClient.candidateName("photo.jpg", attempt: 1) == "photo.jpg")
+        #expect(WebDAVClient.candidateName("photo.jpg", attempt: 2) == "photo (2).jpg")
+        #expect(WebDAVClient.candidateName("clip", attempt: 3) == "clip (3)")
+        #expect(WebDAVClient.candidateName("a/b.png", attempt: 1) == "a-b.png")
+    }
+
+    @Test("A taken name moves on to the next, the folder is made, and nothing is written over")
+    func nameClash() async throws {
+        let transport = ScriptedDAVTransport { request in
+            let path = request.url!.path(percentEncoded: false)
+            switch request.httpMethod {
+            case "MKCOL": return (405, [:], Data())
+            case "HEAD": return (path.hasSuffix("/photo.jpg") ? 200 : 404, [:], Data())
+            case "PUT": return (201, [:], Data())
+            default: return (500, [:], Data())
+            }
+        }
+        let client = WebDAVClient(credentials: credentials, transport: transport)
+        let file = try scratchFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let saved = try await client.saveNew(
+            file: file, inFolder: "Aloha Social/Saved", preferredName: "photo.jpg",
+            contentType: "image/jpeg")
+
+        #expect(saved == "Aloha Social/Saved/photo (2).jpg")
+        let requests = await transport.requests
+        #expect(requests.map(\.httpMethod) == ["MKCOL", "MKCOL", "HEAD", "HEAD", "PUT"])
+        let put = try #require(requests.last)
+        #expect(put.value(forHTTPHeaderField: "If-None-Match") == "*")
+        #expect(put.value(forHTTPHeaderField: "Content-Type") == "image/jpeg")
+        #expect(put.httpBody == Data("original bytes".utf8))
+    }
+
+    @Test("A file that appears between the look and the write is not overwritten")
+    func raceIsCaught() async throws {
+        let transport = ScriptedDAVTransport { request in
+            let path = request.url!.path(percentEncoded: false)
+            switch request.httpMethod {
+            case "MKCOL": return (201, [:], Data())
+            case "HEAD": return (404, [:], Data())
+            case "PUT": return (path.hasSuffix("/clip.mp4") ? 412 : 201, [:], Data())
+            default: return (500, [:], Data())
+            }
+        }
+        let client = WebDAVClient(credentials: credentials, transport: transport)
+        let file = try scratchFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let saved = try await client.saveNew(
+            file: file, inFolder: "Aloha Social/Saved", preferredName: "clip.mp4",
+            contentType: "video/mp4")
+        #expect(saved == "Aloha Social/Saved/clip (2).mp4")
+    }
+
+    @Test("A refused credential is said, not retried under another name")
+    func unauthorised() async throws {
+        let client = WebDAVClient(
+            credentials: credentials,
+            transport: ScriptedDAVTransport { _ in (401, [:], Data()) })
+        let file = try scratchFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+        await #expect(throws: WebDAVClient.WebDAVError.unauthorised) {
+            _ = try await client.saveNew(
+                file: file, inFolder: "Aloha Social/Saved", preferredName: "a.jpg",
+                contentType: "image/jpeg")
+        }
+    }
+}
