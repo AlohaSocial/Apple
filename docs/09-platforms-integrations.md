@@ -134,7 +134,9 @@ Target: `AlohaShareExtension`, available on iOS, iPadOS and macOS.
   composer draws Cancel and Post itself there (`composerHost`).
 - Shared media goes up in the first type a server stores (JPEG, PNG, HEIC, GIF,
   WebP; MPEG-4 or QuickTime for video). An image offered only as something
-  else — a Mac's TIFF — is re-encoded as JPEG rather than sent mislabelled.
+  else — a Mac's TIFF — is handed to the composer as it is, typed by its
+  bytes, and the uploader converts it for the account's server: to HEIC, or
+  to JPEG only for a server without HEIC (docs/07 §4).
 
 ## 7. App Intents and Shortcuts
 
