@@ -220,6 +220,17 @@ exist undocumented.
 - Edit history (`/history`) is available from the status's menu when
   `edited_at` is non-nil, shown as a diff between versions.
 - Favourited-by / boosted-by / quotes / reactions lists are pushed views.
+- **A photo post's thread is tinted by its picture**, the way Music tints its
+  player around album art: a still wash of the photograph's main colours
+  across the top of the page, settling into the theme's ground. The colours
+  come only from what the app already holds — the image cache on disk, or the
+  post's blurhash — never from a download (`PhotoColours`, off the main
+  actor, remembered per picture). The wash keeps the hue and gives up
+  strength until the faintest label still reads at 4.5:1 and body text at
+  7:1 (`PhotoTint`). It is not drawn under Reduce Transparency, Increase
+  Contrast or the high-contrast themes, nor for a picture behind a content
+  warning or a sensitive one the reading policy covers: its colours would be
+  a glimpse of it.
 
 ## 5. Profile
 

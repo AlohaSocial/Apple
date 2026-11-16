@@ -167,10 +167,20 @@ public enum RouteResolver {
         switch url.host() {
         case "status", "profile":
             if components.count >= 2 { accountID = UUID(uuidString: components[0]) }
+        case let host? where accountScopedHosts.contains(host):
+            accountID = components.first.flatMap(UUID.init(uuidString:))
         default: break
         }
         return RouteDestination(accountID: accountID, route: route)
     }
+
+    /// The screens a widget opens for the account it is set to, as
+    /// `alohasocial://<host>/<account UUID>`; without the UUID, the active
+    /// account's.
+    static let accountScopedHosts: Set<String> = [
+        "notifications", "conversations", "scheduled", "drafts", "follow-requests",
+        "notification-requests", "statistics", "reports", "explore", "year",
+    ]
 
     private static func parse(_ url: URL) -> Route? {
         guard url.scheme == scheme else { return nil }
@@ -216,6 +226,13 @@ public enum RouteResolver {
         case "explore": return .explore
         case "lists": return .lists
         case "memories": return .memories
+        case "conversations": return .conversations
+        case "scheduled": return .scheduledPosts
+        case "drafts": return .drafts
+        case "follow-requests": return .followRequests
+        case "notification-requests": return .notificationRequests
+        case "statistics": return .statistics
+        case "reports": return .moderationReports
         // "compose" opens the composer rather than any of the Routes: the
         // composer is presented as a sheet from the shell, not pushed onto a
         // navigation stack, so there is no destination to name. Sending the

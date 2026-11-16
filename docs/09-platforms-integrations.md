@@ -163,6 +163,19 @@ configuration (account, timeline, list).
 | Mentions | `systemMedium`, `systemLarge` |
 | Quick compose | `systemSmall` (deep-links into the composer) |
 | On this day | `systemSmall`, `systemMedium`, `systemLarge` (Aloha Social servers) |
+| Direct messages | `systemSmall`, `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
+| Next scheduled post | `systemSmall`, `accessoryRectangular`, `accessoryInline` |
+| Requests (follow and message requests) | `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
+| Open reports (moderators, Aloha Social servers) | `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
+| Weekly stats | `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
+| Conversations | `systemMedium`, `systemLarge` |
+| Photo frame (Home, a hashtag, a person or a list) | `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge` |
+| People (up to four) | `systemSmall`, `systemMedium` |
+| Live poll | `systemMedium`, `systemLarge` |
+| Creator dashboard | `systemMedium` |
+| What's happening (server trends) | `systemMedium`, `systemLarge` |
+
+Controls: New post, New story, Messages.
 
 - Timelines are built from the SwiftData store in the app group, never from the
   network inside the widget extension.
@@ -175,6 +188,25 @@ configuration (account, timeline, list).
   from behind a content warning — into the app group when it becomes active
   and on background refresh (`MemoriesWidgetWriter`), and the widget reads
   only that.
+- **Snapshot widgets**: direct messages, requests, reports, scheduled posts,
+  statistics, polls, trends, people and photos are server queries too. The app
+  writes one snapshot per account (`WidgetSnapshotWriter` into
+  `WidgetSnapshotStore`) when it becomes active, at most every ten minutes,
+  and in what is left of a background refresh. Each section is fetched on its
+  own and keeps its last answer when its request fails. Pictures are shrunk
+  once by the app; none comes from behind a content warning.
+- **What the widgets want**: a widget's configuration lives in the extension,
+  so each provider records the account, people and photo sources it shows in
+  the shared defaults (`WidgetWants`), and the writer fetches those. A want not
+  renewed for three days belonged to a removed widget and is dropped.
+- **Account links**: a snapshot widget opens its screen as
+  `alohasocial://<screen>/<account UUID>`, so a tap switches to the account the
+  widget shows.
+- **Smart Stack**: entries carry a `TimelineEntryRelevance` — high while
+  something is unread or waiting, during the hour before a scheduled post and
+  the hours before a poll closes, and zero when there is nothing.
+- **Bookmark from the widget**: post and mention rows carry a bookmark beside
+  the heart, recorded in `WidgetBookmarks` the same way.
 - Reload triggered from the app's background refresh and after any post.
 - Images come from the shared disk cache; a widget never downloads.
 - Lock Screen and StandBy variants use the accessory families with the

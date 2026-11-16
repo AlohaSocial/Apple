@@ -80,6 +80,7 @@ struct WidgetPost: Identifiable {
     let text: String
     let createdAt: Date
     let favourited: Bool
+    let bookmarked: Bool
     /// From the app's disk cache, already shrunk; nil where it is not there.
     let avatar: CGImage?
     let thumbnail: CGImage?
@@ -98,6 +99,7 @@ struct WidgetMention: Identifiable {
     let createdAt: Date
     let statusID: String?
     let favourited: Bool
+    let bookmarked: Bool
     let avatar: CGImage?
 
     /// A row without a status has nowhere to open — a mention whose post has
@@ -170,6 +172,47 @@ struct FavouriteButton: View {
             favourited
                 ? Text("Unfavourite", comment: "Widget button")
                 : Text("Favourite", comment: "Widget button"))
+    }
+}
+
+/// The bookmark on a row: saves the post for later from the widget itself
+/// (`BookmarkFromWidgetIntent`), beside the heart.
+struct BookmarkButton: View {
+    let accountID: UUID
+    let statusID: String
+    let bookmarked: Bool
+
+    var body: some View {
+        Button(
+            intent: BookmarkFromWidgetIntent(
+                accountID: accountID, statusID: statusID, bookmark: !bookmarked)
+        ) {
+            Image(systemName: bookmarked ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark)
+                .font(.caption)
+                .foregroundStyle(bookmarked ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            bookmarked
+                ? Text("Remove bookmark", comment: "Widget button")
+                : Text("Bookmark", comment: "Widget button"))
+    }
+}
+
+/// The heart and the bookmark, stacked at a row's trailing edge.
+struct RowActions: View {
+    let accountID: UUID
+    let statusID: String
+    let favourited: Bool
+    let bookmarked: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            FavouriteButton(accountID: accountID, statusID: statusID, favourited: favourited)
+            BookmarkButton(accountID: accountID, statusID: statusID, bookmarked: bookmarked)
+        }
     }
 }
 
@@ -273,8 +316,9 @@ struct LatestPostsView: View {
             } else {
                 postContent(post)
             }
-            FavouriteButton(
-                accountID: post.accountID, statusID: post.id, favourited: post.favourited)
+            RowActions(
+                accountID: post.accountID, statusID: post.id, favourited: post.favourited,
+                bookmarked: post.bookmarked)
         }
     }
 
@@ -358,6 +402,11 @@ struct UnreadEntry: WidgetKit.TimelineEntry {
     /// Shown where there is room, when the widget is set to one account.
     let accountHandle: String?
     let serverTheme: AlohaThemeModifier.ServerTheme?
+
+    /// Rises in a Smart Stack while something is unread, sinks when nothing is.
+    var relevance: TimelineEntryRelevance? {
+        TimelineEntryRelevance(score: count > 0 ? 5 + Float(min(count, 20)) : 0)
+    }
 }
 
 struct UnreadWidget: Widget {
@@ -466,6 +515,35 @@ struct AlohaWidgetBundle: WidgetBundle {
         #if os(iOS)
             UploadLiveActivity()
         #endif
+        LockScreenWidgets().body
+        HomeScreenWidgets().body
+    }
+}
+
+/// The snapshot widgets made for the Lock Screen, and the Messages control.
+/// Bundles of their own keep each builder well inside its limit.
+struct LockScreenWidgets: WidgetBundle {
+    var body: some Widget {
+        DirectMessagesWidget()
+        NextScheduledPostWidget()
+        #if os(iOS)
+            RequestsWidget()
+            OpenReportsWidget()
+            WeeklyStatsWidget()
+        #endif
+        OpenMessagesControl()
+    }
+}
+
+/// The snapshot widgets made for the Home Screen.
+struct HomeScreenWidgets: WidgetBundle {
+    var body: some Widget {
+        ConversationsWidget()
+        PhotoFrameWidget()
+        PeopleWidget()
+        LivePollWidget()
+        CreatorDashboardWidget()
+        ServerTrendsWidget()
     }
 }
 
@@ -512,6 +590,17 @@ struct MentionsEntry: WidgetKit.TimelineEntry {
     let accountHandle: String
     /// The account's server colour, so the widget wears what the app does.
     let serverTheme: AlohaThemeModifier.ServerTheme?
+
+    /// A fresh mention is what somebody looks at their phone for: high for
+    /// two hours after it arrives, a little for the rest of the day.
+    var relevance: TimelineEntryRelevance? {
+        guard let newest = mentions.map(\.createdAt).max() else {
+            return TimelineEntryRelevance(score: 0)
+        }
+        let age = date.timeIntervalSince(newest)
+        if age < 7200 { return TimelineEntryRelevance(score: 15, duration: 7200 - age) }
+        return TimelineEntryRelevance(score: age < 86_400 ? 3 : 0)
+    }
 }
 
 struct MentionsWidget: Widget {
@@ -551,9 +640,9 @@ struct MentionsView: View {
                             row(mention)
                         }
                         if let statusID = mention.statusID {
-                            FavouriteButton(
+                            RowActions(
                                 accountID: mention.accountID, statusID: statusID,
-                                favourited: mention.favourited)
+                                favourited: mention.favourited, bookmarked: mention.bookmarked)
                         }
                     }
                 }

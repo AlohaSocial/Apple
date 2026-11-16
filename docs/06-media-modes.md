@@ -320,7 +320,10 @@ playback queue built from the visible list.
 
 One component, used from every mode and from the thread view.
 
-- Full-screen, edge to edge, over a dimmed backdrop.
+- Full-screen, edge to edge, over a dimmed backdrop: a deep shade of the
+  picture's own colours, from the image cache or its blurhash and never a
+  download, or plain black for a video, under Reduce Transparency and
+  Increase Contrast, and while nothing of the picture is cached yet.
 - **Pinch to zoom** (to 5×), pan when zoomed, double-tap to toggle fit/fill.
 - **Drag to dismiss** with interactive scaling and backdrop fade; a matched
   geometry transition from the source cell.
