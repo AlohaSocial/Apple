@@ -155,7 +155,7 @@ public enum StatusActions {
         case .open, .watch, .reply, .openProfile, .openMedia, .openCard, .followLink,
             .report, .share, .translate, .edit, .delete, .redraft, .block, .mute,
             .quote, .showDelivery, .showEditHistory, .quoteControls, .tagPeople,
-            .addToCollection, .addToList:
+            .addToCollection, .addToList, .shareImage, .read:
             break
         }
     }

@@ -77,6 +77,8 @@ struct ThemedAppShell: View {
     @State var composing: ComposerPresentation?
     @State private var isComposingStory = false
     @Namespace private var mediaTransition
+    /// The compose button's zoom into the composer (`ComposeTransition`).
+    @Namespace var composeTransition
     @State private var isCelebrating = false
     @State var mediaPresentation: MediaPresentation?
     @State var reportTarget: ReportTarget?
@@ -152,6 +154,7 @@ struct ThemedAppShell: View {
                 }
             }
             .environment(\.mediaTransition, mediaTransition)
+            .environment(\.composeTransition, composeTransition)
             .environment(\.shellUsesTabBar, !usesSidebar)
             .onChange(of: usesSidebar) { _, toSidebar in handOver(toSidebar: toSidebar) }
             .modifier(

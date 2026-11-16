@@ -502,6 +502,9 @@ public struct SettingsView: View {
             if session.hasNextcloudConnection {
                 DraftSyncSettingsRow(session: session)
             }
+
+            // Draws nothing where the server has no backups (a 404).
+            BackupSettingsRow(session: session)
         } header: {
             Text("Nextcloud", comment: "Settings section")
         } footer: {

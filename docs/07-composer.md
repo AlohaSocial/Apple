@@ -8,6 +8,13 @@ main window there, docs/09 §2 — and `⌘⏎` to post).
 Not available on tvOS. On watchOS only a reduced reply composer (dictation,
 scribble, emoji, canned responses).
 
+On iPhone and iPad the sheet **grows out of the "New post" button** — the
+system's zoom transition, from the toolbar's glass button
+(`matchedTransitionSource`) into the sheet (`navigationTransition(.zoom)`) —
+and shrinks back into it when it closes. Only for the button: a reply or a
+quote comes from a post, not from it. Under Reduce Motion the sheet arrives
+the plain way (`ComposerZoom`).
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Cancel        [avatar ▾ account]      Post  │

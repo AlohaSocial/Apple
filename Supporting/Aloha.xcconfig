@@ -54,6 +54,14 @@ ALOHA_ENTITLEMENTS_SUFFIX = $(ALOHA_ENTITLEMENTS_SUFFIX_$(ALOHA_SHARED_CONTAINER
 ALOHA_APP_BUNDLE_IDENTIFIER = social.aloha.app
 DEVELOPMENT_TEAM =
 
+// The alternate app icons (iOS and iPadOS), one icon set each in
+// AlohaSocial/Assets.xcassets, written by tools/make-icons.sh. The app
+// target's ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES reads this list, so
+// adding an icon is a line here and a case in `AlohaIconVariant`, not an edit
+// to the project file. Every name must match an icon set, and the picker in
+// Settings → Appearance offers what `AlohaIconVariant` lists.
+ALOHA_ALTERNATE_APP_ICONS = AlohaIcon-Midnight AlohaIcon-Coral AlohaIcon-Ocean AlohaIcon-Forest AlohaIcon-Grape AlohaIcon-Rose AlohaIcon-Slate AlohaIcon-Mono
+
 // A contributor's own overrides, never committed. Optional: the build does
 // not need the file to exist.
 #include? "Local.xcconfig"
