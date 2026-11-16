@@ -46,6 +46,12 @@ struct NotificationDeliveryMappingTests {
         #expect(outgoing.quietTo == "07:00")
         #expect(!outgoing.passthroughDirect)
         #expect(!outgoing.passthroughMentionsFromFollowed)
+        // Not something this app's own settings hold: it goes back as read,
+        // and stays unsent where the server never named it.
+        #expect(outgoing.hourlyBatching == nil)
+        var bundling = server
+        bundling.hourlyBatching = true
+        #expect(settings.serverDelivery(keeping: bundling).hourlyBatching == true)
     }
 
     @Test("Half a pair of quiet hours goes out as none")
