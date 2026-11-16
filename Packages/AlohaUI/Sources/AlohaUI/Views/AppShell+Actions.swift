@@ -92,6 +92,8 @@ extension ThemedAppShell {
             sheet = .addToList(account)
         case .shareImage(let status):
             sheet = .shareImage(status)
+        case .read(let status):
+            sheet = .reader(status)
 
         default:
             Task { await StatusActions.perform(action, session: session) }

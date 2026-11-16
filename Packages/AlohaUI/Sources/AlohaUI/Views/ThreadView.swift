@@ -129,6 +129,22 @@ public struct ThreadView: View {
                 // link is shared from the action row under it, the way every
                 // app a reader already uses does it, so the bar carries only
                 // the one action the page itself has.
+                // A long post, or a link to read, opens in the reader from
+                // here as well as from its menu: an opened post is where a
+                // long read is most likely to start.
+                if let focused, ReadingTime.suitsReader(focused) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            onAction(.read(focused))
+                        } label: {
+                            Label {
+                                Text("Reader view", comment: "Thread action")
+                            } icon: {
+                                Image(systemName: "doc.plaintext")
+                            }
+                        }
+                    }
+                }
                 if canSummarise {
                     ToolbarItem(placement: .primaryAction) {
                         Button {

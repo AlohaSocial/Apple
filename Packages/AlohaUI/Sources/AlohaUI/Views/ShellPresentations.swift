@@ -60,6 +60,7 @@ enum ShellSheet: Identifiable {
     case addToCollection(Status)
     case addToList(Account)
     case shareImage(Status)
+    case reader(Status)
 
     var id: String {
         switch self {
@@ -70,15 +71,17 @@ enum ShellSheet: Identifiable {
         case .addToCollection(let status): "collection.\(status.id)"
         case .addToList(let account): "list.\(account.id)"
         case .shareImage(let status): "image.\(status.id)"
+        case .reader(let status): "reader.\(status.id)"
         }
     }
 
     /// Most are a short list to glance at or pick from: half height first,
     /// with the rest a drag away rather than a whole screen for four rows.
-    /// The post drawn as a picture needs the height to be seen whole.
+    /// The post drawn as a picture needs the height to be seen whole, and
+    /// the reader is a page to read, not a list to pick from.
     var detents: Set<PresentationDetent> {
         switch self {
-        case .shareImage: [.large]
+        case .shareImage, .reader: [.large]
         default: [.medium, .large]
         }
     }
@@ -166,6 +169,8 @@ struct ShellSheets: ViewModifier {
                             ListMembershipSheet(account: account, session: session)
                         case .shareImage(let status):
                             ShareImageSheet(status: status, session: session)
+                        case .reader(let status):
+                            ReaderView(status: status, session: session)
                         }
                     }
                     .presentationDetents(sheet.detents)
