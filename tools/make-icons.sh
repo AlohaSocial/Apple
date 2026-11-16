@@ -154,6 +154,51 @@ EOF
 
 preview "$work/aloha.svg" AppIconPreview-Aloha
 
+# visionOS: the mark taken apart into the three layers a Vision Pro icon is
+# made of, so the Home View can float them apart as it is looked at — the
+# sand ground at the back, the flower in the middle, the @ in front. It is a
+# stack of its own (AppIcon-Vision, chosen for the xros SDKs in the project);
+# an iOS icon set does nothing on visionOS, which showed a placeholder.
+vision_icon() {
+    stack=$catalog/AppIcon-Vision.solidimagestack
+    mkdir -p "$stack"
+    cat >"$stack/Contents.json" <<'EOF'
+{
+  "info" : { "author" : "xcode", "version" : 1 },
+  "layers" : [
+    { "filename" : "Front.solidimagestacklayer" },
+    { "filename" : "Middle.solidimagestacklayer" },
+    { "filename" : "Back.solidimagestacklayer" }
+  ]
+}
+EOF
+    # The back layer is opaque; the two in front are cut out of nothing.
+    vision_layer Back "$sand" none none RGB_8
+    vision_layer Middle none "$coral" none RGBA_8
+    vision_layer Front none none "$white" RGBA_8
+}
+
+# vision_layer <Layer> <ground> <flower> <@> <colour mode>
+vision_layer() {
+    layer=$stack/$1.solidimagestacklayer
+    mkdir -p "$layer/Content.imageset"
+    cat >"$layer/Contents.json" <<'EOF'
+{
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+EOF
+    cat >"$layer/Content.imageset/Contents.json" <<'EOF'
+{
+  "images" : [
+    { "filename" : "layer.png", "idiom" : "vision", "scale" : "2x" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+EOF
+    recolour "$2" "$3" "$4" "$work/vision-$1.svg"
+    render "$work/vision-$1.svg" 1024 "$layer/Content.imageset/layer.png" "$5"
+}
+
 # The colourways' dark appearance: a near-black ground, so every flower
 # colour sits on it the same way.
 night='#17191C'
@@ -174,5 +219,7 @@ alternate Coral "$coral" "$sand" "$coral" '#9E3A2A' "$sand" '#9E3A2A'
 
 # Mono: graphite and paper, nothing else — the one-colour mark on a tile.
 alternate Mono '#F4F4F2' '#1F1F21' '#F4F4F2' '#1F1F21' '#F4F4F2' '#1F1F21'
+
+vision_icon
 
 echo "icons written"

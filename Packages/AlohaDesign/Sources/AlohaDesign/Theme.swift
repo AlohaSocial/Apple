@@ -91,11 +91,39 @@ public nonisolated enum AlohaTheme: String, CaseIterable, Sendable, Codable, Ide
     }
 
     public var preferredColorScheme: ColorScheme? {
-        switch self {
-        case .system: nil
-        case .warmLight, .highContrastLight: .light
-        case .warmDark, .highContrastDark, .dim, .black: .dark
-        }
+        #if os(visionOS)
+            // A window on visionOS is glass, and glass has one appearance.
+            nil
+        #else
+            switch self {
+            case .system: nil
+            case .warmLight, .highContrastLight: .light
+            case .warmDark, .highContrastDark, .dim, .black: .dark
+            }
+        #endif
+    }
+
+    /// Whether choosing between themes means anything here. On visionOS
+    /// every window is the system's glass, so there is one palette
+    /// (`glassPalette`) and Settings offers no choice.
+    public static var isChoosable: Bool {
+        #if os(visionOS)
+            false
+        #else
+            true
+        #endif
+    }
+
+    /// The palette for this theme. On visionOS it is always the glass one,
+    /// whatever was chosen on another device: a painted ground would cover
+    /// the window's glass, and grey text tuned for a white page disappears
+    /// on it.
+    public func palette(for scheme: ColorScheme, increaseContrast: Bool = false) -> AlohaPalette {
+        #if os(visionOS)
+            Self.glassPalette(increaseContrast: increaseContrast)
+        #else
+            themedPalette(for: scheme, increaseContrast: increaseContrast)
+        #endif
     }
 
     /// The identity: warm, high-contrast, content-forward. The accent is the
@@ -104,7 +132,7 @@ public nonisolated enum AlohaTheme: String, CaseIterable, Sendable, Codable, Ide
     /// ones) — it is what a server that names no colour of its own wears. Boost is green,
     /// favourite amber, bookmark violet — kept distinct at badge size and
     /// distinguishable under the common colour-vision deficiencies.
-    public func palette(for scheme: ColorScheme, increaseContrast: Bool = false) -> AlohaPalette {
+    func themedPalette(for scheme: ColorScheme, increaseContrast: Bool = false) -> AlohaPalette {
         switch self {
         case .system:
             return Self.systemPalette(for: scheme, increaseContrast: increaseContrast)
@@ -245,6 +273,31 @@ public nonisolated enum AlohaTheme: String, CaseIterable, Sendable, Codable, Ide
         #endif
         return palette
     }
+
+    #if os(visionOS)
+        /// The one palette on visionOS: the window's glass as the ground,
+        /// white text on it, and the dark themes' tints, which are the ones
+        /// made for a dark, busy ground.
+        ///
+        /// The secondary and tertiary roles are white at fixed strengths
+        /// rather than the system's `secondaryLabel`: as a plain colour that
+        /// one is drawn without the glass's vibrancy, and handles and
+        /// timestamps at caption size all but vanished over a bright room.
+        static func glassPalette(increaseContrast: Bool) -> AlohaPalette {
+            let tints: AlohaTheme = increaseContrast ? .highContrastDark : .warmDark
+            var palette = tints.themedPalette(for: .dark, increaseContrast: increaseContrast)
+            palette.background = SystemColours.background
+            palette.backgroundComponents = SystemColours.darkGround
+            palette.surface = SystemColours.surface
+            palette.surfaceRaised = SystemColours.surfaceRaised
+            palette.separator = SystemColours.separator
+            palette.label = SystemColours.label
+            palette.secondaryLabel = .white.opacity(increaseContrast ? 0.94 : 0.82)
+            palette.tertiaryLabel = .white.opacity(increaseContrast ? 0.86 : 0.70)
+            palette.usesSystemGrounds = true
+            return palette
+        }
+    #endif
 }
 
 #if os(iOS) || os(visionOS) || os(macOS)

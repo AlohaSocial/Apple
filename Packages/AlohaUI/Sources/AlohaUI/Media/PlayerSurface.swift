@@ -20,6 +20,10 @@ import SwiftUI
 struct PlayerSurface: View {
     let player: AVPlayer
     var showsControls = true
+    #if os(visionOS)
+        /// Whether the video carries both eyes, found out once it is loaded.
+        @State private var isSpatial = false
+    #endif
 
     var body: some View {
         Group {
@@ -27,11 +31,26 @@ struct PlayerSurface: View {
                 MacPlayerView(player: player, showsControls: showsControls)
             #elseif os(iOS)
                 PhonePlayerView(player: player, showsControls: showsControls)
+            #elseif os(visionOS)
+                // A spatial video in depth, where it is being watched rather
+                // than glanced at in a grid or a Shorts page. Everything else
+                // keeps the system player, scrubber and all.
+                if showsControls, isSpatial {
+                    SpatialVideoSurface(player: player)
+                } else {
+                    VideoPlayer(player: player)
+                        .disabled(!showsControls)
+                }
             #else
                 VideoPlayer(player: player)
                     .disabled(!showsControls)
             #endif
         }
+        #if os(visionOS)
+            .task(id: ObjectIdentifier(player)) {
+                isSpatial = showsControls ? await SpatialVideo.isSpatial(player) : false
+            }
+        #endif
         // AVPlayer's mute control is independent from the system audio
         // session. A player with its sound on and playing holds a claim on
         // the speaker until it is muted or this surface goes; silent previews

@@ -993,12 +993,16 @@ extension SettingsView {
     @ViewBuilder private var appearanceSection: some View {
         @Bindable var environment = environment
         Section {
-            Picker(selection: $environment.theme) {
-                ForEach(AlohaTheme.allCases) { theme in
-                    Text(theme.displayName).tag(theme)
+            // Not on visionOS, where every window is the system's glass and
+            // there is one palette for it (`AlohaTheme.isChoosable`).
+            if AlohaTheme.isChoosable {
+                Picker(selection: $environment.theme) {
+                    ForEach(AlohaTheme.allCases) { theme in
+                        Text(theme.displayName).tag(theme)
+                    }
+                } label: {
+                    Text("Theme", comment: "Settings item")
                 }
-            } label: {
-                Text("Theme", comment: "Settings item")
             }
 
             Picker(selection: $environment.metrics.density) {

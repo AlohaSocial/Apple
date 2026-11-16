@@ -223,6 +223,11 @@ private struct WatchTogetherPresentation: ViewModifier {
                     WatchTogetherView(together: together)
                         #if os(macOS)
                             .frame(minWidth: 640, minHeight: 420)
+                        #elseif os(visionOS)
+                            // The shared player is what the call gathers
+                            // round: the system seats the Personas facing
+                            // this window (`WatchTogether.seatSideBySide`).
+                            .groupActivityAssociation(.primary("watch-together"))
                         #endif
                 }
             #endif

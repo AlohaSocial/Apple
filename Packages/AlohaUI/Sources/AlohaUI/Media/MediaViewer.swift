@@ -50,6 +50,18 @@ public struct MediaViewer: View {
     /// and as a spatial photo on iPhone and iPad.
     @State private var spatialFiles: [String: URL] = [:]
     @State private var quickLookURL: URL?
+    #if os(visionOS)
+        /// Flat photos the person asked to see as a spatial scene, by
+        /// attachment id, with the original the scene is made from.
+        @State private var sceneFiles: [String: URL] = [:]
+        /// Spatial photos the person put back to flat, or that could not be
+        /// shown in depth.
+        @State private var flattened: Set<String> = []
+        /// The original being fetched for a scene, by attachment id.
+        @State private var fetchingScene: String?
+        /// Said for a moment when a photo could not be made 3D.
+        @State private var depthFailure: String?
+    #endif
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -76,7 +88,9 @@ public struct MediaViewer: View {
                         .tag(offset)
                 }
             }
-            #if os(iOS)
+            // On visionOS too, where a `TabView` without it is a tab bar
+            // rather than pages to swipe between.
+            #if os(iOS) || os(visionOS)
                 .tabViewStyle(
                     .page(
                         indexDisplayMode: attachments.count > 1 && !chromeHidden
@@ -102,6 +116,21 @@ public struct MediaViewer: View {
                         .transition(
                             reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                 }
+                #if os(visionOS)
+                    if let depthFailure {
+                        Text(depthFailure)
+                            .font(.callout)
+                            .padding(.horizontal, AlohaMetrics.space4)
+                            .padding(.vertical, AlohaMetrics.space2)
+                            .glassBackgroundEffect()
+                            .padding(.bottom, AlohaMetrics.space6)
+                            .transition(.opacity)
+                            .task {
+                                try? await Task.sleep(for: .seconds(3))
+                                self.depthFailure = nil
+                            }
+                    }
+                #endif
             }
             .animation(reduceMotion ? nil : .spring(duration: 0.3), value: saver.phase)
         }
@@ -163,37 +192,143 @@ public struct MediaViewer: View {
                 attachment: attachment, statusID: statusID, apiBase: apiBase, autoplay: autoplay,
                 startsMuted: false, session: session)
         } else {
-            RemoteImage(
-                url: attachment.displayImageURL,
-                blurhash: attachment.blurhash,
-                contentMode: .fit,
-                accessibilityText: attachment.description
-            )
-            .modifier(ImageDragSource(url: attachment.url))
-            // Inside the zoom, so selected text stays under the finger as
-            // the picture is pinched and moved.
-            .liveText(
-                url: attachment.url ?? attachment.displayImageURL,
-                isActive: attachments[safe: index]?.id == attachment.id,
-                isChromeHidden: chromeHidden
-            )
-            .scaleEffect(zoom, anchor: .center)
-            .offset(offset)
-            .onTapGesture(count: 2) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    zoom = zoom > 1 ? 1 : MediaZoom.doubleTap
-                    committedZoom = zoom
-                    if zoom == 1 { resetOffset() }
+            #if os(visionOS)
+                if let shown = inDepth(attachment) {
+                    SpatialPicture(
+                        file: shown.file, depth: shown.depth,
+                        accessibilityText: attachment.description
+                    ) {
+                        depthFailed(attachment, shown.depth)
+                    }
+                    .onTapGesture { isChromeHidden.toggle() }
+                } else {
+                    flatPicture(attachment)
                 }
-            }
-            .onTapGesture {
-                isChromeHidden.toggle()
-            }
-            // Only while zoomed: at full view a horizontal drag belongs to
-            // the pager, which moves to the next picture.
-            .gesture(panGesture(for: attachment), including: zoom > 1 ? .all : .subviews)
+            #else
+                flatPicture(attachment)
+            #endif
         }
     }
+
+    private func flatPicture(_ attachment: MediaAttachment) -> some View {
+        RemoteImage(
+            url: attachment.displayImageURL,
+            blurhash: attachment.blurhash,
+            contentMode: .fit,
+            accessibilityText: attachment.description
+        )
+        .modifier(ImageDragSource(url: attachment.url))
+        // Inside the zoom, so selected text stays under the finger as
+        // the picture is pinched and moved.
+        .liveText(
+            url: attachment.url ?? attachment.displayImageURL,
+            isActive: attachments[safe: index]?.id == attachment.id,
+            isChromeHidden: chromeHidden
+        )
+        .scaleEffect(zoom, anchor: .center)
+        .offset(offset)
+        .onTapGesture(count: 2) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                zoom = zoom > 1 ? 1 : MediaZoom.doubleTap
+                committedZoom = zoom
+                if zoom == 1 { resetOffset() }
+            }
+        }
+        .onTapGesture {
+            isChromeHidden.toggle()
+        }
+        // Only while zoomed: at full view a horizontal drag belongs to
+        // the pager, which moves to the next picture.
+        .gesture(panGesture(for: attachment), including: zoom > 1 ? .all : .subviews)
+    }
+
+    #if os(visionOS)
+        /// What the picture is shown in depth from, if it is: a spatial
+        /// photo's own file unless it was put back to flat, or the original a
+        /// scene was asked for.
+        private func inDepth(_ attachment: MediaAttachment) -> (file: URL, depth: PictureDepth)? {
+            if let file = sceneFiles[attachment.id] { return (file, .scene) }
+            if !flattened.contains(attachment.id), let file = spatialFiles[attachment.id] {
+                return (file, .stereo)
+            }
+            return nil
+        }
+
+        private func depthFailed(_ attachment: MediaAttachment, _ depth: PictureDepth) {
+            switch depth {
+            case .stereo: flattened.insert(attachment.id)
+            case .scene: sceneFiles[attachment.id] = nil
+            }
+            depthFailure = String(
+                localized: "This photo couldn't be shown in 3D.",
+                comment: "Media viewer: a photo could not be shown in depth on Vision Pro")
+        }
+
+        /// Fetches the original of a flat photo and shows it as a spatial
+        /// scene. The original rather than the server's preview: a scene made
+        /// from a small JPEG has little depth to find.
+        private func makeScene(of attachment: MediaAttachment) async {
+            fetchingScene = attachment.id
+            defer { fetchingScene = nil }
+            guard let source = attachment.url ?? attachment.displayImageURL,
+                let original = await ImageLoader.shared.original(for: source),
+                let file = await DepthFile.named(original, id: attachment.id)
+            else {
+                depthFailed(attachment, .scene)
+                return
+            }
+            flattened.remove(attachment.id)
+            sceneFiles[attachment.id] = file
+        }
+
+        /// The one depth control on Vision Pro: "Flat" while the picture is
+        /// in depth, "Spatial" for a spatial photo put back to flat, and "3D"
+        /// to make a scene of any other photo.
+        @ViewBuilder
+        private var depthButton: some View {
+            if let attachment = attachments[safe: index], !attachment.type.isPlayable {
+                let isInDepth = inDepth(attachment) != nil
+                let isSpatial = spatialFiles[attachment.id] != nil
+                Button {
+                    if isInDepth {
+                        sceneFiles[attachment.id] = nil
+                        flattened.insert(attachment.id)
+                    } else if isSpatial {
+                        flattened.remove(attachment.id)
+                    } else {
+                        Task { await makeScene(of: attachment) }
+                    }
+                } label: {
+                    Label {
+                        if isInDepth {
+                            Text("Flat", comment: "Media viewer: show a 3D photo flat again")
+                        } else if isSpatial {
+                            Text("Spatial", comment: "Badge on a spatial (3D) photo")
+                        } else {
+                            Text("3D", comment: "Media viewer: turn a flat photo into a 3D scene")
+                        }
+                    } icon: {
+                        if fetchingScene == attachment.id {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: isInDepth ? "square" : "view.3d")
+                        }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .alohaGlassEffect(Self.controlGlass, in: Capsule())
+                }
+                .disabled(fetchingScene != nil)
+                .accessibilityHint(
+                    isInDepth
+                        ? Text("Shows the photo flat.", comment: "Media viewer action hint")
+                        : Text(
+                            "Shows the photo in depth.",
+                            comment: "Media viewer action hint for a spatial photo"))
+            }
+        }
+    #endif
 
     /// Black, or a deep shade of the picture's own colours, as Music puts a
     /// full-screen player in the colours of its album art. Plain black under
@@ -287,28 +422,34 @@ public struct MediaViewer: View {
 
                     Spacer()
 
-                    if let id = attachments[safe: index]?.id, let file = spatialFiles[id] {
-                        Button {
-                            quickLookURL = file
-                        } label: {
-                            Label {
-                                Text("Spatial", comment: "Badge on a spatial (3D) photo")
-                            } icon: {
-                                Image(systemName: "view.3d")
+                    #if os(visionOS)
+                        // In the viewer itself, rather than Quick Look on top
+                        // of it: this is the device that shows depth.
+                        depthButton
+                    #else
+                        if let id = attachments[safe: index]?.id, let file = spatialFiles[id] {
+                            Button {
+                                quickLookURL = file
+                            } label: {
+                                Label {
+                                    Text("Spatial", comment: "Badge on a spatial (3D) photo")
+                                } icon: {
+                                    Image(systemName: "view.3d")
+                                }
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .alohaGlassEffect(Self.controlGlass, in: Capsule())
                             }
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .alohaGlassEffect(Self.controlGlass, in: Capsule())
+                            .accessibilityLabel(
+                                Text("Spatial photo", comment: "Media viewer action")
+                            )
+                            .accessibilityHint(
+                                Text(
+                                    "Opens the photo in depth.",
+                                    comment: "Media viewer action hint for a spatial photo"))
                         }
-                        .accessibilityLabel(
-                            Text("Spatial photo", comment: "Media viewer action")
-                        )
-                        .accessibilityHint(
-                            Text(
-                                "Opens the photo in depth.",
-                                comment: "Media viewer action hint for a spatial photo"))
-                    }
+                    #endif
 
                     if attachments.indices.contains(index), attachments[index].hasAltText {
                         Button {

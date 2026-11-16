@@ -99,6 +99,17 @@ private nonisolated struct WatchTogetherPosition: Codable, Sendable {
     let index: Int
 }
 
+#if os(visionOS)
+    /// The session, carried to `WatchTogether.seatSideBySide` and back.
+    /// `GroupSession` is not marked `Sendable`, but GroupActivities makes its
+    /// `systemCoordinator` getter nonisolated and async — an API meant to be
+    /// called away from the main actor — and the session is only read there,
+    /// never changed.
+    private nonisolated struct SeatedSession: @unchecked Sendable {
+        let session: GroupSession<WatchTogetherActivity>
+    }
+#endif
+
 /// The one SharePlay session the app takes part in, and the switch that
 /// says whether it can take part at all.
 ///
@@ -194,7 +205,17 @@ final class WatchTogether {
         index = min(max(newSession.activity.startIndex, 0), max(videos.count - 1, 0))
         let messenger = GroupSessionMessenger(session: newSession)
         self.messenger = messenger
-        newSession.join()
+        #if os(visionOS)
+            // Seated first: the system places everybody's Persona from the
+            // configuration it finds when this device joins.
+            Task { [weak self] in
+                await Self.seatSideBySide(SeatedSession(session: newSession))
+                guard self?.session === newSession else { return }
+                newSession.join()
+            }
+        #else
+            newSession.join()
+        #endif
         isPresenting = true
 
         tasks.append(
@@ -214,6 +235,21 @@ final class WatchTogether {
                 }
             })
     }
+
+    #if os(visionOS)
+        /// Everybody side by side, facing the video, as in a cinema — the
+        /// spatial Personas of the people on the call sit beside this person
+        /// rather than wherever the system would put them. Watching is what
+        /// the activity is for, so there is no conversational circle, and no
+        /// immersive space: the player is a window.
+        nonisolated private static func seatSideBySide(_ seated: SeatedSession) async {
+            guard let coordinator = await seated.session.systemCoordinator else { return }
+            var configuration = SystemCoordinator.Configuration()
+            configuration.spatialTemplatePreference = .sideBySide
+            configuration.supportsGroupImmersiveSpace = false
+            coordinator.configuration = configuration
+        }
+    #endif
 
     private func reset() {
         for task in tasks { task.cancel() }
