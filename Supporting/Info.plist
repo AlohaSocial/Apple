@@ -9,6 +9,10 @@
 	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<key>AlohaKeychainSharingEnabled</key>
 	<string>$(ALOHA_SHARED_CONTAINER)</string>
+	<!-- Follows ALOHA_SHAREPLAY, the switch that adds the Group Activities
+	     entitlement: Watch together is only offered by a build entitled to it. -->
+	<key>AlohaSharePlayEnabled</key>
+	<string>$(ALOHA_SHAREPLAY)</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>social.aloha.app.refresh</string>

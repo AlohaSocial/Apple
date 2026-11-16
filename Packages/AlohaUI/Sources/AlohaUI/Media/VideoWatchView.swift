@@ -453,6 +453,18 @@ public struct VideoWatchView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Share", comment: "Status action"))
 
+                if let video = SharedVideo(status) {
+                    WatchTogetherButton(
+                        activity: WatchTogetherActivity(
+                            kind: .video, videos: [video], startIndex: 0)
+                    ) {
+                        pillLabel(
+                            symbol: "shareplay",
+                            title: Text("Watch together", comment: "SharePlay action"))
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 Menu {
                     StatusMenu(status: status, onAction: onAction)
                 } label: {

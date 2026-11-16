@@ -247,6 +247,9 @@ struct ThemedAppShell: View {
                     StoryComposerSheet(session: session, onPosted: {})
                 }
             }
+            // SharePlay: a session started here or joined from a FaceTime
+            // call opens the shared player over the shell.
+            .watchTogetherPresentation()
             .onReceive(NotificationCenter.default.publisher(for: .alohaOpenRoute)) { note in
                 // Where Handoff arrives.
                 guard initialRoute == nil else { return }
