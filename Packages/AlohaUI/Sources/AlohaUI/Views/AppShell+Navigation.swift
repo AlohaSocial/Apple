@@ -54,6 +54,11 @@ extension ThemedAppShell {
                 .collections(accountID: nil), .notifications, .bookmarks, .settings,
                 .search(query: nil),
             ]
+        #elseif os(visionOS)
+            // Only the places that are tabs; the rest of what a sidebar holds
+            // is in the account menu and pushed onto the tab in front. A
+            // selection with no tab of its own shows an empty window.
+            return VisionShell.tabRoutes
         #else
             return SidebarItem.sidebarRoutes
         #endif
@@ -119,6 +124,8 @@ extension ThemedAppShell {
             } else {
                 return AnyView(tabShell(session))
             }
+        #elseif os(visionOS)
+            return AnyView(visionShell(session))
         #else
             return AnyView(splitShell(session))
         #endif

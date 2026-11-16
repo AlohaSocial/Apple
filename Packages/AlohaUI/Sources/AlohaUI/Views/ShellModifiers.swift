@@ -20,6 +20,11 @@ extension View {
     var readerColumn: some View {
         #if os(iOS)
             modifier(ReaderColumn(width: 820))
+        #elseif os(visionOS)
+            // A little wider than the Mac's: text is read from further away,
+            // at a larger size, and the window is sized to the column
+            // (`AlohaSocialApp`) rather than the column floating in it.
+            modifier(ReaderColumn(width: 760))
         #else
             modifier(ReaderColumn(width: 680))
         #endif

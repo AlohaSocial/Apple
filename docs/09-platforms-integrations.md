@@ -41,13 +41,29 @@ Native SwiftUI on AppKit. **Not Catalyst.**
 
 ## 3. visionOS
 
-- Main window as the split view; media viewer and video player open as separate
-  windows so a video can be parked in space while reading continues.
+- Main window as a `TabView`, which visionOS draws as the tab bar at the
+  window's leading edge (`visionShell`): the feeds, Activities, Direct
+  messages, Discover and Search. Lists, albums and the account's places are
+  in the account menu and pushed on the tab in front. The window opens
+  portrait, sized to the reading column (760pt).
+- Media viewer and video player open as separate windows so a video can be
+  parked in space while reading continues.
 - Shorts mode as a full ornamented window, not immersive — a vertical feed in an
   immersive space is uncomfortable and nobody asked for it.
 - Hover effects on every interactive element, `.hoverEffect(.highlight)` on rows.
 - Glass background materials as the platform provides; no custom translucency.
-- Depth used sparingly: the media viewer elevates, nothing else does.
+  One palette (`AlohaTheme.glassPalette`) whatever theme was chosen elsewhere,
+  and no theme picker: white text at fixed strengths on the glass, the dark
+  themes' tints.
+- Depth where the content has it, in the media viewer: a spatial photo is shown
+  in its own two eyes (`ImagePresentationComponent`, `.spatialStereo`), any
+  other photo can be made into a spatial scene on the device ("3D",
+  `.spatial3D`), and a spatial video plays in depth (`VideoPlayerComponent`).
+  An ordinary video keeps the system player. Nothing else in the app has depth.
+- SharePlay "Watch together" seats the call's spatial Personas side by side,
+  facing the shared player (`SystemCoordinator`, `.sideBySide`).
+- Layered app icon (`AppIcon-Vision`): sand ground, flower, @, from
+  `tools/make-icons.sh`.
 - No immersive spaces in 1.0.
 
 ## 4. watchOS

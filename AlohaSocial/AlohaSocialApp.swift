@@ -60,6 +60,11 @@ struct AlohaSocialApp: App {
         .commands { AlohaCommands() }
         #if os(macOS)
             .defaultSize(width: 1100, height: 780)
+        #elseif os(visionOS)
+            // Portrait, the width of the reading column and a little over:
+            // a feed is read downwards, and the default landscape window left
+            // the posts a strip down the middle of a sheet of glass.
+            .defaultSize(width: 880, height: 1080)
         #endif
 
         // A thread or a profile in a window of its own, from "Open in New

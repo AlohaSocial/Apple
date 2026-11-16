@@ -350,6 +350,9 @@ extension ThemedAppShell {
                     showsBrowseDestinations: isCompact, usesCompactMenu: !isCompact)
             }
         }
+    #endif
+
+    #if os(iOS) || os(visionOS)
         /// A tab's screen, built the first time the tab is selected.
         ///
         /// `TabView` evaluates the content of every tab while it is being
@@ -357,8 +360,9 @@ extension ThemedAppShell {
         /// the whole destination switch, and on a real iPad constructing all
         /// of them at once overran the main thread's stack before the first
         /// frame was drawn. The screen is kept once built, so leaving a tab
-        /// and coming back still finds it where it was.
-        private struct LazyShellContent<Content: View>: View {
+        /// and coming back still finds it where it was. The visionOS shell's
+        /// tabs are built the same way, for the same reason.
+        struct LazyShellContent<Content: View>: View {
             let isSelected: Bool
             @ViewBuilder let content: () -> Content
             @State private var hasLoaded = false
@@ -632,7 +636,7 @@ extension ThemedAppShell {
     }
 
     @ViewBuilder
-    private func modeRoot(_ mode: FeedMode, session: AccountSession) -> some View {
+    func modeRoot(_ mode: FeedMode, session: AccountSession) -> some View {
         switch mode {
         case .shorts:
             // Full screen, and there is no source to choose in it.
