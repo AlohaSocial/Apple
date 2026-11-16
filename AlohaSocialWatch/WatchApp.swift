@@ -58,6 +58,22 @@ struct WatchRootView: View {
                                         "Notifications", comment: "Watch notifications screen title"
                                     ))
                             }
+                            // Reading is at the top; what a person does —
+                            // answer a message, write a post — is at the
+                            // foot, under the thumb.
+                            ToolbarItemGroup(placement: .bottomBar) {
+                                NavigationLink(value: WatchDestination.messages) {
+                                    Image(systemName: AlohaSymbol.directMessage)
+                                }
+                                .accessibilityLabel(
+                                    Text("Direct messages", comment: "Watch messages screen title"))
+                                Spacer()
+                                NavigationLink(value: WatchDestination.compose) {
+                                    Image(systemName: "square.and.pencil")
+                                }
+                                .accessibilityLabel(
+                                    Text("New post", comment: "Watch compose screen title"))
+                            }
                         }
                 }
             }
@@ -67,6 +83,8 @@ struct WatchRootView: View {
                 case .mentions: WatchMentionsView()
                 case .notifications: WatchNotificationsView()
                 case .status(let id): WatchStatusLoader(statusID: id)
+                case .messages: WatchConversationsView()
+                case .compose: WatchComposeView()
                 }
             }
         }
@@ -89,11 +107,14 @@ enum WatchDestination: Hashable {
     case mentions
     case notifications
     case status(String)
+    case messages
+    case compose
 
     init(_ link: WatchComplicationLink) {
         switch link {
         case .mentions: self = .mentions
         case .status(let id): self = .status(id)
+        case .messages: self = .messages
         }
     }
 }

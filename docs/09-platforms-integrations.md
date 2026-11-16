@@ -61,6 +61,12 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
 - Actions: favourite, boost, bookmark, follow-back.
 - Reply composer: dictation, Scribble, emoji, and up to 8 user-defined canned
   responses edited on the phone.
+- Direct messages: the conversations newest first, with an unread dot and
+  the last message's first lines; a conversation's messages oldest first; a
+  reply by the same text entry, addressed to everybody in the conversation.
+  Starting a conversation with somebody new is the phone's.
+- New post: words only, shown before they are sent because dictation
+  mishears, with a choice of Public, Unlisted or Followers only.
 - Complications (`AlohaWatchWidgets`, a WidgetKit extension embedded in the
   watch app): unread notification count (`.accessoryCircular`,
   `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`) and the
@@ -69,7 +75,7 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
   mentions list. Unread direct messages (`.accessoryCircular`,
   `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`): a paper
   plane and the number of conversations with something unread. A tap opens
-  the watch app, which has no messages list of its own.
+  the direct messages list.
 - The complications draw from one snapshot in the watch's app group
   (`WatchComplicationSnapshot`), kept current three ways: the watch app
   refreshes it whenever it comes to the front; the phone pushes the paired

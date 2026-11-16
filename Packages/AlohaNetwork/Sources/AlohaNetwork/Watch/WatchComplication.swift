@@ -220,6 +220,8 @@ public enum WatchComplicationRefresher {
 public enum WatchComplicationLink: Hashable, Sendable {
     case mentions
     case status(String)
+    /// The direct messages list, which the unread-messages complication opens.
+    case messages
 
     private static let scheme = "alohasocial"
     private static let host = "watch"
@@ -231,6 +233,7 @@ public enum WatchComplicationLink: Hashable, Sendable {
         switch self {
         case .mentions: components.path = "/mentions"
         case .status(let id): components.path = "/status/\(id)"
+        case .messages: components.path = "/messages"
         }
         // Every part is a fixed word or a server id; the fallback is only
         // there to keep the type non-optional.
@@ -242,6 +245,7 @@ public enum WatchComplicationLink: Hashable, Sendable {
         let parts = url.pathComponents.filter { $0 != "/" }
         switch parts.first {
         case "mentions" where parts.count == 1: self = .mentions
+        case "messages" where parts.count == 1: self = .messages
         case "status" where parts.count == 2 && !parts[1].isEmpty: self = .status(parts[1])
         default: return nil
         }

@@ -15,7 +15,7 @@ import Observation
 /// the only copy of anything.
 nonisolated enum WatchCache {
     enum Kind: String, CaseIterable {
-        case timeline, mentions, notifications
+        case timeline, mentions, notifications, conversations
     }
 
     /// One list, with whose it is and when it was fetched.

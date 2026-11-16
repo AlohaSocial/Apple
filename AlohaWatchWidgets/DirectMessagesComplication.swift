@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaNetwork
 import SwiftUI
 import WidgetKit
 
@@ -17,6 +18,9 @@ struct DirectMessagesComplication: Widget {
             entry in
             DirectMessagesComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                // The messages themselves, now that the watch has a list of
+                // them to open.
+                .widgetURL(WatchComplicationLink.messages.url)
         }
         .configurationDisplayName(
             Text("Direct messages", comment: "Watch complication name")
