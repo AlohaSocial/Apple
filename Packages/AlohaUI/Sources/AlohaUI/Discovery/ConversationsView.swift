@@ -139,9 +139,24 @@ public struct ConversationsView: View {
                     if visible.isEmpty && !isLoading && errorMessage == nil { emptyState }
                 }
             } header: {
-                filterBar
+                #if !os(macOS)
+                    filterBar
+                #endif
             }
         }
+        .toolbarFilter(
+            Text("Filter", comment: "Conversations filter picker"),
+            selection: $filter,
+            options: [
+                (.all, String(localized: "All", comment: "Conversations filter")),
+                (
+                    .unread,
+                    String(
+                        localized: "Unread (\(unreadCount))",
+                        comment: "Conversations filter with count")
+                ),
+            ]
+        )
         .listStyle(.plain)
         .alohaGround(palette)
         .searchable(
@@ -157,10 +172,13 @@ public struct ConversationsView: View {
                     Label {
                         Text("New message", comment: "Conversations action")
                     } icon: {
-                        Image(systemName: "square.and.pencil")
+                        // Not the pencil: on the Mac that is "New post",
+                        // one button along.
+                        Image(systemName: "plus.bubble")
                     }
                 }
                 .accessibilityLabel(Text("New message", comment: "Conversations action"))
+                .help(Text("New message", comment: "Conversations action"))
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button {
@@ -303,12 +321,16 @@ public struct ConversationsView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            if filter == .unread {
-                Text("No unread messages", comment: "Empty unread conversations")
-            } else if !query.isEmpty {
-                Text("No conversations found", comment: "Empty conversations search")
-            } else {
-                Text("No conversations", comment: "Empty conversations")
+            Label {
+                if filter == .unread {
+                    Text("No unread messages", comment: "Empty unread conversations")
+                } else if !query.isEmpty {
+                    Text("No conversations found", comment: "Empty conversations search")
+                } else {
+                    Text("No conversations", comment: "Empty conversations")
+                }
+            } icon: {
+                Image(systemName: AlohaSymbol.directMessage)
             }
         } description: {
             if filter == .all && query.isEmpty {
@@ -326,6 +348,7 @@ public struct ConversationsView: View {
                 .buttonStyle(.borderedProminent)
             }
         }
+        .frame(maxWidth: .infinity)
         .listRowBackground(palette.background)
         .listRowSeparator(.hidden)
     }

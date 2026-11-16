@@ -35,8 +35,31 @@ extension View {
             } else {
                 self
             }
+        #elseif os(macOS)
+            // The Mac has no zoom transition, and its viewer is a sheet: the
+            // picture settles into place inside it instead of being there
+            // all at once.
+            modifier(MediaSettleIn())
         #else
             self
         #endif
     }
 }
+
+#if os(macOS)
+    private struct MediaSettleIn: ViewModifier {
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @State private var hasSettled = false
+
+        func body(content: Content) -> some View {
+            content
+                .scaleEffect(hasSettled || reduceMotion ? 1 : 0.94)
+                .opacity(hasSettled ? 1 : 0)
+                .onAppear {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        hasSettled = true
+                    }
+                }
+        }
+    }
+#endif

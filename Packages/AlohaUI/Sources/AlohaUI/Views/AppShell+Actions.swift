@@ -20,6 +20,8 @@ extension ThemedAppShell {
         switch action {
         case .open(let status):
             push(.thread(statusID: status.displayed.id))
+        case .peek(let status):
+            peeked = PeekedRoute(route: .thread(statusID: status.displayed.id))
         case .watch(let status):
             push(.video(statusID: status.displayed.id))
         case .openProfile(let account):

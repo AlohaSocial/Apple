@@ -8,6 +8,9 @@ import SwiftUI
 struct AccountMenuButton: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.signInAgain) private var signInAgain
+    #if os(macOS)
+        @Environment(\.openWindow) private var openWindow
+    #endif
 
     let session: AccountSession
     let onOpen: (Route) -> Void
@@ -54,7 +57,9 @@ struct AccountMenuButton: View {
                 #if os(macOS)
                     // The Mac has a Settings window (⌘,), and settings that
                     // open inside the main window are a phone's habit.
-                    SettingsLink {
+                    Button {
+                        openWindow(id: AlohaWindow.settings)
+                    } label: {
                         Label {
                             Text("Settings…", comment: "Account menu item")
                         } icon: {
@@ -131,7 +136,15 @@ struct AccountMenuButton: View {
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        #if os(macOS)
+            // A borderless menu on the Mac is a pop-up button, which keeps a
+            // label's text and drops its picture; a plain button menu draws
+            // the label as it is written.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+        #else
+            .menuStyle(.borderlessButton)
+        #endif
         .menuIndicator(showsName ? .visible : .hidden)
         .accessibilityLabel(accessibilityLabel)
         .help(Text("Account", comment: "Account menu section"))

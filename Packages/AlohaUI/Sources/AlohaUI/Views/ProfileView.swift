@@ -163,8 +163,40 @@ public struct ProfileView: View {
                 }
             }
         }
+        #if os(macOS)
+            .background(alignment: .top) { backdrop(account) }
+        #endif
         .background(palette.background)
     }
+
+    #if os(macOS)
+        /// The person's banner again, out of focus, behind the top of the
+        /// window: across the margins and up under the toolbar, so the
+        /// profile's own colour is what the glass above it picks up. Wider
+        /// than the reading column on purpose, and faded out before the posts.
+        private func backdrop(_ account: Account) -> some View {
+            RemoteImage(url: account.preferredHeaderURL) {
+                LinearGradient(
+                    colors: [
+                        Monogram.colour(for: account.acct, lightness: 0.46),
+                        Monogram.colour(for: account.acct, lightness: 0.30),
+                    ],
+                    startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            .frame(width: 2600, height: 340)
+            .clipped()
+            .blur(radius: 70)
+            .opacity(0.55)
+            .mask {
+                LinearGradient(
+                    colors: [.black, .black.opacity(0.6), .clear],
+                    startPoint: .top, endPoint: .bottom)
+            }
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    #endif
 
     private var tabBar: some View {
         ScrollView(.horizontal) {

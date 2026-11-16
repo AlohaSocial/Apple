@@ -391,34 +391,67 @@ extension ThemedAppShell {
             )
             .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
-            NavigationStack(path: sidebarPath(sidebarItem)) {
-                Group {
-                    switch sidebarItem {
-                    case .mode(let mode):
-                        modeRoot(mode, session: session)
-                    case .route(let route):
-                        destination(route, session: session, isRoot: true)
+            HStack(spacing: 0) {
+                NavigationStack(path: sidebarPath(sidebarItem)) {
+                    Group {
+                        switch sidebarItem {
+                        case .mode(let mode):
+                            modeRoot(mode, session: session)
+                        case .route(let route):
+                            destination(route, session: session, isRoot: true)
+                        }
                     }
+                    // On the root; a pushed screen carries its own (`destination`).
+                    // Declared once each, rather than on the stack *and* on every
+                    // screen, which drew two "New post" buttons side by side.
+                    .toolbar { composeToolbar }
+                    .modifier(
+                        GlobalSearchField(isShown: !hasOwnSearchField(sidebarItem)) { query in
+                            sidebarItem = .route(.search(query: query))
+                        }
+                    )
+                    .navigationDestination(for: Route.self) { destination($0, session: session) }
                 }
-                // On the root; a pushed screen carries its own (`destination`).
-                // Declared once each, rather than on the stack *and* on every
-                // screen, which drew two "New post" buttons side by side.
-                .toolbar { composeToolbar }
-                .navigationDestination(for: Route.self) { destination($0, session: session) }
+                // A stack per sidebar row, as on iPad: each row keeps what was
+                // pushed on it. A fresh stack for each row rather than one stack
+                // whose path is swapped, which would animate as a pop and a push.
+                .id(sidebarItem)
+                #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                #endif
+                // The window's own ground, not the system's. A reading column is
+                // centred in this space, and without this the space around it was
+                // window background — a cool white the app never uses — so the
+                // column read as a sheet of paper dropped on the wrong desk.
+                .alohaWindowGround(palette)
+                #if os(macOS)
+                    if showsDetailColumn, let opened = detailPaths[sidebarItem],
+                        let top = opened.last
+                    {
+                        Divider().ignoresSafeArea()
+                        macDetailColumn(top, depth: opened.count, session: session)
+                            .frame(
+                                width: ShellLayout.detailColumnWidth(forWindowWidth: windowWidth)
+                            )
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                #endif
             }
-            // A stack per sidebar row, as on iPad: each row keeps what was
-            // pushed on it. A fresh stack for each row rather than one stack
-            // whose path is swapped, which would animate as a pop and a push.
-            .id(sidebarItem)
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
+            #if os(macOS)
+                .animation(
+                    .smooth(duration: 0.25), value: detailPaths[sidebarItem]?.isEmpty ?? true)
             #endif
-            // The window's own ground, not the system's. A reading column is
-            // centred in this space, and without this the space around it was
-            // window background — a cool white the app never uses — so the
-            // column read as a sheet of paper dropped on the wrong desk.
-            .alohaWindowGround(palette)
         }
+        #if os(macOS)
+            // The whole window's width, sidebar included: whether there is
+            // room for a post beside the list it was opened from.
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: { width in
+                windowWidth = width
+                isDetailColumnAvailable = width >= ShellLayout.macDetailColumnMinimumWidth
+            }
+        #endif
         // A sidebar the width of its content, not the default narrow sliver:
         // "Direct messages" and "Waiting to be looked at" are two-line labels at the
         // default, and this is the navigation for a reading app on a big
@@ -436,24 +469,101 @@ extension ThemedAppShell {
         }
     }
 
+    #if os(macOS)
+        /// The post or profile opened from the list, beside it, in a window
+        /// wide enough for both — the iPad's detail column on the Mac.
+        ///
+        /// Not a navigation stack of its own: a Mac window has one toolbar,
+        /// and a second stack would put its title and buttons into it beside
+        /// the list's. The column carries its own small bar instead — back
+        /// through what was opened inside it, and close.
+        private func macDetailColumn(
+            _ route: Route, depth: Int, session: AccountSession
+        ) -> some View {
+            var detail = self
+            detail.column = .detail
+            return VStack(spacing: 0) {
+                HStack(spacing: AlohaMetrics.space2) {
+                    if depth > 1 {
+                        Button {
+                            goBack()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+                        .help(Text("Back", comment: "Menu item"))
+                    }
+                    Spacer()
+                    Button {
+                        closeDetailColumn(sidebarItem)
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .help(Text("Close", comment: "Detail column action"))
+                    .keyboardShortcut(.cancelAction)
+                }
+                .buttonStyle(.borderless)
+                .padding(.horizontal, AlohaMetrics.space3)
+                .padding(.vertical, AlohaMetrics.space2)
+
+                Divider()
+
+                detail.destination(route, session: session)
+                    // A different post is a different screen, as on iPad.
+                    .id(route)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .background(palette.background)
+        }
+    #endif
+
+    /// The screens that search themselves — conversations, people, search —
+    /// and so show their own field where the app-wide one would be.
+    private func hasOwnSearchField(_ item: SidebarItem) -> Bool {
+        switch item {
+        case .route(.conversations), .route(.explore), .route(.search): true
+        default: false
+        }
+    }
+
     @ToolbarContentBuilder
     var composeToolbar: some ToolbarContent {
-        ToolbarItem(id: "compose-post", placement: composeToolbarPlacement) {
-            Button {
-                composing = ComposerPresentation(fromComposeButton: true)
-            } label: {
-                Label {
-                    Text("New post", comment: "Toolbar action")
-                } icon: {
-                    Image(systemName: AlohaSymbol.compose)
-                }
-            }
-            .keyboardShortcut("n", modifiers: .command)
-            .help(Text("New post", comment: "Toolbar action"))
-        }
         #if os(iOS)
+            ToolbarItem(id: "compose-post", placement: composeToolbarPlacement) {
+                composeButton
+            }
             .matchedTransitionSource(id: ComposeTransition.sourceID, in: composeTransition)
+        #else
+            // No identifier off iOS. The root screen and a pushed one each
+            // declare this button, and for the length of a push both are in
+            // the window's toolbar at once: an `NSToolbar` refuses two items
+            // with one identifier, by exception, so opening a profile or a
+            // thread from a timeline took the Mac app down.
+            ToolbarItem(placement: composeToolbarPlacement) {
+                composeButton
+            }
         #endif
+    }
+
+    private var composeButton: some View {
+        Button {
+            composing = ComposerPresentation(fromComposeButton: true)
+        } label: {
+            Label {
+                Text("New post", comment: "Toolbar action")
+            } icon: {
+                #if os(macOS)
+                    // The pencil, not a plus: a Mac toolbar holds a screen's
+                    // own "new" beside this one — a new album, a new message —
+                    // and two plus signs side by side said nothing about
+                    // which was which.
+                    Image(systemName: "square.and.pencil")
+                #else
+                    Image(systemName: AlohaSymbol.compose)
+                #endif
+            }
+        }
+        .keyboardShortcut("n", modifiers: .command)
+        .help(Text("New post", comment: "Toolbar action"))
     }
 
     private var composeToolbarPlacement: ToolbarItemPlacement {
@@ -531,7 +641,13 @@ extension ThemedAppShell {
                 ) { handle($0, session: session) }
                 // The home mode is whichever of the three you are reading, so
                 // the title says which rather than always "My Feed".
-                .navigationTitle(sourceTitle)
+                #if os(macOS)
+                    // The Mac's toolbar control says which source; the title
+                    // says which screen, as on every other one.
+                    .navigationTitle(modeTitle(mode))
+                #else
+                    .navigationTitle(sourceTitle)
+                #endif
                 #if !os(iOS)
                     .readerColumn
                 #endif
@@ -641,4 +757,39 @@ extension ThemedAppShell {
 enum SearchTabScope: Hashable {
     case search
     case discover
+}
+
+/// The Mac's one search field: at the trailing end of the toolbar, on every
+/// screen that has no search of its own.
+///
+/// It used to live in the sidebar, which put two fields on screen wherever a
+/// screen searched itself — "Search" on the left and "Search people" on the
+/// right. One place, and what it searches follows the screen.
+private struct GlobalSearchField: ViewModifier {
+    let isShown: Bool
+    let onSubmit: (String) -> Void
+
+    @State private var query = ""
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+            if isShown {
+                content
+                    .searchable(
+                        text: $query, placement: .toolbar,
+                        prompt: Text("Search", comment: "Sidebar search field")
+                    )
+                    .onSubmit(of: .search) {
+                        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        query = ""
+                        onSubmit(trimmed)
+                    }
+            } else {
+                content
+            }
+        #else
+            content
+        #endif
+    }
 }

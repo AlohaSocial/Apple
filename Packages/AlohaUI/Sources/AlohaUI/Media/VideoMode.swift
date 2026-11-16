@@ -52,7 +52,7 @@ public struct VideoModeView: View {
 
     public var body: some View {
         ScrollView {
-            LazyVStack(spacing: isCompact ? AlohaMetrics.space5 : AlohaMetrics.space4) {
+            cardContainer {
                 if !continueWatching.isEmpty { continueShelf }
 
                 ForEach(statuses) { status in
@@ -65,6 +65,7 @@ public struct VideoModeView: View {
                         showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
+                    .alohaHoverLift()
                     .onAppear {
                         if status.id == statuses.last?.id {
                             Task { await model.loadOlder() }
@@ -101,6 +102,25 @@ public struct VideoModeView: View {
             await model.appear()
             await loadContinueWatching()
         }
+    }
+
+    /// A column on a phone and an iPad; on the Mac a grid of tiles. One
+    /// video across a Mac window was a single cropped frame the height of
+    /// the screen — a wall, where a shelf of things to choose from belongs.
+    @ViewBuilder
+    private func cardContainer(@ViewBuilder content: () -> some View) -> some View {
+        #if os(macOS)
+            LazyVGrid(
+                columns: [
+                    GridItem(
+                        .adaptive(minimum: 280, maximum: 460), spacing: AlohaMetrics.space4,
+                        alignment: .top)
+                ],
+                alignment: .leading, spacing: AlohaMetrics.space5, content: content)
+        #else
+            LazyVStack(
+                spacing: isCompact ? AlohaMetrics.space5 : AlohaMetrics.space4, content: content)
+        #endif
     }
 
     private var continueShelf: some View {

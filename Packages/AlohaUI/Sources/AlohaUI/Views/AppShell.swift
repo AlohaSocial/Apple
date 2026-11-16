@@ -84,6 +84,12 @@ struct ThemedAppShell: View {
     @Namespace var composeTransition
     @State private var isCelebrating = false
     @State var mediaPresentation: MediaPresentation?
+    /// The post being looked at over the list it is in (`StatusRowAction.peek`).
+    @State var peeked: PeekedRoute?
+    /// Whether the Mac's "Go to…" field is up (⌘K).
+    @State var isJumping = false
+    /// The window's width on the Mac, for the detail column beside a list.
+    @State var windowWidth: CGFloat = 0
     @State var reportTarget: ReportTarget?
     @State private var hasAcceptedTerms = TermsGate.hasAccepted
     @State var translator = Translator()
@@ -170,6 +176,26 @@ struct ThemedAppShell: View {
                     sheet: $sheet)
             )
             .modifier(ShellAlerts(deleting: $deleting, confirming: $confirming))
+            #if os(macOS)
+                .overlay {
+                    if isJumping, let session = environment.activeSession {
+                        CommandPalette(items: jumpItems(session)) {
+                            open($0)
+                        } onClose: {
+                            withAnimation(.easeOut(duration: 0.12)) { isJumping = false }
+                        }
+                    }
+                }
+            #endif
+            .sheet(item: $peeked) { peeked in
+                if let session = environment.activeSession {
+                    PeekSheet {
+                        destination(peeked.route, session: session)
+                    } onClose: {
+                        self.peeked = nil
+                    }
+                }
+            }
             // 9: the Translation framework's session is attached to a view, so
             // the host sits where every status can reach it.
             .translationHost(translator)

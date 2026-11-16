@@ -6,6 +6,8 @@ import SwiftUI
 public enum AlohaWindow {
     /// The main window: the whole app, opened by File > New Window.
     public static let main = "main"
+    /// The Mac's Settings window (`SettingsWindowView`).
+    public static let settings = "settings"
 }
 
 /// One destination in a window of its own — a thread or a profile kept open
@@ -73,6 +75,8 @@ public struct ShellCommands {
     public var open: (Route) -> Void
     public var back: () -> Void
     public var canGoBack: Bool
+    /// Opens the Mac's "Go to…" field (`CommandPalette`).
+    public var jump: () -> Void = {}
     /// The sidebar's places in its order, for ⌘1–⌘9 (`ShellPlace`).
     public var places: [ShellPlace] = []
 }

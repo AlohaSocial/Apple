@@ -115,10 +115,14 @@ extension ThemedAppShell {
             SafetyListsView(session: session)
                 .readerColumn
         case .conversations:
-            ConversationsView(
-                session: session,
-                onAction: { handle($0, session: session) },
-                onOpen: { open($0) })
+            #if os(macOS)
+                ConversationsSplitView(session: session) { handle($0, session: session) }
+            #else
+                ConversationsView(
+                    session: session,
+                    onAction: { handle($0, session: session) },
+                    onOpen: { open($0) })
+            #endif
         case .conversation(let conversation):
             ConversationThreadView(conversation: conversation, session: session) {
                 handle($0, session: session)

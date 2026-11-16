@@ -49,6 +49,11 @@ enum ShellLayout {
     /// detail column and the sidebar take their share.
     nonisolated static let detailColumnMinimumWidth: CGFloat = 1100
 
+    /// The same on the Mac, where the sidebar is always showing and takes
+    /// its share first: a window has to be wider before a list and a post
+    /// both fit at a readable measure.
+    nonisolated static let macDetailColumnMinimumWidth: CGFloat = 1320
+
     /// The detail column's width for a window this wide: enough for a
     /// thread at a readable measure, never so much that the list it was
     /// opened from becomes the narrow one.
