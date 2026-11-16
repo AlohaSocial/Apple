@@ -101,6 +101,16 @@ Every animation respects `accessibilityReduceMotion`, which replaces slides and
 scales with cross-fades and disables the Shorts auto-advance animation. Haptics
 respect the system setting and have a separate app toggle.
 
+**The action signatures.** Favouriting bounces the heart and throws a ring and
+a fan of small hearts; boosting turns the arrows once round; bookmarking
+throws sparks — each in the action's colour, landing with the tick and tap
+`Senses` plays for the same action. A double-tap like in Photos and Shorts
+throws the same hearts around its big heart, and taps once, through `Senses`,
+rather than with a second haptic of its own. The burst is mounted only while it
+plays (`CelebrationBurst`) — an idle row carries none of it, so the timeline's
+scroll cost is unchanged — and under Reduce Motion nothing moves: the glyph
+fills and takes its tint, which is the whole answer.
+
 ### The accent colour
 
 **The server's, not a preference.** Read from Nextcloud's own `theming`
