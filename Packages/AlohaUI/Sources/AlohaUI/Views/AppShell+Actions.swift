@@ -90,6 +90,8 @@ extension ThemedAppShell {
             sheet = .addToCollection(status.displayed)
         case .addToList(let account):
             sheet = .addToList(account)
+        case .shareImage(let status):
+            sheet = .shareImage(status)
 
         default:
             Task { await StatusActions.perform(action, session: session) }

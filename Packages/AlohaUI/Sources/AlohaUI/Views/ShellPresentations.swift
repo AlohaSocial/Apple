@@ -59,6 +59,7 @@ enum ShellSheet: Identifiable {
     case tagPeople(Status)
     case addToCollection(Status)
     case addToList(Account)
+    case shareImage(Status)
 
     var id: String {
         switch self {
@@ -68,6 +69,17 @@ enum ShellSheet: Identifiable {
         case .tagPeople(let status): "tag.\(status.id)"
         case .addToCollection(let status): "collection.\(status.id)"
         case .addToList(let account): "list.\(account.id)"
+        case .shareImage(let status): "image.\(status.id)"
+        }
+    }
+
+    /// Most are a short list to glance at or pick from: half height first,
+    /// with the rest a drag away rather than a whole screen for four rows.
+    /// The post drawn as a picture needs the height to be seen whole.
+    var detents: Set<PresentationDetent> {
+        switch self {
+        case .shareImage: [.large]
+        default: [.medium, .large]
         }
     }
 }
@@ -152,12 +164,11 @@ struct ShellSheets: ViewModifier {
                             CollectionPickerSheet(status: status, session: session)
                         case .addToList(let account):
                             ListMembershipSheet(account: account, session: session)
+                        case .shareImage(let status):
+                            ShareImageSheet(status: status, session: session)
                         }
                     }
-                    // Each is a short list to glance at or pick from: half
-                    // height first, with the rest a drag away rather than a
-                    // whole screen for four rows.
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents(sheet.detents)
                     .presentationDragIndicator(.visible)
                 }
             }
