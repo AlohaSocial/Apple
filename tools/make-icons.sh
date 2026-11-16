@@ -72,11 +72,35 @@ for size in 16 32 128 256 512; do
 done
 
 # Alternates are their own icon sets in the same catalog, which is what
-# `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` expects. Each recolours the
-# flower; the colours match `AlohaIconVariant.swatch`.
-for colourway in Ocean:#1C78C7 Forest:#218054 Grape:#784ABF Rose:#D13D73 Slate:#546173; do
-    name=${colourway%%:*}
-    flower=${colourway#*:}
+# `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` expects (the list lives in
+# Supporting/Aloha.xcconfig as ALOHA_ALTERNATE_APP_ICONS). Each set carries
+# all three Home Screen appearances, so an alternate does not stay a light
+# tile on a dark Home Screen, or lose the system tint when it is tinted.
+# The colours match `AlohaIconVariant` in AlohaDesign.
+
+# preview <in.svg> <image set name>
+#
+# What the Settings picker shows. An alternate icon is an *icon* in the
+# catalog, which `UIImage(named:)` does not reliably hand back, so each one
+# also goes out as an ordinary image at the size the picker draws it.
+previews=$catalog/AppIconPreviews
+preview() {
+    preview_dir=$previews/$2.imageset
+    mkdir -p "$preview_dir"
+    render "$1" 180 "$preview_dir/$2.png"
+    cat >"$preview_dir/Contents.json" <<EOF
+{
+  "images" : [
+    { "filename" : "$2.png", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+EOF
+}
+
+# alternate <Name> <ground> <flower> <@> <dark ground> <dark flower> <dark @>
+alternate() {
+    name=$1
     set_dir=$catalog/AlohaIcon-$name.appiconset
     mkdir -p "$set_dir"
     cat >"$set_dir/Contents.json" <<'EOF'
@@ -84,6 +108,30 @@ for colourway in Ocean:#1C78C7 Forest:#218054 Grape:#784ABF Rose:#D13D73 Slate:#
   "images" : [
     {
       "filename" : "icon-1024.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "icon-1024-dark.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "tinted"
+        }
+      ],
+      "filename" : "icon-1024-tinted.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -95,8 +143,36 @@ for colourway in Ocean:#1C78C7 Forest:#218054 Grape:#784ABF Rose:#D13D73 Slate:#
   }
 }
 EOF
-    recolour "$sand" "$flower" "$white" "$work/$name.svg"
+    recolour "$2" "$3" "$4" "$work/$name.svg"
     render "$work/$name.svg" 1024 "$set_dir/icon-1024.png"
+    recolour "$5" "$6" "$7" "$work/$name-dark.svg"
+    render "$work/$name-dark.svg" 1024 "$set_dir/icon-1024-dark.png"
+    # Tinted is luminance only, so every alternate shares the primary's.
+    cp "$primary/icon-1024-tinted.png" "$set_dir/icon-1024-tinted.png"
+    preview "$work/$name.svg" "AppIconPreview-$name"
+}
+
+preview "$work/aloha.svg" AppIconPreview-Aloha
+
+# The colourways' dark appearance: a near-black ground, so every flower
+# colour sits on it the same way.
+night='#17191C'
+
+# The colourways: the flower recoloured on the sand ground.
+for colourway in Ocean:#1C78C7 Forest:#218054 Grape:#784ABF Rose:#D13D73 Slate:#546173; do
+    name=${colourway%%:*}
+    flower=${colourway#*:}
+    alternate "$name" "$sand" "$flower" "$white" "$night" "$flower" "$white"
 done
+
+# Midnight: the primary's own dark appearance, chosen for every appearance.
+alternate Midnight '#082A33' "$coral" "$white" '#082A33' "$coral" "$white"
+
+# Coral: the colours turned inside out — a coral tile with a sand flower,
+# and the @ cut back to the tile.
+alternate Coral "$coral" "$sand" "$coral" '#9E3A2A' "$sand" '#9E3A2A'
+
+# Mono: graphite and paper, nothing else — the one-colour mark on a tile.
+alternate Mono '#F4F4F2' '#1F1F21' '#F4F4F2' '#1F1F21' '#F4F4F2' '#1F1F21'
 
 echo "icons written"

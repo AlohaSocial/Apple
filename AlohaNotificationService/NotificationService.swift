@@ -56,6 +56,31 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             // presented.
             bestAttempt.title = ""
             bestAttempt.body = ""
+        } else if let resolved, resolved.isSummary {
+            // A digest or the hourly bundle: the server's own sentence ("12
+            // new notifications…"), quiet, stacked on the account's earlier
+            // summaries, and opening the notifications list — there is no
+            // one post it is about, so it carries none.
+            bestAttempt.title = resolved.title
+            if let subtitle = resolved.subtitle { bestAttempt.subtitle = subtitle }
+            bestAttempt.categoryIdentifier = NotificationAlert.genericCategory
+            bestAttempt.interruptionLevel = .passive
+            bestAttempt.sound = nil
+            // Below a conversation in a notification summary: it is the
+            // hour's mail, not somebody talking to you.
+            bestAttempt.relevanceScore = 0.2
+            bestAttempt.threadIdentifier = NotificationAlert.summaryThreadIdentifier(
+                accountID: resolved.accountID)
+            bestAttempt.filterCriteria = resolved.accountID.uuidString
+            for (key, value) in NotificationAlert.userInfo(
+                accountID: resolved.accountID, statusID: nil,
+                notificationID: resolved.notificationID)
+            {
+                bestAttempt.userInfo[key] = value
+            }
+            if let nid = resolved.nextcloudID {
+                bestAttempt.userInfo[NotificationAlert.nextcloudNotificationIDKey] = nid
+            }
         } else if let resolved {
             bestAttempt.title = resolved.title
             bestAttempt.body = resolved.body
@@ -64,7 +89,8 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
             // category carries Reply, Favourite and Boost, the thread groups
             // a conversation, the account is what a Focus filters on, and the
             // status id is what a tap opens.
-            bestAttempt.categoryIdentifier = NotificationAlert.category(for: resolved.kind)
+            bestAttempt.categoryIdentifier = NotificationAlert.category(
+                for: resolved.kind, isDirect: resolved.isDirect)
             bestAttempt.interruptionLevel =
                 NotificationAlert.isActive(resolved.kind) ? .active : .passive
             bestAttempt.sound = NotificationAlert.isActive(resolved.kind) ? .default : nil
@@ -98,6 +124,11 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
         var statusID: String?
         var kind: NotificationKind?
         var isWithdrawal = false
+        /// A digest or an hourly bundle rather than news of one notification
+        /// (`NextcloudPushPayload.isSummary`).
+        var isSummary = false
+        /// A direct message, which wears the direct-message category.
+        var isDirect = false
     }
 
     /// The system gives an extension a few seconds; whatever has been worked
@@ -141,6 +172,17 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
                     isWithdrawal: true)
             }
 
+            // A summary counts many notifications; labelling it with the
+            // newest would show one post as if it were the whole hour.
+            if payload.isSummary {
+                return Resolved(
+                    title: payload.subject ?? "", body: "",
+                    subtitle: snapshots.count > 1 ? snapshot.qualifiedHandle : nil,
+                    accountID: snapshot.id, nextcloudID: payload.nid,
+                    notificationID: payload.nid.map { "nc-\($0)" } ?? UUID().uuidString,
+                    statusID: nil, kind: nil, isSummary: true)
+            }
+
             var resolved = Resolved(
                 title: payload.subject ?? "",
                 body: "",
@@ -161,6 +203,7 @@ final class NotificationService: UNNotificationServiceExtension, @unchecked Send
                 if let decoded = NotificationPayload.decode(NotificationPayload.encode(found)) {
                     resolved.body = decoded.body
                     resolved.statusID = decoded.statusID
+                    resolved.isDirect = decoded.isDirect
                     if resolved.title.isEmpty { resolved.title = decoded.title }
                 }
                 NotificationAlert.notePushAnnounced(found.id, accountID: snapshot.id)

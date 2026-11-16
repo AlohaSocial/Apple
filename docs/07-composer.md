@@ -8,6 +8,13 @@ main window there, docs/09 §2 — and `⌘⏎` to post).
 Not available on tvOS. On watchOS only a reduced reply composer (dictation,
 scribble, emoji, canned responses).
 
+On iPhone and iPad the sheet **grows out of the "New post" button** — the
+system's zoom transition, from the toolbar's glass button
+(`matchedTransitionSource`) into the sheet (`navigationTransition(.zoom)`) —
+and shrinks back into it when it closes. Only for the button: a reply or a
+quote comes from a post, not from it. Under Reduce Motion the sheet arrives
+the plain way (`ComposerZoom`).
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Cancel        [avatar ▾ account]      Post  │
@@ -181,8 +188,19 @@ media sweep to collect.
 
 - Every attachment shows an **ALT** badge: filled when a description exists,
   outlined when it does not.
-- A setting, **on by default**, warns before posting when any attachment lacks a
-  description. It warns; it never blocks.
+- A setting, **on by default** ("Warn about missing descriptions"), nudges
+  once before posting when any attachment lacks a description. The nudge
+  offers to add one (opening the first undescribed attachment), to have this
+  device draft them where on-device description is available
+  ([10-ai-features.md](10-ai-features.md) §4), and "Post anyway", always one
+  tap. It nudges **once per post**: Post pressed again goes out as it is. It
+  warns; it never blocks.
+- Statistics shows the share of the account's pictures that carry a
+  description, near the top of the page. It is the server's own count
+  (`media.images` and `media.described` in `GET /api/v1/statistics`, per
+  picture over the chosen window). A server that does not send it gets a
+  count made on the device from the account's latest forty posts with media,
+  and the card says so.
 - Editing an alt text after upload uses `PUT /api/v1/media/{id}`.
 - Alt text travels as the ActivityPub `name`, both directions — so what is
   written here is what a remote reader gets.
@@ -221,7 +239,10 @@ media sweep to collect.
   Keep Editing. Drafts list is reachable from the composer and from Settings.
   Drafts carry their media as **local file references plus any already-uploaded
   `media_id`s** — re-opening a draft does not re-upload what is already on the
-  server unless the id has expired.
+  server unless the id has expired. Where the account's Nextcloud is
+  connected, drafts also sync through it, one JSON file per draft in
+  `Aloha Social/Drafts/`; the merge rules are in
+  [14-open-questions.md](14-open-questions.md) §7.
 - **Scheduled posts**: `POST /api/v1/statuses` accepts `scheduled_at` at least
   five minutes ahead, and answers 422 for anything sooner or malformed
   (`ScheduledStatusService::requestedTime`); a cron publishes them. A date picker with a minimum of
@@ -246,7 +267,11 @@ mobile connection this is the difference between possible and not.
   runs Login Flow v2 and grants an app password), the picker is a real WebDAV
   browser over `/remote.php/dav/files/{loginName}/`: folders, thumbnails from
   Nextcloud's own preview endpoint, and only the file types this server's
-  `supported_mime_types` accepts. See
+  `supported_mime_types` accepts. A file over the server's size ceiling for
+  its type is shown but marked and not pickable. The browser opens in the
+  folder the last attachment came from, falling back to the top when that
+  folder has gone, and it browses the Files of the account the composer
+  posts as, not of whichever account happens to be active. See
   [14-open-questions.md](14-open-questions.md) §7.
 - Without that connection it degrades to a path field with recent paths, which
   still works because the server resolves the path itself.

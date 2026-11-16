@@ -66,15 +66,20 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
   `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`) and the
   latest mention (`.accessoryRectangular`, showing the content warning rather
   than the post where there is one). A tap opens the mention, or the
-  mentions list.
+  mentions list. Unread direct messages (`.accessoryCircular`,
+  `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`): a paper
+  plane and the number of conversations with something unread. A tap opens
+  the watch app, which has no messages list of its own.
 - The complications draw from one snapshot in the watch's app group
   (`WatchComplicationSnapshot`), kept current three ways: the watch app
   refreshes it whenever it comes to the front; the phone pushes the paired
   account's unread count with `transferCurrentComplicationUserInfo` when it
   changes, only while a complication is on the face and within the daily
-  budget; and the complication's own timeline asks the server directly when
-  the snapshot is older than fifteen minutes, with the token the watch app
-  keeps in the shared Keychain group.
+  budget, with the active account's unread conversation count
+  (`AppGroup.unreadConversationsKey`) riding along, sent again when only
+  that count changes; and the complication's own timeline asks the server
+  directly when the snapshot is older than fifteen minutes, with the token
+  the watch app keeps in the shared Keychain group.
 - No modes, no media viewer, no settings beyond notification toggles.
 
 ## 5. tvOS
@@ -225,10 +230,28 @@ Controls: New post, New story, Messages.
 - **Media upload**: shown for any upload over 5 MB or any video. Per-file
   progress, total progress, cancel action, and a completion state that persists
   8 seconds. Dynamic Island compact, minimal and expanded presentations.
-- **Scheduled post countdown**: optional, shown in the 15 minutes before a
-  scheduled post goes out, with an Edit action.
-- Nothing else gets a Live Activity. They are for work in progress, not for
-  content.
+- **Countdowns to the account's own poll closing and its next scheduled post
+  going out** (`EventLiveActivity`, `EventActivityAttributes`): started while
+  the app is in front, when either happens within the next 60 minutes, for
+  the active account. They read the widget snapshot that the app has just
+  refreshed. Where that snapshot is missing or older than 15 minutes (for
+  example, a build without the app group), the app asks the server for the
+  scheduled posts and its own recent posts. The Lock Screen and the Dynamic
+  Island (compact, minimal, expanded) show the poll's question or the post's
+  text, and a countdown drawn with `Text(timerInterval:)`. It runs by itself,
+  so nothing pushes an update.
+  - Each activity is stale at its moment, so it says the poll closed or the
+    post went out instead of freezing at 0:00. While the app runs, a timer
+    ends it. Otherwise the next activation or background refresh ends it,
+    with five minutes left on the Lock Screen.
+  - A countdown whose post was rescheduled or deleted ends at the next
+    activation.
+  - A tap opens the poll's post, or the scheduled posts list.
+  - Settings → Notifications → Live Activities has an off switch. The switch
+    is disabled, with an explanation, when the system has Live Activities
+    turned off for the app.
+- Nothing else gets a Live Activity. They are for work in progress and
+  moments that are about to happen, not for content.
 
 ## 10. Deep links and universal links
 

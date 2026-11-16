@@ -54,15 +54,16 @@ import XCTest
 
         func testAnnualReportOpens() {
             XCTAssertTrue(app.openSettingsRow("Your year"), "Your year not reachable")
+            // The year plays full screen once the report has loaded, so the
+            // navigation bar is only there while it loads and is no proof of
+            // anything. The mock always serves last year's report, and the
+            // archetype line on the opening card is the tell that it opened
+            // and decoded rather than fell back to the empty state. Cards do
+            // not advance on their own in mock mode, so the opening card is
+            // still the one showing.
             XCTAssertTrue(
-                app.navigationBars["Your year"].waitForExistence(timeout: 8),
-                "Annual report did not open")
-            // The mock always serves last year's report, so the archetype line
-            // is the tell that it decoded rather than fell back to the empty
-            // state.
-            XCTAssertTrue(
-                app.labelled("A year of").waitForExistence(timeout: 8),
-                "No archetype line — the report did not decode")
+                app.labelled("A year of").waitForExistence(timeout: 12),
+                "No archetype line — the report did not open or did not decode")
             shoot("32-your-year")
         }
 

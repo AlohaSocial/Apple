@@ -93,6 +93,9 @@ public enum Route: Codable, Hashable, Sendable {
     case moderationReport(id: String)
     case moderationAccounts
     case moderationTrends
+    /// A thread its author wrote to themselves, unrolled into one article
+    /// with everybody else's replies left out (`SelfThread`).
+    case threadReader(statusID: String)
 }
 
 /// A Route, and the account it has to be opened under when the entry point

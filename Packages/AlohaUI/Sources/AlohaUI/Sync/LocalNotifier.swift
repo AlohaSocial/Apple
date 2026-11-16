@@ -21,6 +21,10 @@ public struct LocalNotifier: Sendable {
     }
 
     public func registerCategories() {
+        // A text field rather than a button that opens the app: answered in
+        // place on the Lock Screen, and on Apple Watch — where a mirrored
+        // alert offers dictation, Scribble and emoji for it — and sent from
+        // here by `NotificationResponder`, under the alert's account.
         let reply = UNTextInputNotificationAction(
             identifier: "reply", title: String(localized: "Reply", comment: "Notification action"),
             options: [],
@@ -56,8 +60,15 @@ public struct LocalNotifier: Sendable {
         let generic = UNNotificationCategory(
             identifier: NotificationAlert.genericCategory, actions: [], intentIdentifiers: [],
             options: [])
+        // A direct message is a mention whose post is direct: the same
+        // Reply, sent back as direct (`NotificationResponder.replyDraft`),
+        // and no Boost, which a direct post refuses.
+        let direct = UNNotificationCategory(
+            identifier: NotificationAlert.directMessageCategory,
+            actions: [reply, favourite, muteConversation],
+            intentIdentifiers: [], options: [])
 
-        center.setNotificationCategories([mention, generic])
+        center.setNotificationCategories([mention, generic, direct])
     }
 
     /// Returns the ids that were actually announced, so the caller can mark
@@ -215,6 +226,9 @@ public struct LocalNotifier: Sendable {
         content.sound = nil
         content.interruptionLevel = .passive
         content.filterCriteria = session.id.uuidString
+        // The same thread the server's digest and hourly bundle use, so
+        // summaries stack together whichever side wrote them.
+        content.threadIdentifier = NotificationAlert.summaryThreadIdentifier(accountID: session.id)
         content.userInfo = [
             NotificationAlert.accountIDKey: session.id.uuidString,
             "digestCounts": totals,
@@ -286,7 +300,8 @@ public struct LocalNotifier: Sendable {
         if showAccountName { content.subtitle = session.snapshot.qualifiedHandle }
         // The same category, thread, Focus criteria and userInfo a push gets
         // in the notification service extension (`NotificationAlert`).
-        content.categoryIdentifier = NotificationAlert.category(for: notification.kind)
+        content.categoryIdentifier = NotificationAlert.category(
+            for: notification.kind, isDirect: payload?.isDirect ?? false)
         content.interruptionLevel =
             NotificationAlert.isActive(notification.kind) ? .active : .passive
         content.threadIdentifier = NotificationAlert.threadIdentifier(

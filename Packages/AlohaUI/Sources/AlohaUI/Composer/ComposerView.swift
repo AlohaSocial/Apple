@@ -205,19 +205,11 @@ public struct ComposerView: View {
                 Text("Some media has no description", comment: "Alt text warning title"),
                 isPresented: $model.isShowingAltTextWarning
             ) {
-                Button {
-                    Task { await send(skippingAltTextCheck: true) }
-                } label: {
-                    Text("Post anyway", comment: "Alt text warning action")
-                }
-                Button(role: .cancel) {
-                } label: {
-                    Text("Let me add it", comment: "Alt text warning action")
-                }
+                altTextCoachActions
             } message: {
-                // It warns; it never blocks (docs/07 §4).
+                // It warns once; it never blocks (docs/07 §4).
                 Text(
-                    "Descriptions let people using a screen reader know what you posted.",
+                    "Descriptions let people using a screen reader know what you posted. You can switch this reminder off in Settings.",
                     comment: "Alt text warning detail")
             }
             .photosPicker(
@@ -327,7 +319,8 @@ public struct ComposerView: View {
                 if let credentials = nextcloudCredentials {
                     NextcloudFileBrowser(
                         credentials: credentials,
-                        acceptedTypes: model.limits.supportedMIMETypes
+                        acceptedTypes: model.limits.supportedMIMETypes,
+                        limits: model.limits
                     ) { file in
                         Task {
                             await model.uploader.addFromNextcloudFiles(
@@ -487,6 +480,41 @@ public struct ComposerView: View {
 
     // MARK: - Posting
 
+    /// The coach's choices: write one, have this device draft them where it
+    /// can (docs/10 §4), or post as it is — always one tap away.
+    @ViewBuilder
+    private var altTextCoachActions: some View {
+        if let attachment = model.firstUndescribedAttachment {
+            Button {
+                model.isShowingAltTextFor = attachment
+            } label: {
+                Text("Add a description", comment: "Alt text warning action")
+            }
+        }
+        // Drafts, not posts: nothing is sent from here. What the device
+        // writes fills the descriptions, the strip shows them for checking,
+        // and Post is pressed again once they have been looked at — the
+        // reminder has been shown, so that Post goes out (docs/10 §4).
+        if model.imagesAwaitingDescription > 0,
+            environment.intelligence.availability.isAvailable
+        {
+            Button {
+                Task { await model.describeAllImages(environment: environment) }
+            } label: {
+                Text("Describe on this device", comment: "Alt text warning action")
+            }
+        }
+        Button {
+            Task { await send(skippingAltTextCheck: true) }
+        } label: {
+            Text("Post anyway", comment: "Alt text warning action")
+        }
+        Button(role: .cancel) {
+        } label: {
+            Text("Not now", comment: "Alt text warning action")
+        }
+    }
+
     private func send(skippingAltTextCheck: Bool = false) async {
         guard await model.post(skippingAltTextCheck: skippingAltTextCheck) else { return }
         if model.wasHeldForReview {
@@ -552,9 +580,11 @@ public struct ComposerView: View {
         .padding(.vertical, AlohaMetrics.space3)
     }
 
+    /// The composer's own account's, not the active one's: a reply written
+    /// as another account browses that account's Files, whose paths are the
+    /// ones its server can copy from.
     private var nextcloudCredentials: NextcloudLoginFlow.Credentials? {
-        guard let session = environment.activeSession else { return nil }
-        return (try? environment.credentials.nextcloudCredentials(for: session.id)) ?? nil
+        (try? environment.credentials.nextcloudCredentials(for: model.session.id)) ?? nil
     }
 
     private func close() {

@@ -77,6 +77,8 @@ struct ThemedAppShell: View {
     @State var composing: ComposerPresentation?
     @State private var isComposingStory = false
     @Namespace private var mediaTransition
+    /// The compose button's zoom into the composer (`ComposeTransition`).
+    @Namespace var composeTransition
     @State private var isCelebrating = false
     @State var mediaPresentation: MediaPresentation?
     @State var reportTarget: ReportTarget?
@@ -152,6 +154,7 @@ struct ThemedAppShell: View {
                 }
             }
             .environment(\.mediaTransition, mediaTransition)
+            .environment(\.composeTransition, composeTransition)
             .environment(\.shellUsesTabBar, !usesSidebar)
             .onChange(of: usesSidebar) { _, toSidebar in handOver(toSidebar: toSidebar) }
             .modifier(
@@ -208,6 +211,7 @@ struct ThemedAppShell: View {
                 // what it left behind; this does.
                 if phase == .active, let pending = IntentNavigation.take() { open(pending) }
                 if phase == .active { applyFocusFilter() }
+                if phase == .active { Task { await DraftSync.shared.syncAll(ifOlderThan: 60) } }
             }
             .onReceive(NotificationCenter.default.publisher(for: IntentNavigation.focusChanged)) {
                 _ in applyFocusFilter()
@@ -571,6 +575,9 @@ struct ThemedAppShell: View {
         // The snapshot widgets too; a no-op within ten minutes of the last.
         Task(priority: .utility) {
             await WidgetSnapshotWriter.refreshAll(environment, budget: .seconds(20))
+            // The countdowns read the snapshot just written; ActivityKit
+            // only starts one while the app is in front (docs/09 §9).
+            await EventLiveActivities.update(environment)
         }
     }
 
