@@ -62,6 +62,22 @@ public struct TimelineView: View {
             }
         }
         .animation(pillAnimation, value: model.pendingNewCount > 0)
+        #if os(macOS)
+            // A Mac has nothing to pull: a line under the toolbar says the
+            // timeline is asking the server, and goes when it has answered.
+            .overlay(alignment: .top) {
+                if model.isRefreshing && !model.rows.isEmpty {
+                    ProgressView()
+                    .progressViewStyle(.linear)
+                    .controlSize(.mini)
+                    .tint(palette.accent)
+                    .frame(height: 2)
+                    .transition(.opacity)
+                    .accessibilityLabel(Text("Refreshing", comment: "Timeline refresh progress"))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: model.isRefreshing)
+        #endif
         .actionFeedbackToast()
         .background(palette.background.ignoresSafeArea())
         .timelineKeyboard(

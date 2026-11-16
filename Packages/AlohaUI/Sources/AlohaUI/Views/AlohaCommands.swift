@@ -81,6 +81,17 @@ import SwiftUI
                 #endif
             }
 
+            #if os(macOS)
+                CommandGroup(after: .windowArrangement) {
+                    Button {
+                        openWindow(id: AlohaWindow.mini)
+                    } label: {
+                        Text("Mini Timeline", comment: "Menu item: a small floating timeline")
+                    }
+                    .keyboardShortcut("m", modifiers: [.command, .option])
+                }
+            #endif
+
             CommandMenu(Text("Go", comment: "Menu title")) {
                 #if os(macOS)
                     Button {

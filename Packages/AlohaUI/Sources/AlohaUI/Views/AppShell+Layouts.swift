@@ -381,7 +381,7 @@ extension ThemedAppShell {
     // MARK: - iPad, Mac, Vision
 
     func splitShell(_ session: AccountSession) -> some View {
-        NavigationSplitView {
+        splitView {
             SidebarView(
                 session: session,
                 selection: $sidebarItem,
@@ -407,7 +407,7 @@ extension ThemedAppShell {
                     .toolbar { composeToolbar }
                     .modifier(
                         GlobalSearchField(isShown: !hasOwnSearchField(sidebarItem)) { query in
-                            sidebarItem = .route(.search(query: query))
+                            sidebarItem = .route(.search(query: query.isEmpty ? nil : query))
                         }
                     )
                     .navigationDestination(for: Route.self) { destination($0, session: session) }
@@ -416,6 +416,11 @@ extension ThemedAppShell {
                 // pushed on it. A fresh stack for each row rather than one stack
                 // whose path is swapped, which would animate as a pop and a push.
                 .id(sidebarItem)
+                #if os(macOS)
+                    // A place arrives rather than replacing the last one in a
+                    // single frame.
+                    .transition(.opacity.combined(with: .offset(y: 8)))
+                #endif
                 #if os(iOS)
                     .navigationBarTitleDisplayMode(.inline)
                 #endif
@@ -425,6 +430,15 @@ extension ThemedAppShell {
                 // column read as a sheet of paper dropped on the wrong desk.
                 .alohaWindowGround(palette)
                 #if os(macOS)
+                    if showsContextColumn, sidebarItem == .mode(.home), !showsDeck,
+                        windowWidth >= ShellLayout.contextColumnMinimumWidth,
+                        detailPaths[sidebarItem]?.isEmpty ?? true
+                    {
+                        Divider().ignoresSafeArea()
+                        ContextColumn(session: session) { open($0) }
+                            .frame(width: 270)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
                     if showsDetailColumn, let opened = detailPaths[sidebarItem],
                         let top = opened.last
                     {
@@ -439,7 +453,10 @@ extension ThemedAppShell {
             }
             #if os(macOS)
                 .animation(
-                    .smooth(duration: 0.25), value: detailPaths[sidebarItem]?.isEmpty ?? true)
+                    .smooth(duration: 0.25), value: detailPaths[sidebarItem]?.isEmpty ?? true
+                )
+                .animation(.easeOut(duration: 0.2), value: sidebarItem)
+                .animation(.smooth(duration: 0.25), value: showsContextColumn)
             #endif
         }
         #if os(macOS)
@@ -516,6 +533,23 @@ extension ThemedAppShell {
         }
     #endif
 
+    /// The split view, with its columns under the shell's control on the
+    /// Mac so the mini timeline can open without its sidebar.
+    private func splitView(
+        @ViewBuilder sidebar: () -> some View, @ViewBuilder detail: () -> some View
+    ) -> some View {
+        #if os(macOS)
+            NavigationSplitView(
+                columnVisibility: $columnVisibility, sidebar: sidebar, detail: detail
+            )
+            .onAppear {
+                if isMiniWindow { columnVisibility = .detailOnly }
+            }
+        #else
+            NavigationSplitView(sidebar: sidebar, detail: detail)
+        #endif
+    }
+
     /// The screens that search themselves — conversations, people, search —
     /// and so show their own field where the app-wide one would be.
     private func hasOwnSearchField(_ item: SidebarItem) -> Bool {
@@ -541,6 +575,29 @@ extension ThemedAppShell {
             ToolbarItem(placement: composeToolbarPlacement) {
                 composeButton
             }
+            #if os(macOS)
+                if sidebarItem == .mode(.home), !showsDeck, column == .primary {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showsContextColumn.toggle()
+                        } label: {
+                            Label {
+                                if showsContextColumn {
+                                    Text("Hide Trends", comment: "Toolbar action")
+                                } else {
+                                    Text("Show Trends", comment: "Toolbar action")
+                                }
+                            } icon: {
+                                Image(systemName: "sidebar.trailing")
+                            }
+                        }
+                        .help(
+                            Text(
+                                "Show or hide trends, suggestions and your lists",
+                                comment: "Toolbar action help"))
+                    }
+                }
+            #endif
         #endif
     }
 
@@ -632,6 +689,13 @@ extension ThemedAppShell {
                         .readerColumn
                     #endif
                 , session: session)
+
+        #if os(macOS)
+            case .home where showsDeck:
+                DeckView(session: session) { handle($0, session: session) }
+                    .navigationTitle(modeTitle(mode))
+                    .alohaWindowGround(palette)
+        #endif
 
         case .home:
             timelineChrome(
@@ -759,32 +823,36 @@ enum SearchTabScope: Hashable {
     case discover
 }
 
-/// The Mac's one search field: at the trailing end of the toolbar, on every
-/// screen that has no search of its own.
+/// The Mac's way to search from any screen that does not search itself: a
+/// magnifying glass at the trailing end of the toolbar, which opens Search.
 ///
-/// It used to live in the sidebar, which put two fields on screen wherever a
-/// screen searched itself — "Search" on the left and "Search people" on the
-/// right. One place, and what it searches follows the screen.
+/// It was a field in the sidebar, which put two fields on screen wherever a
+/// screen searched itself, and then a field in the toolbar, whose width
+/// pushed the filter in the toolbar's centre off to one side. The system's
+/// own "minimised" search field is not offered on the Mac, so this is a
+/// button: the field is the Search screen's, one click away, and ⌘F opens it
+/// from the keyboard as before.
 private struct GlobalSearchField: ViewModifier {
     let isShown: Bool
     let onSubmit: (String) -> Void
 
-    @State private var query = ""
-
     func body(content: Content) -> some View {
         #if os(macOS)
             if isShown {
-                content
-                    .searchable(
-                        text: $query, placement: .toolbar,
-                        prompt: Text("Search", comment: "Sidebar search field")
-                    )
-                    .onSubmit(of: .search) {
-                        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        query = ""
-                        onSubmit(trimmed)
+                content.toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            onSubmit("")
+                        } label: {
+                            Label {
+                                Text("Search", comment: "Menu item")
+                            } icon: {
+                                Image(systemName: AlohaSymbol.search)
+                            }
+                        }
+                        .help(Text("Search", comment: "Menu item"))
                     }
+                }
             } else {
                 content
             }

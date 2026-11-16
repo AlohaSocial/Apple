@@ -8,6 +8,8 @@ public enum AlohaWindow {
     public static let main = "main"
     /// The Mac's Settings window (`SettingsWindowView`).
     public static let settings = "settings"
+    /// The Mac's small timeline that floats over other apps.
+    public static let mini = "mini"
 }
 
 /// One destination in a window of its own — a thread or a profile kept open
@@ -99,4 +101,10 @@ public struct TimelineCommands {
 extension FocusedValues {
     @Entry public var shellCommands: ShellCommands?
     @Entry public var timelineCommands: TimelineCommands?
+}
+
+extension EnvironmentValues {
+    /// Whether this shell is the Mac's mini timeline: the feed alone in a
+    /// narrow window that floats, with the sidebar put away.
+    @Entry public var alohaMiniWindow = false
 }

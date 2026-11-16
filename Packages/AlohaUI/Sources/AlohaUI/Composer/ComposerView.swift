@@ -24,6 +24,11 @@ public struct ComposerView: View {
     @State var isShowingPollEditor = false
 
     @State var model: ComposerModel
+    #if os(macOS)
+        /// Whether the post is shown as it will read, under the editor.
+        @State var isShowingPreview = false
+        @Environment(\.alohaTranslucentWindow) var isOnGlass
+    #endif
     @State var pickedItems: [PhotosPickerItem] = []
     @State var isShowingSchedule = false
     @State var isShowingNextcloudFiles = false
@@ -143,7 +148,15 @@ public struct ComposerView: View {
                     ContentWarningPresets(spoilerText: $model.spoilerText)
                 }
 
+                #if os(macOS)
+                    macHeader
+                #endif
+
                 editor
+
+                #if os(macOS)
+                    if isShowingPreview { macPreview }
+                #endif
 
                 if !model.pendingGames.isEmpty { gamesHint }
                 if model.canBeCard && (showsCardOptions || model.cardBackgroundID != nil) {
@@ -183,7 +196,14 @@ public struct ComposerView: View {
                 toolbar
                 if host?.showsInlineActions == true { inlineActions }
             }
-            .background(palette.background)
+            #if os(macOS)
+                // On the Mac the composer is a sheet of glass where the
+                // window is translucent: the ground thins so what is behind
+                // the window comes through it.
+                .background(palette.background.opacity(isOnGlass ? 0.5 : 1))
+            #else
+                .background(palette.background)
+            #endif
             .sensoryFeedback(.success, trigger: didSend)
             #if !os(tvOS) && !os(watchOS)
                 // A picture or a video dragged in from Photos, Files or

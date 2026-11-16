@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaDesign
 import AlohaNetwork
 import AlohaUI
 import AppKit
@@ -68,15 +69,16 @@ private struct WindowOpenerProvider: ViewModifier {
     }
 }
 
-/// How the Mac's windows are drawn, as their own tab in the Settings window.
+/// How the Mac's windows are drawn and laid out, as their own pane in the
+/// Settings window. Every switch here is an option the app works without.
 struct MacWindowSettings: View {
-    /// Whether the ground around what is being read is the blurred desktop
-    /// rather than the theme's colour. On by default: a Mac window that lets
-    /// the desktop through is the platform's own look, and the reading
-    /// column stays solid either way.
-    static let isTranslucentKey = "aloha.mac.translucentWindow"
+    static let isTranslucentKey = MacOptions.translucentWindowKey
 
-    @AppStorage(MacWindowSettings.isTranslucentKey) private var isTranslucent = true
+    @AppStorage(MacOptions.translucentWindowKey) private var isTranslucent = true
+    @AppStorage(MacOptions.columnWidthKey) private var columnWidth: Double = 0
+    @AppStorage(MacOptions.contextColumnKey) private var showsContextColumn = false
+    @AppStorage(MacOptions.deckKey) private var showsDeck = false
+    @AppStorage(MacOptions.linkPreviewsKey) private var loadsLinkPreviews = false
 
     var body: some View {
         Form {
@@ -87,8 +89,120 @@ struct MacWindowSettings: View {
                         "The desktop shows through around what you are reading. Posts stay on a solid ground.",
                         comment: "Mac setting detail")
                 }
+                Picker(selection: columnChoice) {
+                    Text("Narrow", comment: "Reading column width").tag(MacOptions.narrowColumn)
+                    Text("Medium", comment: "Reading column width").tag(MacOptions.mediumColumn)
+                    Text("Wide", comment: "Reading column width").tag(MacOptions.wideColumn)
+                    if !isPreset {
+                        Text("Custom", comment: "Reading column width").tag(columnWidth)
+                    }
+                } label: {
+                    Text("Reading column", comment: "Mac setting")
+                    Text(
+                        "You can also drag the column's right edge.",
+                        comment: "Mac setting detail")
+                }
+            } header: {
+                Text("Window", comment: "Mac Settings pane")
+            }
+
+            Section {
+                Toggle(isOn: $showsContextColumn) {
+                    Text("Trends beside the feed", comment: "Mac setting")
+                    Text(
+                        "Trending hashtags, suggested people and your lists in a column of their own. The toolbar has a button to show and hide it.",
+                        comment: "Mac setting detail")
+                }
+                Toggle(isOn: $showsDeck) {
+                    Text("Several columns", comment: "Mac setting")
+                    Text(
+                        "My Feed, Activities and Local side by side, each scrolling by itself.",
+                        comment: "Mac setting detail")
+                }
+            } header: {
+                Text("Layout", comment: "Mac Settings section")
+            }
+
+            Section {
+                Toggle(isOn: $loadsLinkPreviews) {
+                    Text("Load pictures for links", comment: "Mac setting")
+                    Text(
+                        "A link without a picture fetches one from the page it leads to. That site learns that somebody looked.",
+                        comment: "Mac setting detail")
+                }
+            } header: {
+                Text("Links", comment: "Mac Settings section")
+            }
+
+            Section {
+                Picker(selection: $dockIcon) {
+                    ForEach(AlohaIconVariant.allCases) { variant in
+                        Text(verbatim: variant.displayName).tag(variant.rawValue)
+                    }
+                } label: {
+                    Text("Dock icon", comment: "Mac setting")
+                    Text(
+                        "Shown while Aloha Social is running; the Finder keeps the app's own.",
+                        comment: "Mac setting detail")
+                }
+                .onChange(of: dockIcon) { _, _ in MacDockIcon.apply() }
+            } header: {
+                Text("Icon", comment: "Mac Settings section")
             }
         }
         .formStyle(.grouped)
+    }
+
+    @AppStorage(MacDockIcon.key) private var dockIcon = AlohaIconVariant.aloha.rawValue
+
+    private var isPreset: Bool {
+        [MacOptions.narrowColumn, MacOptions.mediumColumn, MacOptions.wideColumn]
+            .contains(effectiveWidth)
+    }
+
+    private var effectiveWidth: Double {
+        columnWidth > 0 ? columnWidth : MacOptions.mediumColumn
+    }
+
+    private var columnChoice: Binding<Double> {
+        Binding(get: { effectiveWidth }, set: { columnWidth = $0 })
+    }
+}
+
+/// The app's alternate icons, on the Mac: the Dock icon of the running app.
+///
+/// macOS has no alternate app icons — the icon in the Finder is the
+/// bundle's, and stays it — but a running app may draw its own Dock tile.
+/// The alternates are square pictures made for iOS, so each is drawn into
+/// the Mac's rounded tile with the margin a Mac icon keeps around itself.
+@MainActor
+enum MacDockIcon {
+    static let key = "aloha.mac.dockIcon"
+
+    /// Sets the Dock icon to the one chosen, or back to the bundle's.
+    static func apply() {
+        let chosen =
+            UserDefaults.standard.string(forKey: key)
+            .flatMap(AlohaIconVariant.init(rawValue:)) ?? .aloha
+        guard chosen != .aloha,
+            let source = NSImage(named: "DockIcon-\(chosen.rawValue.capitalized)")
+        else {
+            NSApplication.shared.applicationIconImage = nil
+            return
+        }
+        NSApplication.shared.applicationIconImage = tile(from: source)
+    }
+
+    private static func tile(from source: NSImage) -> NSImage {
+        let side: CGFloat = 512
+        return NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
+            let inset = side * 0.098
+            let rect = NSRect(x: inset, y: inset, width: side - inset * 2, height: side - inset * 2)
+            let radius = rect.width * 0.2237
+            NSGraphicsContext.current?.imageInterpolation = .high
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).addClip()
+            source.draw(in: rect)
+            return true
+        }
     }
 }

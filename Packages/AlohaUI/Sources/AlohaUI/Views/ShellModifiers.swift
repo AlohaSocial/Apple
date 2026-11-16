@@ -48,6 +48,9 @@ private struct ReaderColumn: ViewModifier {
     @Environment(\.alohaPalette) private var palette
     #if os(macOS)
         @Environment(\.alohaTranslucentWindow) private var isTranslucent
+        /// The measure the reader chose, or zero for the default.
+        @AppStorage(MacOptions.columnWidthKey) private var chosenWidth: Double = 0
+        @State private var widthAtDragStart: Double?
     #endif
     #if !os(macOS)
         @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -65,9 +68,10 @@ private struct ReaderColumn: ViewModifier {
                     // clear of the window's edges — rather than a slab the
                     // height of the window with the desktop either side.
                     content
-                        .frame(maxWidth: width)
+                        .frame(maxWidth: columnWidth)
                         .background(palette.background)
                         .clipShape(panel)
+                        .overlay(alignment: .trailing) { resizeHandle }
                         .overlay(
                             panel.strokeBorder(palette.separator.opacity(0.35), lineWidth: 0.5)
                         )
@@ -93,10 +97,46 @@ private struct ReaderColumn: ViewModifier {
 
     private func plainColumn(_ content: Content) -> some View {
         content
-            .frame(maxWidth: width)
+            #if os(macOS)
+                .frame(maxWidth: columnWidth)
+                .overlay(alignment: .trailing) { resizeHandle }
+            #else
+                .frame(maxWidth: width)
+            #endif
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .alohaWindowGround(palette)
     }
+
+    #if os(macOS)
+        private var columnWidth: CGFloat {
+            chosenWidth > 0 ? chosenWidth : width
+        }
+
+        /// The column's trailing edge, to drag: a measure is a preference,
+        /// and the edge of the thing is where a Mac expects to change it.
+        /// The column is centred, so it grows both ways under the pointer.
+        private var resizeHandle: some View {
+            Color.clear
+                .frame(width: 10)
+                .contentShape(Rectangle())
+                .onHover { isOver in
+                    if isOver { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                }
+                .gesture(
+                    DragGesture(minimumDistance: 1)
+                        .onChanged { drag in
+                            let start = widthAtDragStart ?? Double(columnWidth)
+                            widthAtDragStart = start
+                            chosenWidth = min(max(start + drag.translation.width * 2, 460), 1100)
+                        }
+                        .onEnded { _ in widthAtDragStart = nil }
+                )
+                .help(
+                    Text(
+                        "Drag to change the column's width", comment: "Reading column resize handle"
+                    ))
+        }
+    #endif
 
     private var isCompact: Bool {
         #if os(macOS)

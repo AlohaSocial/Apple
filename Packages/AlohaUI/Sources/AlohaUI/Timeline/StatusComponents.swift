@@ -184,6 +184,11 @@ public struct LinkCardView: View {
     private let card: Card
     private let onOpen: () -> Void
 
+    #if os(macOS)
+        @AppStorage(MacOptions.linkPreviewsKey) private var loadsPreviews = false
+        @State private var fetchedPicture: Image?
+    #endif
+
     public init(card: Card, onOpen: @escaping () -> Void) {
         self.card = card
         self.onOpen = onOpen
@@ -196,6 +201,19 @@ public struct LinkCardView: View {
                     RemoteImage(url: card.image, blurhash: card.blurhash)
                         .aspectRatio(1.91, contentMode: .fit)
                 }
+                #if os(macOS)
+                    if card.image == nil, let fetchedPicture {
+                        Color.clear
+                            .aspectRatio(1.91, contentMode: .fit)
+                            .overlay {
+                                fetchedPicture
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            }
+                            .clipped()
+                            .transition(.opacity)
+                    }
+                #endif
                 VStack(alignment: .leading, spacing: AlohaMetrics.space1) {
                     if !card.displayProvider.isEmpty {
                         Text(card.displayProvider)
@@ -229,6 +247,13 @@ public struct LinkCardView: View {
         }
         .buttonStyle(.plain)
         .alohaHoverLift(scale: 1.01)
+        #if os(macOS)
+            .task(id: loadsPreviews) {
+                guard loadsPreviews, card.image == nil, let url = card.url else { return }
+                let picture = await LinkPreviewLoader.shared.image(for: url)
+                withAnimation(.easeOut(duration: 0.2)) { fetchedPicture = picture }
+            }
+        #endif
         .modifier(CardLinkDrag(url: card.url))
     }
 }
