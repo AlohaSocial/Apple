@@ -37,7 +37,24 @@ ALOHA_SHARED_CONTAINER[config=Release] = YES
 // write `$(ALOHA_SHARED_CONTAINER)` into both keys, which `AppGroup` reads as
 // a boolean. Anything but YES is treated as NO.
 ALOHA_ENTITLEMENTS_SUFFIX_YES = -Shared
-ALOHA_ENTITLEMENTS_SUFFIX = $(ALOHA_ENTITLEMENTS_SUFFIX_$(ALOHA_SHARED_CONTAINER))
+ALOHA_ENTITLEMENTS_SUFFIX = $(ALOHA_ENTITLEMENTS_SUFFIX_$(ALOHA_SHARED_CONTAINER))$(ALOHA_SHAREPLAY_SUFFIX)
+
+// SharePlay ("Watch together", Supporting/README.md). The Group Activities
+// entitlement needs that capability on the App ID, which only a team that
+// has enabled it can sign, so it is off unless switched on — in
+// Supporting/Local.xcconfig, or here once the capability is on for
+// social.aloha.app and social.aloha.app.mac:
+//
+//     ALOHA_SHAREPLAY = YES
+//
+// It adds -SharePlay to the two apps' entitlements file names (the
+// widgets and extensions have no SharePlay) and writes
+// `AlohaSharePlayEnabled` into their Info.plists, which is what shows the
+// Watch together buttons. Anything but YES is NO.
+ALOHA_SHAREPLAY = NO
+ALOHA_SHAREPLAY_SUFFIX_AlohaSocial_YES = -SharePlay
+ALOHA_SHAREPLAY_SUFFIX_AlohaSocialMac_YES = -SharePlay
+ALOHA_SHAREPLAY_SUFFIX = $(ALOHA_SHAREPLAY_SUFFIX_$(TARGET_NAME)_$(ALOHA_SHAREPLAY))
 
 // Signing. The project names no team, and every target's bundle id
 // derives from one prefix, so nobody's personal team or App IDs are
@@ -53,6 +70,14 @@ ALOHA_ENTITLEMENTS_SUFFIX = $(ALOHA_ENTITLEMENTS_SUFFIX_$(ALOHA_SHARED_CONTAINER
 // and `.tv.topshelf`.
 ALOHA_APP_BUNDLE_IDENTIFIER = social.aloha.app
 DEVELOPMENT_TEAM =
+
+// The alternate app icons (iOS and iPadOS), one icon set each in
+// AlohaSocial/Assets.xcassets, written by tools/make-icons.sh. The app
+// target's ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES reads this list, so
+// adding an icon is a line here and a case in `AlohaIconVariant`, not an edit
+// to the project file. Every name must match an icon set, and the picker in
+// Settings → Appearance offers what `AlohaIconVariant` lists.
+ALOHA_ALTERNATE_APP_ICONS = AlohaIcon-Midnight AlohaIcon-Coral AlohaIcon-Ocean AlohaIcon-Forest AlohaIcon-Grape AlohaIcon-Rose AlohaIcon-Slate AlohaIcon-Mono
 
 // A contributor's own overrides, never committed. Optional: the build does
 // not need the file to exist.

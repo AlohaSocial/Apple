@@ -90,7 +90,8 @@ struct StatusActionCoverageTests {
             .archive(status), .pin(status), .dislike(status), .quote(status),
             .showDelivery(status), .showEditHistory(status), .quoteControls(status),
             .tagPeople(status), .addToCollection(status), .addToList(account),
-            .setReplyPolicy(status, .followers), .hideReply(status),
+            .setReplyPolicy(status, .followers), .hideReply(status), .shareImage(status),
+            .read(status),
         ]
 
         for action in all {

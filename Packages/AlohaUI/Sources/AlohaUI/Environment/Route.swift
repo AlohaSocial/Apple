@@ -93,6 +93,9 @@ public enum Route: Codable, Hashable, Sendable {
     case moderationReport(id: String)
     case moderationAccounts
     case moderationTrends
+    /// A thread its author wrote to themselves, unrolled into one article
+    /// with everybody else's replies left out (`SelfThread`).
+    case threadReader(statusID: String)
 }
 
 /// A Route, and the account it has to be opened under when the entry point
@@ -122,16 +125,24 @@ public enum RouteResolver {
     /// "New story" control. The story composer is a sheet too.
     public static let storyComposerRequested = Notification.Name("alohasocial.story.requested")
 
+    /// Posted when `alohasocial://story?camera=1` is opened — the "Story
+    /// camera" control: the story composer with the full-screen camera
+    /// already up, for a picture or a video taken now.
+    public static let storyCameraRequested = Notification.Name("alohasocial.story.camera.requested")
+
     /// Something a link asks the shell to present rather than navigate to.
     public enum Presentation: Equatable, Sendable {
         case composer
         case storyComposer
+        /// The story composer, opened on its camera.
+        case storyCamera
 
         /// The notification the shell watches for this presentation.
         public var notification: Notification.Name {
             switch self {
             case .composer: RouteResolver.composeRequested
             case .storyComposer: RouteResolver.storyComposerRequested
+            case .storyCamera: RouteResolver.storyCameraRequested
             }
         }
     }
@@ -142,7 +153,10 @@ public enum RouteResolver {
         guard url.scheme == scheme else { return nil }
         switch url.host() {
         case "compose": return .composer
-        case "story": return .storyComposer
+        case "story":
+            let camera = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == "camera" }?.value
+            return camera == "1" ? .storyCamera : .storyComposer
         default: return nil
         }
     }

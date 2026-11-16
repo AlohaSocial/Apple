@@ -29,6 +29,26 @@ struct DeepLinkTests {
                 == RouteResolver.storyComposerRequested)
     }
 
+    @Test("The story camera link opens the story composer on its camera")
+    func storyCamera() throws {
+        let camera = try url("alohasocial://story?camera=1")
+        #expect(RouteResolver.presentation(for: camera) == .storyCamera)
+        #expect(RouteResolver.route(for: camera) == nil)
+        #expect(
+            RouteResolver.Presentation.storyCamera.notification
+                == RouteResolver.storyCameraRequested)
+        // Anything else in the query is the ordinary story composer.
+        #expect(
+            RouteResolver.presentation(for: try url("alohasocial://story?camera=0"))
+                == .storyComposer)
+    }
+
+    @Test("The scheduled posts and search controls open their screens")
+    func controlDestinations() throws {
+        #expect(RouteResolver.route(for: try url("alohasocial://scheduled")) == .scheduledPosts)
+        #expect(RouteResolver.route(for: try url("alohasocial://search")) == .search(query: nil))
+    }
+
     @Test("Destinations and other schemes are not presentations")
     func notPresentations() throws {
         #expect(RouteResolver.presentation(for: try url("alohasocial://notifications")) == nil)

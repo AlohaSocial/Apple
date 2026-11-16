@@ -410,6 +410,76 @@ Picking a file sends its **path** to `POST /api/v1/media/from-file`; the bytes
 never touch the device. Without a connection the picker degrades to the path
 field, which still works because the server resolves the path.
 
+### Saving media into Files
+
+The media viewer's **Save to Nextcloud** puts the attachment's original —
+`url`, or `remote_url` where there is no local copy, never the preview and
+never re-encoded — into `Aloha Social/Saved/`. The file is fetched to a
+temporary file on the transfer session (with the account's token only for its
+own server's media) and streamed up with a WebDAV `PUT`, so a long video is
+never held in memory; the bar is half fetch, half upload, from each task's own
+`Progress`. The folders are made with `MKCOL` as needed. A free name is found
+with `HEAD` first — "photo (2).jpg", as Files itself names a copy — so a large
+file is sent once, and the `PUT` carries `If-None-Match: *`, so a file that
+appeared under that name meanwhile is never overwritten. Offered only where a
+Nextcloud is connected.
+
+### Drafts, synced through Files
+
+Where a Nextcloud is connected, each account's drafts are kept in its Files as
+well as on the device: one JSON file per draft, `Aloha Social/Drafts/<id>.json`,
+readable and sorted so a person can open their own file. Settings → Nextcloud
+has the switch, **on by default**: it only ever acts after the person has
+connected their Nextcloud, which is already a choice to let this app into their
+Files, and the drafts go to no server but their own.
+
+Sync runs when the app comes to the front (at most once a minute), in the
+background refresh (at most every 15 minutes, five seconds at most), a couple
+of seconds after a draft is saved or deleted, and on pull-to-refresh in Drafts.
+`DraftSync` decides when; `DraftMerge` decides what, and is pure and tested.
+
+- **Three-way.** A ledger per account (app-group defaults) records the time and
+  `ETag` both sides last agreed on, draft by draft. Changed here means
+  different from the ledger; changed there means the file is. A file whose
+  `ETag` matches the ledger is not downloaded.
+- **Newest wins** where only one side changed, or both made the same change.
+- **Nothing is lost silently.** Two different changes keep both: the newer
+  version keeps the draft, the older becomes a copy beside it with a fresh
+  idempotency key, marked in Drafts as the older version.
+- **Deletions travel as tombstones** — the same file with `deletedAt` and no
+  content — applied only to a draft untouched since the last sync. An edit
+  made after a deletion elsewhere brings the draft back. Tombstones are
+  cleared after 60 days; a file removed by hand is put back, not taken as a
+  deletion.
+- **A draft open in a composer is left alone** until it closes, because the
+  composer saves what it shows on closing. A write is also skipped if the
+  draft changed between sync reading it and writing it.
+- **The send queue stays per device.** A draft queued to send arrives on the
+  other device as a plain draft, so two devices never both send it; its
+  idempotency key travels, so the server would recognise a second send anyway.
+- **Media.** Already-uploaded attachments travel as their `media_id`s: they are
+  the account's, on its own server, and reopening the draft on the other
+  device fetches them, or says they expired. Files never uploaded stay on
+  their device; their number travels, and Drafts says they stayed behind.
+- Account ids are per device, so a file carries none: a draft is the account's
+  whose Nextcloud it is in. A file in a newer format, or one that will not
+  read, is left exactly as it is.
+
+### Backup to Nextcloud
+
+Aloha Social can write a backup of the account — posts, follows, settings —
+into the person's own Files on a schedule, and keep the newest few. The server
+does the work; Settings → Nextcloud → Backup to Nextcloud shows whether it is
+on, daily or weekly, the folder, the last and next backup, the last error, and
+a **Back up now** button, polling every five seconds while one is running.
+
+`GET api/v1/social/backup` answers the state, `PATCH` changes `enabled` and
+`frequency` (a 422 carries the server's reason, shown as it is), and
+`POST api/v1/social/backup/run` starts one and answers 202. These are the
+Social app's own routes with the bearer token, not WebDAV, so no Nextcloud
+connection is needed. The row asks first and **draws nothing on a 404**, which
+is what a stock Mastodon and an Aloha Social from before backups answer; on
+any other failure it is shown, and the screen says what went wrong.
 ### A call from a direct message
 
 Where the connected Nextcloud has Talk, a direct-message conversation has

@@ -2,6 +2,7 @@
 
 import AlohaStore
 import AlohaUI
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -221,8 +222,11 @@ extension NSItemProvider {
     }
 
     /// The item in the first representation a server takes, named and typed
-    /// for what it is. An image offered only in a type no server stores (a
-    /// Mac's TIFF) is re-encoded as JPEG; anything else unusable is skipped.
+    /// for what it is. An image offered only in another type (a Mac's TIFF)
+    /// is handed over as it is, typed by its bytes: the composer's uploader
+    /// converts it for the account's server — to HEIC, or to JPEG only for a
+    /// server without HEIC — which this extension cannot know. Anything else
+    /// unusable is skipped.
     ///
     /// A movie stays a file all the way to the upload: a phone video is
     /// easily larger than the whole of the extension's memory allowance
@@ -243,10 +247,10 @@ extension NSItemProvider {
         }
         guard preferred == SharedItemType.uploadableImages,
             let data = await loadData(.image),
-            let jpeg = Self.jpeg(from: data)
+            let type = Self.imageType(of: data)
         else { return nil }
-        let upload = SharedItemType.upload(for: .jpeg)
-        return .init(data: jpeg, filename: upload.filename, mimeType: upload.mimeType)
+        let upload = SharedItemType.upload(for: type)
+        return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)
     }
 
     /// A shared file known only by its URL, as an attachment when it is a
@@ -277,9 +281,9 @@ extension NSItemProvider {
             let upload = SharedItemType.upload(for: image)
             return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)
         }
-        guard let jpeg = Self.jpeg(from: data) else { return nil }
-        let upload = SharedItemType.upload(for: .jpeg)
-        return .init(data: jpeg, filename: upload.filename, mimeType: upload.mimeType)
+        guard let image = Self.imageType(of: data) else { return nil }
+        let upload = SharedItemType.upload(for: image)
+        return .init(data: data, filename: upload.filename, mimeType: upload.mimeType)
     }
 
     /// The item's file URL, or nil when what it carries is not a file.
@@ -291,15 +295,13 @@ extension NSItemProvider {
         }
     }
 
-    private static func jpeg(from data: Data) -> Data? {
-        #if canImport(UIKit)
-            UIImage(data: data)?.jpegData(compressionQuality: 0.9)
-        #elseif canImport(AppKit)
-            NSBitmapImageRep(data: data)?
-                .representation(using: .jpeg, properties: [.compressionFactor: 0.9])
-        #else
-            nil
-        #endif
+    /// The type ImageIO reads in the bytes, when they are a picture at all.
+    private static func imageType(of data: Data) -> UTType? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+            CGImageSourceGetCount(source) > 0,
+            let identifier = CGImageSourceGetType(source) as String?
+        else { return nil }
+        return UTType(identifier)
     }
 }
 

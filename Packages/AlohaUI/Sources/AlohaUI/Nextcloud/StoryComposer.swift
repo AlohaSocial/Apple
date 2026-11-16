@@ -23,6 +23,10 @@ public struct StoryComposerSheet: View {
     private let session: AccountSession
     private let onPosted: () -> Void
     private let preparer = MediaPreparer()
+    /// Opened from the "Story camera" control: the full-screen camera is up
+    /// before anything else, for a picture or a video. The canvas's own
+    /// viewfinder takes stills only.
+    private let startsWithCamera: Bool
 
     enum Kind: Hashable {
         case media, text
@@ -48,6 +52,8 @@ public struct StoryComposerSheet: View {
     @State private var errorMessage: String?
     /// The system photo picker, presented from the preview and from "See all".
     @State private var isPickingLibrary = false
+    /// The full-screen system camera, which also records video.
+    @State private var isShowingCamera = false
     /// The last few pictures in the library, for the strip under the preview.
     @State private var recents: [PHAsset] = []
     @State private var recentAccessDenied = false
@@ -58,8 +64,12 @@ public struct StoryComposerSheet: View {
     static let stickerTextLimit = 60
     static let emojiStickers = ["😂", "😍", "🔥", "🎉", "👍", "❤️", "😮", "✨"]
 
-    public init(session: AccountSession, onPosted: @escaping () -> Void = {}) {
+    public init(
+        session: AccountSession, startsWithCamera: Bool = false,
+        onPosted: @escaping () -> Void = {}
+    ) {
         self.session = session
+        self.startsWithCamera = startsWithCamera
         self.onPosted = onPosted
     }
 
@@ -117,6 +127,19 @@ public struct StoryComposerSheet: View {
             .onChange(of: pickedItem) { _, item in
                 Task { await load(item) }
             }
+            #if os(iOS)
+                .fullScreenCover(isPresented: $isShowingCamera) {
+                    CameraCapture { captured in
+                        Task { await use(captured) }
+                    }
+                    .ignoresSafeArea()
+                }
+                .task {
+                    // Once, on the way in; a device without a camera (the
+                    // simulator, an iPad app on a Mac) keeps the canvas.
+                    if startsWithCamera, CameraCapture.isAvailable { isShowingCamera = true }
+                }
+            #endif
         }
         #if os(macOS)
             .frame(minWidth: 520, minHeight: 640)
@@ -267,7 +290,9 @@ public struct StoryComposerSheet: View {
             if CameraCapture.isAvailable {
                 StoryCameraCanvas(
                     onCapture: { data in
-                        Task { await use(CameraCapture.Captured.photo(data)) }
+                        Task {
+                            await use(CameraCapture.Captured.photo(data, mimeType: "image/heic"))
+                        }
                     },
                     onPickLibrary: { isPickingLibrary = true }
                 )
@@ -404,7 +429,7 @@ public struct StoryComposerSheet: View {
         private func use(_ captured: CameraCapture.Captured) async {
             errorMessage = nil
             switch captured {
-            case .photo(let data):
+            case .photo(let data, _):
                 guard let image = Self.decodeImage(data) else {
                     errorMessage = String(
                         localized: "That picture couldn't be read.",
@@ -699,12 +724,13 @@ public struct StoryComposerSheet: View {
             case .text:
                 let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard
-                    let jpeg = await render(
+                    let rendered = await render(
                         TextStoryCard(
                             text: trimmed, gradient: gradients[backgroundIndex], scale: 1))
                 else { throw StoryComposerError.rendering }
                 let attachment = try await upload(
-                    jpeg, filename: "story.jpg", mimeType: "image/jpeg")
+                    rendered, filename: "story.\(storyFormat.fileExtension)",
+                    mimeType: storyFormat.mimeType)
                 // The words are the picture's description, so a reader who
                 // cannot see it still gets them.
                 _ = try? await session.client.send(
@@ -713,7 +739,7 @@ public struct StoryComposerSheet: View {
             case .media:
                 if let picture {
                     guard
-                        let jpeg = await render(
+                        let rendered = await render(
                             StoryPictureCanvas(
                                 picture: picture, stickers: .constant(stickers),
                                 selected: .constant(nil),
@@ -721,7 +747,8 @@ public struct StoryComposerSheet: View {
                                 zoom: pictureZoom, offset: pictureOffset))
                     else { throw StoryComposerError.rendering }
                     let attachment = try await upload(
-                        jpeg, filename: "story.jpg", mimeType: "image/jpeg")
+                        rendered, filename: "story.\(storyFormat.fileExtension)",
+                        mimeType: storyFormat.mimeType)
                     mediaID = attachment.id
                 } else if let movie {
                     let prepared = try await prepareStoryVideo(at: movie)
@@ -823,7 +850,13 @@ public struct StoryComposerSheet: View {
         }
     }
 
-    /// Draws a story-sized view to JPEG bytes.
+    /// What a drawn story is written as: HEIC where the server takes it,
+    /// JPEG only where it does not (docs/07 §4).
+    private var storyFormat: ImageFormat {
+        ImageFormat.target(for: session.capabilities.limits) ?? .jpeg
+    }
+
+    /// Draws a story-sized view to bytes in `storyFormat`.
     @MainActor
     private func render<Content: View>(_ content: Content) async -> Data? {
         let renderer = ImageRenderer(
@@ -834,7 +867,8 @@ public struct StoryComposerSheet: View {
         renderer.proposedSize = ProposedViewSize(Self.canvas)
         renderer.scale = 1
         guard let image = renderer.cgImage else { return nil }
-        return Self.encodeJPEG(image)
+        return MediaPreparer.encode(image, as: storyFormat, quality: 0.88)
+            ?? Self.encodeJPEG(image)
     }
 
     static func encodeJPEG(_ image: CGImage, quality: CGFloat = 0.88) -> Data? {

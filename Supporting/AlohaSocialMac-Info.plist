@@ -9,6 +9,10 @@
 	<string>$(ALOHA_SHARED_CONTAINER)</string>
 	<key>AlohaKeychainSharingEnabled</key>
 	<string>$(ALOHA_SHARED_CONTAINER)</string>
+	<!-- Follows ALOHA_SHAREPLAY, the switch that adds the Group Activities
+	     entitlement: Watch together is only offered by a build entitled to it. -->
+	<key>AlohaSharePlayEnabled</key>
+	<string>$(ALOHA_SHAREPLAY)</string>
 	<!-- The app's own links: a tapped widget row, a Control Center control
 	     and Spotlight all open the Mac app through alohasocial://. -->
 	<key>CFBundleURLTypes</key>
@@ -24,6 +28,11 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Song cards look songs up in the Apple Music catalog (MusicKit); the
+	     Mac has no player to read, so this only covers that lookup. Needs
+	     the MusicKit service on the App ID (Supporting/README.md). -->
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Aloha Social looks up songs in Apple Music to show them in posts.</string>
 	<!-- The same ATS exception the other targets carry: the sign-in screen
 	     accepts plain http from a private network (http://192.168.x.x[:port]),
 	     and the Mac client is the place those servers are most likely to be

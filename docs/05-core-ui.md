@@ -59,6 +59,13 @@ compete with it. The iOS/macOS 27 material system is used as intended — floati
 translucent controls layered over content that scrolls beneath them, with the
 concentric corner radii the platform provides rather than hand-picked numbers.
 No custom blur stacks, no reimplemented navigation bars.
+What still floats over content without being a system bar wears the same
+glass rather than a material the app drew: the "N new posts" pill (glass
+tinted with the server's colour), the Audio mini player where the tab bar has
+no accessory to hold it (a glass capsule in a `safeAreaBar`), the Mac
+composer's suggestion strip, and the player's error card over a video.
+Rows and cards inside the content stay solid — glass is for the layer above
+it. Reduce Transparency is the system's to apply to all of it.
 
 ### Colour
 
@@ -94,6 +101,16 @@ Every animation respects `accessibilityReduceMotion`, which replaces slides and
 scales with cross-fades and disables the Shorts auto-advance animation. Haptics
 respect the system setting and have a separate app toggle.
 
+**The action signatures.** Favouriting bounces the heart and throws a ring and
+a fan of small hearts; boosting turns the arrows once round; bookmarking
+throws sparks — each in the action's colour, landing with the tick and tap
+`Senses` plays for the same action. A double-tap like in Photos and Shorts
+throws the same hearts around its big heart, and taps once, through `Senses`,
+rather than with a second haptic of its own. The burst is mounted only while it
+plays (`CelebrationBurst`) — an idle row carries none of it, so the timeline's
+scroll cost is unchanged — and under Reduce Motion nothing moves: the glyph
+fills and takes its tint, which is the whole answer.
+
 ### The accent colour
 
 **The server's, not a preference.** Read from Nextcloud's own `theming`
@@ -121,7 +138,15 @@ favourite amber and bookmark violet never move: they carry meaning.
 
 The **app icon** is still a choice (`AlohaIconVariant`), because an icon is
 about finding the app on a crowded Home Screen rather than about the server.
-The icon's colour never feeds into the accent.
+The icon's colour never feeds into the accent. Settings → Appearance offers
+the primary icon, **Midnight** (its dark appearance, always), **Coral** (the
+colours inside out), five colourways of the flower — Ocean, Forest, Grape,
+Rose, Slate — and **Mono**, graphite and paper. Every one is recoloured from
+the one source drawing by `tools/make-icons.sh`, carries its own dark and
+tinted appearances, and is listed once, in `ALOHA_ALTERNATE_APP_ICONS` in
+`Supporting/Aloha.xcconfig`. iOS and iPadOS only: the Mac has no alternate
+app icons. There are no seasonal icons; a recolour is all the script can
+make well, and a seasonal mark needs drawing.
 
 ## 3. Timeline
 
@@ -162,6 +187,13 @@ Rules:
 - **Long-press** on a row opens a context menu with every action including
   Share, Copy Link, Open in Browser, Translate, Report, Mute Conversation, and
   (own posts) Edit, Delete, Delete & Redraft, Pin.
+- **Share as image** (in the same menu) draws the post as a card with
+  `ImageRenderer` — the author and avatar, the words, the first picture or the
+  poll with its results, framed in the server's colour, with a QR code
+  (Core Image) that opens the post's URL — previews it, and hands it to the
+  share sheet as a PNG. Text behind a content warning and a sensitive picture
+  stay out of it unless the reader opened them, in the timeline
+  (`RevealedContent`, session memory only) or in the sheet itself.
 - **Swipe actions** are configurable: leading pair and trailing pair, each
   chosen from reply / boost / favourite / bookmark / share / none.
 
@@ -220,6 +252,31 @@ exist undocumented.
 - Edit history (`/history`) is available from the status's menu when
   `edited_at` is non-nil, shown as a diff between versions.
 - Favourited-by / boosted-by / quotes / reactions lists are pushed views.
+- **A photo post's thread is tinted by its picture**, the way Music tints its
+  player around album art: a still wash of the photograph's main colours
+  across the top of the page, settling into the theme's ground. The colours
+  come only from what the app already holds — the image cache on disk, or the
+  post's blurhash — never from a download (`PhotoColours`, off the main
+  actor, remembered per picture). The wash keeps the hue and gives up
+  strength until the faintest label still reads at 4.5:1 and body text at
+  7:1 (`PhotoTint`). It is not drawn under Reduce Transparency, Increase
+  Contrast or the high-contrast themes, nor for a picture behind a content
+  warning or a sensitive one the reading policy covers: its colours would be
+  a glimpse of it.
+- **Read as article.** Where the conversation holds a thread its author wrote
+  to themselves — the same author answering their own post at least three
+  times in a row — the opened post offers "Read all N posts as an article".
+  It unrolls that run into one scrolling page (`ThreadReaderView`): the
+  author's posts in order, their pictures, polls and link cards in place,
+  content warnings still closed, and everybody else's replies left out, with
+  "Read the replies" at the end leading back. The run is worked out from the
+  context the thread already fetched (`SelfThread`), from the top of the
+  opened post's own run or from the conversation's first post, whichever is
+  longer; where the author answered one post twice, the earlier answer
+  carries the thread on. A timeline post that answers its own author offers
+  the same from its menu. The thread's *first* post carries nothing that says
+  the author went on, and finding out would be a context request per row, so
+  it is not marked on the timeline.
 
 ## 5. Profile
 
@@ -383,12 +440,22 @@ Grouped, searchable (on platforms with settings search).
 - **Privacy & Safety** — blocked accounts, muted accounts, blocked domains,
   data & storage, clear cache.
 - **Your year** — the annual report, under Your account. Mastodon's
-  `#Wrapstodon` over `/api/v1/annual_reports`: an archetype in a sentence, a
-  month-by-month chart of posts and arrivals, the hashtags, and the three posts
-  that travelled furthest. Nextcloud serves this and its own web client
-  has no page for it, so the app is the first place it can be read. `generate`
-  is still called before reading — this server answers instantly with nothing to
-  do, and a server that does need it will act on it.
+  `#Wrapstodon` over `/api/v1/annual_reports`, told as a full-screen story:
+  the year and its archetype in a sentence, the posts written and the busiest
+  month, a month-by-month chart, the hashtags, and the posts that travelled
+  furthest — one card each, and only for what the year actually holds
+  (`AnnualReportStory`). Cards advance by themselves behind a progress bar; a
+  tap on the leading third goes back and anywhere else forward, a horizontal
+  swipe pages, and a resting finger pauses. Every gesture is also a button
+  along the bottom (back, pause, share, forward) and a VoiceOver action. Under
+  Reduce Motion or with VoiceOver running nothing advances on its own and the
+  cards cross-fade; paging by hand works the same. Each card shares as a
+  picture drawn with `ImageRenderer` from the same view, at story proportions
+  and the default text size. Follower figures follow "Show numbers". Nextcloud
+  serves this and its own web client has no page for it, so the app is the
+  first place it can be read. `generate` is still called before reading — this
+  server answers instantly with nothing to do, and a server that does need it
+  will act on it.
 - **About** — version, licences, source link, the keyboard shortcuts, the
   server's privacy policy and terms (`/instance/privacy_policy`,
   `/instance/terms_of_service`, both of which 404 where the administrator has

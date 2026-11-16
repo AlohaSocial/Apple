@@ -230,6 +230,26 @@ from it:
 The settings screen states the cost in one line under the toggle: "Videos play
 automatically, including on cellular."
 
+### Watch together
+
+On a FaceTime call, a video post (its watch page, or the media viewer) or a
+run of shorts can be watched together with SharePlay (GroupActivities).
+While a call is on, "Watch together" starts it straight away — the system
+asks whether to share or watch alone, as it does for every app; with no
+call, the button is the share sheet's SharePlay row, which starts one with
+the people chosen. Everybody joins into the same full-screen player.
+
+- What travels is each video's public file address, not a post id: the
+  people on a call are on different servers. A file only the account's
+  token opens cannot be shared.
+- Playback is kept in step by `AVPlayerPlaybackCoordinator`; items are told
+  apart by their file's address. For shorts the run is the sharer's next 25,
+  and moving to the next or previous one — by swipe or button — moves the
+  whole call (a `GroupSessionMessenger` message).
+- Leave takes this person out; the others carry on.
+- It needs the Group Activities entitlement, behind `ALOHA_SHAREPLAY`
+  (Supporting/README.md). Without it the button is not drawn.
+
 ## 5. Photos mode
 
 For Pixelfed-style image posts.
@@ -309,6 +329,21 @@ the poster's comment above, and a reader-friendly row height. Tapping the card
 opens the link in `SFSafariViewController` (iOS) / the default browser (Mac),
 with a Reader-mode preference. Tapping anything else opens the thread.
 
+**The reader view** builds on News rather than beside it. Any long post (about
+a couple of paragraphs) or post sharing a link offers **Reader view** in its
+menu and in the opened post's toolbar: one calm column, at most 640 points
+wide, with the post's own rich text in News's reader metrics, an estimated
+reading time (words at 230 a minute, never under a minute), a **serif** switch
+and a **text size** that steps up or down Dynamic Type's own sizes (−2…+4) rather
+than overriding them. Both are device preferences. A content warning is still a
+warning there: the post opens behind it. A shared link becomes the card the
+server built — provider, title, description — with **Read article**, which opens
+it in Safari's in-app browser straight into Reader (`entersReaderIfAvailable`)
+on iPhone and iPad, and in the browser on the Mac. The article is not fetched
+and re-laid out by the app: Safari's Reader does that properly, and a second,
+worse extractor would be a promise the app could not keep, so the reading time
+is the post's, not the article's.
+
 **Audio** — statuses whose attachments are `audio`. A list with inline players,
 a persistent mini-player docked above the tab bar / in the sidebar footer,
 background playback, `MPNowPlayingInfoCenter` metadata (title from the status
@@ -320,7 +355,10 @@ playback queue built from the visible list.
 
 One component, used from every mode and from the thread view.
 
-- Full-screen, edge to edge, over a dimmed backdrop.
+- Full-screen, edge to edge, over a dimmed backdrop: a deep shade of the
+  picture's own colours, from the image cache or its blurhash and never a
+  download, or plain black for a video, under Reduce Transparency and
+  Increase Contrast, and while nothing of the picture is cached yet.
 - **Pinch to zoom** (to 5×), pan when zoomed, double-tap to toggle fit/fill.
 - **Drag to dismiss** with interactive scaling and backdrop fade; a matched
   geometry transition from the source cell.
@@ -330,8 +368,31 @@ One component, used from every mode and from the thread view.
   absent — never a fake one.
 - Actions: Save to Photos (with the usage description and a permission-denied
   path), Share, Copy, Open in Browser, and — for video — PiP and AirPlay.
+- **Save to Nextcloud**, where the account's Nextcloud is connected: the
+  attachment's original file, byte for byte, into `Aloha Social/Saved/` in
+  the person's Files, with a progress bar, a "Saved as …" confirmation that
+  VoiceOver announces, and a numbered copy rather than an overwrite when the
+  name is taken ([14-open-questions.md](14-open-questions.md) §7).
+- **Live Text and Visual Look Up** on pictures (iPhone, iPad and the Mac):
+  text in a photograph or a screenshot can be selected, copied, translated
+  and looked up, links and numbers in it followed, and a subject looked up,
+  through VisionKit (`ImageAnalysisInteraction`, `ImageAnalysisOverlayView`
+  on the Mac). Only the picture on screen is analysed, on the device, and
+  only once it is there; swiping on cancels it. The original at `url` is
+  analysed at the screen's size rather than the preview, which is often too
+  small for a screenshot's text. The overlay is the picture's own size and
+  only takes a touch that lands on something it found, so a tap still hides
+  the controls and a double tap still zooms. Not on visionOS yet.
 - Video attachments inside the viewer use the same source-selection ladder as
   Video mode (§3).
+- **Spatial photos**: for the picture on screen, and only where its original
+  may be a HEIC (a `url` ending in `.heic`, `.heif` or nothing), the original
+  is fetched into the image cache without being decoded and its container
+  checked for a stereo pair group. A spatial one gets a **Spatial** button
+  that opens it in Quick Look, which shows it in depth on Vision Pro and as a
+  spatial photo on iPhone and iPad. The preview is always one flat JPEG, so
+  only the original can tell; a server that keeps HEIC originals serves them
+  at `url` (docs/02).
 - Keyboard on Mac/iPad: arrows to move, space to play/pause, `+`/`-` to zoom,
   escape to dismiss.
 - The viewer is a single `MediaViewerScene` taking `[MediaAttachment]` and a

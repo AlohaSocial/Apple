@@ -31,9 +31,10 @@ public enum UploadPreflight {
         let limit = limits.sizeLimit(forMIMEType: mimeType)
 
         if !limits.accepts(mimeType: mimeType) {
-            // HEIC and ProRAW are transcoded to JPEG unless the server takes
-            // them; a Live Photo posts as its still.
-            if let target = transcodeTarget(for: mimeType), limits.accepts(mimeType: target) {
+            // A picture the server does not take is written again as HEIC,
+            // or as JPEG on a server without HEIC (`ImageFormat.target`); a
+            // QuickTime video goes through the exporter to MP4.
+            if let target = transcodeTarget(for: mimeType, limits: limits) {
                 return .needsTranscode(from: mimeType, to: target)
             }
             return .unsupported(mimeType: mimeType)
@@ -45,12 +46,80 @@ public enum UploadPreflight {
         return .ready(mimeType: mimeType)
     }
 
-    static func transcodeTarget(for mimeType: String) -> String? {
-        switch mimeType {
-        case "image/heic", "image/heif", "image/tiff", "image/x-adobe-dng": "image/jpeg"
-        case "video/quicktime", "video/x-m4v": "video/mp4"
-        default: nil
+    /// Picture types the app can decode and write again in another format.
+    /// Not GIF or WebP: they can be animated, and would arrive as their
+    /// first frame.
+    static let convertibleImages: Set<String> = [
+        "image/heic", "image/heif", "image/jpeg", "image/png", "image/tiff",
+        "image/x-adobe-dng", "image/bmp",
+    ]
+
+    static func transcodeTarget(
+        for mimeType: String, limits: ServerLimits,
+        writable: (ImageFormat) -> Bool = \.isWritable
+    ) -> String? {
+        let type = mimeType.lowercased()
+        if convertibleImages.contains(type) {
+            return ImageFormat.target(accepting: limits.accepts(mimeType:), writable: writable)
+                .map(\.mimeType)
+                .flatMap { $0 == type ? nil : $0 }
         }
+        switch type {
+        case "video/quicktime", "video/x-m4v":
+            return limits.accepts(mimeType: "video/mp4") ? "video/mp4" : nil
+        default:
+            return nil
+        }
+    }
+
+    /// What happens to a picture before it goes up. Pure, so each decision
+    /// can be tested without a picture (docs/07 §4):
+    ///
+    /// 1. A type the server takes, under its limit, goes up as it is — HEIC
+    ///    included, and a spatial photo with both its eyes. Only the
+    ///    personal metadata is copied out, losslessly.
+    /// 2. A type the server does not take is written again as HEIC, or as
+    ///    JPEG on a server that does not take HEIC either.
+    /// 3. A picture over the limit is written again, smaller, in the same
+    ///    format a conversion would use — except a spatial photo, which
+    ///    would lose an eye, and is refused with the limit named instead.
+    public enum ImagePlan: Sendable, Hashable {
+        case original
+        case convert(to: ImageFormat)
+        case shrink(to: ImageFormat)
+        case spatialTooLarge(size: Int, limit: Int)
+        case refuse(Verdict)
+    }
+
+    public static func imagePlan(
+        fileSize: Int, mimeType: String, isSpatial: Bool, limits: ServerLimits
+    ) -> ImagePlan {
+        imagePlan(
+            fileSize: fileSize, mimeType: mimeType, isSpatial: isSpatial, limits: limits,
+            writable: \.isWritable)
+    }
+
+    static func imagePlan(
+        fileSize: Int, mimeType: String, isSpatial: Bool, limits: ServerLimits,
+        writable: (ImageFormat) -> Bool
+    ) -> ImagePlan {
+        let limit = limits.imageSizeLimit
+        let target = ImageFormat.target(accepting: limits.accepts(mimeType:), writable: writable)
+        if limits.accepts(mimeType: mimeType) {
+            guard fileSize > limit else { return .original }
+            if isSpatial { return .spatialTooLarge(size: fileSize, limit: limit) }
+            guard let target else {
+                return .refuse(.tooLarge(size: fileSize, limit: limit, isVideo: false))
+            }
+            return .shrink(to: target)
+        }
+        // A spatial photo on a server without HEIC cannot stay spatial
+        // whatever is done; it goes up as an ordinary picture, its first
+        // eye, rather than not at all.
+        guard convertibleImages.contains(mimeType.lowercased()), let target else {
+            return .refuse(.unsupported(mimeType: mimeType))
+        }
+        return .convert(to: target)
     }
 
     /// The message shown in the composer. Names the ceiling, because "too
@@ -77,6 +146,16 @@ public enum UploadPreflight {
                 localized: "Your server doesn't accept this kind of file.",
                 comment: "Upload unsupported type")
         }
+    }
+
+    /// Why a spatial photo was not sent. Named apart from "too large",
+    /// because the cure is not the one a picture usually gets.
+    public static func spatialTooLargeExplanation(limit: Int) -> String {
+        let formatted = limit.formatted(.byteCount(style: .file))
+        return String(
+            localized:
+                "This spatial photo is over your server's limit of \(formatted). Making it smaller would lose its depth, so it wasn't added.",
+            comment: "Upload refused: a spatial (3D) photo larger than the server allows")
     }
 }
 
@@ -121,13 +200,19 @@ public struct MediaPreparer: Sendable {
         }
     }
 
-    /// Re-encodes an image to JPEG at a bounded size. `nil` maximum keeps the
-    /// original dimensions and only changes the container.
+    /// Writes an image again, as `format`, at a bounded size. `nil` maximum
+    /// keeps the original dimensions and only changes the container.
+    ///
+    /// The format is always the caller's choice — HEIC unless the server
+    /// does not take it (`ImageFormat.target(for:)`) — so nothing becomes a
+    /// JPEG without somebody having decided it should.
     ///
     /// Only the pixels are carried over, so the result has no EXIF, GPS or
-    /// IPTC metadata whatever the original had.
+    /// IPTC metadata whatever the original had. Only the first picture is
+    /// drawn: never call this for a spatial photo that should stay one.
     public func prepareImage(
-        _ data: Data, filename: String, quality: Quality = .high, compression: CGFloat = 0.85
+        _ data: Data, filename: String, quality: Quality = .high, format: ImageFormat,
+        compression: CGFloat = 0.85
     ) -> Prepared? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
 
@@ -153,22 +238,107 @@ public struct MediaPreparer: Sendable {
             CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
             ?? CGImageSourceCreateImageAtIndex(source, 0, nil)
 
-        guard let image else { return nil }
-
-        let output = NSMutableData()
-        guard
-            let destination = CGImageDestinationCreateWithData(
-                output, UTType.jpeg.identifier as CFString, 1, nil)
+        guard let image, let output = Self.encode(image, as: format, quality: compression)
         else { return nil }
-
-        CGImageDestinationAddImage(
-            destination, image,
-            [kCGImageDestinationLossyCompressionQuality: compression] as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else { return nil }
 
         let base = (filename as NSString).deletingPathExtension
         return Prepared(
-            data: output as Data, filename: "\(base).jpg", mimeType: "image/jpeg")
+            data: output, filename: "\(base).\(format.fileExtension)", mimeType: format.mimeType)
+    }
+
+    /// One picture as `format`, with no metadata. Nil where the device has
+    /// no encoder for it.
+    public static func encode(
+        _ image: CGImage, as format: ImageFormat, quality: CGFloat = 0.85
+    ) -> Data? {
+        let output = NSMutableData()
+        guard
+            let destination = CGImageDestinationCreateWithData(
+                output, format.type.identifier as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(
+            destination, image,
+            [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return output as Data
+    }
+
+    /// A picture made ready for this server, or why it cannot be: the whole
+    /// of `UploadPreflight.imagePlan` carried out. The composer, the share
+    /// sheet and Shortcuts all send pictures through here, so none of them
+    /// can send one with its location in it, or one this server refuses.
+    ///
+    /// Heavy — a 48-megapixel decode when a picture has to be written again
+    /// — so callers run it off the main actor.
+    public func prepareForUpload(
+        image data: Data, filename: String, mimeType: String, limits: ServerLimits
+    ) -> ImageUpload {
+        let isSpatial = SpatialPhoto.isSpatial(data)
+        let limit = limits.imageSizeLimit
+        let fallback = ImageFormat.target(for: limits) ?? .jpeg
+
+        func shrink(to format: ImageFormat, from size: Int) -> ImageUpload {
+            guard
+                let smaller = prepareImage(
+                    data, filename: filename, quality: .high, format: format),
+                smaller.data.count <= limit
+            else {
+                return .refused(
+                    UploadPreflight.explanation(
+                        for: .tooLarge(size: size, limit: limit, isVideo: false)) ?? "")
+            }
+            return .ready(smaller, isSpatial: false)
+        }
+
+        switch UploadPreflight.imagePlan(
+            fileSize: data.count, mimeType: mimeType, isSpatial: isSpatial, limits: limits)
+        {
+        case .original:
+            guard
+                let cleaned = removingPersonalMetadata(
+                    fromImage: data, filename: filename, mimeType: mimeType, fallback: fallback)
+            else { return .refused(Self.couldNotPrepare) }
+            if cleaned.data.count <= limit {
+                // Still spatial only if it is still the same file type: the
+                // copy is lossless, so it is.
+                return .ready(cleaned, isSpatial: isSpatial && cleaned.mimeType == mimeType)
+            }
+            // A picture written again can come out a little larger than it
+            // went in; it gets the one attempt an oversized picture gets.
+            if isSpatial {
+                return .refused(UploadPreflight.spatialTooLargeExplanation(limit: limit))
+            }
+            return shrink(to: fallback, from: cleaned.data.count)
+
+        case .convert(let format):
+            guard
+                let converted = prepareImage(
+                    data, filename: filename, quality: .original, format: format)
+            else { return .refused(Self.couldNotPrepare) }
+            if converted.data.count <= limit { return .ready(converted, isSpatial: false) }
+            return shrink(to: format, from: converted.data.count)
+
+        case .shrink(let format):
+            return shrink(to: format, from: data.count)
+
+        case .spatialTooLarge(_, let limit):
+            return .refused(UploadPreflight.spatialTooLargeExplanation(limit: limit))
+
+        case .refuse(let verdict):
+            return .refused(UploadPreflight.explanation(for: verdict) ?? Self.couldNotPrepare)
+        }
+    }
+
+    /// What `prepareForUpload` decided.
+    public enum ImageUpload: Sendable {
+        /// The bytes to send. `isSpatial` when both eyes are still there.
+        case ready(Prepared, isSpatial: Bool)
+        /// Not sent, and why, in words for the person.
+        case refused(String)
+    }
+
+    static var couldNotPrepare: String {
+        String(localized: "That image couldn't be converted.", comment: "Upload failure")
     }
 
     /// Trims and re-encodes a video. A file that cannot be brought under the
@@ -287,11 +457,17 @@ public struct MediaPreparer: Sendable {
     /// EXIF and TIFF fields that name someone are all gone, the orientation
     /// stays. A picture that carries none of that comes back untouched.
     ///
-    /// A JPEG is copied without decoding, so it loses nothing; other kinds
-    /// are redrawn in their own format. One whose format cannot be written
-    /// (WebP) becomes a JPEG. `nil` when the bytes are not a picture.
+    /// JPEG, HEIC/HEIF, PNG and TIFF are copied without decoding
+    /// (`CGImageDestinationCopyImageSource`): no pixel is recompressed, and
+    /// everything in the container that is not metadata stays — the second
+    /// eye of a spatial photo, a depth map, an HDR gain map, the colour
+    /// profile. Other kinds are drawn again in their own format, and one
+    /// whose format cannot be written (WebP) becomes `fallback`. A spatial
+    /// photo is never drawn again: if it cannot be copied, nothing is
+    /// returned. `nil` when the bytes are not a picture.
     public func removingPersonalMetadata(
-        fromImage data: Data, filename: String, mimeType: String
+        fromImage data: Data, filename: String, mimeType: String,
+        fallback: ImageFormat = .heic
     ) -> Prepared? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
             let type = CGImageSourceGetType(source),
@@ -301,18 +477,34 @@ public struct MediaPreparer: Sendable {
             return Prepared(data: data, filename: filename, mimeType: mimeType)
         }
 
-        if UTType(type as String) == .jpeg,
+        if let uniformType = UTType(type as String),
+            Self.copiesLosslessly.contains(where: { uniformType.conforms(to: $0) }),
             let copy = Self.copyWithoutMetadata(source, type: type),
-            !Self.carriesPersonalMetadata(copy)
+            Self.isFaithfulCopy(copy, of: source)
         {
             return Prepared(data: copy, filename: filename, mimeType: mimeType)
         }
+        guard !SpatialPhoto.isSpatial(source) else { return nil }
         if let redrawn = Self.redrawWithoutMetadata(source, type: type),
             !Self.carriesPersonalMetadata(redrawn)
         {
             return Prepared(data: redrawn, filename: filename, mimeType: mimeType)
         }
-        return prepareImage(data, filename: filename, quality: .original)
+        guard let format = [fallback, .jpeg].first(where: \.isWritable) else { return nil }
+        return prepareImage(data, filename: filename, quality: .original, format: format)
+    }
+
+    /// The containers ImageIO copies with new metadata and no re-encoding.
+    static let copiesLosslessly: [UTType] = [.jpeg, .heic, .heif, .png, .tiff]
+
+    /// A copy that kept every picture and its groups and lost the personal
+    /// metadata — anything less is not used.
+    private static func isFaithfulCopy(_ copy: Data, of source: CGImageSource) -> Bool {
+        guard let copied = CGImageSourceCreateWithData(copy as CFData, nil),
+            CGImageSourceGetCount(copied) == CGImageSourceGetCount(source),
+            !carriesPersonalMetadata(copied)
+        else { return false }
+        return SpatialPhoto.isSpatial(copied) == SpatialPhoto.isSpatial(source)
     }
 
     static func carriesPersonalMetadata(_ data: Data) -> Bool {
@@ -358,8 +550,12 @@ public struct MediaPreparer: Sendable {
         }
     }
 
-    /// A JPEG's compressed data copied into a new file whose only metadata
-    /// is the orientation. Lossless, and no pixels are decoded.
+    /// The compressed data copied into a new file whose only metadata is the
+    /// orientation. Lossless, and no pixels are decoded.
+    ///
+    /// The metadata has to be *replaced*: `kCGImageMetadataShouldExcludeGPS`
+    /// on its own, without `kCGImageDestinationMetadata`, leaves the GPS
+    /// dictionary where it was (checked on a HEIC; the tests pin it).
     private static func copyWithoutMetadata(_ source: CGImageSource, type: CFString) -> Data? {
         let output = NSMutableData()
         guard

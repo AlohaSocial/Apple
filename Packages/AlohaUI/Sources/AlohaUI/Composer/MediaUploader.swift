@@ -46,24 +46,21 @@ public final class ComposerUploader {
         self.session = session
     }
 
-    /// Re-encoding a photo is the heaviest thing the composer does — a
-    /// 48-megapixel HEIC decode — so it runs off the main actor, where it
-    /// used to stall typing and scrolling while it worked.
-    @concurrent
-    private static func prepare(
-        _ data: Data, filename: String, quality: MediaPreparer.Quality = .high,
-        with preparer: MediaPreparer
-    ) async -> MediaPreparer.Prepared? {
-        preparer.prepareImage(data, filename: filename, quality: quality)
-    }
+    /// Spatial photos that went up with both eyes, by attachment id: what
+    /// the composer marks "Spatial", and what the filters leave alone.
+    public private(set) var spatialIDs: Set<String> = []
 
-    /// Off the main actor for the same reason: a picture that is not a JPEG
-    /// is redrawn to lose its metadata.
+    /// Making a picture ready — copying its metadata out, or writing it
+    /// again when it has to be — is the heaviest thing the composer does, a
+    /// 48-megapixel HEIC decode at worst, so it runs off the main actor,
+    /// where it used to stall typing and scrolling while it worked.
     @concurrent
-    private static func removingPersonalMetadata(
-        from data: Data, filename: String, mimeType: String, with preparer: MediaPreparer
-    ) async -> MediaPreparer.Prepared? {
-        preparer.removingPersonalMetadata(fromImage: data, filename: filename, mimeType: mimeType)
+    private static func prepareForUpload(
+        _ data: Data, filename: String, mimeType: String, limits: ServerLimits,
+        with preparer: MediaPreparer
+    ) async -> MediaPreparer.ImageUpload {
+        preparer.prepareForUpload(
+            image: data, filename: filename, mimeType: mimeType, limits: limits)
     }
 
     private var limits: ServerLimits { session.capabilities.limits }
@@ -110,11 +107,18 @@ public final class ComposerUploader {
     /// Concurrency cap of two, as docs/07 §4 prescribes — more than that on a
     /// phone connection makes every upload slower rather than the batch faster.
     ///
+    /// A picture goes up as it is whenever the server takes its type — HEIC
+    /// included, and a spatial photo with both its eyes — and is only
+    /// written again when the server does not take it, or it is over the
+    /// limit: as HEIC, or as JPEG on a server without HEIC
+    /// (`UploadPreflight.imagePlan`).
+    ///
     /// Nothing goes up with the place it was taken or the name of the person
     /// who took it: a picture loses its GPS, IPTC and identifying EXIF here,
-    /// a video in `add(fileAt:)`, and one converted on the way loses all of
-    /// it anyway. There is no setting to keep them: a place is shared by
-    /// adding one to the post, where the person can see it.
+    /// copied out without recompressing it, a video in `add(fileAt:)`, and
+    /// one written again loses all of it anyway. There is no setting to keep
+    /// them: a place is shared by adding one to the post, where the person
+    /// can see it.
     public func add(data: Data, filename: String, mimeType: String) async {
         // The metadata comes off a video file to file, which is how it goes.
         guard !mimeType.hasPrefix("video/") else {
@@ -125,89 +129,33 @@ public final class ComposerUploader {
         beginUpload()
         defer { endUpload() }
 
-        var payload = data
-        var type = mimeType
-        var name = filename
-
-        switch UploadPreflight.check(fileSize: data.count, mimeType: mimeType, limits: limits) {
-        case .ready where mimeType.hasPrefix("image/"):
-            guard
-                let cleaned = await Self.removingPersonalMetadata(
-                    from: data, filename: filename, mimeType: mimeType, with: preparer)
-            else {
+        guard mimeType.hasPrefix("image/") else {
+            // Audio, and anything else that is neither: sent as it is when
+            // the server takes it, refused with the reason otherwise.
+            switch UploadPreflight.check(fileSize: data.count, mimeType: mimeType, limits: limits)
+            {
+            case .ready:
+                await send(data, filename: filename, mimeType: mimeType)
+            case .needsTranscode(_, let target):
                 errorMessage = String(
-                    localized: "That image couldn't be converted.", comment: "Upload failure")
-                return
+                    localized: "That file has to be \(target) for your server.",
+                    comment: "Upload needs a conversion this app cannot do")
+            case let verdict:
+                errorMessage = UploadPreflight.explanation(for: verdict)
             }
-            if cleaned.data.count <= limits.imageSizeLimit {
-                payload = cleaned.data
-                type = cleaned.mimeType
-                name = cleaned.filename
-            } else {
-                // A redrawn picture can come out a little larger than it went
-                // in; it gets the one attempt an oversized picture gets.
-                guard
-                    let prepared = await Self.prepare(
-                        data, filename: filename, quality: .high, with: preparer),
-                    prepared.data.count <= limits.imageSizeLimit
-                else {
-                    errorMessage = UploadPreflight.explanation(
-                        for: .tooLarge(
-                            size: cleaned.data.count, limit: limits.imageSizeLimit,
-                            isVideo: false))
-                    return
-                }
-                payload = prepared.data
-                type = prepared.mimeType
-                name = prepared.filename
-            }
-
-        case .ready:
-            break
-
-        case .needsTranscode(_, let target) where target == "image/jpeg":
-            guard let prepared = await Self.prepare(data, filename: filename, with: preparer)
-            else {
-                errorMessage = String(
-                    localized: "That image couldn't be converted.", comment: "Upload failure")
-                return
-            }
-            payload = prepared.data
-            type = prepared.mimeType
-            name = prepared.filename
-
-        case .needsTranscode(_, let target):
-            errorMessage = String(
-                localized: "That file has to be \(target) for your server.",
-                comment: "Upload needs a conversion this app cannot do")
-            return
-
-        case .tooLarge(let size, _, let isVideo) where !isVideo:
-            // One attempt at bringing it under the ceiling before refusing.
-            guard
-                let prepared = await Self.prepare(
-                    data, filename: filename, quality: .high, with: preparer),
-                prepared.data.count <= limits.imageSizeLimit
-            else {
-                errorMessage = UploadPreflight.explanation(
-                    for: .tooLarge(size: size, limit: limits.imageSizeLimit, isVideo: false))
-                return
-            }
-            payload = prepared.data
-            type = prepared.mimeType
-            name = prepared.filename
-
-        case .tooLarge(let size, let limit, let isVideo):
-            errorMessage = UploadPreflight.explanation(
-                for: .tooLarge(size: size, limit: limit, isVideo: isVideo))
-            return
-
-        case .unsupported(let mimeType):
-            errorMessage = UploadPreflight.explanation(for: .unsupported(mimeType: mimeType))
             return
         }
 
-        await send(payload, filename: name, mimeType: type)
+        switch await Self.prepareForUpload(
+            data, filename: filename, mimeType: mimeType, limits: limits, with: preparer)
+        {
+        case .ready(let prepared, let isSpatial):
+            await send(
+                prepared.data, filename: prepared.filename, mimeType: prepared.mimeType,
+                isSpatial: isSpatial)
+        case .refused(let message):
+            errorMessage = message
+        }
     }
 
     /// A file handed over on disk rather than in memory — the share
@@ -309,7 +257,8 @@ public final class ComposerUploader {
     /// `ticket` is the progress row, when one was begun before the bytes
     /// were ready.
     private func send(
-        _ payload: Data, filename name: String, mimeType type: String, ticket: UUID? = nil
+        _ payload: Data, filename name: String, mimeType type: String, ticket: UUID? = nil,
+        isSpatial: Bool = false
     ) async {
         let ticket = ticket ?? progress.begin(name)
         if UploadActivityController.isWorthShowing(
@@ -324,6 +273,7 @@ public final class ComposerUploader {
                 try await self.upload(data: payload, filename: name, mimeType: type)
             }
             attachments.append(attachment)
+            if isSpatial { spatialIDs.insert(attachment.id) }
             rememberOriginal(payload, filename: name, mimeType: type, for: attachment.id)
             progress.finish(ticket)
             // A video the server is still transcoding comes back without a
@@ -454,8 +404,14 @@ public final class ComposerUploader {
         }
     }
 
+    /// Whether this attachment went up as a spatial photo, both eyes intact.
+    public func isSpatial(_ attachmentID: String) -> Bool {
+        spatialIDs.contains(attachmentID)
+    }
+
     public func remove(_ attachmentID: String) {
         attachments.removeAll { $0.id == attachmentID }
+        spatialIDs.remove(attachmentID)
         processing.remove(attachmentID)
         forgetOriginal(attachmentID)
         filters[attachmentID] = nil
@@ -465,8 +421,10 @@ public final class ComposerUploader {
 
     /// Whether this attachment is a picture the filters can work on.
     public func canFilter(_ attachmentID: String) -> Bool {
+        // A filter draws one picture: on a spatial photo it would keep one
+        // eye and lose the other.
         #if canImport(CoreImage) && canImport(ImageIO) && !os(watchOS)
-            originals[attachmentID] != nil
+            originals[attachmentID] != nil && !spatialIDs.contains(attachmentID)
         #else
             false
         #endif
@@ -502,7 +460,8 @@ public final class ComposerUploader {
             // there, and a redraw only happens for the rest.
             guard
                 let rendered = PhotoFilterRenderer.apply(
-                    filter, to: data, mimeType: original.mimeType)
+                    filter, to: data, mimeType: original.mimeType,
+                    format: ImageFormat.target(for: limits) ?? .jpeg)
             else {
                 if filter == .none, previous != .none {
                     await replace(at: index, with: data, original: original, id: attachmentID)
@@ -612,6 +571,7 @@ public final class ComposerUploader {
         for id in originals.keys { forgetOriginal(id) }
         attachments = []
         filters = [:]
+        spatialIDs = []
         progress.reset()
         errorMessage = nil
     }

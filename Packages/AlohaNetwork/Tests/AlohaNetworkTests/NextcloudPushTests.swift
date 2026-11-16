@@ -107,6 +107,27 @@ struct NextcloudPushTests {
         #expect(payload.isWithdrawal)
     }
 
+    @Test("A digest or an hourly bundle is a summary; one notification's push is not")
+    func summaries() throws {
+        func payload(_ json: String) throws -> NextcloudPushPayload {
+            try JSONDecoder().decode(NextcloudPushPayload.self, from: Data(json.utf8))
+        }
+        let single = try payload(
+            #"{"nid":1,"app":"social","type":"notification","id":"\#(String(repeating: "a1", count: 20))"}"#
+        )
+        #expect(!single.isSummary)
+        #expect(
+            try payload(#"{"nid":2,"app":"social","type":"notification","id":"digest-1763200000"}"#)
+                .isSummary)
+        #expect(
+            try payload(#"{"nid":3,"app":"social","type":"notification","id":"hourly-1763200000"}"#)
+                .isSummary)
+        // Another app's push, or Social's reports, are not summaries.
+        #expect(!(try payload(#"{"nid":4,"app":"spreed","type":"chat","id":"x"}"#)).isSummary)
+        #expect(!(try payload(#"{"nid":5,"app":"social","type":"report","id":"7"}"#)).isSummary)
+        #expect(!(try payload(#"{"nid":6,"app":"social"}"#)).isSummary)
+    }
+
     @Test("Rubbish in the subject is an error, not a crash")
     func malformedSubject() throws {
         let keys = try NextcloudPushKeys.generate()

@@ -222,7 +222,7 @@ struct UploadPreflightTests {
         }
     }
 
-    @Test("HEIC is transcoded rather than refused")
+    @Test("HEIC on a server without HEIC is transcoded rather than refused")
     func heicTranscodes() {
         guard
             case .needsTranscode(_, let target) = UploadPreflight.check(
@@ -231,7 +231,17 @@ struct UploadPreflightTests {
             Issue.record("expected a transcode")
             return
         }
+        // The explicit last resort: this server takes neither HEIC nor HEIF.
         #expect(target == "image/jpeg")
+    }
+
+    @Test("HEIC on a server that lists it goes up as it is")
+    func heicIsReady() {
+        var limits = nextcloud
+        limits.supportedMIMETypes.append(contentsOf: ["image/heic", "image/heif"])
+        #expect(
+            UploadPreflight.check(fileSize: 1024, mimeType: "image/heic", limits: limits)
+                == .ready(mimeType: "image/heic"))
     }
 
     @Test("A type the server takes and no transcode can reach is refused")
@@ -252,6 +262,114 @@ struct UploadPreflightTests {
         let message = try #require(UploadPreflight.explanation(for: verdict))
         #expect(message.contains("MB"))
         #expect(UploadPreflight.explanation(for: .ready(mimeType: "image/jpeg")) == nil)
+    }
+}
+
+/// The rule since servers keep HEIC: send the original, convert to HEIC
+/// where the server will not take the original, and fall back to JPEG only
+/// where it takes neither (docs/07 §4).
+@Suite("Picture upload formats")
+struct ImageUploadFormatTests {
+
+    private func limits(_ types: [String], imageLimit: Int = 10 * 1024 * 1024) -> ServerLimits {
+        ServerLimits(
+            maxStatusCharacters: 500, maxMediaAttachments: 4, charactersReservedPerURL: 23,
+            imageSizeLimit: imageLimit, videoSizeLimit: 40 * 1024 * 1024,
+            supportedMIMETypes: types, maxPollOptions: 4, maxPollOptionCharacters: 50,
+            minPollExpiration: 300, maxPollExpiration: 2_629_746, maxFeaturedTags: 10)
+    }
+
+    private let modern = ["image/jpeg", "image/png", "image/heic", "image/heif"]
+    private let jpegOnly = ["image/jpeg", "image/png"]
+    private let everyEncoder: (ImageFormat) -> Bool = { _ in true }
+
+    private func plan(
+        _ mimeType: String, size: Int = 1024, spatial: Bool = false, on types: [String],
+        imageLimit: Int = 10 * 1024 * 1024, writable: ((ImageFormat) -> Bool)? = nil
+    ) -> UploadPreflight.ImagePlan {
+        UploadPreflight.imagePlan(
+            fileSize: size, mimeType: mimeType, isSpatial: spatial,
+            limits: limits(types, imageLimit: imageLimit), writable: writable ?? everyEncoder)
+    }
+
+    @Test("A type the server takes goes up as it is, HEIC and spatial photos included")
+    func originals() {
+        #expect(plan("image/heic", on: modern) == .original)
+        #expect(plan("image/heif", on: modern) == .original)
+        #expect(plan("image/heic", spatial: true, on: modern) == .original)
+        #expect(plan("image/jpeg", on: jpegOnly) == .original)
+    }
+
+    @Test("A type the server does not take becomes HEIC where the server takes HEIC")
+    func convertsToHEIC() {
+        #expect(plan("image/tiff", on: modern) == .convert(to: .heic))
+        #expect(plan("image/x-adobe-dng", on: modern) == .convert(to: .heic))
+        #expect(plan("image/heif", on: ["image/jpeg", "image/heic"]) == .convert(to: .heic))
+    }
+
+    @Test("JPEG only for a server that takes neither the type nor HEIC")
+    func jpegFallback() {
+        #expect(plan("image/heic", on: jpegOnly) == .convert(to: .jpeg))
+        #expect(plan("image/tiff", on: jpegOnly) == .convert(to: .jpeg))
+        // A device that cannot write HEIC falls back too, rather than failing.
+        #expect(
+            plan("image/tiff", on: modern, writable: { $0 == .jpeg }) == .convert(to: .jpeg))
+    }
+
+    @Test("Nothing to convert to is a refusal, not a guess")
+    func nothingToConvertTo() {
+        #expect(
+            plan("image/heic", on: ["image/png"])
+                == .refuse(.unsupported(mimeType: "image/heic")))
+        // An animated type is not flattened to its first frame.
+        #expect(
+            plan("image/gif", on: modern) == .refuse(.unsupported(mimeType: "image/gif")))
+    }
+
+    @Test("A picture over the limit is shrunk as HEIC, or JPEG without HEIC")
+    func shrinks() {
+        let big = 12 * 1024 * 1024
+        #expect(plan("image/jpeg", size: big, on: modern) == .shrink(to: .heic))
+        #expect(plan("image/heic", size: big, on: modern) == .shrink(to: .heic))
+        #expect(plan("image/jpeg", size: big, on: jpegOnly) == .shrink(to: .jpeg))
+    }
+
+    @Test("A spatial photo over the limit is refused, never shrunk")
+    func spatialTooLarge() {
+        let big = 12 * 1024 * 1024
+        #expect(
+            plan("image/heic", size: big, spatial: true, on: modern)
+                == .spatialTooLarge(size: big, limit: 10 * 1024 * 1024))
+        let message = UploadPreflight.spatialTooLargeExplanation(limit: 10 * 1024 * 1024)
+        #expect(message.contains("MB"))
+    }
+
+    @Test("A spatial photo on a server without HEIC goes up as an ordinary picture")
+    func spatialWithoutHEIC() {
+        #expect(plan("image/heic", spatial: true, on: jpegOnly) == .convert(to: .jpeg))
+    }
+
+    @Test("QuickTime still goes to MP4, and only where the server takes MP4")
+    func videos() {
+        #expect(
+            UploadPreflight.check(
+                fileSize: 1024, mimeType: "video/quicktime",
+                limits: limits(["video/mp4"]))
+                == .needsTranscode(
+                    from: "video/quicktime", to: "video/mp4"))
+        #expect(
+            UploadPreflight.check(
+                fileSize: 1024, mimeType: "video/quicktime", limits: limits(["video/webm"]))
+                == .unsupported(mimeType: "video/quicktime"))
+    }
+
+    @Test("The format a MIME type names")
+    func formats() {
+        #expect(ImageFormat(mimeType: "image/HEIC") == .heic)
+        #expect(ImageFormat(mimeType: "image/heif") == .heic)
+        #expect(ImageFormat(mimeType: "image/jpeg") == .jpeg)
+        #expect(ImageFormat(mimeType: "image/png") == nil)
+        #expect(ImageFormat.target(accepting: { _ in true }, writable: { _ in true }) == .heic)
     }
 }
 

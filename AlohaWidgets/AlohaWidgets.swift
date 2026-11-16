@@ -513,14 +513,15 @@ struct AlohaWidgetBundle: WidgetBundle {
         NewPostControl()
         NewStoryControl()
         #if os(iOS)
-            UploadLiveActivity()
+            LiveActivityWidgets().body
         #endif
         LockScreenWidgets().body
         HomeScreenWidgets().body
     }
 }
 
-/// The snapshot widgets made for the Lock Screen, and the Messages control.
+/// The snapshot widgets made for the Lock Screen, the Messages control, and
+/// the controls that open a screen (`MoreControls`).
 /// Bundles of their own keep each builder well inside its limit.
 struct LockScreenWidgets: WidgetBundle {
     var body: some Widget {
@@ -532,6 +533,7 @@ struct LockScreenWidgets: WidgetBundle {
             WeeklyStatsWidget()
         #endif
         OpenMessagesControl()
+        MoreControls().body
     }
 }
 

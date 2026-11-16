@@ -221,6 +221,20 @@ extension ComposerView {
             }
             .accessibilityLabel(Text("Add a custom emoji", comment: "Composer action"))
 
+            #if os(iOS) || os(visionOS)
+                Button {
+                    Task { await insertNowPlaying() }
+                } label: {
+                    Label {
+                        Text("Share what's playing", comment: "Composer action")
+                    } icon: {
+                        Image(systemName: "music.note")
+                    }
+                }
+                .accessibilityLabel(
+                    Text("Share the song playing in Apple Music", comment: "Composer action"))
+            #endif
+
             Menu {
                 LanguagePicker(language: $model.language, fallback: model.defaultLanguage)
             } label: {

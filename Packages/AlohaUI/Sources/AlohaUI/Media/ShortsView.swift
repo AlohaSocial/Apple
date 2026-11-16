@@ -413,6 +413,14 @@ public struct ShortsView: View {
                     .font(.system(size: 110))
                     .foregroundStyle(palette.favourite)
                     .shadow(radius: 12)
+                    // The action row's own burst, at the big heart's scale.
+                    .background {
+                        if !reduceMotion {
+                            CelebrationBurst(kind: .hearts, tint: palette.favourite) {}
+                                .frame(width: 18, height: 18)
+                                .scaleEffect(6)
+                        }
+                    }
                     .transition(
                         reduceMotion ? .opacity : .scale(scale: 0.4).combined(with: .opacity)
                     )
@@ -444,7 +452,9 @@ public struct ShortsView: View {
             // VoiceOver's own play/pause gesture, a two-finger double tap.
             .accessibilityAction(.magicTap) { togglePlayback() }
         #endif
-        .alohaSensoryFeedback(.success, trigger: hearted) { _, new in new != nil }
+        // Liking taps through `Senses`, with the like's own tick; a second
+        // haptic here doubled it. Unliking has no cue there, so it keeps its
+        // light one.
         .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
     }
 
@@ -609,6 +619,15 @@ public struct ShortsView: View {
             .alohaLargeContentViewer(
                 symbol: AlohaSymbol.share, label: Text("Share", comment: "Shorts action"))
 
+            if let activity = watchTogether(from: status) {
+                WatchTogetherButton(activity: activity) {
+                    railLabel(symbol: "shareplay", tint: .white, count: nil)
+                }
+                .buttonStyle(.plain)
+                .alohaLargeContentViewer(
+                    symbol: "shareplay", label: Text("Watch together", comment: "SharePlay action"))
+            }
+
             Menu {
                 StatusMenu(status: status, onAction: onAction)
             } label: {
@@ -629,6 +648,15 @@ public struct ShortsView: View {
                 symbol: AlohaSymbol.more, label: Text("More actions", comment: "Shorts action"))
         }
         .animation(.spring(response: 0.32, dampingFraction: 0.55), value: displayed.favourited)
+    }
+
+    /// The run of shorts from this one on, as the call will watch it: what
+    /// this person's feed holds, so everybody sees the same next one.
+    private func watchTogether(from status: Status) -> WatchTogetherActivity? {
+        guard let start = shorts.firstIndex(where: { $0.id == status.id }) else { return nil }
+        let videos = shorts[start...].prefix(25).compactMap { SharedVideo($0) }
+        guard !videos.isEmpty else { return nil }
+        return WatchTogetherActivity(kind: .shorts, videos: Array(videos), startIndex: 0)
     }
 
     private func railButton(
@@ -796,7 +824,8 @@ struct ShortPlayer: View {
                     }
                     .foregroundStyle(.primary)
                     .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    // Glass over the video, as the player's own controls are.
+                    .alohaGlassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
                     // One element, the card: under the page's play/pause tap
                     // the message alone counts as a control, a line of text
                     // high — too small to hit. Activating it tries again.

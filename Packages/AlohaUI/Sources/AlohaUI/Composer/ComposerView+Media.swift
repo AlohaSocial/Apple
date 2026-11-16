@@ -100,6 +100,14 @@ extension ComposerView {
                                 ? Text("Edit description", comment: "Composer media action")
                                 : Text("Add a description", comment: "Composer media action"))
                     }
+                    .overlay(alignment: .topTrailing) {
+                        // Both eyes went up: a reader on Vision Pro or a
+                        // recent iPhone sees it in depth.
+                        if model.uploader.isSpatial(attachment.id) {
+                            SpatialPhotoBadge()
+                                .padding(4)
+                        }
+                    }
                     .overlay(alignment: .topLeading) {
                         if model.focalPoints[attachment.id] != nil {
                             Image(systemName: "scope")

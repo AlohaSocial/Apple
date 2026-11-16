@@ -104,6 +104,16 @@ Because the server cannot push, the app raises its own from what polling finds.
 - `interruptionLevel`: `.active` for mentions and DMs, `.passive` for
   favourites, boosts and follows.
 - Notification actions: Reply (text input), Favourite, Boost, Open.
+  A direct message (a mention whose post is direct) wears its own category
+  (`direct`): Reply, Favourite and Mute conversation, with no Boost, which a
+  direct post refuses. Pushes get the same category from the service
+  extension. A reply typed into either is posted by `NotificationResponder`
+  under the alert's account, in reply to its post, addressed to everyone in
+  the conversation, and never less restrictive than what it answers, so a
+  reply to a direct message stays direct. Reply is a text-input action, so
+  on Apple Watch a mirrored alert offers dictation, Scribble and emoji for
+  it with no watch-side code. The watch app registers no categories of its
+  own, so the typed reply comes back to the iPhone app, which sends it.
 - **Deduplicate ruthlessly.** A notification is raised at most once per
   `serverID`; the raised set is persisted. Grouped (v2) notifications raise one
   local notification per group and update it in place as the group grows, using
@@ -180,6 +190,18 @@ When `capabilities.webPushVAPIDKey != nil`:
   time outside quiet hours is used). If all digest times fall in quiet hours,
   the notification is delivered immediately.
 - The in-app Notifications list is unaffected — it stays real-time.
+- **Hourly bundles** (Aloha Social servers whose `notification_delivery`
+  answer carries `hourly_batching`): a switch under Notifications, "Bundle
+  favourites, boosts and follows into one notification an hour". It is the
+  server's setting alone — the server holds those pushes back and sends one
+  summary an hour; mentions, direct messages and follow requests still push
+  at once. The switch is hidden where the key is absent (an older server),
+  and the key is only sent back where it was read. The notification service
+  extension recognises a summary push (Social names one notification's push
+  by a 40-character SHA-1 and a summary by anything else, such as
+  `digest-<time>`), shows the server's sentence quietly, does not label it
+  with the newest notification, and threads every summary of an account
+  together (`summary-<account>`), the app's own digest included.
 
 ## 9. Sync correctness rules
 

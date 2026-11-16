@@ -8,6 +8,13 @@ main window there, docs/09 §2 — and `⌘⏎` to post).
 Not available on tvOS. On watchOS only a reduced reply composer (dictation,
 scribble, emoji, canned responses).
 
+On iPhone and iPad the sheet **grows out of the "New post" button** — the
+system's zoom transition, from the toolbar's glass button
+(`matchedTransitionSource`) into the sheet (`navigationTransition(.zoom)`) —
+and shrinks back into it when it closes. Only for the button: a reply or a
+quote comes from a post, not from it. Under Reduce Motion the sheet arrives
+the plain way (`ComposerZoom`).
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Cancel        [avatar ▾ account]      Post  │
@@ -113,8 +120,36 @@ choose is worse than saying so.
   an image whole into memory and copies a video a chunk at a time. Exceeding
   either produces an in-app explanation and an offer to downscale or trim —
   never a server 422 the person has to interpret.
-- **HEIC/HEIF and ProRAW are transcoded to JPEG** before upload unless the
-  server's supported types include them. Live Photos post as the still.
+- **Originals go up as they are.** A picture whose type the server lists —
+  HEIC and HEIF included — is sent unchanged apart from its personal
+  metadata (below). Only a type the server does not list is written again:
+  as **HEIC** where the server takes HEIC, and as **JPEG only for a server
+  that takes neither** — the one, explicit fallback
+  (`ImageFormat.target(for:)`). GIF and WebP are never converted, since they
+  would arrive as their first frame. A picture over `image_size_limit` is
+  shrunk once, to 2048 pixels, in the same format a conversion would use.
+  The decisions are one pure function, `UploadPreflight.imagePlan`, tested
+  case by case. Live Photos post as the still. The camera hands over HEIC,
+  the share sheet hands over what it was given, and Shortcuts go the same
+  way as the composer (`MediaPreparer.prepareForUpload`).
+- **Location never leaves the device.** GPS, IPTC, maker notes and the EXIF
+  and TIFF fields that name a person or a device are removed from every
+  picture before upload — a post's, a Shortcut's (which used to send the file
+  as it came) and a profile picture or header (which did too); the
+  orientation stays. JPEG, HEIC/HEIF, PNG and TIFF
+  are copied with `CGImageDestinationCopyImageSource` and replacement
+  metadata, so nothing is recompressed and nothing in the container that is
+  not metadata is lost — a spatial photo's second eye, a depth map, a gain
+  map, the colour profile. (`kCGImageMetadataShouldExcludeGPS` alone, without
+  replacement metadata, leaves the GPS where it was.) Other kinds are drawn
+  again without it. There is no setting to keep a location.
+- **Spatial photos** (a stereo pair group in a HEIC, from an iPhone 15 Pro or
+  later or Apple Vision Pro) go up with both eyes on a server that takes HEIC,
+  and the composer marks them **Spatial**. One is never written again to make
+  it smaller — that would keep one eye — so a spatial photo over the limit is
+  refused, with the limit named. On a server that takes no HEIC at all it
+  cannot stay spatial whatever is done, and goes up as an ordinary picture.
+  Filters are not offered on one, for the same reason.
 - Upload via `POST /api/v2/media` (fall back to `/api/v1/media` on 404), one at
   a time with a concurrency cap of 2, on a **background `URLSession`** so an
   upload survives the app being suspended, driving a **Live Activity** on iOS
@@ -135,8 +170,9 @@ the kind that ruins a photograph.
 
 The preview is a shader over the thumbnail already on screen, so flicking
 through the row costs nothing; only Save redraws the pixels, through Core Image.
-JPEG in, JPEG out at quality 0.92; PNG stays PNG so a screenshot does not gain a
-black background where its alpha was; GIF and animated WebP are left alone,
+JPEG stays JPEG and PNG stays PNG, so a screenshot does not gain a black
+background where its alpha was; a HEIC or TIFF comes back as HEIC, or JPEG on a
+server without HEIC; all at quality 0.92 and with their orientation; GIF and animated WebP are left alone,
 since they would come back as their first frame. Never throws: a filter is a
 decoration, and losing somebody's upload because Core Image would not cooperate
 is not a trade worth making.
@@ -152,8 +188,19 @@ media sweep to collect.
 
 - Every attachment shows an **ALT** badge: filled when a description exists,
   outlined when it does not.
-- A setting, **on by default**, warns before posting when any attachment lacks a
-  description. It warns; it never blocks.
+- A setting, **on by default** ("Warn about missing descriptions"), nudges
+  once before posting when any attachment lacks a description. The nudge
+  offers to add one (opening the first undescribed attachment), to have this
+  device draft them where on-device description is available
+  ([10-ai-features.md](10-ai-features.md) §4), and "Post anyway", always one
+  tap. It nudges **once per post**: Post pressed again goes out as it is. It
+  warns; it never blocks.
+- Statistics shows the share of the account's pictures that carry a
+  description, near the top of the page. It is the server's own count
+  (`media.images` and `media.described` in `GET /api/v1/statistics`, per
+  picture over the chosen window). A server that does not send it gets a
+  count made on the device from the account's latest forty posts with media,
+  and the card says so.
 - Editing an alt text after upload uses `PUT /api/v1/media/{id}`.
 - Alt text travels as the ActivityPub `name`, both directions — so what is
   written here is what a remote reader gets.
@@ -175,6 +222,22 @@ media sweep to collect.
 - A short posted from vertical capture gets `#shorts` appended only if the
   person opts in, once, with a remembered choice — never silently.
 
+### Now playing
+
+"Share what's playing" (iPhone, iPad, Vision Pro) inserts the song playing in
+Apple Music — "Listening to <title> by <artist>" and its music.apple.com link
+— read from `SystemMusicPlayer.shared.queue.currentEntry` after the person
+allows Apple Music access once. A song from their own library has no
+catalog link, and is found in the catalog by title and artist. The Mac has
+no system player MusicKit can read, so it has no such action.
+
+In timelines a card whose link is an Apple Music song (`/song/…/<id>`, or
+`/album/…?i=<id>`) becomes a song card: artwork, title, artist, and a button
+that plays Apple's 30-second preview (`previewAssets`), holding the app's
+audio session as a track in Audio mode does. It needs the MusicKit service
+on the App ID (Supporting/README.md); until then, or when Apple Music access
+is turned off in Settings, the card stays the ordinary link card.
+
 ## 5. Polls, threads, drafts, scheduling
 
 - **Polls**: 2 to `configuration.polls.max_options` options,
@@ -192,7 +255,10 @@ media sweep to collect.
   Keep Editing. Drafts list is reachable from the composer and from Settings.
   Drafts carry their media as **local file references plus any already-uploaded
   `media_id`s** — re-opening a draft does not re-upload what is already on the
-  server unless the id has expired.
+  server unless the id has expired. Where the account's Nextcloud is
+  connected, drafts also sync through it, one JSON file per draft in
+  `Aloha Social/Drafts/`; the merge rules are in
+  [14-open-questions.md](14-open-questions.md) §7.
 - **Scheduled posts**: `POST /api/v1/statuses` accepts `scheduled_at` at least
   five minutes ahead, and answers 422 for anything sooner or malformed
   (`ScheduledStatusService::requestedTime`); a cron publishes them. A date picker with a minimum of
@@ -217,7 +283,11 @@ mobile connection this is the difference between possible and not.
   runs Login Flow v2 and grants an app password), the picker is a real WebDAV
   browser over `/remote.php/dav/files/{loginName}/`: folders, thumbnails from
   Nextcloud's own preview endpoint, and only the file types this server's
-  `supported_mime_types` accepts. See
+  `supported_mime_types` accepts. A file over the server's size ceiling for
+  its type is shown but marked and not pickable. The browser opens in the
+  folder the last attachment came from, falling back to the top when that
+  folder has gone, and it browses the Files of the account the composer
+  posts as, not of whichever account happens to be active. See
   [14-open-questions.md](14-open-questions.md) §7.
 - Without that connection it degrades to a path field with recent paths, which
   still works because the server resolves the path itself.

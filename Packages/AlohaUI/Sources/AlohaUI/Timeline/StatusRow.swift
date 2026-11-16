@@ -387,6 +387,9 @@ public struct StatusRow: View {
     private var spoilerRow: some View {
         Button {
             withAnimation(.easeOut(duration: 0.18)) { isSpoilerRevealed.toggle() }
+            // Remembered for what is shared from outside the row, such as the
+            // post drawn as a picture: only what the reader opened goes in it.
+            RevealedContent.shared.setSpoiler(displayed.id, revealed: isSpoilerRevealed)
         } label: {
             HStack(spacing: AlohaMetrics.space2) {
                 Image(systemName: AlohaSymbol.warning)
@@ -432,7 +435,7 @@ public struct StatusRow: View {
             }
 
             if displayed.mediaAttachments.isEmpty, let card = displayed.card, card.url != nil {
-                LinkCardView(card: card) { onAction(.openCard(card)) }
+                StatusLinkCard(card: card) { onAction(.openCard(card)) }
             }
 
             if let quoted = displayed.quotedStatus ?? fetchedQuote {
@@ -891,4 +894,8 @@ public enum StatusRowAction: Sendable {
     case setReplyPolicy(Status, ReplyPolicy)
     /// Hide, or show again, a reply to one of the reader's own posts.
     case hideReply(Status)
+    /// Draw the post as a picture and share that (`ShareImageSheet`).
+    case shareImage(Status)
+    /// Read a long post, or the link it shares, in the calm reader layout.
+    case read(Status)
 }

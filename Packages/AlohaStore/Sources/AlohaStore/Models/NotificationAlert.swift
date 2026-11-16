@@ -20,6 +20,11 @@ public enum NotificationAlert {
     public static let mentionCategory = "mention"
     /// Everything else: a tap opens it, and there are no actions.
     public static let genericCategory = "generic"
+    /// A direct message: Reply, Favourite and Mute conversation, but no
+    /// Boost — a direct post cannot be boosted, and the button would only
+    /// fail. Reply is a text field, so a mirrored alert on Apple Watch
+    /// offers dictation, Scribble and emoji for it.
+    public static let directMessageCategory = "direct"
 
     /// `userInfo` keys `NotificationReply` reads back when the person acts.
     public static let accountIDKey = "accountID"
@@ -31,8 +36,15 @@ public enum NotificationAlert {
 
     /// A reply is a mention: Mastodon's own API has no separate "reply" kind,
     /// and the mention category carries the actions people want on both.
-    public static func category(for kind: NotificationKind?) -> String {
-        kind == .mention ? mentionCategory : genericCategory
+    public static func category(for kind: NotificationKind?, isDirect: Bool = false) -> String {
+        guard kind == .mention else { return genericCategory }
+        return isDirect ? directMessageCategory : mentionCategory
+    }
+
+    /// The categories whose alerts are somebody talking to you: they get a
+    /// banner and a sound even while the app is in front.
+    public static func isConversation(category: String) -> Bool {
+        category == mentionCategory || category == directMessageCategory
     }
 
     /// Somebody talking to you interrupts; favourites, boosts and follows
@@ -45,6 +57,15 @@ public enum NotificationAlert {
     /// notification about no post is a thread of its own.
     public static func threadIdentifier(statusID: String?, notificationID: String) -> String {
         statusID.flatMap { $0.isEmpty ? nil : $0 } ?? notificationID
+    }
+
+    /// One thread per account for summaries — the server's digest, its
+    /// hourly bundle of favourites, boosts and follows, and this app's own
+    /// digest — so each hour's summary stacks on the last instead of
+    /// spreading down Notification Centre, and never joins a conversation's
+    /// thread.
+    public static func summaryThreadIdentifier(accountID: UUID) -> String {
+        "summary-\(accountID.uuidString)"
     }
 
     /// What the alert carries for a tap or an action to act on. The account

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
@@ -73,7 +74,8 @@ public struct PostStatusIntent: AppIntent {
         // the unused copies), but the post itself still comes back as the
         // one already made.
         let digests = files.map { Self.digest(of: $0.data) }
-        let mediaIDs = try await MediaUploads.upload(files, client: context.client)
+        let mediaIDs = try await MediaUploads.upload(
+            files, client: context.client, limits: context.limits)
         let draft = StatusPost(
             text: text,
             visibility: visibility,
@@ -120,6 +122,12 @@ public struct PostStatusIntent: AppIntent {
 }
 
 /// Uploads for an intent, which has no composer and no `MediaUploader`.
+///
+/// A picture goes the composer's way all the same
+/// (`MediaPreparer.prepareForUpload`): its location and the names in it
+/// are copied out without recompressing it, it stays HEIC — and spatial —
+/// on a server that takes HEIC, and is only converted for one that does
+/// not. A Shortcut used to send the file exactly as it came, GPS and all.
 enum MediaUploads {
     /// How long a video the server is transcoding is waited for before the
     /// post is tried anyway; the server has the last word on whether it is
@@ -127,26 +135,38 @@ enum MediaUploads {
     static let processingPolls = 10
     static let processingInterval: Duration = .seconds(3)
 
-    static func upload(_ files: [IntentFile], client: APIClient) async throws -> [String] {
+    static func upload(
+        _ files: [IntentFile], client: APIClient, limits: ServerLimits
+    ) async throws -> [String] {
         var ids: [String] = []
         for file in files {
             let type =
                 file.type ?? UTType(filenameExtension: (file.filename as NSString).pathExtension)
-            let mimeType = type?.preferredMIMEType ?? "application/octet-stream"
-            let filename = file.filename.isEmpty ? "shared" : file.filename
+            var mimeType = type?.preferredMIMEType ?? "application/octet-stream"
+            var filename = file.filename.isEmpty ? "shared" : file.filename
+            var data = file.data
+            if type?.conforms(to: .image) == true {
+                switch await prepare(data, filename: filename, mimeType: mimeType, limits: limits) {
+                case .ready(let prepared, _):
+                    (data, filename, mimeType) =
+                        (prepared.data, prepared.filename, prepared.mimeType)
+                case .refused(let reason):
+                    throw MediaUploadError.refused(reason)
+                }
+            }
             var attachment: MediaAttachment
             do {
                 attachment = try await client.decode(
                     MediaAttachment.self,
                     from: Endpoint.media.upload(
-                        data: file.data, filename: filename, mimeType: mimeType,
+                        data: data, filename: filename, mimeType: mimeType,
                         description: nil, v2: true))
             } catch APIError.notFound {
                 // Modern clients POST v2 and only fall back to v1 on a 404.
                 attachment = try await client.decode(
                     MediaAttachment.self,
                     from: Endpoint.media.upload(
-                        data: file.data, filename: filename, mimeType: mimeType,
+                        data: data, filename: filename, mimeType: mimeType,
                         description: nil, v2: false))
             }
             var polls = 0
@@ -159,6 +179,27 @@ enum MediaUploads {
             ids.append(attachment.id)
         }
         return ids
+    }
+
+    /// Off the caller's actor: a picture written again is a full decode.
+    @concurrent
+    static func prepare(
+        _ data: Data, filename: String, mimeType: String, limits: ServerLimits
+    ) async -> MediaPreparer.ImageUpload {
+        MediaPreparer().prepareForUpload(
+            image: data, filename: filename, mimeType: mimeType, limits: limits)
+    }
+}
+
+/// A picture an intent was given that cannot go to this server, with the
+/// reason the composer would have shown.
+enum MediaUploadError: Error, CustomLocalizedStringResourceConvertible {
+    case refused(String)
+
+    var localizedStringResource: LocalizedStringResource {
+        switch self {
+        case .refused(let reason): "\(reason)"
+        }
     }
 }
 
@@ -209,10 +250,25 @@ public struct LatestMentionsIntent: AppIntent {
         // A mention whose post has since been deleted has nothing to open.
         let posts = page.elements.compactMap { $0.status.map(PostEntity.init) }
 
+        guard !posts.isEmpty else {
+            return .result(
+                value: posts,
+                dialog: IntentDialog(
+                    LocalizedStringResource("No mentions.", comment: "Siri answer")))
+        }
+        // Read out, not only counted: "Read my mentions" is asked of Siri
+        // by somebody who is not looking at a screen. The first few are
+        // spoken; all of them are in the result.
+        let spoken = SpokenPosts.summary(of: posts, includingAuthor: true)
         return .result(
             value: posts,
-            dialog: posts.isEmpty
-                ? "No mentions." : "You have \(posts.count) mentions.")
+            dialog: IntentDialog(
+                full: LocalizedStringResource(
+                    "^[\(posts.count) mention](inflect: true). \(spoken)",
+                    comment: "Siri answer reading the latest mentions aloud"),
+                supporting: LocalizedStringResource(
+                    "^[\(posts.count) mention](inflect: true).",
+                    comment: "Siri answer shown above the list of mentions")))
     }
 }
 
@@ -338,10 +394,21 @@ public enum FeedModeAppEnum: String, AppEnum {
 
 public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
     case noAccount
+    /// "Post my last photo" without access to the photo library.
+    case noPhotoAccess
+    /// An empty library, or a picture Photos would not hand over.
+    case noPhoto
 
     public var localizedStringResource: LocalizedStringResource {
         switch self {
         case .noAccount: "Add an account in Aloha Social first."
+        case .noPhotoAccess:
+            LocalizedStringResource(
+                "Allow Aloha Social to use your photos in Settings first.",
+                comment: "App Intent error")
+        case .noPhoto:
+            LocalizedStringResource(
+                "There's no photo in your library to post.", comment: "App Intent error")
         }
     }
 }
@@ -357,6 +424,8 @@ enum IntentContext {
         let handle: String
         /// What the composer starts a new post as.
         let defaultVisibility: Visibility
+        /// What the server takes, for a picture an intent uploads.
+        let limits: ServerLimits
     }
 
     /// The running app's environment, when the intent runs inside the app.
@@ -382,7 +451,8 @@ enum IntentContext {
                 return Context(
                     accountID: session.id, serverAccountID: session.snapshot.serverAccountID,
                     client: session.client, handle: session.snapshot.qualifiedHandle,
-                    defaultVisibility: session.settings.defaultVisibility)
+                    defaultVisibility: session.settings.defaultVisibility,
+                    limits: session.capabilities.limits)
             }
             return nil
         }
@@ -403,7 +473,8 @@ enum IntentContext {
             client: APIClient(
                 accountID: active.id, apiBase: active.capabilities.apiBase, accessToken: token),
             handle: active.qualifiedHandle,
-            defaultVisibility: active.settings.defaultVisibility)
+            defaultVisibility: active.settings.defaultVisibility,
+            limits: active.capabilities.limits)
     }
 
     /// Writes a post an intent changed into the running app's cache, which
@@ -471,6 +542,7 @@ public struct AlohaShortcuts: AppShortcutsProvider {
             phrases: [
                 "Show my \(.applicationName) mentions",
                 "What did I miss in \(.applicationName)",
+                "Read my mentions in \(.applicationName)",
             ],
             shortTitle: "Mentions",
             systemImageName: "at")
@@ -486,5 +558,27 @@ public struct AlohaShortcuts: AppShortcutsProvider {
             phrases: ["Open \(.applicationName) Shorts"],
             shortTitle: "Shorts",
             systemImageName: "play.square.stack")
+
+        #if os(iOS) || os(visionOS)
+            AppShortcut(
+                intent: PostLastPhotoIntent(),
+                phrases: [
+                    "Post my last photo to \(.applicationName)",
+                    "Share my latest photo on \(.applicationName)",
+                ],
+                shortTitle: LocalizedStringResource(
+                    "Post last photo", comment: "App Shortcut title"),
+                systemImageName: "photo.badge.plus")
+        #endif
+
+        AppShortcut(
+            intent: LatestPostsFromPersonIntent(),
+            phrases: [
+                "What's new from \(\.$person) in \(.applicationName)",
+                "What's new from \(\.$person) on \(.applicationName)",
+                "What's new from someone in \(.applicationName)",
+            ],
+            shortTitle: LocalizedStringResource("What's new from…", comment: "App Shortcut title"),
+            systemImageName: "person.crop.circle.badge.clock")
     }
 }

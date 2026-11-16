@@ -155,3 +155,46 @@ failure as a degradation rather than an error. Nothing else changes.
 
 See [docs/14-open-questions.md](../docs/14-open-questions.md) §7 for the
 Nextcloud proxy flow itself.
+
+## MusicKit
+
+"Share what's playing" in the composer and the song cards in timelines use
+MusicKit. It needs no entitlement, so nothing here switches: the code asks
+at runtime and degrades.
+
+- Reading the song playing in Apple Music needs the person's permission,
+  asked once with `NSAppleMusicUsageDescription` (in `Info.plist`; the Mac
+  app's says what the catalog lookup is for). The Mac has no system player
+  MusicKit can read, so it has no "Share what's playing".
+- Looking a song up in the Apple Music catalog — a song card's artwork and
+  30-second preview, and a link for a song from the person's own library —
+  needs the **MusicKit** App Service on the App ID: Certificates,
+  Identifiers & Profiles → Identifiers → `social.aloha.app` and
+  `social.aloha.app.mac` → App Services → **MusicKit** ✓. MusicKit makes its
+  developer token from that; there is no key to keep in the repository.
+  Until it is enabled every lookup fails, and song links stay ordinary link
+  cards.
+
+## SharePlay
+
+"Watch together" (a video post, the watch page, a run of shorts) uses
+SharePlay, which needs the **Group Activities** entitlement
+(`com.apple.developer.group-session`), which needs that capability on the
+App ID. A profile without it cannot sign a build that claims it, so the
+entitlement is behind its own switch, `ALOHA_SHAREPLAY` in
+[`Aloha.xcconfig`](Aloha.xcconfig), **off by default** for both
+configurations:
+
+- **`NO`**: the apps' entitlements are the files above, and
+  `AlohaSharePlayEnabled` is `NO` in their Info.plists, so no Watch together
+  button is drawn. Everything else works.
+- **`YES`**: `AlohaSocial` and `AlohaSocialMac` take
+  `<Target>[-Shared]-SharePlay.entitlements` — the same file plus the
+  group-session key — and their Info.plists say `YES`. The widgets and
+  extensions are unaffected.
+
+To turn it on: Certificates, Identifiers & Profiles → Identifiers →
+`social.aloha.app` and `social.aloha.app.mac` → **Group Activities** ✓, then
+`ALOHA_SHAREPLAY = YES` in `Supporting/Local.xcconfig` (or in
+`Aloha.xcconfig` once the capability is on for the team that ships). Keep
+each `-SharePlay` file in step with the file it extends.
