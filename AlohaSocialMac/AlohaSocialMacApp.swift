@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
+import AlohaModels
 import AlohaNetwork
 import AlohaStore
 import AlohaUI
@@ -76,6 +77,7 @@ struct AlohaSocialMacApp: App {
             AppShell()
                 .environment(environment)
                 .task {
+                    MacDockIcon.apply()
                     BackgroundWork.register(environment: environment)
                     BackgroundWork.scheduleRefresh()
                     BackgroundWork.scheduleMaintenance()
@@ -160,6 +162,22 @@ struct AlohaSocialMacApp: App {
         // one has a list of panes beside forms of every length. ⌘, and the
         // app menu's Settings… item open it (`AlohaCommands`).
         .defaultSize(width: 780, height: 620)
+        .windowResizability(.contentMinSize)
+        .restorationBehavior(.disabled)
+
+        // The home timeline in a narrow window that stays above other apps:
+        // something to glance at beside the work, rather than a window to
+        // switch to. Window > Mini Timeline opens it (`AlohaCommands`).
+        Window(Text("Mini Timeline", comment: "Mac window title"), id: AlohaWindow.mini) {
+            AppShell()
+                .environment(environment)
+                .environment(\.alohaMiniWindow, true)
+                .frame(minWidth: 320, idealWidth: 380, minHeight: 360, idealHeight: 680)
+        }
+        .modelContainer(environment.container)
+        .windowLevel(.floating)
+        .defaultSize(width: 380, height: 680)
+        .defaultPosition(.topTrailing)
         .windowResizability(.contentMinSize)
         .restorationBehavior(.disabled)
 

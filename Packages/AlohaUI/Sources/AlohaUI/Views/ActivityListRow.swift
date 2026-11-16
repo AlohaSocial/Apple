@@ -53,3 +53,17 @@ struct StatusPlainPreview: View {
             }
     }
 }
+
+/// A post's words as two plain lines: the same preview the activity list
+/// uses, for the Mac's menu bar panel.
+public struct StatusPlainLine: View {
+    private let status: Status
+
+    public init(status: Status) {
+        self.status = status
+    }
+
+    public var body: some View {
+        StatusPlainPreview(status: status, lineLimit: 2)
+    }
+}

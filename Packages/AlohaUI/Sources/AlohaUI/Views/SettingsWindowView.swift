@@ -68,7 +68,9 @@ import SwiftUI
                             Label {
                                 Text(verbatim: pane.title)
                             } icon: {
-                                IconTile(pane.symbolName, colour: .gray)
+                                IconTile(
+                                    pane.symbolName, isSelected: selection == .pane(pane.id),
+                                    size: 24)
                             }
                             .tag(Selection.pane(pane.id))
                         }
@@ -144,7 +146,9 @@ import SwiftUI
                 Label {
                     Text(verbatim: section.title)
                 } icon: {
-                    IconTile(section.tileSymbolName, colour: section.tileColour)
+                    IconTile(
+                        section.tileSymbolName, isSelected: selection == .section(section),
+                        size: 24)
                 }
                 .tag(Selection.section(section))
             }

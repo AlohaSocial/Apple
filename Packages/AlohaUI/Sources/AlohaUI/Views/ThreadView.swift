@@ -117,6 +117,23 @@ public struct ThreadView: View {
             .onChange(of: tintInputs, initial: true) { tint = makeTint() }
             .environment(\.filterVerdicts, verdicts)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
+            #if os(macOS)
+                // A reply where the thread ends, on the Mac: one line to
+                // write in, sent with Return, without a window opening over
+                // what is being answered.
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if let focused {
+                        QuickPostField(session: session, replyTo: focused) { _ in
+                            onAction(.reply(focused))
+                        } onPosted: { _ in
+                            Task { _ = await load() }
+                        }
+                        .padding(.horizontal, AlohaMetrics.space3)
+                        .padding(.vertical, AlohaMetrics.space2)
+                        .background(.bar)
+                    }
+                }
+            #endif
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
             #endif

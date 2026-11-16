@@ -17,22 +17,48 @@ extension View {
         _ label: Text, selection: Binding<Value>, options: [(value: Value, title: String)]
     ) -> some View {
         #if os(macOS)
-            toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker(selection: selection) {
-                        ForEach(options, id: \.value) { option in
-                            Text(verbatim: option.title).tag(option.value)
-                        }
-                    } label: {
-                        label
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .help(label)
-                }
-            }
+            modifier(ToolbarFilter(label: label, selection: selection, options: options))
         #else
             self
         #endif
     }
 }
+
+extension EnvironmentValues {
+    /// Whether a screen is one of several sharing a window's toolbar — a
+    /// column of the Mac's multi-column view — and so keeps its filter out
+    /// of it: three filters in one toolbar's centre say nothing about which
+    /// column each belongs to.
+    @Entry var sharesToolbar = false
+}
+
+#if os(macOS)
+    private struct ToolbarFilter<Value: Hashable>: ViewModifier {
+        @Environment(\.sharesToolbar) private var sharesToolbar
+
+        let label: Text
+        let selection: Binding<Value>
+        let options: [(value: Value, title: String)]
+
+        func body(content: Content) -> some View {
+            if sharesToolbar {
+                content
+            } else {
+                content.toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Picker(selection: selection) {
+                            ForEach(options, id: \.value) { option in
+                                Text(verbatim: option.title).tag(option.value)
+                            }
+                        } label: {
+                            label
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .help(label)
+                    }
+                }
+            }
+        }
+    }
+#endif

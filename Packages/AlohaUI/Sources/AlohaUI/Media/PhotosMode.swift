@@ -23,6 +23,9 @@ public struct PhotosModeView: View {
     // Start with the photo feed; preserve a layout the person explicitly chose.
     @AppStorage("aloha.photosLayout") private var layout: Layout = Layout.initial
     @State private var stories: [Story] = []
+    #if os(macOS)
+        @State private var gridWidth: CGFloat = 0
+    #endif
     @State private var playingStoriesFrom: Int?
 
     enum Layout: String, CaseIterable {
@@ -240,25 +243,100 @@ public struct PhotosModeView: View {
 
     private var grid: some View {
         ScrollView {
-            if session.capabilities.stories { storyCarousel }
-
-            LazyVGrid(columns: Self.columns, spacing: Self.gutter) {
-                ForEach(statuses) { status in
-                    cell(status)
-                        .aspectRatio(1, contentMode: .fit)
-                        .onAppear {
-                            Task { await model.prefetchOlder(near: status.id) }
-                            model.prefetchMedia(around: status.id)
-                        }
+            #if os(macOS)
+                // A strip on the Mac, not a band: the rings are a way in to
+                // the stories, and at a phone's size they took a fifth of the
+                // window before the first picture.
+                if session.capabilities.stories {
+                    storyCarousel
+                        .scaleEffect(0.78, anchor: .topLeading)
+                        .frame(height: 92, alignment: .top)
                 }
-            }
+                masonry
+            #else
+                if session.capabilities.stories { storyCarousel }
+
+                LazyVGrid(columns: Self.columns, spacing: Self.gutter) {
+                    ForEach(statuses) { status in
+                        cell(status)
+                            .aspectRatio(1, contentMode: .fit)
+                            .onAppear {
+                                Task { await model.prefetchOlder(near: status.id) }
+                                model.prefetchMedia(around: status.id)
+                            }
+                    }
+                }
+            #endif
 
             loadingIndicator
             if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
         }
     }
 
-    private func cell(_ status: Status) -> some View {
+    #if os(macOS)
+        /// The Mac's wall of pictures: columns of tiles in their own shapes,
+        /// a little apart, rather than a sheet of square crops edge to edge.
+        ///
+        /// Each picture goes to whichever column is shortest so far, so the
+        /// columns end near level and the order still reads across.
+        private var masonry: some View {
+            let columns = Self.masonryColumns(
+                statuses, count: max(2, Int(gridWidth / 250)))
+            return HStack(alignment: .top, spacing: Self.masonryGap) {
+                ForEach(Array(columns.enumerated()), id: \.offset) { _, column in
+                    LazyVStack(spacing: Self.masonryGap) {
+                        ForEach(column) { status in
+                            let aspect = Self.aspect(of: status)
+                            cell(status, aspect: aspect)
+                                .aspectRatio(aspect, contentMode: .fit)
+                                .clipShape(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                )
+                                .alohaHoverLift(scale: 1.015)
+                                .onAppear {
+                                    Task { await model.prefetchOlder(near: status.id) }
+                                    model.prefetchMedia(around: status.id)
+                                }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, Self.masonryGap)
+            .padding(.top, AlohaMetrics.space2)
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: { width in
+                gridWidth = width
+            }
+        }
+
+        static let masonryGap: CGFloat = 10
+
+        /// Width over height, from what the server said about the picture,
+        /// kept between a tall portrait and a wide landscape so one panorama
+        /// is not a sliver and one screenshot is not a column.
+        nonisolated static func aspect(of status: Status) -> Double {
+            let original = status.displayed.mediaAttachments.first?.meta?.original
+            var aspect = original?.aspect ?? 0
+            if aspect <= 0, let width = original?.width, let height = original?.height, height > 0 {
+                aspect = Double(width) / Double(height)
+            }
+            return aspect > 0 ? min(max(aspect, 0.62), 1.9) : 1
+        }
+
+        nonisolated static func masonryColumns(_ statuses: [Status], count: Int) -> [[Status]] {
+            var columns = Array(repeating: [Status](), count: max(count, 1))
+            var heights = Array(repeating: 0.0, count: max(count, 1))
+            for status in statuses {
+                let shortest = heights.indices.min { heights[$0] < heights[$1] } ?? 0
+                columns[shortest].append(status)
+                heights[shortest] += 1 / aspect(of: status)
+            }
+            return columns
+        }
+    #endif
+
+    private func cell(_ status: Status, aspect: Double = 1) -> some View {
         let attachments = status.displayed.mediaAttachments
         let first = attachments.first
         let isCovered =
@@ -269,15 +347,11 @@ public struct PhotosModeView: View {
             onAction(.openMedia(status: status.displayed, index: 0))
         } label: {
             ZStack(alignment: .topTrailing) {
-                RemoteImage(
-                    url: first?.displayImageURL,
-                    blurhash: first?.blurhash,
-                    accessibilityText: first?.description
-                )
-                .aspectRatio(1, contentMode: .fill)
-                .overlay {
-                    if isCovered { Rectangle().fill(.ultraThinMaterial) }
-                }
+                GalleryImage(attachments: attachments)
+                    .aspectRatio(aspect, contentMode: .fill)
+                    .overlay {
+                        if isCovered { Rectangle().fill(.ultraThinMaterial) }
+                    }
 
                 if attachments.count > 1 {
                     Image(systemName: "square.on.square.fill")
@@ -1304,4 +1378,66 @@ private enum PhotosHintText {
                 comment: "Photos hint")
         #endif
     }
+}
+
+/// A post's picture in the grid — and on the Mac, all of them: moving the
+/// pointer across a tile that holds several flips through them, the way a
+/// stack of photographs is fanned, before anything is opened.
+private struct GalleryImage: View {
+    let attachments: [MediaAttachment]
+
+    #if os(macOS)
+        @State private var index = 0
+    #endif
+
+    var body: some View {
+        #if os(macOS)
+            let shown = attachments.indices.contains(index) ? attachments[index] : attachments.first
+            RemoteImage(
+                url: shown?.displayImageURL, blurhash: shown?.blurhash,
+                accessibilityText: shown?.description
+            )
+            .overlay(alignment: .bottom) {
+                if attachments.count > 1 {
+                    HStack(spacing: 3) {
+                        ForEach(attachments.indices, id: \.self) { position in
+                            Capsule()
+                                .fill(.white.opacity(position == index ? 0.95 : 0.4))
+                                .frame(height: 2)
+                        }
+                    }
+                    .padding(6)
+                    .shadow(radius: 1)
+                    .accessibilityHidden(true)
+                }
+            }
+            .onContinuousHover(coordinateSpace: .local) { phase in
+                guard attachments.count > 1 else { return }
+                switch phase {
+                case .active(let point): hoverX = point.x
+                case .ended: index = 0
+                }
+            }
+            .onGeometryChange(for: CGFloat.self) {
+                $0.size.width
+            } action: { width in
+                tileWidth = width
+            }
+            .onChange(of: hoverX) { _, x in
+                guard tileWidth > 0 else { return }
+                let position = Int(x / tileWidth * CGFloat(attachments.count))
+                index = min(max(position, 0), attachments.count - 1)
+            }
+        #else
+            let first = attachments.first
+            RemoteImage(
+                url: first?.displayImageURL, blurhash: first?.blurhash,
+                accessibilityText: first?.description)
+        #endif
+    }
+
+    #if os(macOS)
+        @State private var hoverX: CGFloat = 0
+        @State private var tileWidth: CGFloat = 0
+    #endif
 }

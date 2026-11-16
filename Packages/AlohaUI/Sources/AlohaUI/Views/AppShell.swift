@@ -86,6 +86,17 @@ struct ThemedAppShell: View {
     @State var mediaPresentation: MediaPresentation?
     /// The post being looked at over the list it is in (`StatusRowAction.peek`).
     @State var peeked: PeekedRoute?
+    #if os(macOS)
+        @Environment(\.alohaMiniWindow) var isMiniWindow
+        /// Which of the split view's columns show. The mini timeline starts
+        /// with the sidebar put away; every other window leaves it to the
+        /// system and the person.
+        @State var columnVisibility: NavigationSplitViewVisibility = .automatic
+        /// The column of trends and suggestions beside the feed, and the
+        /// multi-column view in its place: the Mac's options (`MacOptions`).
+        @AppStorage(MacOptions.contextColumnKey) var showsContextColumn = false
+        @AppStorage(MacOptions.deckKey) var showsDeck = false
+    #endif
     /// Whether the Mac's "Go to…" field is up (⌘K).
     @State var isJumping = false
     /// The window's width on the Mac, for the detail column beside a list.

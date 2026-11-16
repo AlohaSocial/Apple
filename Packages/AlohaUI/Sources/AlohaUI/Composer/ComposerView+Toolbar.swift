@@ -23,15 +23,37 @@ extension ComposerView {
             }
             .scrollIndicators(.hidden)
 
+            #if os(macOS)
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) { isShowingPreview.toggle() }
+                } label: {
+                    Image(systemName: isShowingPreview ? "eye.fill" : "eye")
+                }
+                .buttonStyle(ComposerToolStyle())
+                .accessibilityLabel(Text("Preview", comment: "Composer action"))
+                .help(Text("Preview", comment: "Composer action"))
+            #endif
+
             if let remaining = model.remainingCharacters {
-                Text(remaining, format: .number)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(remaining < 0 ? palette.destructive : palette.secondaryLabel)
-                    .fixedSize()
-                    .accessibilityLabel(
-                        Text(
-                            "^[\(remaining) character](inflect: true) left",
-                            comment: "Composer counter"))
+                #if os(macOS)
+                    CharacterRing(remaining: remaining, limit: model.limits.maxStatusCharacters)
+                        .fixedSize()
+                        .accessibilityLabel(
+                            Text(
+                                "^[\(remaining) character](inflect: true) left",
+                                comment: "Composer counter"))
+                #else
+                    Text(remaining, format: .number)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(
+                            remaining < 0 ? palette.destructive : palette.secondaryLabel
+                        )
+                        .fixedSize()
+                        .accessibilityLabel(
+                            Text(
+                                "^[\(remaining) character](inflect: true) left",
+                                comment: "Composer counter"))
+                #endif
             }
         }
         .font(.title3)
@@ -48,6 +70,7 @@ extension ComposerView {
         }
         .disabled(!model.canAddMedia)
         .accessibilityLabel(Text("Add media", comment: "Composer action"))
+        .help(Text("Add media", comment: "Composer action"))
 
         #if os(iOS)
             if CameraCapture.isAvailable {
@@ -58,6 +81,7 @@ extension ComposerView {
                 }
                 .disabled(!model.canAddMedia)
                 .accessibilityLabel(Text("Take a photo or video", comment: "Composer action"))
+                .help(Text("Take a photo or video", comment: "Composer action"))
             }
         #endif
 
@@ -81,6 +105,7 @@ extension ComposerView {
         }
         .disabled(!model.attachments.isEmpty)
         .accessibilityLabel(Text("Add a poll", comment: "Composer action"))
+        .help(Text("Add a poll", comment: "Composer action"))
 
         Menu {
             Picker(selection: $model.visibility) {
@@ -112,6 +137,7 @@ extension ComposerView {
             Image(systemName: model.visibilitySymbol)
         }
         .accessibilityLabel(Text("Who can see this", comment: "Composer action"))
+        .help(Text("Who can see this", comment: "Composer action"))
 
         Menu {
             if model.canBeCard {
@@ -140,6 +166,7 @@ extension ComposerView {
                 }
             }
             .accessibilityLabel(Text("Add a content warning", comment: "Composer action"))
+            .help(Text("Add a content warning", comment: "Composer action"))
 
             Button {
                 model.addThreadSegment()
@@ -154,6 +181,7 @@ extension ComposerView {
             // nothing for the next one to reply to until it is out.
             .disabled(model.scheduledAt != nil)
             .accessibilityLabel(Text("Add to thread", comment: "Composer action"))
+            .help(Text("Add to thread", comment: "Composer action"))
 
             Button {
                 isShowingSchedule = true
@@ -166,6 +194,7 @@ extension ComposerView {
             }
             .disabled(model.isThread && model.scheduledAt == nil)
             .accessibilityLabel(Text("Schedule this post", comment: "Composer action"))
+            .help(Text("Schedule this post", comment: "Composer action"))
 
             if model.capabilities.mediaFromNextcloudFiles {
                 Button {
@@ -208,6 +237,7 @@ extension ComposerView {
                     }
                 }
                 .accessibilityLabel(Text("Add a place", comment: "Composer action"))
+                .help(Text("Add a place", comment: "Composer action"))
             }
 
             Button {
@@ -220,6 +250,7 @@ extension ComposerView {
                 }
             }
             .accessibilityLabel(Text("Add a custom emoji", comment: "Composer action"))
+            .help(Text("Add a custom emoji", comment: "Composer action"))
 
             #if os(iOS) || os(visionOS)
                 Button {
@@ -251,6 +282,7 @@ extension ComposerView {
                 }
             }
             .accessibilityLabel(Text("Language", comment: "Composer action"))
+            .help(Text("Language", comment: "Composer action"))
 
             if model.canQuote, model.editingStatus == nil {
                 Menu {
@@ -284,6 +316,7 @@ extension ComposerView {
                     }
                 }
                 .accessibilityLabel(Text("Who may quote this", comment: "Composer action"))
+                .help(Text("Who may quote this", comment: "Composer action"))
             }
 
             if model.isNextcloud, model.editingStatus == nil {
@@ -304,6 +337,7 @@ extension ComposerView {
                     }
                 }
                 .accessibilityLabel(Text("Who can reply", comment: "Composer action"))
+                .help(Text("Who can reply", comment: "Composer action"))
 
                 Toggle(isOn: $model.marksAsAIGenerated) {
                     Label {
@@ -337,6 +371,7 @@ extension ComposerView {
                     }
                 }
                 .accessibilityLabel(Text("Post as", comment: "Composer action"))
+                .help(Text("Post as", comment: "Composer action"))
             }
 
             #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
@@ -372,6 +407,7 @@ extension ComposerView {
                 }
                 .disabled(model.text.isEmpty)
                 .accessibilityLabel(Text("Writing help", comment: "Composer action"))
+                .help(Text("Writing help", comment: "Composer action"))
             }
 
             // Drafts were reachable only from Settings, which meant leaving
@@ -388,6 +424,7 @@ extension ComposerView {
                     }
                 }
                 .accessibilityLabel(Text("Drafts", comment: "Composer action"))
+                .help(Text("Drafts", comment: "Composer action"))
             }
         } label: {
             Image(systemName: "ellipsis")

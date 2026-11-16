@@ -1304,25 +1304,4 @@ extension SettingsSection {
         case .about: "info"
         }
     }
-
-    var tileColour: Color {
-        switch self {
-        case .accounts: .blue
-        case .appearance: .indigo
-        case .yourAccount: .cyan
-        case .feeds: .orange
-        case .timeline: .blue
-        case .nextcloud: .teal
-        case .media: .pink
-        case .notifications: .red
-        case .posting: .green
-        case .intelligence: .purple
-        case .storage: .gray
-        case .content: .mint
-        case .soundAndTouch: .pink
-        case .moderation: .orange
-        case .deleteAccount: .red
-        case .about: .gray
-        }
-    }
 }
