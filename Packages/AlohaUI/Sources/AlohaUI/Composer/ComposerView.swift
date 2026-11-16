@@ -205,19 +205,11 @@ public struct ComposerView: View {
                 Text("Some media has no description", comment: "Alt text warning title"),
                 isPresented: $model.isShowingAltTextWarning
             ) {
-                Button {
-                    Task { await send(skippingAltTextCheck: true) }
-                } label: {
-                    Text("Post anyway", comment: "Alt text warning action")
-                }
-                Button(role: .cancel) {
-                } label: {
-                    Text("Let me add it", comment: "Alt text warning action")
-                }
+                altTextCoachActions
             } message: {
-                // It warns; it never blocks (docs/07 §4).
+                // It warns once; it never blocks (docs/07 §4).
                 Text(
-                    "Descriptions let people using a screen reader know what you posted.",
+                    "Descriptions let people using a screen reader know what you posted. You can switch this reminder off in Settings.",
                     comment: "Alt text warning detail")
             }
             .photosPicker(
@@ -486,6 +478,41 @@ public struct ComposerView: View {
     }
 
     // MARK: - Posting
+
+    /// The coach's choices: write one, have this device draft them where it
+    /// can (docs/10 §4), or post as it is — always one tap away.
+    @ViewBuilder
+    private var altTextCoachActions: some View {
+        if let attachment = model.firstUndescribedAttachment {
+            Button {
+                model.isShowingAltTextFor = attachment
+            } label: {
+                Text("Add a description", comment: "Alt text warning action")
+            }
+        }
+        // Drafts, not posts: nothing is sent from here. What the device
+        // writes fills the descriptions, the strip shows them for checking,
+        // and Post is pressed again once they have been looked at — the
+        // reminder has been shown, so that Post goes out (docs/10 §4).
+        if model.imagesAwaitingDescription > 0,
+            environment.intelligence.availability.isAvailable
+        {
+            Button {
+                Task { await model.describeAllImages(environment: environment) }
+            } label: {
+                Text("Describe on this device", comment: "Alt text warning action")
+            }
+        }
+        Button {
+            Task { await send(skippingAltTextCheck: true) }
+        } label: {
+            Text("Post anyway", comment: "Alt text warning action")
+        }
+        Button(role: .cancel) {
+        } label: {
+            Text("Not now", comment: "Alt text warning action")
+        }
+    }
 
     private func send(skippingAltTextCheck: Bool = false) async {
         guard await model.post(skippingAltTextCheck: skippingAltTextCheck) else { return }
