@@ -480,6 +480,27 @@ Social app's own routes with the bearer token, not WebDAV, so no Nextcloud
 connection is needed. The row asks first and **draws nothing on a 404**, which
 is what a stock Mastodon and an Aloha Social from before backups answer; on
 any other failure it is shown, and the screen says what went wrong.
+### A call from a direct message
+
+Where the connected Nextcloud has Talk, a direct-message conversation has
+**Start a call** in its bar. After a confirmation that says the link will be
+public, it creates a **public** Talk room — type 3, so fediverse people with no
+account on this Nextcloud can join from the link as guests — named after
+everybody in the conversation, posts the join link into the conversation as a
+direct message to all of them, and then opens the call: in the Talk app through
+its own `nextcloudtalk://open-conversation?server=…&user=…&withRoomToken=…`
+link where it is installed (iOS and visionOS; the handler is in talk-ios'
+`AppDelegate`), and otherwise the web link in the person's browser.
+
+The OCS requests are authenticated exactly as push registration and the user
+lookup are: against the Nextcloud root, the Login Flow app password as HTTP
+Basic, `OCS-APIRequest: true`, `format=json`. The Social bearer token is never
+sent to Talk, which would refuse it. The action appears only when
+`ocs/v2.php/cloud/capabilities` lists `spreed` with `conversation-v4` (or v3),
+calls are not switched off (`config.call.enabled`) and the person may create
+rooms (`config.conversations.can-create`); the answer is kept an hour, a
+failure five minutes. The join link is `index.php/call/<token>`, which works
+whether or not the administrator has turned on pretty URLs.
 
 ### Push, through Nextcloud's proxy
 
