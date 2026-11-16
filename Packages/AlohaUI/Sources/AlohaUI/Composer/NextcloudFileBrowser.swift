@@ -18,9 +18,14 @@ public struct NextcloudFileBrowser: View {
 
     private let credentials: NextcloudLoginFlow.Credentials
     private let acceptedTypes: [String]
+    /// The server's size ceilings, so a file it would refuse says so before
+    /// the tap rather than after.
+    private let limits: ServerLimits?
     private let onPick: (NextcloudFile) -> Void
 
-    @State private var path = ""
+    /// Opens where the last pick was made: attaching a second picture from
+    /// the same folder should not mean walking down to it again.
+    @State private var path: String
     @State private var entries: [NextcloudFile] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -30,11 +35,14 @@ public struct NextcloudFileBrowser: View {
     public init(
         credentials: NextcloudLoginFlow.Credentials,
         acceptedTypes: [String],
+        limits: ServerLimits? = nil,
         onPick: @escaping (NextcloudFile) -> Void
     ) {
         self.credentials = credentials
         self.acceptedTypes = acceptedTypes
+        self.limits = limits
         self.onPick = onPick
+        _path = State(initialValue: LastNextcloudFolder.load(for: credentials))
     }
 
     public var body: some View {
@@ -125,6 +133,7 @@ public struct NextcloudFileBrowser: View {
             if entry.isDirectory {
                 path = entry.path
             } else {
+                LastNextcloudFolder.save(path, for: credentials)
                 onPick(entry)
                 dismiss()
             }
@@ -144,6 +153,16 @@ public struct NextcloudFileBrowser: View {
                         }
                         .font(.caption)
                         .foregroundStyle(palette.secondaryLabel)
+
+                        if let limit = sizeLimit(for: entry), entry.size > limit {
+                            Text(
+                                "Larger than your server takes (\(limit.formatted(.byteCount(style: .file))))",
+                                comment:
+                                    "Nextcloud browser: file over the server's size limit. The argument is the limit."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(palette.destructive)
+                        }
                     }
                 }
 
@@ -157,8 +176,20 @@ public struct NextcloudFileBrowser: View {
             }
         }
         .buttonStyle(.plain)
+        .disabled(isTooLarge(entry))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+    }
+
+    private func sizeLimit(for entry: NextcloudFile) -> Int? {
+        guard let limits, let type = entry.contentType else { return nil }
+        let limit = limits.sizeLimit(forMIMEType: type)
+        return limit > 0 ? limit : nil
+    }
+
+    private func isTooLarge(_ entry: NextcloudFile) -> Bool {
+        guard !entry.isDirectory, let limit = sizeLimit(for: entry) else { return false }
+        return entry.size > limit
     }
 
     @ViewBuilder
@@ -202,12 +233,35 @@ public struct NextcloudFileBrowser: View {
                 localized: "Your Nextcloud connection has expired. Reconnect it in Settings.",
                 comment: "WebDAV auth failure")
         } catch WebDAVClient.WebDAVError.notFound {
+            // The folder remembered from last time, since moved or deleted:
+            // start from the top instead of at a dead end.
+            if path == LastNextcloudFolder.load(for: credentials), !path.isEmpty {
+                LastNextcloudFolder.save("", for: credentials)
+                path = ""
+                return
+            }
             errorMessage = String(
                 localized: "That folder isn't there any more.", comment: "WebDAV 404")
         } catch {
             errorMessage = String(
                 localized: "Couldn't read your files.", comment: "WebDAV failure")
         }
+    }
+}
+
+/// The folder the last attachment was picked from, per Nextcloud user. Only
+/// the path, which is the person's own and stays on the device.
+enum LastNextcloudFolder {
+    private static func key(for credentials: NextcloudLoginFlow.Credentials) -> String {
+        "aloha.nextcloudLastFolder.\(credentials.server.absoluteString)|\(credentials.filesUserID)"
+    }
+
+    static func load(for credentials: NextcloudLoginFlow.Credentials) -> String {
+        UserDefaults.standard.string(forKey: key(for: credentials)) ?? ""
+    }
+
+    static func save(_ path: String, for credentials: NextcloudLoginFlow.Credentials) {
+        UserDefaults.standard.set(path, forKey: key(for: credentials))
     }
 }
 

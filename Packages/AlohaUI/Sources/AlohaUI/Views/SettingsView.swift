@@ -498,6 +498,13 @@ public struct SettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(palette.boost)
             }
+
+            if session.hasNextcloudConnection {
+                DraftSyncSettingsRow(session: session)
+            }
+
+            // Draws nothing where the server has no backups (a 404).
+            BackupSettingsRow(session: session)
         } header: {
             Text("Nextcloud", comment: "Settings section")
         } footer: {
@@ -921,7 +928,15 @@ public struct SettingsView: View {
                         Task { await session.updateSettings { $0.warnAboutMissingAltText = value } }
                     })
             ) {
-                Text("Warn about missing descriptions", comment: "Settings item")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Warn about missing descriptions", comment: "Settings item")
+                    Text(
+                        "Before posting a picture without a description, ask once whether to add one.",
+                        comment: "Settings explanation"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
             }
         } header: {
             Text("Posting", comment: "Settings section")

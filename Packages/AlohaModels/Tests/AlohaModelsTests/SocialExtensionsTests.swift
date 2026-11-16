@@ -400,3 +400,18 @@ struct ShortsNarrowingTests {
         #expect(TimelineSource.bluesky(feedURI: "at://x").pathSegment == nil)
     }
 }
+
+struct SocialSoftwareTests {
+    private func capabilities(_ name: String) -> ServerCapabilities {
+        ServerCapabilities(apiBase: URL(string: "https://example.test/")!, softwareName: name)
+    }
+
+    @Test("The Social app is recognised by its NodeInfo name, old and new")
+    func recognisedByName() {
+        #expect(capabilities("aloha-social").isNextcloudSocial)
+        #expect(capabilities("nextcloud-social").isNextcloudSocial)
+        #expect(capabilities("nextcloud social").isNextcloudSocial)
+        #expect(capabilities("mastodon").isNextcloudSocial == false)
+        #expect(capabilities("social").isNextcloudSocial == false)
+    }
+}

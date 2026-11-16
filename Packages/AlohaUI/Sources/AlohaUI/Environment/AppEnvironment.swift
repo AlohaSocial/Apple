@@ -170,6 +170,15 @@ public final class AppEnvironment {
                 Task(priority: .background) { await SpotlightIndexer.refreshIfStale(session) }
             }
         }
+
+        // Drafts follow the person between devices through their Nextcloud
+        // (docs/14 §7): from now on after every save, and once now. Only in
+        // the app: the share extension has a post to send and little memory
+        // to spare, and what it saves is synced when the app next opens.
+        if Bundle.main.bundleURL.pathExtension == "app" {
+            await DraftSync.shared.attach(to: self)
+            Task { await DraftSync.shared.syncAll() }
+        }
     }
 
     private func makeSession(_ snapshot: AccountStore.Snapshot) -> AccountSession {
@@ -287,6 +296,7 @@ public final class AppEnvironment {
         guard let session = sessions.first(where: { $0.id == id }) else { return false }
 
         await sync.forget(id)
+        DraftSync.shared.forget(id)
 
         do {
             try await timelines.deleteEverything(forAccount: id)
@@ -539,6 +549,8 @@ public final class AppEnvironment {
         await WidgetSnapshotWriter.refreshAll(self, budget: .seconds(8))
         // A countdown whose poll closed or post went out ends (docs/09 §9).
         await EventLiveActivities.endFinished()
+        // Drafts last, and briefly: they wait happily for the next launch.
+        await DraftSync.shared.syncAll(ifOlderThan: 15 * 60, within: .seconds(5))
         return fresh
     }
 }

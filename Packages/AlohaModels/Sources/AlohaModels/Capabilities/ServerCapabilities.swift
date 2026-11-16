@@ -126,7 +126,14 @@ extension ServerCapabilities {
     }
 
     public var isNextcloudSocial: Bool {
-        softwareName.contains("nextcloud") && softwareName.contains("social")
+        Self.isSocialSoftware(softwareName)
+    }
+
+    /// Whether a NodeInfo software name, lowercased, is the Social app:
+    /// `aloha-social` today, or a name with "nextcloud" and "social" in it
+    /// from the releases before the rename.
+    public static func isSocialSoftware(_ name: String) -> Bool {
+        name == "aloha-social" || (name.contains("nextcloud") && name.contains("social"))
     }
 
     /// Which of the three sync tiers applies (docs/08 §2). They compose:

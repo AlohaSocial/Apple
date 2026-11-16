@@ -515,11 +515,17 @@ public struct AudioModeView: View {
             }
         }
         .listStyle(.plain)
-        .safeAreaInset(edge: .bottom) {
+        // Where the tab bar has no accessory to hold it (the Mac, the iPad's
+        // sidebar), the player floats over the list as a capsule of glass —
+        // the tab accessory's own shape — rather than as a strip of material
+        // the app drew itself. A bar, so the list's edge softens under it.
+        .safeAreaBar(edge: .bottom) {
             if coordinator.nowPlaying != nil, !usesTabAccessory {
                 AudioMiniPlayer()
-                    .padding(AlohaMetrics.space3)
-                    .background(.regularMaterial)
+                    .padding(.vertical, AlohaMetrics.space2)
+                    .alohaGlassEffect(.regular.interactive(), in: Capsule())
+                    .padding(.horizontal, AlohaMetrics.space4)
+                    .padding(.bottom, AlohaMetrics.space2)
             }
         }
         .task { await model.appear() }

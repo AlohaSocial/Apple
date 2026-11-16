@@ -309,6 +309,21 @@ the poster's comment above, and a reader-friendly row height. Tapping the card
 opens the link in `SFSafariViewController` (iOS) / the default browser (Mac),
 with a Reader-mode preference. Tapping anything else opens the thread.
 
+**The reader view** builds on News rather than beside it. Any long post (about
+a couple of paragraphs) or post sharing a link offers **Reader view** in its
+menu and in the opened post's toolbar: one calm column, at most 640 points
+wide, with the post's own rich text in News's reader metrics, an estimated
+reading time (words at 230 a minute, never under a minute), a **serif** switch
+and a **text size** that steps up or down Dynamic Type's own sizes (−2…+4) rather
+than overriding them. Both are device preferences. A content warning is still a
+warning there: the post opens behind it. A shared link becomes the card the
+server built — provider, title, description — with **Read article**, which opens
+it in Safari's in-app browser straight into Reader (`entersReaderIfAvailable`)
+on iPhone and iPad, and in the browser on the Mac. The article is not fetched
+and re-laid out by the app: Safari's Reader does that properly, and a second,
+worse extractor would be a promise the app could not keep, so the reading time
+is the post's, not the article's.
+
 **Audio** — statuses whose attachments are `audio`. A list with inline players,
 a persistent mini-player docked above the tab bar / in the sidebar footer,
 background playback, `MPNowPlayingInfoCenter` metadata (title from the status
@@ -320,7 +335,10 @@ playback queue built from the visible list.
 
 One component, used from every mode and from the thread view.
 
-- Full-screen, edge to edge, over a dimmed backdrop.
+- Full-screen, edge to edge, over a dimmed backdrop: a deep shade of the
+  picture's own colours, from the image cache or its blurhash and never a
+  download, or plain black for a video, under Reduce Transparency and
+  Increase Contrast, and while nothing of the picture is cached yet.
 - **Pinch to zoom** (to 5×), pan when zoomed, double-tap to toggle fit/fill.
 - **Drag to dismiss** with interactive scaling and backdrop fade; a matched
   geometry transition from the source cell.
@@ -330,6 +348,11 @@ One component, used from every mode and from the thread view.
   absent — never a fake one.
 - Actions: Save to Photos (with the usage description and a permission-denied
   path), Share, Copy, Open in Browser, and — for video — PiP and AirPlay.
+- **Save to Nextcloud**, where the account's Nextcloud is connected: the
+  attachment's original file, byte for byte, into `Aloha Social/Saved/` in
+  the person's Files, with a progress bar, a "Saved as …" confirmation that
+  VoiceOver announces, and a numbered copy rather than an overwrite when the
+  name is taken ([14-open-questions.md](14-open-questions.md) §7).
 - Video attachments inside the viewer use the same source-selection ladder as
   Video mode (§3).
 - Keyboard on Mac/iPad: arrows to move, space to play/pause, `+`/`-` to zoom,
