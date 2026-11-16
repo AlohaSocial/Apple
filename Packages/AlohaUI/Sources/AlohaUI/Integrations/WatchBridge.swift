@@ -19,9 +19,13 @@ import Foundation
         private var latest: WatchPairing?
         private var hasSent = false
         private var isActivated = false
-        /// The last count handed to the complication, per account, so a poll
-        /// that found nothing new spends none of the daily transfer budget.
-        private var lastSentUnread: (accountID: UUID, count: Int)?
+        /// The last counts handed to the complications, per account, so a
+        /// poll that found nothing new spends none of the daily transfer
+        /// budget.
+        private var lastSentUnread: (accountID: UUID, count: Int, conversations: Int?)?
+        /// The unread notification counts last polled, so a change in the
+        /// conversation count alone can be sent with them.
+        private var lastCounts: [UUID: Int] = [:]
 
         public func activate() {
             guard WCSession.isSupported(), !isActivated else { return }
@@ -44,10 +48,16 @@ import Foundation
         /// fifty times a day — so it goes only while a complication is on the
         /// face, only when the count moved, and never past the budget.
         public func sendUnread(_ counts: [UUID: Int]) {
+            lastCounts = counts
             guard WCSession.isSupported(), let accountID = latest?.accountID,
                 let count = counts[accountID]
             else { return }
-            if let last = lastSentUnread, last.accountID == accountID, last.count == count {
+            // The phone writes the unread conversations of the active
+            // account, which is the account the watch is paired with.
+            let stored = AppGroup.defaults.object(forKey: AppGroup.unreadConversationsKey) as? Int
+            if let last = lastSentUnread, last.accountID == accountID, last.count == count,
+                last.conversations == stored
+            {
                 return
             }
             let session = WCSession.default
@@ -56,8 +66,16 @@ import Foundation
                 session.remainingComplicationUserInfoTransfers > 0
             else { return }
             session.transferCurrentComplicationUserInfo(
-                WatchComplicationSnapshot.unreadUserInfo(accountID: accountID, count: count))
-            lastSentUnread = (accountID, count)
+                WatchComplicationSnapshot.unreadUserInfo(
+                    accountID: accountID, count: count, conversations: stored))
+            lastSentUnread = (accountID, count, stored)
+        }
+
+        /// The unread conversation count changed — the messages list or the
+        /// widget snapshot wrote a new one — so the direct-messages
+        /// complication follows, with the notification count it last had.
+        public func sendConversationsChanged() {
+            sendUnread(lastCounts)
         }
 
         private func push() {

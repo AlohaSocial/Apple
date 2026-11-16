@@ -91,6 +91,12 @@ struct ReaderSettingsEndpointTests {
         #expect(object["times"] as? [String] == ["08:00", "20:00"])
         #expect((object["quiet"] as? [String: String])?["to"] == "07:00")
         #expect((object["passthrough"] as? [String: Bool])?["direct"] == true)
+        // Not read from the server, so not sent to it.
+        #expect(object["hourly_batching"] == nil)
+        var bundled = settings
+        bundled.hourlyBatching = true
+        let withBundles = try jsonObject(Endpoint.readerSettings.setNotificationDelivery(bundled))
+        #expect(withBundles["hourly_batching"] as? Bool == true)
     }
 
     @Test("Reading signals are a JSON list of objects, learnable ones only")
@@ -281,7 +287,15 @@ struct SocialMockTests {
             NotificationDeliverySettings.self, from: .readerSettings.setNotificationDelivery(digest)
         )
         #expect(written.mode == .digest)
+        // Hourly bundles go back with the rest, and come back as written.
+        #expect(read.hourlyBatching == false)
+        digest.hourlyBatching = true
+        let bundled = try await api.decode(
+            NotificationDeliverySettings.self, from: .readerSettings.setNotificationDelivery(digest)
+        )
+        #expect(bundled.hourlyBatching == true)
         digest.mode = .instant
+        digest.hourlyBatching = false
         _ = try await api.send(.readerSettings.setNotificationDelivery(digest))
     }
 

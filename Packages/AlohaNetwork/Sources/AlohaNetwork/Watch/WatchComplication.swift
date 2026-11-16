@@ -37,12 +37,20 @@ public struct WatchComplicationSnapshot: Codable, Sendable, Hashable {
     public var unreadCount: Int?
     public var mentions: [Mention]
     public var updatedAt: Date
+    /// Conversations with something unread, for the direct-messages
+    /// complication; `nil` until a count has arrived, and in a snapshot an
+    /// older build wrote.
+    public var unreadConversations: Int?
 
-    public init(accountID: UUID, unreadCount: Int?, mentions: [Mention], updatedAt: Date) {
+    public init(
+        accountID: UUID, unreadCount: Int?, mentions: [Mention], updatedAt: Date,
+        unreadConversations: Int? = nil
+    ) {
         self.accountID = accountID
         self.unreadCount = unreadCount
         self.mentions = mentions
         self.updatedAt = updatedAt
+        self.unreadConversations = unreadConversations
     }
 
     public static let defaultsKey = "aloha.watchComplication"
@@ -86,28 +94,42 @@ public struct WatchComplicationSnapshot: Codable, Sendable, Hashable {
 
     private static let userInfoAccountKey = "aloha.complication.account"
     private static let userInfoUnreadKey = "aloha.complication.unread"
+    private static let userInfoConversationsKey = "aloha.complication.conversations"
 
     /// What the phone sends through `transferCurrentComplicationUserInfo`.
-    /// Plist types only: WatchConnectivity refuses anything else.
-    public static func unreadUserInfo(accountID: UUID, count: Int) -> [String: Any] {
-        [userInfoAccountKey: accountID.uuidString, userInfoUnreadKey: count]
+    /// Plist types only: WatchConnectivity refuses anything else. The
+    /// conversation count rides along where the phone has one, so the
+    /// direct-messages complication costs no transfer of its own.
+    public static func unreadUserInfo(
+        accountID: UUID, count: Int, conversations: Int? = nil
+    ) -> [String: Any] {
+        var info: [String: Any] = [
+            userInfoAccountKey: accountID.uuidString, userInfoUnreadKey: count,
+        ]
+        if let conversations { info[userInfoConversationsKey] = conversations }
+        return info
     }
 
-    /// The count in a received user info, if it is one of ours.
-    public static func unreadUpdate(from userInfo: [String: Any]) -> (accountID: UUID, count: Int)?
-    {
+    /// The counts in a received user info, if it is one of ours.
+    public static func unreadUpdate(
+        from userInfo: [String: Any]
+    ) -> (accountID: UUID, count: Int, conversations: Int?)? {
         guard let raw = userInfo[userInfoAccountKey] as? String,
             let accountID = UUID(uuidString: raw),
             let count = userInfo[userInfoUnreadKey] as? Int
         else { return nil }
-        return (accountID, count)
+        return (accountID, count, userInfo[userInfoConversationsKey] as? Int)
     }
 
     /// This snapshot with a pushed count folded in. The mentions keep their
-    /// own age: the push says nothing about them.
-    public func applying(unreadCount count: Int) -> WatchComplicationSnapshot {
+    /// own age: the push says nothing about them. A push without a
+    /// conversation count leaves the one the snapshot has.
+    public func applying(
+        unreadCount count: Int, conversations: Int? = nil
+    ) -> WatchComplicationSnapshot {
         var copy = self
         copy.unreadCount = count
+        if let conversations { copy.unreadConversations = conversations }
         return copy
     }
 }
@@ -122,9 +144,28 @@ public enum WatchComplicationRefresher {
     ) async throws -> WatchComplicationSnapshot {
         async let count = unreadCount(client: client)
         async let mentions = latestMentions(client: client, plainText: plainText)
+        // Optional: a server that cannot say leaves the complication's dash
+        // rather than failing the whole refresh.
+        async let conversations = try? unreadConversations(client: client)
         return WatchComplicationSnapshot(
             accountID: accountID, unreadCount: try await count,
-            mentions: try await mentions, updatedAt: now)
+            mentions: try await mentions, updatedAt: now,
+            unreadConversations: await conversations)
+    }
+
+    /// Conversations with something unread: the server's count, or where it
+    /// has no such route (before Mastodon 4.3) the first page, counted.
+    static func unreadConversations(client: APIClient) async throws -> Int {
+        do {
+            return try await client.decode(
+                UnreadCount.self, from: Endpoint.timelines.conversationsUnreadCount
+            ).count
+        } catch APIError.notFound {
+            return try await client.decode(
+                LossyArray<Conversation>.self,
+                from: Endpoint.timelines.conversations(limit: 40)
+            ).elements.filter(\.unread).count
+        }
     }
 
     /// The grouped count first, the flat one where a server has no v2 route.

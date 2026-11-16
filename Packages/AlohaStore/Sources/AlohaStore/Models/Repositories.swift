@@ -175,10 +175,108 @@ public actor SupportStore {
         record.videoTitle = snapshot.videoTitle
         record.videoCategory = snapshot.videoCategory
         record.videoLicence = snapshot.videoLicence
+        record.isSyncConflictCopy = snapshot.isSyncConflictCopy
+        record.attachmentsLeftOnOtherDevice = snapshot.attachmentsLeftOnOtherDevice
         record.updatedAt = Date()
 
         try modelContext.save()
+        draftsChanged?(record.accountID)
         return record.id
+    }
+
+    /// Told after a draft is saved or deleted here, with
+    /// the account it belongs to: what starts a sync of that account's drafts
+    /// (docs/14 §7). Not told about what sync itself writes, which would
+    /// sync again for nothing.
+    private var draftsChanged: (@Sendable (UUID) -> Void)?
+
+    public func onDraftsChanged(_ handler: (@Sendable (UUID) -> Void)?) {
+        draftsChanged = handler
+    }
+
+    /// Writes a draft that came from another device, keeping the time it was
+    /// changed there — which is what the next sync compares — rather than
+    /// stamping it with now.
+    ///
+    /// Only if the local copy is still the one sync looked at: `expected` is
+    /// its `updatedAt` then, or nil for a draft that was not here. A draft
+    /// saved in the meantime is newer than anything sync decided about, and
+    /// is left for the next sync rather than overwritten. Answers whether it
+    /// was written.
+    ///
+    /// The send-queue state stays this device's: a draft queued here goes on
+    /// waiting to send, and one queued elsewhere arrives as a plain draft,
+    /// so two devices never both send it.
+    @discardableResult
+    public func applySyncedDraft(_ snapshot: DraftSnapshot, expected: Date?) throws -> Bool {
+        let id = snapshot.id
+        let existing = try modelContext.fetch(
+            FetchDescriptor<DraftRecord>(predicate: #Predicate { $0.id == id })
+        ).first
+        guard existing?.updatedAt == expected else { return false }
+
+        let record: DraftRecord
+        if let existing {
+            record = existing
+        } else {
+            record = DraftRecord(accountID: snapshot.accountID)
+            record.id = snapshot.id
+            record.queuedForSend = false
+            record.lastSendError = nil
+            modelContext.insert(record)
+        }
+        record.text = snapshot.text
+        record.spoilerText = snapshot.spoilerText
+        record.visibility = snapshot.visibility
+        record.sensitive = snapshot.sensitive
+        record.language = snapshot.language
+        record.inReplyToID = snapshot.inReplyToID
+        record.uploadedMediaIDs = snapshot.uploadedMediaIDs
+        record.pollOptions = snapshot.pollOptions
+        record.pollExpiresIn = snapshot.pollExpiresIn
+        record.pollMultiple = snapshot.pollMultiple
+        record.pollHideTotals = snapshot.pollHideTotals
+        record.scheduledAt = snapshot.scheduledAt
+        record.idempotencyKey = snapshot.idempotencyKey
+        record.threadIndex = snapshot.threadIndex
+        record.threadGroupID = snapshot.threadGroupID
+        record.quotedID = snapshot.quotedID
+        record.quotePolicy = snapshot.quotePolicy
+        record.threadSegments = snapshot.threadSegments
+        record.threadPosition = snapshot.threadPosition
+        record.replyPolicy = snapshot.replyPolicy
+        record.marksAsAIGenerated = snapshot.marksAsAIGenerated
+        record.placeID = snapshot.placeID
+        record.placeName = snapshot.placeName
+        record.placeCountry = snapshot.placeCountry
+        record.postAs = snapshot.postAs
+        record.cardBackgroundID = snapshot.cardBackgroundID
+        record.videoTitle = snapshot.videoTitle
+        record.videoCategory = snapshot.videoCategory
+        record.videoLicence = snapshot.videoLicence
+        record.isSyncConflictCopy = snapshot.isSyncConflictCopy
+        // Files only on this device stay attached here; the note about
+        // another device's is only for a draft that has none of its own.
+        record.attachmentsLeftOnOtherDevice =
+            record.localMediaPaths.isEmpty ? snapshot.attachmentsLeftOnOtherDevice : 0
+        record.updatedAt = snapshot.updatedAt
+        try modelContext.save()
+        return true
+    }
+
+    /// Deletes a draft another device deleted, only if it has not changed
+    /// here since sync looked at it (`expected`). Answers whether it went.
+    @discardableResult
+    public func deleteSyncedDraft(id: UUID, expected: Date) throws -> Bool {
+        guard
+            let record = try modelContext.fetch(
+                FetchDescriptor<DraftRecord>(predicate: #Predicate { $0.id == id })
+            ).first,
+            record.updatedAt == expected
+        else { return false }
+        modelContext.delete(record)
+        try modelContext.save()
+        return true
     }
 
     /// One draft as the store has it now, or nil once it is gone — sent by
@@ -189,8 +287,12 @@ public actor SupportStore {
     }
 
     public func deleteDraft(id: UUID) throws {
+        let accountID = try modelContext.fetch(
+            FetchDescriptor<DraftRecord>(predicate: #Predicate { $0.id == id })
+        ).first?.accountID
         try modelContext.delete(model: DraftRecord.self, where: #Predicate { $0.id == id })
         try modelContext.save()
+        if let accountID { draftsChanged?(accountID) }
     }
 
     /// Takes a draft off the send queue and says why, so it waits in Drafts
@@ -354,6 +456,12 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
     public var videoTitle: String?
     public var videoCategory: String?
     public var videoLicence: String?
+    /// The older version of a draft two devices changed differently; see
+    /// `DraftRecord`.
+    public var isSyncConflictCopy = false
+    /// Attachments left on the device the draft was written on; see
+    /// `DraftRecord`.
+    public var attachmentsLeftOnOtherDevice = 0
 
     /// The key the post at `position` in this thread goes out with: the
     /// draft's own for the first, and one derived from it for each segment.
@@ -453,6 +561,8 @@ public struct DraftSnapshot: Sendable, Hashable, Identifiable {
         videoTitle = record.videoTitle
         videoCategory = record.videoCategory
         videoLicence = record.videoLicence
+        isSyncConflictCopy = record.isSyncConflictCopy
+        attachmentsLeftOnOtherDevice = record.attachmentsLeftOnOtherDevice
     }
 
     /// A quote with nothing typed is still a post: the quoted card is the

@@ -498,6 +498,13 @@ public struct SettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(palette.boost)
             }
+
+            if session.hasNextcloudConnection {
+                DraftSyncSettingsRow(session: session)
+            }
+
+            // Draws nothing where the server has no backups (a 404).
+            BackupSettingsRow(session: session)
         } header: {
             Text("Nextcloud", comment: "Settings section")
         } footer: {
@@ -810,6 +817,31 @@ public struct SettingsView: View {
                     "During quiet hours no notifications are delivered. Digest times that fall within quiet hours are skipped; the badge updates at the next digest time.",
                     comment: "Quiet hours explanation")
             }
+
+            // Hourly bundles: the server's own setting, shown only where the
+            // server's answer names it (an older Aloha Social does not).
+            if let bundles = session.hourlyBatching {
+                Section {
+                    Toggle(
+                        isOn: Binding(
+                            get: { bundles },
+                            set: { value in Task { await session.setHourlyBatching(value) } })
+                    ) {
+                        Text(
+                            "Bundle favourites, boosts and follows into one notification an hour",
+                            comment: "Settings switch for the server's hourly notification bundles"
+                        )
+                    }
+                } footer: {
+                    Text(
+                        "Your server holds back pushes for favourites, boosts, follows, poll results and quotes, and sends one summary each hour. Mentions, direct messages and follow requests still arrive at once.",
+                        comment: "Hourly notification bundles explanation")
+                }
+            }
+
+            #if os(iOS)
+                LiveActivitySettingsSection()
+            #endif
         } header: {
             Text("Notifications", comment: "Settings section")
         } footer: {
@@ -817,6 +849,7 @@ public struct SettingsView: View {
                 "\"As they arrive\" is the default. \"In a digest\" batches notifications at your chosen hours; DMs and mentions from people you follow always break through.",
                 comment: "Notifications section explanation")
         }
+        .task { await session.loadNotificationDeliveryIfNeeded() }
     }
 
     /// A notification setting, here and — on Aloha Social — on the server,
@@ -895,7 +928,15 @@ public struct SettingsView: View {
                         Task { await session.updateSettings { $0.warnAboutMissingAltText = value } }
                     })
             ) {
-                Text("Warn about missing descriptions", comment: "Settings item")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Warn about missing descriptions", comment: "Settings item")
+                    Text(
+                        "Before posting a picture without a description, ask once whether to add one.",
+                        comment: "Settings explanation"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(palette.secondaryLabel)
+                }
             }
         } header: {
             Text("Posting", comment: "Settings section")

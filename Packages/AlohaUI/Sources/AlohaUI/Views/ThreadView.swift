@@ -2,6 +2,7 @@
 
 import AlohaDesign
 import AlohaHTML
+import AlohaMedia
 import AlohaModels
 import AlohaNetwork
 import AlohaStore
@@ -11,7 +12,16 @@ public struct ThreadView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var isShowingSummary = false
+    /// The opened photo post's own colours, found in what the app already
+    /// holds (`PhotoTintSource`), for the page's wash.
+    @State private var photoColours: PhotoColours?
+    /// The wash worked out from those colours, kept rather than recomputed
+    /// for every row that asks for its ground (`rowGround`).
+    @State private var tint: PhotoTint?
 
     private let statusID: String
     private let session: AccountSession
@@ -27,6 +37,9 @@ public struct ThreadView: View {
     /// The replies' shape — depth, branches, folds — worked out whenever the
     /// replies change rather than in the body (`ThreadLayout`).
     @State private var layout = ThreadLayout()
+    /// How many posts the author's own run through this conversation has —
+    /// worked out with the replies' shape, not in the body (`SelfThread`).
+    @State private var selfThreadLength = 0
     /// Folds the reader opened, this visit.
     @State private var expandedFolds: Set<String> = []
     @State private var isLoading = true
@@ -72,8 +85,11 @@ public struct ThreadView: View {
                             }
                         )
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
-                        .listRowBackground(palette.background)
+                        .listRowBackground(rowGround)
                         .listRowSeparator(.hidden)
+                        if selfThreadLength >= SelfThread.minimumLength {
+                            readAsArticleRow
+                        }
                     }
                 }
 
@@ -87,7 +103,7 @@ public struct ThreadView: View {
 
                 if isLoading {
                     SkeletonListRow(person: 3)
-                        .listRowBackground(palette.background)
+                        .listRowBackground(rowGround)
                         .listRowSeparator(.hidden)
                 }
 
@@ -96,7 +112,9 @@ public struct ThreadView: View {
                 }
             }
             .listStyle(.plain)
-            .alohaGround(palette)
+            .photoTintGround(tint, palette: palette)
+            .loadsPhotoColours(of: tintAttachment, into: $photoColours)
+            .onChange(of: tintInputs, initial: true) { tint = makeTint() }
             .environment(\.filterVerdicts, verdicts)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
             #if os(iOS)
@@ -117,6 +135,22 @@ public struct ThreadView: View {
                 // link is shared from the action row under it, the way every
                 // app a reader already uses does it, so the bar carries only
                 // the one action the page itself has.
+                // A long post, or a link to read, opens in the reader from
+                // here as well as from its menu: an opened post is where a
+                // long read is most likely to start.
+                if let focused, ReadingTime.suitsReader(focused) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            onAction(.read(focused))
+                        } label: {
+                            Label {
+                                Text("Reader view", comment: "Thread action")
+                            } icon: {
+                                Image(systemName: "doc.plaintext")
+                            }
+                        }
+                    }
+                }
                 if canSummarise {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -210,6 +244,41 @@ public struct ThreadView: View {
         }
     }
 
+    /// The picture the page is tinted by: the opened post's first, when it
+    /// is a photo post whose picture is on show.
+    private var tintAttachment: MediaAttachment? {
+        focused.flatMap {
+            PhotoTintSource.attachment(of: $0, policy: session.settings.sensitiveMediaPolicy)
+        }
+    }
+
+    /// A photo post's thread takes a soft ground from its picture, as Music
+    /// does from album art — unless the reader has asked for plain, firm
+    /// grounds, or there is no picture to take it from.
+    private func makeTint() -> PhotoTint? {
+        guard tintAttachment != nil, let photoColours,
+            PhotoTintSource.allows(
+                reduceTransparency: reduceTransparency, contrast: contrast,
+                theme: environment.theme)
+        else { return nil }
+        return PhotoTint.page(
+            from: PhotoTintSource.swatches(photoColours),
+            ground: palette.backgroundComponents, isDark: colorScheme == .dark)
+    }
+
+    /// Everything the wash depends on, so it is worked out again only when
+    /// one of them changes.
+    private var tintInputs: [AnyHashable] {
+        [
+            photoColours, tintAttachment?.id, colorScheme, contrast, reduceTransparency,
+            environment.theme, palette.backgroundComponents,
+        ]
+    }
+
+    /// Rows let the wash show through; without one they paint the theme's
+    /// ground as they always have.
+    private var rowGround: Color { tint == nil ? palette.background : .clear }
+
     /// Only where a summary saves reading: a post and one reply is quicker to
     /// read than to have summarised.
     private var canSummarise: Bool {
@@ -256,7 +325,7 @@ public struct ThreadView: View {
         }
         .padding(.vertical, AlohaMetrics.space3)
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-        .listRowBackground(palette.background)
+        .listRowBackground(rowGround)
         .accessibilityElement(children: .combine)
     }
 
@@ -309,14 +378,14 @@ public struct ThreadView: View {
             // block with a painted rail down its edge read as a selected row
             // that never got selected. What marks it out is its size and the
             // chrome underneath it.
-            .listRowBackground(palette.background)
+            .listRowBackground(rowGround)
     }
 
     private func errorStrip(_ message: String) -> some View {
         AlohaErrorStrip(message: message) {
             Task { await load() }
         }
-        .listRowBackground(palette.background)
+        .listRowBackground(rowGround)
     }
 
     /// The replies and their shape, always together, so the rows never read
@@ -326,6 +395,35 @@ public struct ThreadView: View {
     private func setDescendants(_ replies: [Status]) {
         descendants = replies
         layout = ThreadLayout(focusedID: statusID, descendants: replies)
+        selfThreadLength =
+            focused.map {
+                SelfThread.unroll(
+                    ancestors: ancestors, focused: $0.displayed, descendants: replies
+                ).count
+            } ?? 0
+    }
+
+    /// Where the author wrote a thread to themselves, it can be read in one
+    /// go: their posts as one article, everybody else's replies left out.
+    private var readAsArticleRow: some View {
+        NavigationLink(value: Route.threadReader(statusID: statusID)) {
+            Label {
+                Text(
+                    "Read all \(selfThreadLength) posts as an article",
+                    comment: "Thread screen: unroll the author's own thread")
+            } icon: {
+                Image(systemName: "doc.plaintext")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(palette.accent)
+            .padding(.vertical, AlohaMetrics.space2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
     }
 
     /// One row under the opened post: a reply with its thread lines, or the
@@ -374,7 +472,7 @@ public struct ThreadView: View {
             .padding(.leading, ThreadLines.width(for: indent))
             .background(alignment: .leading) { ThreadLines(levels: indent) }
             .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-            .listRowBackground(palette.background)
+            .listRowBackground(rowGround)
         }
     }
 

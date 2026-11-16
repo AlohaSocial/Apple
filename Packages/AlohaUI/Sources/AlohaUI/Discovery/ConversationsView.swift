@@ -461,6 +461,10 @@ public struct ConversationsView: View {
     /// here — the one place that already holds the answer (docs/05 §5).
     private func publishUnread() {
         AppGroup.defaults.set(unreadCount, forKey: AppGroup.unreadConversationsKey)
+        // The watch's direct-messages complication counts the same.
+        #if os(iOS)
+            WatchBridge.shared.sendConversationsChanged()
+        #endif
     }
 }
 

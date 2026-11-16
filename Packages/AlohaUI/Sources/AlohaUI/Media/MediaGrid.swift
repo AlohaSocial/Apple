@@ -165,7 +165,10 @@ public struct MediaGrid: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { withAnimation(.easeOut(duration: 0.2)) { isRevealed = true } }
+        .onTapGesture {
+            withAnimation(.easeOut(duration: 0.2)) { isRevealed = true }
+            RevealedContent.shared.revealMedia(attachments.map(\.id))
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             Text("Sensitive content. Double-tap to show.", comment: "Accessibility")

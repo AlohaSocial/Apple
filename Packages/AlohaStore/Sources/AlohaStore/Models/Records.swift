@@ -247,6 +247,13 @@ public final class DraftRecord {
     public var videoLicence: String?
     /// The poll's "hide totals until it ends" switch.
     public var pollHideTotals: Bool = false
+    // Draft sync through the account's Nextcloud (docs/14 §7).
+    /// Made by sync when two devices changed this draft differently: the
+    /// older of the two versions, kept beside the newer rather than lost.
+    public var isSyncConflictCopy: Bool = false
+    /// Attachments another device has that could not travel with the draft:
+    /// files still only on that device, never uploaded to the server.
+    public var attachmentsLeftOnOtherDevice: Int = 0
 
     public init(accountID: UUID, text: String = "") {
         self.accountID = accountID

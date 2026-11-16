@@ -81,7 +81,15 @@ public struct DraftsView: View {
             }
         }
         .navigationTitle(Text("Drafts", comment: "Screen title"))
-        .task { await load() }
+        // Read again whenever sync brought a draft in from another device
+        // or took one away (docs/14 §7).
+        .task(id: DraftSync.shared.state(for: session.id).revision) { await load() }
+        .refreshable {
+            if DraftSync.shared.isEnabled(for: session) {
+                await DraftSync.shared.sync(session)
+            }
+            await load()
+        }
         // Whatever the composer did — posted it, saved it again, kept it —
         // this list has to show what is now true.
         .sheet(item: $reopening, onDismiss: reload) { draft in
@@ -102,6 +110,30 @@ public struct DraftsView: View {
             )
             .font(.subheadline)
             .lineLimit(3)
+
+            if draft.isSyncConflictCopy {
+                Label {
+                    Text(
+                        "Changed on two devices at once. This is the older version, kept so nothing is lost.",
+                        comment: "Drafts row note on a copy draft sync kept after a conflict")
+                } icon: {
+                    Image(systemName: "doc.on.doc")
+                }
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+            }
+
+            if draft.attachmentsLeftOnOtherDevice > 0 {
+                Label {
+                    Text(
+                        "^[\(draft.attachmentsLeftOnOtherDevice) attachment](inflect: true) stayed on the device this was written on.",
+                        comment: "Drafts row note: media that could not sync with the draft")
+                } icon: {
+                    Image(systemName: AlohaSymbol.media)
+                }
+                .font(.caption)
+                .foregroundStyle(palette.secondaryLabel)
+            }
 
             if let reason = draft.lastSendError {
                 Label {

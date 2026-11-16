@@ -15,16 +15,24 @@ public struct NotificationPayload: Codable, Sendable, Hashable {
     public var avatarURL: URL?
     public var accountHandle: String
     public var statusID: String?
+    /// The post's visibility, so a direct message wears the direct-message
+    /// category (Reply with no Boost) and its reply stays direct. Optional,
+    /// so bytes stored by an older build still decode.
+    public var visibility: Visibility?
+
+    /// Whether the post is a direct message.
+    public var isDirect: Bool { visibility == .direct }
 
     public init(
         title: String, body: String, avatarURL: URL?, accountHandle: String,
-        statusID: String?
+        statusID: String?, visibility: Visibility? = nil
     ) {
         self.title = title
         self.body = body
         self.avatarURL = avatarURL
         self.accountHandle = accountHandle
         self.statusID = statusID
+        self.visibility = visibility
     }
 
     public static func encode(_ notification: MastodonNotification) -> Data {
@@ -33,7 +41,8 @@ public struct NotificationPayload: Codable, Sendable, Hashable {
             body: Self.preview(notification.status),
             avatarURL: notification.account.preferredAvatarURL,
             accountHandle: notification.account.acct,
-            statusID: notification.status?.id)
+            statusID: notification.status?.id,
+            visibility: notification.status?.displayed.visibility)
         return (try? AlohaJSON.encoder.encode(payload)) ?? Data()
     }
 
@@ -47,7 +56,8 @@ public struct NotificationPayload: Codable, Sendable, Hashable {
             body: Self.preview(status),
             avatarURL: first?.preferredAvatarURL,
             accountHandle: first?.acct ?? "",
-            statusID: group.statusID)
+            statusID: group.statusID,
+            visibility: status?.displayed.visibility)
         return (try? AlohaJSON.encoder.encode(payload)) ?? Data()
     }
 

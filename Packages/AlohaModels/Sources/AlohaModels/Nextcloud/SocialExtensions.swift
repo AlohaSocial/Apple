@@ -436,12 +436,19 @@ public struct NotificationDeliverySettings: Codable, Sendable, Hashable {
     /// `"HH:MM"`, or `""` for no quiet hours.
     public var quietFrom: String
     public var quietTo: String
+    /// Whether pushes for favourites, boosts, follows, poll results and
+    /// quotes are held and sent as one summary push an hour
+    /// (`hourly_batching`). `nil` when the server did not send the key at
+    /// all: an older Aloha Social has no such thing, and a switch for it
+    /// would change nothing.
+    public var hourlyBatching: Bool?
 
     public static let maximumTimes = 4
 
     public init(
         mode: Mode = .instant, times: [String] = [], passthroughDirect: Bool = true,
-        passthroughMentionsFromFollowed: Bool = true, quietFrom: String = "", quietTo: String = ""
+        passthroughMentionsFromFollowed: Bool = true, quietFrom: String = "", quietTo: String = "",
+        hourlyBatching: Bool? = nil
     ) {
         self.mode = mode
         self.times = Array(times.prefix(Self.maximumTimes))
@@ -449,6 +456,7 @@ public struct NotificationDeliverySettings: Codable, Sendable, Hashable {
         self.passthroughMentionsFromFollowed = passthroughMentionsFromFollowed
         self.quietFrom = quietFrom
         self.quietTo = quietTo
+        self.hourlyBatching = hourlyBatching
     }
 
     public init(from decoder: any Decoder) throws {
@@ -465,6 +473,12 @@ public struct NotificationDeliverySettings: Codable, Sendable, Hashable {
         let quiet = try? c.nestedContainer(keyedBy: QuietKeys.self, forKey: .quiet)
         quietFrom = (try? quiet?.decodeIfPresent(String.self, forKey: .from)) ?? ""
         quietTo = (try? quiet?.decodeIfPresent(String.self, forKey: .to)) ?? ""
+        // Present means the server has the feature, so a value this app
+        // cannot read is its default, off — not "no such key".
+        hourlyBatching =
+            c.contains(.hourlyBatching)
+            ? ((try? c.decode(LenientBool.self, forKey: .hourlyBatching))?.wrappedValue ?? false)
+            : nil
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -477,6 +491,9 @@ public struct NotificationDeliverySettings: Codable, Sendable, Hashable {
         var quiet = c.nestedContainer(keyedBy: QuietKeys.self, forKey: .quiet)
         try quiet.encode(quietFrom, forKey: .from)
         try quiet.encode(quietTo, forKey: .to)
+        // Only where the server sent it: a key an older server does not
+        // know is one more thing for its validation to refuse.
+        try c.encodeIfPresent(hourlyBatching, forKey: .hourlyBatching)
     }
 
     /// `"HH:00"` for a whole hour — the only kind the app's own settings hold.
@@ -494,7 +511,10 @@ public struct NotificationDeliverySettings: Codable, Sendable, Hashable {
         return hour
     }
 
-    enum CodingKeys: String, CodingKey { case mode, times, passthrough, quiet }
+    enum CodingKeys: String, CodingKey {
+        case mode, times, passthrough, quiet
+        case hourlyBatching = "hourly_batching"
+    }
     enum PassKeys: String, CodingKey {
         case direct
         case mentionsFromFollowed = "mentions_from_followed"

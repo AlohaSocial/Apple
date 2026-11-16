@@ -39,7 +39,7 @@ extension ThemedAppShell {
     private func destinationContent(_ route: Route, session: AccountSession) -> some View {
         switch route {
         case .thread, .profile, .hashtag, .bookmarks, .favourites, .notifications,
-            .explore, .search, .lists, .filters, .timeline:
+            .explore, .search, .lists, .filters, .timeline, .threadReader:
             timelineDestination(route, session: session)
         case .safety, .conversations, .conversation, .video, .drafts, .scheduledPosts,
             .notificationRequests, .notificationPolicy, .followRequests, .handle, .settings:
@@ -96,6 +96,10 @@ extension ThemedAppShell {
                 .readerColumn
         case .timeline(let key):
             TimelineView(key: key, session: session) { handle($0, session: session) }
+        case .threadReader(let statusID):
+            ThreadReaderView(statusID: statusID, session: session) {
+                handle($0, session: session)
+            }
         default:
             EmptyView()
         }

@@ -35,6 +35,11 @@ public final class ComposerModel {
     public var completions: [String] = []
     public var isShowingMediaPicker = false
     public var isShowingAltTextWarning = false
+    /// Whether the missing-description reminder has already been shown for
+    /// this post. It nudges once: a second Post after "Let me add it" goes
+    /// out as it is, because a reminder that comes back is a gate, and
+    /// docs/07 §4 says this warns and never blocks.
+    public private(set) var hasNudgedAboutAltText = false
     public var editingAltTextFor: String?
     public private(set) var isPosting = false
     public private(set) var errorMessage: String?
@@ -177,6 +182,23 @@ public final class ComposerModel {
     /// their descriptions.
     public func cancelDescribeAll() {
         describeAllCancelled = true
+    }
+
+    // MARK: - The alt-text coach
+
+    /// Whether Post should stop once to say something has no description:
+    /// the setting is on, it has not said so for this post yet, and there is
+    /// something undescribed.
+    nonisolated static func shouldNudge(
+        enabled: Bool, alreadyNudged: Bool, attachments: [MediaAttachment]
+    ) -> Bool {
+        enabled && !alreadyNudged && attachments.contains { !$0.hasAltText }
+    }
+
+    /// The first attachment still without a description, for "Add a
+    /// description" to open.
+    public var firstUndescribedAttachment: MediaAttachment? {
+        attachments.first { !$0.hasAltText }
     }
 
     public enum QuotePolicy: String, CaseIterable, Identifiable, Sendable {
@@ -460,6 +482,9 @@ public final class ComposerModel {
     }
 
     public func prepare() async {
+        // Whatever sync brings in for this draft waits until this composer
+        // has closed and saved it (docs/14 §7).
+        DraftSync.shared.noteOpen(draftID, by: self)
         // An edit already carries everything from `/source`; re-deriving the
         // defaults here would overwrite what the person wrote.
         guard editingStatus == nil, !isPrepared else { return }
@@ -711,9 +736,11 @@ public final class ComposerModel {
         guard canPost else { return false }
 
         if !skippingAltTextCheck,
-            session.settings.warnAboutMissingAltText,
-            attachments.contains(where: { !$0.hasAltText })
+            Self.shouldNudge(
+                enabled: session.settings.warnAboutMissingAltText,
+                alreadyNudged: hasNudgedAboutAltText, attachments: attachments)
         {
+            hasNudgedAboutAltText = true
             isShowingAltTextWarning = true
             return false
         }

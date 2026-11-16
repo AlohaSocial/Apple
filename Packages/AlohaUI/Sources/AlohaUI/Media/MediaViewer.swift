@@ -16,6 +16,10 @@ public struct MediaViewer: View {
     @Environment(\.alohaMetrics) private var metrics
     @Environment(\.mediaTransition) private var mediaTransition
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppEnvironment.self) private var environment
 
     private let attachments: [MediaAttachment]
     private let statusID: String
@@ -35,6 +39,11 @@ public struct MediaViewer: View {
     /// A tap on the picture puts the controls, the status bar and the home
     /// indicator away, so the photograph has the whole screen — and back.
     @State private var isChromeHidden = false
+    /// The colours of the picture on show, for a deep backdrop in them
+    /// instead of plain black — only from what the app already holds.
+    @State private var photoColours: PhotoColours?
+    /// "Save to Nextcloud", for the attachment on screen (docs/14 §7).
+    @State private var saver = SaveToNextcloud()
 
     public init(
         attachments: [MediaAttachment], startIndex: Int, statusID: String,
@@ -50,7 +59,7 @@ public struct MediaViewer: View {
 
     public var body: some View {
         ZStack {
-            Color.black
+            backdrop
                 .opacity(backdropOpacity)
                 .ignoresSafeArea()
                 .animation(.easeOut(duration: 0.2), value: backdropOpacity)
@@ -76,8 +85,22 @@ public struct MediaViewer: View {
             controls
                 .opacity(chromeHidden ? 0 : 1)
                 .allowsHitTesting(!chromeHidden)
+
+            // Over the chrome rather than part of it: a save under way stays
+            // in sight when a tap puts the controls away.
+            VStack {
+                Spacer()
+                if saver.phase != .idle {
+                    SaveToNextcloudStatus(saver: saver)
+                        .padding(.bottom, AlohaMetrics.space6)
+                        .transition(
+                            reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(reduceMotion ? nil : .spring(duration: 0.3), value: saver.phase)
         }
         .animation(.easeInOut(duration: 0.2), value: chromeHidden)
+        .loadsPhotoColours(of: tintAttachment, into: $photoColours)
         .offset(dragOffset)
         // The zoom transition already lets a swipe shrink the picture back
         // into its cell, following the finger. A second, home-made swipe on
@@ -158,6 +181,44 @@ public struct MediaViewer: View {
         }
     }
 
+    /// Black, or a deep shade of the picture's own colours, as Music puts a
+    /// full-screen player in the colours of its album art. Plain black under
+    /// Reduce Transparency and Increase Contrast, for a video, and for a
+    /// picture there is nothing cached of yet.
+    @ViewBuilder
+    private var backdrop: some View {
+        ZStack {
+            Color.black
+            if let tint = backdropTint {
+                PhotoTintGround(tint)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// The picture on show, when it is one. The viewer only opens on what
+    /// the reader asked to see, so a sensitive picture here is already
+    /// revealed and its colours are no secret.
+    private var tintAttachment: MediaAttachment? {
+        guard let attachment = attachments[safe: index], attachment.type == .image else {
+            return nil
+        }
+        return attachment
+    }
+
+    private var backdropTint: PhotoTint? {
+        guard tintAttachment != nil, let photoColours,
+            PhotoTintSource.allows(reduceTransparency: reduceTransparency, contrast: contrast)
+        else { return nil }
+        return PhotoTint.backdrop(from: PhotoTintSource.swatches(photoColours))
+    }
+
+    /// Only where the account's Nextcloud is connected: saving is a WebDAV
+    /// upload with its app password.
+    private var canSaveToNextcloud: Bool {
+        session?.hasNextcloudConnection == true
+    }
+
     /// The controls stay for VoiceOver: hiding them would leave nothing to
     /// close the viewer with.
     private var chromeHidden: Bool { isChromeHidden && !isVoiceOverOn }
@@ -224,6 +285,26 @@ public struct MediaViewer: View {
                         }
                         .accessibilityLabel(
                             Text("Show description", comment: "Media viewer action"))
+                    }
+
+                    if canSaveToNextcloud, let attachment = attachments[safe: index],
+                        attachment.url ?? attachment.remoteURL != nil
+                    {
+                        Button {
+                            if let session {
+                                saver.save(attachment, session: session, environment: environment)
+                            }
+                        } label: {
+                            Image(systemName: "icloud.and.arrow.up")
+                                .font(.body.weight(.semibold))
+                                .padding(10)
+                                .alohaGlassEffect(Self.controlGlass, in: Circle())
+                        }
+                        .disabled(saver.isWorking)
+                        .accessibilityLabel(
+                            Text("Save to Nextcloud", comment: "Media viewer action")
+                        )
+                        .help(Text("Save to Nextcloud", comment: "Media viewer action"))
                     }
 
                     if let url = attachments[safe: index]?.url {
@@ -424,7 +505,8 @@ public struct VideoAttachmentPlayer: View {
                 }
                 .foregroundStyle(.primary)
                 .padding(20)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                // Glass over the video, as the player's own controls are.
+                .alohaGlassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
                 .padding()
             }
 
