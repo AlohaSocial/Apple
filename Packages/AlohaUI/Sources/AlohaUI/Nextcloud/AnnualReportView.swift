@@ -83,7 +83,15 @@ public struct AnnualReportView: View {
     }
 
     private var advancesAutomatically: Bool {
-        AnnualReportStory.advancesAutomatically(reduceMotion: reduceMotion, voiceOver: voiceOver)
+        #if DEBUG
+            // The tours read a card and photograph it: a card that moves on
+            // under them is a flaky test, and a progress bar redrawn every
+            // 50 ms keeps the app from ever going idle, which slows every
+            // query that follows. Paging by hand still works.
+            if MockMode.isEnabled { return false }
+        #endif
+        return AnnualReportStory.advancesAutomatically(
+            reduceMotion: reduceMotion, voiceOver: voiceOver)
     }
 
     private var isPaused: Bool {
