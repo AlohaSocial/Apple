@@ -216,8 +216,8 @@ public struct StatusRow: View {
             // row it is over, wider than the words so it does not crowd them.
             .background {
                 RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-                    .fill(palette.label.opacity(isPointerOver ? 0.05 : 0))
-                    .padding(.horizontal, -AlohaMetrics.space3)
+                .fill(palette.label.opacity(isPointerOver ? 0.05 : 0))
+                .padding(.horizontal, -AlohaMetrics.space3)
             }
             .onHover { isPointerOver = $0 }
             .animation(

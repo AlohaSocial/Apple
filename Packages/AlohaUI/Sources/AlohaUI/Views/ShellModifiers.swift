@@ -68,7 +68,9 @@ private struct ReaderColumn: ViewModifier {
                         .frame(maxWidth: width)
                         .background(palette.background)
                         .clipShape(panel)
-                        .overlay(panel.strokeBorder(palette.separator.opacity(0.35), lineWidth: 0.5))
+                        .overlay(
+                            panel.strokeBorder(palette.separator.opacity(0.35), lineWidth: 0.5)
+                        )
                         .shadow(color: .black.opacity(0.32), radius: 22, y: 8)
                         .padding(.top, AlohaMetrics.space1)
                         .padding(.bottom, AlohaMetrics.space3)

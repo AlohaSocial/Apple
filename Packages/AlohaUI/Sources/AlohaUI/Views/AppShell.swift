@@ -179,7 +179,9 @@ struct ThemedAppShell: View {
             #if os(macOS)
                 .overlay {
                     if isJumping, let session = environment.activeSession {
-                        CommandPalette(items: jumpItems(session)) { open($0) } onClose: {
+                        CommandPalette(items: jumpItems(session)) {
+                            open($0)
+                        } onClose: {
                             withAnimation(.easeOut(duration: 0.12)) { isJumping = false }
                         }
                     }

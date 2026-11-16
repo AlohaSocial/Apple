@@ -133,7 +133,8 @@ struct AlohaSocialMacApp: App {
                         keywords: String(
                             localized: "window translucent transparent blur desktop glass",
                             comment:
-                                "Settings search keywords for the Mac's Window pane, separated by spaces. Translate into the words people in your language would type.")
+                                "Settings search keywords for the Mac's Window pane, separated by spaces. Translate into the words people in your language would type."
+                        )
                     ) { MacWindowSettings() },
                     SettingsWindowView.Pane(
                         id: "menu-bar",
@@ -142,7 +143,8 @@ struct AlohaSocialMacApp: App {
                         keywords: String(
                             localized: "menu bar extra status unread icon",
                             comment:
-                                "Settings search keywords for the Mac's Menu Bar pane, separated by spaces. Translate into the words people in your language would type.")
+                                "Settings search keywords for the Mac's Menu Bar pane, separated by spaces. Translate into the words people in your language would type."
+                        )
                     ) { MacMenuBarSettings() },
                 ]
             ) {

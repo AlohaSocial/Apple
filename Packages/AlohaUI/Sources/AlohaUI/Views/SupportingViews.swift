@@ -973,7 +973,9 @@ extension View {
 
         func body(content: Content) -> some View {
             content
-                .foregroundStyle(isSelected ? AnyShapeStyle(palette.accent) : AnyShapeStyle(.primary))
+                .foregroundStyle(
+                    isSelected ? AnyShapeStyle(palette.accent) : AnyShapeStyle(.primary)
+                )
                 .fontWeight(isSelected ? .semibold : .regular)
         }
     }
@@ -1085,7 +1087,7 @@ public struct SidebarView: View {
                     #else
                         Image(
                             systemName: selectedRoute == .notifications
-                            ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications)
+                                ? AlohaSymbol.notificationsFilled : AlohaSymbol.notifications)
                     #endif
                 }
                 .badge(unreadActivities > 0 ? Text(verbatim: String(unreadActivities)) : nil)
@@ -1108,7 +1110,7 @@ public struct SidebarView: View {
                     #else
                         Image(
                             systemName: selectedRoute == .conversations
-                            ? AlohaSymbol.directMessageFilled : AlohaSymbol.directMessage)
+                                ? AlohaSymbol.directMessageFilled : AlohaSymbol.directMessage)
                     #endif
                 }
                 // `badge(0)` is not "no badge": it draws a zero, so every

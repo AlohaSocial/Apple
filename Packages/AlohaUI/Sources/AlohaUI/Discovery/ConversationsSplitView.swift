@@ -41,7 +41,9 @@ import SwiftUI
                     } else {
                         ContentUnavailableView {
                             Label {
-                                Text("No conversation selected", comment: "Direct messages placeholder")
+                                Text(
+                                    "No conversation selected",
+                                    comment: "Direct messages placeholder")
                             } icon: {
                                 Image(systemName: AlohaSymbol.directMessage)
                             }

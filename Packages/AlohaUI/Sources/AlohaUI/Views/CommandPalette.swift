@@ -31,13 +31,16 @@ import SwiftUI
             let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
             var found = items.filter {
                 needle.isEmpty
-                    || $0.title.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive])
+                    || $0.title.range(
+                        of: needle, options: [.caseInsensitive, .diacriticInsensitive])
                         != nil
             }
             if !needle.isEmpty {
                 found.append(
                     Item(
-                        id: "search", title: String(localized: "Search for “\(needle)”", comment: "Command palette item"),
+                        id: "search",
+                        title: String(
+                            localized: "Search for “\(needle)”", comment: "Command palette item"),
                         symbolName: AlohaSymbol.search, route: .search(query: needle)))
             }
             return found
@@ -72,7 +75,8 @@ import SwiftUI
                     ScrollViewReader { proxy in
                         ScrollView {
                             VStack(spacing: 2) {
-                                ForEach(Array(matches.enumerated()), id: \.element.id) { index, item in
+                                ForEach(Array(matches.enumerated()), id: \.element.id) {
+                                    index, item in
                                     row(item, isHighlighted: index == highlighted)
                                         .id(item.id)
                                         .onTapGesture { open(item) }

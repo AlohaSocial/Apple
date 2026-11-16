@@ -392,49 +392,54 @@ extension ThemedAppShell {
             .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
             HStack(spacing: 0) {
-            NavigationStack(path: sidebarPath(sidebarItem)) {
-                Group {
-                    switch sidebarItem {
-                    case .mode(let mode):
-                        modeRoot(mode, session: session)
-                    case .route(let route):
-                        destination(route, session: session, isRoot: true)
+                NavigationStack(path: sidebarPath(sidebarItem)) {
+                    Group {
+                        switch sidebarItem {
+                        case .mode(let mode):
+                            modeRoot(mode, session: session)
+                        case .route(let route):
+                            destination(route, session: session, isRoot: true)
+                        }
                     }
+                    // On the root; a pushed screen carries its own (`destination`).
+                    // Declared once each, rather than on the stack *and* on every
+                    // screen, which drew two "New post" buttons side by side.
+                    .toolbar { composeToolbar }
+                    .modifier(
+                        GlobalSearchField(isShown: !hasOwnSearchField(sidebarItem)) { query in
+                            sidebarItem = .route(.search(query: query))
+                        }
+                    )
+                    .navigationDestination(for: Route.self) { destination($0, session: session) }
                 }
-                // On the root; a pushed screen carries its own (`destination`).
-                // Declared once each, rather than on the stack *and* on every
-                // screen, which drew two "New post" buttons side by side.
-                .toolbar { composeToolbar }
-                .modifier(
-                    GlobalSearchField(isShown: !hasOwnSearchField(sidebarItem)) { query in
-                        sidebarItem = .route(.search(query: query))
+                // A stack per sidebar row, as on iPad: each row keeps what was
+                // pushed on it. A fresh stack for each row rather than one stack
+                // whose path is swapped, which would animate as a pop and a push.
+                .id(sidebarItem)
+                #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                #endif
+                // The window's own ground, not the system's. A reading column is
+                // centred in this space, and without this the space around it was
+                // window background — a cool white the app never uses — so the
+                // column read as a sheet of paper dropped on the wrong desk.
+                .alohaWindowGround(palette)
+                #if os(macOS)
+                    if showsDetailColumn, let opened = detailPaths[sidebarItem],
+                        let top = opened.last
+                    {
+                        Divider().ignoresSafeArea()
+                        macDetailColumn(top, depth: opened.count, session: session)
+                            .frame(
+                                width: ShellLayout.detailColumnWidth(forWindowWidth: windowWidth)
+                            )
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
-                )
-                .navigationDestination(for: Route.self) { destination($0, session: session) }
-            }
-            // A stack per sidebar row, as on iPad: each row keeps what was
-            // pushed on it. A fresh stack for each row rather than one stack
-            // whose path is swapped, which would animate as a pop and a push.
-            .id(sidebarItem)
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-            #endif
-            // The window's own ground, not the system's. A reading column is
-            // centred in this space, and without this the space around it was
-            // window background — a cool white the app never uses — so the
-            // column read as a sheet of paper dropped on the wrong desk.
-            .alohaWindowGround(palette)
-            #if os(macOS)
-                if showsDetailColumn, let opened = detailPaths[sidebarItem], let top = opened.last {
-                    Divider().ignoresSafeArea()
-                    macDetailColumn(top, depth: opened.count, session: session)
-                        .frame(width: ShellLayout.detailColumnWidth(forWindowWidth: windowWidth))
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
-            #endif
+                #endif
             }
             #if os(macOS)
-                .animation(.smooth(duration: 0.25), value: detailPaths[sidebarItem]?.isEmpty ?? true)
+                .animation(
+                    .smooth(duration: 0.25), value: detailPaths[sidebarItem]?.isEmpty ?? true)
             #endif
         }
         #if os(macOS)

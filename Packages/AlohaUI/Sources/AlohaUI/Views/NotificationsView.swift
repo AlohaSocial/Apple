@@ -629,8 +629,8 @@ public struct NotificationsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(palette.separator.opacity(0.4))
-                    .frame(height: 0.5)
+                .fill(palette.separator.opacity(0.4))
+                .frame(height: 0.5)
             }
         #else
             .padding(AlohaMetrics.space3)
@@ -643,7 +643,7 @@ public struct NotificationsView: View {
             // as a slightly different colour — the app's own card language.
             .overlay(
                 RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
-                .strokeBorder(palette.separator.opacity(0.5), lineWidth: 0.5)
+                    .strokeBorder(palette.separator.opacity(0.5), lineWidth: 0.5)
             )
         #endif
         .contentShape(
