@@ -413,6 +413,14 @@ public struct ShortsView: View {
                     .font(.system(size: 110))
                     .foregroundStyle(palette.favourite)
                     .shadow(radius: 12)
+                    // The action row's own burst, at the big heart's scale.
+                    .background {
+                        if !reduceMotion {
+                            CelebrationBurst(kind: .hearts, tint: palette.favourite) {}
+                                .frame(width: 18, height: 18)
+                                .scaleEffect(6)
+                        }
+                    }
                     .transition(
                         reduceMotion ? .opacity : .scale(scale: 0.4).combined(with: .opacity)
                     )
@@ -444,7 +452,9 @@ public struct ShortsView: View {
             // VoiceOver's own play/pause gesture, a two-finger double tap.
             .accessibilityAction(.magicTap) { togglePlayback() }
         #endif
-        .alohaSensoryFeedback(.success, trigger: hearted) { _, new in new != nil }
+        // Liking taps through `Senses`, with the like's own tick; a second
+        // haptic here doubled it. Unliking has no cue there, so it keeps its
+        // light one.
         .alohaSensoryFeedback(.impact(weight: .light), trigger: unlikeTick)
     }
 
@@ -796,7 +806,8 @@ struct ShortPlayer: View {
                     }
                     .foregroundStyle(.primary)
                     .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    // Glass over the video, as the player's own controls are.
+                    .alohaGlassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
                     // One element, the card: under the page's play/pause tap
                     // the message alone counts as a control, a line of text
                     // high — too small to hit. Activating it tries again.

@@ -451,6 +451,34 @@ public struct StatusMenu: View {
             }
         }
 
+        // A long post, or one sharing a link, can be read in a calm column
+        // of its own; a short one is already as calm as it gets.
+        if ReadingTime.suitsReader(status) {
+            Button {
+                onAction(.read(status))
+            } label: {
+                Label {
+                    Text("Reader view", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "doc.plaintext")
+                }
+            }
+        }
+
+        // The post drawn as a card, for places a link does not travel well.
+        // Only for a post with a link of its own: the card's code opens it.
+        if displayed.url != nil {
+            Button {
+                onAction(.shareImage(status))
+            } label: {
+                Label {
+                    Text("Share as image", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "photo.on.rectangle")
+                }
+            }
+        }
+
         if session?.capabilities.quotePosts == true, displayed.visibility != .direct {
             Button {
                 onAction(.quote(status))

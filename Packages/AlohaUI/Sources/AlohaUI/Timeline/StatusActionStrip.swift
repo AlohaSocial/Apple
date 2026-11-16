@@ -34,7 +34,7 @@ struct StatusActionStrip: View {
                 symbol: displayed.favourited
                     ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
                 count: showsCounts ? displayed.favouritesCount : nil,
-                tint: palette.favourite, isOn: displayed.favourited, style: .pop,
+                tint: palette.favourite, isOn: displayed.favourited, style: .heart,
                 label: Text("Favourite", comment: "Status action"),
                 prominence: prominence,
                 onCountTap: interactions(.favourites, count: displayed.favouritesCount),
