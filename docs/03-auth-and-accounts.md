@@ -116,9 +116,8 @@ longer signs everybody out. Aloha Social relies on all of this.
    Note `redirect_uris` accepts several, newline-separated in one field, and
    Nextcloud splits on newlines. Send one.
 
-3. **Authorise** via `ASWebAuthenticationSession` (all platforms;
-   `ASWebAuthenticationSession` is available on macOS, visionOS and tvOS, and
-   the watch app never authenticates on its own — see §7):
+3. **Authorise** via `ASWebAuthenticationSession` (iOS, iPadOS, macOS and
+   visionOS; the watch app never authenticates on its own — see §7):
    ```
    GET {authorization_endpoint}
      ?response_type=code
@@ -213,14 +212,7 @@ launch.
 | Platform | How |
 |---|---|
 | iOS / iPadOS / macOS / visionOS | `ASWebAuthenticationSession` as above. |
-| tvOS | `ASWebAuthenticationSession` is not available. Use the **device-code style handoff**: show a QR code and short URL for the instance's authorise URL with the app's `client_id`, and poll `{base}api/v1/accounts/verify_credentials` against a token the phone app hands over via the shared iCloud keychain… **which is not available** (`ThisDeviceOnly`). Therefore: tvOS signs in by showing a QR code that opens the authorise page on a phone, where the person copies the resulting out-of-band code (`urn:ietf:wg:oauth:2.0:oob`, which Nextcloud's OAuth controller supports) and pastes it into the TV with the iPhone's Apple TV keyboard. The code is sixty mixed-case characters and lives ten minutes (`ClientService.php`), so typing it with the remote is not a path. A phone-to-TV relay that removes the copy step is proposed in [15-upstream-proposals.md](15-upstream-proposals.md). |
 | watchOS | Never authenticates. Receives the active account's token and API base from the phone over `WatchConnectivity` on pairing and on token change, and stores it in the watch's own Keychain with the same accessibility class. |
-
-tvOS's out-of-band path depends on Nextcloud honouring
-`urn:ietf:wg:oauth:2.0:oob` as a redirect URI, which its `OAuthController`
-does (`denyUrl` and `authorizing` both special-case it). Real Mastodon supports
-it too. If an instance rejects it, tvOS falls back to a message asking the
-person to sign in on another device — tvOS is the lowest-priority target.
 
 ## 8. Sign-in screen
 

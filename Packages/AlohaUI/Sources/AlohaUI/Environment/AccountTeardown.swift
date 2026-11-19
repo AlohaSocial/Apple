@@ -18,7 +18,6 @@ enum AccountTeardown {
 
     static func removeSharedState(
         for id: UUID, in defaults: UserDefaults,
-        topShelf: TopShelfSnapshotStore? = .shared,
         widgets: WidgetSnapshotStore? = .shared
     ) {
         defaults.removeObject(forKey: pushRegistrationKey(for: id))
@@ -27,7 +26,6 @@ enum AccountTeardown {
         WidgetBookmarks.removeAll(accountID: id, in: defaults)
         WidgetWants.removeAll(accountID: id, in: defaults)
         widgets?.remove(accountID: id)
-        if let topShelf, topShelf.read()?.accountID == id { topShelf.remove() }
         if let data = defaults.data(forKey: FocusFilterState.key),
             let focus = try? JSONDecoder().decode(FocusFilterState.self, from: data),
             focus.accountID == id

@@ -9,7 +9,7 @@ import AlohaStore
 import PhotosUI
 import SwiftUI
 
-#if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+#if canImport(ImagePlayground) && !os(watchOS)
     import ImagePlayground
 #endif
 
@@ -53,7 +53,7 @@ public struct ComposerView: View {
     @State var isShowingImagePlayground = false
     /// Why "Share what's playing" inserted nothing, until it is tried again.
     @State var nowPlayingMessage: String?
-    #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+    #if canImport(ImagePlayground) && !os(watchOS)
         @Environment(\.supportsImagePlayground) var supportsImagePlayground
     #endif
     /// An edit's text as it arrived, so closing an unchanged edit needs no
@@ -205,7 +205,7 @@ public struct ComposerView: View {
                 .background(palette.background)
             #endif
             .sensoryFeedback(.success, trigger: didSend)
-            #if !os(tvOS) && !os(watchOS)
+            #if !os(watchOS)
                 // A picture or a video dragged in from Photos, Files or
                 // another app is an attachment, the same as one picked.
                 .dropDestination(for: DroppedMedia.self) { items, _ in

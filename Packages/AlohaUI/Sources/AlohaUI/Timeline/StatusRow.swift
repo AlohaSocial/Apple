@@ -654,7 +654,7 @@ public struct StatusRow: View {
             Image(systemName: AlohaSymbol.more)
                 .font(.footnote)
                 .foregroundStyle(palette.secondaryLabel)
-                .frame(width: 44, height: 32)
+                .frame(width: 44, height: RowTargets.height)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)

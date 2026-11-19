@@ -15,7 +15,7 @@ public enum AppGroup {
     /// Every target that carries `com.apple.security.application-groups` in
     /// its entitlements says so in its Info.plist (`Supporting/README.md`
     /// lists them). The default is **off**: a process without the key (a
-    /// unit-test runner, a tvOS/watchOS target with a generated plist) must
+    /// unit-test runner, a watchOS target with a generated plist) must
     /// not claim a container it was never granted — claiming it fails every
     /// `UserDefaults` and Keychain call. A contributor signing with another
     /// team either registers the group under their team or sets the key to

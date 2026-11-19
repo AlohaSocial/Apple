@@ -23,7 +23,7 @@ nonisolated enum AudioSessionConfiguration: Sendable, Hashable {
 }
 
 /// Where the coordinator's decisions are carried out: the system's session on
-/// iOS, tvOS and visionOS, nothing on the Mac, a recorder in the tests.
+/// iOS and visionOS, nothing on the Mac, a recorder in the tests.
 protocol AudioSessionBackend: AnyObject {
     func apply(_ configuration: AudioSessionConfiguration)
     /// Hands the speaker back, telling whichever app was interrupted that it
@@ -119,7 +119,7 @@ final class AudioSessionCoordinator {
 /// The system's audio session. A no-op on the Mac, which has none.
 final class SystemAudioSession: AudioSessionBackend {
     func apply(_ configuration: AudioSessionConfiguration) {
-        #if os(iOS) || os(tvOS) || os(visionOS)
+        #if os(iOS) || os(visionOS)
             let session = AVAudioSession.sharedInstance()
             do {
                 switch configuration {
@@ -139,7 +139,7 @@ final class SystemAudioSession: AudioSessionBackend {
     }
 
     func deactivate() {
-        #if os(iOS) || os(tvOS) || os(visionOS)
+        #if os(iOS) || os(visionOS)
             let session = AVAudioSession.sharedInstance()
             do {
                 // Mixable first: a muted video still on screen that starts the

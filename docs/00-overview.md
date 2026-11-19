@@ -33,16 +33,16 @@ app, not one timeline that renders all four badly.**
 
 ## 3. Platforms
 
-All six, all at the 27 line. No backwards compatibility with 26 or earlier.
+All five — iPhone, iPad, Mac, Apple Vision Pro and Apple Watch — all at the
+27 line. No backwards compatibility with 26 or earlier.
 
 | Platform | Minimum | Role |
 |---|---|---|
 | iOS | 27.0 | Primary. Full feature set. |
 | iPadOS | 27.0 | Full feature set, multi-column, pointer, keyboard, multi-window. |
 | macOS | 27.0 | Full feature set, native SwiftUI (**not** Catalyst), menu bar, multi-window. |
-| visionOS | 27.0 | Reading, browsing, composing. Media in a volumetric context. |
+| visionOS | 27.0 | Reading, browsing, composing. Spatial photos and spatial video in the media viewer, media in windows of their own beside the main one, SharePlay. |
 | watchOS | 27.0 | Companion: home timeline, notifications, quick actions, short replies. |
-| tvOS | 27.0 | Video-focused: Video mode and Shorts mode only. No composer. |
 
 Toolchain: **Xcode 27**, **Swift 6.4**, Swift 6 language mode, strict
 concurrency complete, default actor isolation `MainActor`.

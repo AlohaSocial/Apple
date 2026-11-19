@@ -59,8 +59,6 @@ For PeerTube-style long-form video.
   action row. Tapping opens the player screen.
 - **iPad / Mac / Vision Pro**: a grid (adaptive, minimum 320 pt) with the same
   cards; the detail column holds the player, description, and comment thread.
-- **tvOS**: a shelf-based browse UI — Continue Watching, Trending, Following,
-  Local, Global — with focus-driven previews.
 
 ### Sections
 
@@ -212,8 +210,7 @@ from it:
   for the network. Turning it off stops autoplay everywhere; there is no
   per-network middle state to reason about.
 - **Low Power Mode does not stop autoplay.** It reduces the preload depth in
-  Shorts from 3 items to 1 and stops the poster-preview autoplay on
-  focus in tvOS shelves, and that is all.
+  Shorts from 3 items to 1, and that is all.
 - **Adapt the bitrate, not the decision.** Where a video has an HLS ladder
   (`hls_url`, or `/media/playlist/{nid}` for federated PeerTube), `AVPlayer`'s
   ABR is left to choose the rung, with

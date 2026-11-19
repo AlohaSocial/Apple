@@ -15,7 +15,7 @@ extension View {
     /// Marks this view as where the viewer should appear to come from.
     @ViewBuilder
     public func mediaTransitionSource(id: String, in namespace: Namespace.ID?) -> some View {
-        #if os(iOS) || os(visionOS) || os(tvOS)
+        #if os(iOS) || os(visionOS)
             if let namespace {
                 matchedTransitionSource(id: id, in: namespace)
             } else {
@@ -29,7 +29,7 @@ extension View {
     /// Flies in from the matching source instead of cutting.
     @ViewBuilder
     public func mediaTransitionDestination(id: String, in namespace: Namespace.ID?) -> some View {
-        #if os(iOS) || os(visionOS) || os(tvOS)
+        #if os(iOS) || os(visionOS)
             if let namespace {
                 navigationTransition(.zoom(sourceID: id, in: namespace))
             } else {

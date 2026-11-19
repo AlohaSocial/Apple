@@ -10,9 +10,8 @@
 // `keychain-access-groups` entitlement, and `AlohaAppGroupEnabled` /
 // `AlohaKeychainSharingEnabled` false in every Info.plist, so a free Apple ID
 // can sign any target and CI (CODE_SIGNING_ALLOWED=NO) needs no profile. The
-// cost: widgets, the share sheet, the notification service, complications
-// and Top Shelf see no accounts, because each process has only its own
-// container.
+// cost: widgets, the share sheet, the notification service and complications
+// see no accounts, because each process has only its own container.
 //
 // YES: every target is entitled to `group.social.aloha.app` and
 // `$(AppIdentifierPrefix)social.aloha.app` and says so in its Info.plist.
@@ -21,7 +20,7 @@
 //
 // Debug is NO so anyone can build and run; Release is YES, because Release
 // is what gets archived for the App Store and TestFlight, and a shipped build
-// whose widgets, share sheet and Top Shelf see no accounts is broken. Only
+// whose widgets and share sheet see no accounts is broken. Only
 // a team that owns the group can sign a Release build anyway; CI builds it
 // with CODE_SIGNING_ALLOWED=NO, where entitlements are not applied.
 //
@@ -66,8 +65,7 @@ ALOHA_SHAREPLAY_SUFFIX = $(ALOHA_SHAREPLAY_SUFFIX_$(TARGET_NAME)_$(ALOHA_SHAREPL
 //     ALOHA_APP_BUNDLE_IDENTIFIER = com.example.aloha   // only if social.aloha.app is not yours
 //
 // The targets append `.share`, `.widgets`, `.notificationservice`, `.watch`,
-// `.watch.widgets`, `.uitests`, `.mac`, `.mac.share`, `.mac.widgets`, `.tv`
-// and `.tv.topshelf`.
+// `.watch.widgets`, `.uitests`, `.mac`, `.mac.share` and `.mac.widgets`.
 ALOHA_APP_BUNDLE_IDENTIFIER = social.aloha.app
 DEVELOPMENT_TEAM =
 

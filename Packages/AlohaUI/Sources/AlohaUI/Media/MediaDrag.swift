@@ -90,7 +90,7 @@ struct ImageDragSource: ViewModifier {
     let url: URL?
 
     func body(content: Content) -> some View {
-        #if os(tvOS) || os(watchOS)
+        #if os(watchOS)
             content
         #else
             if let url {

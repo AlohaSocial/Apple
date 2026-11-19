@@ -53,7 +53,7 @@ optional.
 ### 1.4 A way to contact the developer
 
 - Settings → About → Contact, with an email address and a link to the repository's
-  issue tracker. Present on every platform including tvOS and watchOS (the watch
+  issue tracker. Present on every platform including watchOS (the watch
   points at the phone).
 
 ### 1.5 Terms of use

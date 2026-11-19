@@ -5,7 +5,7 @@ import AlohaIntelligence
 import AlohaModels
 import SwiftUI
 
-#if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+#if canImport(ImagePlayground) && !os(watchOS)
     import ImagePlayground
 #endif
 
@@ -374,7 +374,7 @@ extension ComposerView {
                 .help(Text("Post as", comment: "Composer action"))
             }
 
-            #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+            #if canImport(ImagePlayground) && !os(watchOS)
                 if supportsImagePlayground {
                     Button {
                         isShowingImagePlayground = true
@@ -454,7 +454,7 @@ extension ComposerView {
                 EmojiPicker(session: session) { insertAtCursor(":\($0.shortcode):") }
             }
         }
-        #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+        #if canImport(ImagePlayground) && !os(watchOS)
             .imagePlaygroundSheet(
                 isPresented: $isShowingImagePlayground,
                 concepts: model.text.isEmpty ? [] : [.extracted(from: model.text, title: nil)]

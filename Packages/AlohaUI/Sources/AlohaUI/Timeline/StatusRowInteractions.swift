@@ -41,7 +41,7 @@ struct StatusRowInteractions: ViewModifier {
 
     @ViewBuilder
     private func swiping(_ content: Content) -> some View {
-        #if !os(tvOS) && !os(watchOS)
+        #if !os(watchOS)
             if swipes {
                 content
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -156,7 +156,7 @@ private struct StatusLinkDrag: ViewModifier {
     let url: URL?
 
     func body(content: Content) -> some View {
-        #if os(tvOS) || os(watchOS)
+        #if os(watchOS)
             content
         #else
             if let url {

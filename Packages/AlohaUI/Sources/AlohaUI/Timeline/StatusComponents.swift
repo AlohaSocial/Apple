@@ -31,7 +31,7 @@ public struct PollView: View {
 
     public var body: some View {
         let poll = current
-        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+        VStack(alignment: .leading, spacing: RowTargets.chipSpacing) {
             ForEach(Array(poll.options.enumerated()), id: \.offset) { index, option in
                 optionRow(option, index: index)
             }
@@ -82,7 +82,10 @@ public struct PollView: View {
         } label: {
             Image(systemName: AlohaSymbol.refresh)
                 .symbolEffect(.rotate, isActive: isRefreshing)
-                .frame(minWidth: 28, minHeight: 28)
+                .frame(
+                    minWidth: max(28, RowTargets.minimumSide),
+                    minHeight: max(28, RowTargets.minimumSide)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -159,9 +162,13 @@ public struct PollView: View {
                 }
                 .padding(.horizontal, AlohaMetrics.space2)
                 .padding(.vertical, AlohaMetrics.space2)
+                .frame(minHeight: RowTargets.minimumSide)
             }
         }
         .buttonStyle(.plain)
+        .alohaHoverTarget(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(poll.showsResults ? [] : .isButton)
     }
@@ -246,6 +253,9 @@ public struct LinkCardView: View {
                 RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
         }
         .buttonStyle(.plain)
+        .alohaHoverTarget(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+        )
         .alohaHoverLift(scale: 1.01)
         #if os(macOS)
             .task(id: loadsPreviews) {
@@ -263,7 +273,7 @@ private struct CardLinkDrag: ViewModifier {
     let url: URL?
 
     func body(content: Content) -> some View {
-        #if os(tvOS) || os(watchOS)
+        #if os(watchOS)
             content
         #else
             if let url {
@@ -298,7 +308,7 @@ public struct ReactionRow: View {
 
     public var body: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: AlohaMetrics.space2) {
+            HStack(spacing: RowTargets.chipSpacing) {
                 ForEach(reactions, id: \.name) { reaction in
                     ReactionChip(reaction: reaction) {
                         onToggle(reaction.name, reaction.me)
@@ -326,6 +336,7 @@ public struct ReactionRow: View {
                 .foregroundStyle(palette.secondaryLabel)
                 .padding(.horizontal, AlohaMetrics.space2)
                 .padding(.vertical, AlohaMetrics.space1 + 1)
+                .frame(minWidth: RowTargets.minimumSide, minHeight: RowTargets.minimumSide)
                 .background(palette.surfaceRaised, in: Capsule())
         }
         .menuStyle(.borderlessButton)
@@ -365,6 +376,7 @@ private struct ReactionChip: View {
             }
             .padding(.horizontal, AlohaMetrics.space2)
             .padding(.vertical, AlohaMetrics.space1)
+            .frame(minWidth: RowTargets.minimumSide, minHeight: RowTargets.minimumSide)
             .background(
                 reaction.me ? palette.accentMuted.opacity(0.3) : palette.surfaceRaised,
                 in: Capsule()

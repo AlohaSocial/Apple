@@ -141,7 +141,7 @@ public enum IntelligenceError: Error, Sendable, Hashable {
                 #if !os(watchOS)
                     if error is SystemLanguageModel.Error { return .modelUnavailable }
                 #endif
-            #elseif !os(watchOS) && !os(tvOS)
+            #elseif !os(watchOS)
                 if let generationError = error as? LanguageModelSession.GenerationError {
                     switch generationError {
                     case .exceededContextWindowSize: return .contextExceeded

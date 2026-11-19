@@ -1,8 +1,8 @@
 # Aloha Social
 
-A fediverse client for Apple platforms — iPhone, iPad, Mac, Apple Vision Pro,
-Apple Watch and Apple TV. Built for iOS 27 / iPadOS 27 / macOS 27 / visionOS 27 /
-watchOS 27 / tvOS 27 and nothing older.
+A fediverse client for Apple platforms — iPhone, iPad, Mac, Apple Vision Pro
+and Apple Watch. Built for iOS 27 / iPadOS 27 / macOS 27 / visionOS 27 /
+watchOS 27 and nothing older.
 
 Aloha Social speaks the Mastodon client API, so it works with Mastodon,
 GoToSocial, Akkoma and anything else that serves that protocol. Its primary
@@ -12,13 +12,12 @@ the extensions that server publishes alongside the Mastodon surface.
 
 Text posts. Photos, the way Pixelfed does them. Long video, the way PeerTube
 does it. Short vertical video, the way Loops does it. Audio. One app, one
-account list, six platforms.
+account list, five platforms.
 
-Six platforms, but not six identical apps, and deliberately so
+Five platforms, but not five identical apps, and deliberately so
 ([docs/00 §3](docs/00-overview.md)): iPhone, iPad, Mac and Vision Pro get the
 full feature set. **Apple Watch is a companion** — home timeline,
 notifications, quick actions, short replies; it never authenticates on its own.
-**Apple TV is video only** — Video and Shorts modes, and no composer.
 
 **Status: implemented, pre-release.** All nine phases of
 [docs/13](docs/13-implementation-plan.md) are built: ~57,000 lines of Swift in
@@ -66,7 +65,7 @@ base PR (#1):
 - **Repository links corrected**: All self-references now point at
   `AlohaSocial/Apple` and `AlohaSocial/social`; OAuth website and User-Agent
   updated.
-- **ATS exception on tvOS/watchOS**: Dedicated Info.plist files with the
+- **ATS exception on watchOS**: Dedicated Info.plist files with the
   blanket exception so the new HTTP private-network sign-in works on all
   platforms.
 - **App Group safe defaults**: Each target opts in through its Info.plist,

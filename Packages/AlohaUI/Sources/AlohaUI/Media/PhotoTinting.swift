@@ -75,12 +75,8 @@ extension View {
     @ViewBuilder
     func photoTintGround(_ tint: PhotoTint?, palette: AlohaPalette) -> some View {
         if let tint {
-            #if os(tvOS)
-                background(PhotoTintGround(tint).ignoresSafeArea())
-            #else
-                scrollContentBackground(.hidden)
-                    .background(PhotoTintGround(tint).ignoresSafeArea())
-            #endif
+            scrollContentBackground(.hidden)
+                .background(PhotoTintGround(tint).ignoresSafeArea())
         } else {
             alohaGround(palette)
         }

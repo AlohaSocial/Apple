@@ -47,7 +47,7 @@ public final class AudioPlayerCoordinator {
         handlers: AudioPlayerCoordinator.remoteCommandHandlers())
 
     private init() {
-        #if os(iOS) || os(tvOS) || os(visionOS)
+        #if os(iOS) || os(visionOS)
             // The system posts these on a queue of its own; the blocks only
             // read the notification and hop to the main actor with plain
             // values.

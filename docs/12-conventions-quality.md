@@ -24,9 +24,9 @@
     main-actor default would pull decoding and parsing onto the main thread.
     The few types in them that SwiftUI reads, such as `UploadProgress`, are
     `@MainActor` explicitly.
-  - The notification service and Top Shelf extensions also stay nonisolated:
-    the system calls their entry points on its own threads, where a main-actor
-    default would trap.
+  - The notification service extension also stays nonisolated: the system
+    calls its entry points on its own threads, where a main-actor default
+    would trap.
 - `@Observable`, not `ObservableObject`. No Combine.
 - `async`/`await` throughout. No completion handlers, no `DispatchQueue`.
 - Value types by default; `final class` only for SwiftData models, actors, and
@@ -206,7 +206,7 @@ GitHub Actions, on every push and pull request.
 
 | Job | Does |
 |---|---|
-| `build` | Builds every target for every platform (iOS, iPadOS, macOS, visionOS, watchOS, tvOS), release configuration, `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`. |
+| `build` | Builds every target for every platform (iOS, iPadOS, macOS, visionOS, watchOS), release configuration, `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`. |
 | `test` | Every package with a `Tests` directory, on macOS. Discovered by walking `Packages/*/`, so a new package cannot be quietly left untested — a hand-written list had already lost `AlohaDesign` and `AlohaIntelligence`. |
 | `test-simulator` | The same suites on the iOS simulator, where the `#if os(iOS)` paths are the ones that run. |
 | `ui` | The screen tours and the accessibility audit on the iOS simulator, with the screenshots kept as an artefact. |

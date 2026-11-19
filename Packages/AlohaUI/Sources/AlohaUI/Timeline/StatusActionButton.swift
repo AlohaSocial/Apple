@@ -70,8 +70,8 @@ struct StatusActionButton: View {
     /// gone when done, so an idle row carries none of it (`CelebrationBurst`).
     @State private var playingBurst: Int?
 
-    private var minimumHeight: Double { prominence == .row ? 32 : 44 }
-    private var iconSide: Double { prominence == .row ? 18 : 24 }
+    private var minimumHeight: Double { prominence == .row ? RowTargets.height : 44 }
+    private var iconSide: Double { prominence == .row ? RowTargets.glyphSide : 24 }
 
     var body: some View {
         Group {
@@ -79,10 +79,13 @@ struct StatusActionButton: View {
                 // Two controls side by side: the glyph acts, the number tells
                 // and opens. Not a button inside a button, which SwiftUI
                 // resolves as one control and swallows the inner one.
-                HStack(spacing: AlohaMetrics.space1) {
+                HStack(spacing: RowTargets.pairSpacing) {
                     Button(action: action) {
                         glyph
-                            .frame(minWidth: iconSide + 6, minHeight: minimumHeight)
+                            .frame(
+                                minWidth: max(iconSide + 6, RowTargets.minimumSide),
+                                minHeight: minimumHeight
+                            )
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -94,7 +97,7 @@ struct StatusActionButton: View {
                             // target around a one-digit count; a timeline row
                             // does not, and keeps its number beside the glyph.
                             .frame(
-                                minWidth: prominence == .detail ? 44 : nil,
+                                minWidth: prominence == .detail ? 44 : RowTargets.minimumSide,
                                 minHeight: minimumHeight
                             )
                             .contentShape(Rectangle())
@@ -147,7 +150,7 @@ struct StatusActionButton: View {
     private var glyph: some View {
         ZStack {
             Image(systemName: symbol)
-                .font(prominence == .row ? .footnote : .body)
+                .font(prominence == .row ? RowTargets.glyphFont : .body)
                 // Differentiate Without Colour: the state changes weight
                 // as well as tint (docs/12 §3).
                 .fontWeight(isOn ? .bold : .regular)
@@ -229,7 +232,7 @@ struct StatusMetric: View {
                 .contentTransition(.numericText())
         }
         .foregroundStyle(palette.tertiaryLabel)
-        .frame(minWidth: 44, minHeight: 32, alignment: .leading)
+        .frame(minWidth: 44, minHeight: RowTargets.height, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .alohaLargeContentViewer(symbol: symbol, label: label)

@@ -47,10 +47,17 @@ Native SwiftUI on AppKit. **Not Catalyst.**
   in the account menu and pushed on the tab in front. The window opens
   portrait, sized to the reading column (760pt).
 - Media viewer and video player open as separate windows so a video can be
-  parked in space while reading continues.
+  parked in space while reading continues. The window opens beside the main
+  one (`defaultWindowPlacement`, trailing) rather than over the feed, in the
+  shape of the picture or video it starts on (`MediaWindowSizing`), and
+  resizes from there.
 - Shorts mode as a full ornamented window, not immersive — a vertical feed in an
   immersive space is uncomfortable and nobody asked for it.
 - Hover effects on every interactive element, `.hoverEffect(.highlight)` on rows.
+  Cards — link cards, video cards, photo tiles — also rise under the look
+  (`alohaHoverLift`), in a shape with the card's own corners.
+- Controls inside a post are at least 44pt, with a glyph and its number 60pt
+  apart centre to centre (`RowTargets`): eyes aim less finely than a finger.
 - Glass background materials as the platform provides; no custom translucency.
   One palette (`AlohaTheme.glassPalette`) whatever theme was chosen elsewhere,
   and no theme picker: white text at fixed strengths on the glass, the dark
@@ -151,31 +158,11 @@ without the app being opened.
   unread scores zero and lets them sink.
 - No modes, no media viewer, no settings beyond notification toggles.
 
-## 5. tvOS
+## 5. Apple TV (removed)
 
-Video only. Video mode and Shorts mode, nothing else.
-
-- Sign-in by out-of-band code (see [03-auth-and-accounts.md](03-auth-and-accounts.md) §7).
-- Browse UI: shelves for Continue Watching, Following, Local, Global,
-  Trending. Focus-driven, with a preview that starts muted after 1.2 s of focus.
-- Full-screen player with the standard tvOS transport, subtitle and audio
-  selection, and watch-position reporting.
-- Shorts mode as a full-screen pager driven by swipe-up/down on the remote.
-- Actions limited to favourite, boost and follow. No composer, no text entry
-  beyond search.
-- Search via the system keyboard and dictation, backed by `/api/v2/search`
-  narrowed to statuses with video.
-- **Top Shelf** (`AlohaTopShelf`, `social.aloha.app.tv.topshelf`): when the
-  app sits in the top row, the shelf shows *Continue watching* (with each
-  video's progress) and the newest videos from *Following*. The TV app writes
-  what its Video tab loaded into the app group (`TopShelfSnapshot`) and asks
-  the system to redraw only when that changed; the extension reads it, and
-  goes to the server itself only when the snapshot is missing or older than
-  half an hour, with the account the app keeps in the shared Keychain group
-  (`TVAccountStore`). Posts with sensitive media or a content warning are left
-  off: the shelf draws stills full size on the home screen, with no way to
-  hide them. Select and Play open `alohasocial://tv/show|play/<id>?t=<s>`,
-  which starts the video where it was left.
+Apple TV is no longer a supported platform: the TV app and its Top Shelf
+extension were removed. The section number is kept so that references to
+§6–§12 stay valid.
 
 ## 6. Share extension
 

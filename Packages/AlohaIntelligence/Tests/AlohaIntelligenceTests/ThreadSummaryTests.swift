@@ -134,7 +134,7 @@ struct IntelligenceErrorTests {
                 .init(debugDescription: "downloading"))
             #expect(IntelligenceError.classify(assets) == .modelUnavailable)
         }
-    #elseif canImport(FoundationModels) && !os(watchOS) && !os(tvOS)
+    #elseif canImport(FoundationModels) && !os(watchOS)
         // The Xcode 26 SDK the hosted package runner builds with names the
         // same failures differently; they have to land in the same places.
         @Test("A context overflow and a guardrail are told apart")

@@ -75,11 +75,11 @@ struct StatusActionStrip: View {
             if showsShare {
                 StatusShareLink(status: status) {
                     Image(systemName: AlohaSymbol.share)
-                        .font(prominence == .row ? .footnote : .body)
+                        .font(prominence == .row ? RowTargets.glyphFont : .body)
                         .foregroundStyle(palette.secondaryLabel)
                         .frame(
-                            minWidth: prominence == .row ? 24 : 44,
-                            minHeight: prominence == .row ? 32 : 44
+                            minWidth: prominence == .row ? max(24, RowTargets.minimumSide) : 44,
+                            minHeight: prominence == .row ? RowTargets.height : 44
                         )
                         .contentShape(Rectangle())
                 }

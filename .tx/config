@@ -33,13 +33,6 @@ source_lang = en
 type = XCSTRINGS
 minimum_perc = 50
 
-[o:nextcloud:p:nextcloud:r:aloha-social-alohasocialtv]
-file_filter = AlohaSocialTV/Localizable.xcstrings
-source_file = AlohaSocialTV/Localizable.xcstrings
-source_lang = en
-type = XCSTRINGS
-minimum_perc = 50
-
 [o:nextcloud:p:nextcloud:r:aloha-social-alohasocialwatch]
 file_filter = AlohaSocialWatch/Localizable.xcstrings
 source_file = AlohaSocialWatch/Localizable.xcstrings

@@ -20,7 +20,7 @@ struct TimelineSourceMenu: ViewModifier {
     var offersForYou = false
 
     func body(content: Content) -> some View {
-        #if os(tvOS) || os(watchOS)
+        #if os(watchOS)
             content
         #elseif os(macOS)
             // On the Mac the sources are a control in the toolbar, where

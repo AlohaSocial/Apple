@@ -92,6 +92,9 @@ it names the limit. Remove the "where … accepts" hedge from doc 07.
 
 **Yes, and the code is shown on a page.** But it is **60 characters**, not six.
 
+Apple TV support has since been removed, and with it the only client that
+used `oob`; what follows is kept as the record of what the server does.
+
 - `POST /api/v1/apps` (`lib/Controller/OAuthController.php:159`) splits
   `redirect_uris` on newlines and stores them as given (`:171–190`).
   `ClientService::createApp()` (`lib/Service/ClientService.php:69–82`) checks
@@ -112,10 +115,11 @@ it names the limit. Remove the "where … accepts" hedge from doc 07.
 The catch: the code is `token(60)` (`ClientService.php:127`) from
 `[A-Za-z0-9]` (`lib/Tools/Traits/TStringTools.php:29–39`), valid for
 **10 minutes** (`TIME_CODE_TTL = 600`, `:35`). [03-auth-and-accounts.md](03-auth-and-accounts.md)
-§7 and `AlohaSocialTV/TVApp.swift:61` both say "six characters". Nobody types
+§7 and the Apple TV app's sign-in screen both said "six characters". Nobody types
 60 mixed-case characters with a Siri Remote in ten minutes.
 
-**Client change: yes — the tvOS sign-in design.** Options, best first:
+**Client change: none any more.** The options that were weighed for the tvOS
+sign-in, best first, kept for the record:
 
 1. **Phone as relay.** The TV registers its app with *two* redirect URIs,
    `alohasocial://oauth` and `oob`, generates the PKCE verifier and `state`, and
@@ -138,8 +142,6 @@ The catch: the code is `token(60)` (`ClientService.php:127`) from
    before relying on it.
 3. **Typed `oob` code** as the last resort, with the field accepting paste
    from Continuity Keyboard on a nearby iPhone.
-
-Whichever wins, fix the "six characters" claim in doc 03 and `TVApp.swift`.
 
 ### 1.4 `only_media` / `only_video` / `only_news`: 422 or ignored?
 
@@ -238,15 +240,14 @@ and `MediaAttachment.duration` falls back to `meta.duration`
 
 ### 1.8 Summary
 
-Every client change in the last column is made, except the tvOS phone relay:
-the TV shows a QR code and the code is pasted with the iPhone's Apple TV
-keyboard, which is good enough until the relay is built.
+Every client change in the last column is made. The tvOS phone relay was
+never built; Apple TV support was removed instead, so nothing needs it.
 
 | # | Question | Answer | Client change |
 |---|---|---|---|
 | 1 | `Idempotency-Key` | Honoured, 1 h; not a claim, skips scheduled and held posts | Serialise retries; pre-flight against own recent statuses / scheduled list; held = final |
 | 2 | `scheduled_at` | Accepted; ≥ 5 min, caps, 422 on bad input | Drop the hedge in doc 07 |
-| 3 | `oob` | Accepted; code shown on a page, 60 chars, 10 min | Redesign tvOS sign-in; fix "six characters" |
+| 3 | `oob` | Accepted; code shown on a page, 60 chars, 10 min | None since Apple TV support was removed |
 | 5 | narrowing params | Implemented; unknown params ignored, never 422 | Remove probe; gate on software name |
 | 6 | `avatar: ""` | Still happens; `header` reuses avatar | None; treat `header == avatar` as none |
 | 7 | attachment shape | Fixed; client API unaffected | None; strike from doc 14 |
