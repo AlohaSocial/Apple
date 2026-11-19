@@ -67,6 +67,28 @@
         }
       }
     },
+    "Love this!" : {
+      "comment" : "Watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gefällt mir sehr!"
+          }
+        }
+      }
+    },
+    "I'll reply properly later." : {
+      "comment" : "Watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ich antworte später ausführlich."
+          }
+        }
+      }
+    },
     "No Bluesky account answers to that handle." : {
       "comment" : "Refusal: Bluesky handle unknown",
       "localizations" : {
@@ -85,6 +107,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unter dieser Adresse gibt es kein Konto."
+          }
+        }
+      }
+    },
+    "Thank you!" : {
+      "comment" : "Watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danke!"
+          }
+        }
+      }
+    },
+    "No, sorry." : {
+      "comment" : "Watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nein, leider nicht."
+          }
+        }
+      }
+    },
+    "Sounds good." : {
+      "comment" : "Watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klingt gut."
           }
         }
       }
@@ -261,6 +316,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gib zur Bestätigung den Namen dieses Kontos ein."
+          }
+        }
+      }
+    },
+    "Yes!" : {
+      "comment" : "Watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ja!"
           }
         }
       }

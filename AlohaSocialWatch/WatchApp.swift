@@ -12,12 +12,21 @@ import WatchConnectivity
 /// class (docs/09 §4).
 @main
 struct AlohaSocialWatchApp: App {
+    /// Made, and its session activated, with the app rather than with a
+    /// view: a launch in the background to receive the phone's push draws
+    /// no view at all.
     @State private var link = WatchLink()
 
     var body: some Scene {
         WindowGroup {
             WatchRootView()
                 .environment(link)
+        }
+        // The phone's pushed counts and pairing wake the app in the
+        // background; without a handler the system suspends it again before
+        // they are delivered, and they land only when the app is opened.
+        .backgroundTask(.watchConnectivity) { [link] in
+            await link.finishPendingTransfers()
         }
     }
 }
@@ -89,20 +98,19 @@ struct WatchRootView: View {
             }
         }
         .serverTint(link.serverTheme)
-        .task { link.activate() }
         .onOpenURL { url in
             guard let link = WatchComplicationLink(url: url) else { return }
             path = [WatchDestination(link)]
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             guard phase == .active else { return }
-            Task { await link.refreshComplications() }
+            Task { await link.refreshComplicationsIfDue() }
         }
     }
 }
 
-/// The screens the watch app pushes: the complications' two, and the
-/// notifications list the timeline's toolbar opens.
+/// The screens the watch app pushes: what the complications open — the
+/// mentions, a post, the messages, the notifications — and the toolbar's.
 enum WatchDestination: Hashable {
     case mentions
     case notifications
@@ -115,6 +123,7 @@ enum WatchDestination: Hashable {
         case .mentions: self = .mentions
         case .status(let id): self = .status(id)
         case .messages: self = .messages
+        case .notifications: self = .notifications
         }
     }
 }
@@ -235,16 +244,13 @@ struct WatchStatusView: View {
 
     @State private var isFavourited: Bool
     @State private var isBoosted: Bool
-    @State private var reply: ReplyState = .idle
-
-    private enum ReplyState: Equatable {
-        case idle, sending, sent, failed
-    }
+    @State private var isBookmarked: Bool
 
     init(status: Status) {
         self.status = status
         _isFavourited = State(initialValue: status.displayed.favourited)
         _isBoosted = State(initialValue: status.displayed.reblogged)
+        _isBookmarked = State(initialValue: status.displayed.bookmarked)
     }
 
     var body: some View {
@@ -282,40 +288,34 @@ struct WatchStatusView: View {
                         isBoosted
                             ? Text("Undo boost", comment: "Watch post action")
                             : Text("Boost", comment: "Watch post action"))
+                    // Saved for the phone: the wrist is where a link turns
+                    // up, and the phone is where it gets read.
+                    Button {
+                        toggle($isBookmarked, on: .bookmark, off: .unbookmark)
+                    } label: {
+                        Image(
+                            systemName: isBookmarked
+                                ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark
+                        )
+                        .foregroundStyle(
+                            isBookmarked ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                    }
+                    .accessibilityLabel(
+                        isBookmarked
+                            ? Text("Remove bookmark", comment: "Watch post action")
+                            : Text("Bookmark", comment: "Watch post action"))
                 }
                 .buttonStyle(.bordered)
 
-                // Dictation, Scribble and emoji come with the system's own
-                // text entry; the watch has no keyboard worth building.
-                TextFieldLink {
-                    Label {
-                        Text("Reply", comment: "Watch post action")
-                    } icon: {
-                        Image(systemName: AlohaSymbol.reply)
-                    }
-                } onSubmit: { typed in
-                    Task { await send(reply: typed) }
-                }
-                .disabled(reply == .sending)
-
-                switch reply {
-                case .idle: EmptyView()
-                case .sending:
-                    ProgressView()
-                case .sent:
-                    Text("Reply sent", comment: "Watch reply status").font(.caption2)
-                case .failed:
-                    Text("Couldn't send the reply", comment: "Watch reply status")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                }
+                // Replying is the post's main action, and Double Tap's.
+                WatchReplyComposer { typed, key in try await send(reply: typed, key: key) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     /// Optimistic, and honest about failure: the state flips at once and
-    /// flips back if the server refused.
+    /// flips back if the server refused, and the wrist feels which.
     private func toggle(
         _ state: Binding<Bool>, on: Endpoint.StatusAction, off: Endpoint.StatusAction
     ) {
@@ -324,34 +324,29 @@ struct WatchStatusView: View {
         Task {
             guard let client = link.client else {
                 state.wrappedValue = !target
+                WatchHaptics.failed()
                 return
             }
             do {
                 _ = try await client.send(
                     Endpoint.statuses.action(status.displayed.id, target ? on : off))
+                WatchHaptics.succeeded()
             } catch {
                 state.wrappedValue = !target
+                WatchHaptics.failed()
             }
         }
     }
 
-    private func send(reply typed: String) async {
-        guard !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            let client = link.client
-        else { return }
-        reply = .sending
+    private func send(reply typed: String, key: String) async throws {
+        guard let client = link.client else { throw APIError.invalidResponse }
         let target = status.displayed
         let post = StatusPost(
             text: target.replyText(typed, excluding: link.credentials?.handle),
             // A reply is never less restrictive than what it answers.
             visibility: status.replyVisibility(default: .public),
             spoilerText: target.spoilerText.isEmpty ? nil : target.spoilerText,
-            inReplyToID: target.id)
-        do {
-            _ = try await client.send(Endpoint.composing.post(post))
-            reply = .sent
-        } catch {
-            reply = .failed
-        }
+            inReplyToID: target.id, idempotencyKey: key)
+        _ = try await client.send(Endpoint.composing.post(post))
     }
 }

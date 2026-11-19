@@ -21,6 +21,12 @@ struct WatchNotificationsView: View {
                     } label: {
                         WatchNotificationRow(group: group)
                     }
+                } else if group.kind == .follow {
+                    NavigationLink {
+                        WatchFollowBackView(accounts: group.accounts)
+                    } label: {
+                        WatchNotificationRow(group: group)
+                    }
                 } else {
                     WatchNotificationRow(group: group)
                 }
@@ -50,6 +56,11 @@ struct WatchNotificationsView: View {
                     limit: 30, types: Endpoint.notifications.everyType(onAlohaSocial: true))
             ).elements
         }
+        // Seen on the wrist is read: the marker moves, so the face, the
+        // phone's badge and its list stop counting these. Only for a list the
+        // server just sent — a cached one may be behind what the phone read.
+        guard !feed.isShowingCache, !feed.items.isEmpty else { return }
+        await link.markNotificationsRead(feed.items.map(\.id))
     }
 }
 

@@ -14,8 +14,10 @@ import WidgetKit
 /// the snapshot is stale — the same snapshot and timeline as the others.
 struct DirectMessagesComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "WatchDirectMessages", provider: ComplicationProvider()) {
-            entry in
+        StaticConfiguration(
+            kind: WatchComplicationKind.directMessages.rawValue,
+            provider: ComplicationProvider(kind: .directMessages)
+        ) { entry in
             DirectMessagesComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
                 // The messages themselves, now that the watch has a list of

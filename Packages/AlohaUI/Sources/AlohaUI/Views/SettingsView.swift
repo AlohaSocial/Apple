@@ -117,6 +117,9 @@ public struct SettingsView: View {
                 }
                 if shows(.posting) {
                     composerSection(session)
+                    #if os(iOS)
+                        WatchQuickRepliesSection()
+                    #endif
                 }
             }
 
