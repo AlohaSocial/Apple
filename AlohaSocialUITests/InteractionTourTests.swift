@@ -417,17 +417,23 @@ import XCTest
                 app.labelled("A calmer client").waitForExistence(timeout: 10),
                 "Introduction missing")
             XCTAssertTrue(
-                app.staticTexts["Your server. Your people. Your feed."]
-                    .waitForExistence(timeout: 5),
-                "The introduction has no opening page")
+                app.buttons["Skip"].firstMatch.exists, "The introduction has no way past it")
             shoot("44-welcome")
-            app.buttons["Skip"].firstMatch.tap()
+            // Two pages, then the server: Continue twice is the whole tour.
+            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(
+                app.labelled("Calm and private by design").waitForExistence(timeout: 5),
+                "The introduction's second page is missing")
+            shoot("44b-welcome-calm")
+            app.buttons["Continue"].firstMatch.tap()
             let field = app.textFields.firstMatch
             XCTAssertTrue(field.waitForExistence(timeout: 5), "Server address missing")
+            XCTAssertFalse(app.buttons["Skip"].firstMatch.exists, "Skip on the last step")
             XCTAssertFalse(app.buttons["Continue"].firstMatch.isEnabled)
             app.buttons["Back"].firstMatch.tap()
-            XCTAssertTrue(app.labelled("Quiet by default").waitForExistence(timeout: 5))
-            app.buttons["Continue"].firstMatch.tap()
+            XCTAssertTrue(app.labelled("Calm and private by design").waitForExistence(timeout: 5))
+            // Skip is one tap to the server from any page.
+            app.buttons["Skip"].firstMatch.tap()
             XCTAssertTrue(field.waitForExistence(timeout: 5))
             field.tap()
             field.typeText("cloud.example.test")

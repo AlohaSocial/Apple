@@ -230,10 +230,17 @@ public struct ComposerView: View {
             ) {
                 altTextCoachActions
             } message: {
-                // It warns once; it never blocks (docs/07 §4).
-                Text(
-                    "Descriptions let people using a screen reader know what you posted. You can switch this reminder off in Settings.",
-                    comment: "Alt text warning detail")
+                // It warns once; it never blocks (docs/07 §4). Waiting
+                // suggestions are the exception to "once", and say why.
+                if model.attachmentsAwaitingReview.isEmpty {
+                    Text(
+                        "Descriptions let people using a screen reader know what you posted. You can switch this reminder off in Settings.",
+                        comment: "Alt text warning detail")
+                } else {
+                    Text(
+                        "Suggested descriptions are added only once you accept them. Check each one says what matters in the picture.",
+                        comment: "Alt text warning detail when suggestions wait for review")
+                }
             }
             .photosPicker(
                 isPresented: $model.isShowingMediaPicker,
@@ -401,10 +408,16 @@ public struct ComposerView: View {
                     .ignoresSafeArea()
                 }
             #endif
-            .sheet(item: $model.isShowingAltTextFor) { attachment in
-                AltTextEditor(attachment: attachment) { description in
-                    Task { await model.uploader.updateDescription(description, for: attachment.id) }
-                }
+            .sheet(
+                item: $model.isShowingAltTextFor,
+                onDismiss: { model.altTextEditorDidClose() }
+            ) { attachment in
+                AltTextEditor(
+                    attachment: attachment,
+                    suggestion: model.altTextSuggestions[attachment.id],
+                    onSave: { model.saveDescription($0, for: attachment.id) },
+                    onDiscardSuggestion: { model.discardSuggestion(for: attachment.id) },
+                    onSuggest: { model.suggest($0, for: attachment.id) })
             }
             .task {
                 // Once, though the task runs again whenever the composer
@@ -507,17 +520,23 @@ public struct ComposerView: View {
     /// can (docs/10 §4), or post as it is — always one tap away.
     @ViewBuilder
     private var altTextCoachActions: some View {
-        if let attachment = model.firstUndescribedAttachment {
+        if !model.attachmentsAwaitingReview.isEmpty {
             Button {
-                model.isShowingAltTextFor = attachment
+                model.reviewSuggestions()
+            } label: {
+                Text("Review suggestions", comment: "Alt text warning action")
+            }
+        } else if let attachment = model.firstUndescribedAttachment {
+            Button {
+                model.editDescription(of: attachment)
             } label: {
                 Text("Add a description", comment: "Alt text warning action")
             }
         }
-        // Drafts, not posts: nothing is sent from here. What the device
-        // writes fills the descriptions, the strip shows them for checking,
-        // and Post is pressed again once they have been looked at — the
-        // reminder has been shown, so that Post goes out (docs/10 §4).
+        // Suggestions, not descriptions: nothing is sent from here. What the
+        // device writes waits on each image for the person to accept, edit
+        // or discard, and until then the image still counts as undescribed
+        // — so Post asks again rather than posting it unread (docs/10 §4).
         if model.imagesAwaitingDescription > 0,
             environment.intelligence.availability.isAvailable
         {

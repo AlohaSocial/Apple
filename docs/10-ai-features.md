@@ -62,25 +62,48 @@ Rules:
 
 ## 4. Alt text generation
 
-The highest-value feature here, and the one most worth getting right.
+The highest-value feature here, and the one most worth getting right — which
+starts with being honest about what it is.
 
-- Invoked from the ALT badge on any image attachment, or from the
-  "some images have no description" warning before posting.
-- Uses the multimodal path: the image plus a system prompt describing what good
-  alt text is — objective description of content and function, no "image of",
-  no speculation about who people are, no invented text, 1–2 sentences,
-  under 400 characters.
-- The result lands in the alt-text field **as an editable draft**, with a
-  clearly-labelled "Generated — please check" note above it that disappears once
-  the person edits or confirms.
-- **Never posted unreviewed.** If the person posts without opening the field,
-  the generated text is used, but the pre-post warning has already told them it
-  is there and unreviewed. A setting can make review mandatory.
-- Batch generation for a multi-image post processes sequentially with progress,
-  and is cancellable.
+- Invoked from "Describe this" in the alt-text editor, from "Describe all" in
+  the composer's media strip, or from the "some media has no description"
+  warning before posting.
+- **How it works.** The Vision framework classifies the image, counts people
+  and reads any text in it; the on-device language model is then given that
+  list, told it **cannot see the photograph**, and asked to write alt text
+  from the list alone (`ImageDescription`). Without the language model the
+  list is joined into a sentence. The system prompt describes good alt text —
+  objective description of content and function, no "image of", no
+  speculation about who people are, no invented text, 1–2 sentences, under
+  400 characters. Output is checked (`AltTextGuidance.looksAcceptable`)
+  before it is shown.
+- Because it is written from labels, a result can be plausible and wrong, and
+  alt text is read *as* the picture by someone who cannot check it. So:
+- **It is a suggestion, never a description.** It is shown in the editor
+  apart from the text field, marked "Suggested by this device" with a note
+  that it was written from what the device recognised, and with three
+  choices: **Accept** (saved as it is), **Edit** (taken into the field, still
+  marked "Generated — please check" until a word changes or it is saved), or
+  **Discard**. Save is unavailable while a suggestion is undecided.
+- **Nothing generated is sent until accepted.** A suggestion lives in the
+  composer only (`ComposerModel.altTextSuggestions`); `PUT /api/v1/media/{id}`
+  is called only with text the person accepted, edited or wrote. Closing the
+  editor without deciding keeps the suggestion for later; removing the
+  picture drops it.
+- **An unaccepted suggestion is not a description.** The image keeps its
+  undescribed badge (muted, with a sparkle, rather than the plain warning
+  colour), still counts as undescribed, and the pre-post reminder still
+  fires — and fires again while a suggestion waits, even with the reminder
+  switched off, offering "Review suggestions" (docs/07 §4). "Post anyway"
+  posts without the unreviewed text.
+- Batch generation for a multi-image post processes sequentially with
+  progress, is cancellable, and leaves a suggestion on each image. A
+  **Review** tile in the media strip then steps through them, one editor after
+  another; cancelling one stops the review. VoiceOver is told how many are
+  ready.
 - Images with faces: the prompt explicitly instructs against identifying or
-  describing individuals by name, age, race or presumed gender. Output is
-  scanned for obvious violations before presentation.
+  describing individuals by name, age, race or presumed gender — the model
+  only ever learns how many people there are.
 
 ## 5. Summarise
 

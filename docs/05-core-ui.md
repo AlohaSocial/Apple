@@ -522,3 +522,39 @@ Every list has three non-default states and each is designed, not a spinner:
   alone. A 422's message is shown verbatim after a lead-in.
 - **Offline** — cached content plus a persistent inline strip, not a blocking
   overlay. Actions taken offline queue and say so.
+
+## 11. First launch
+
+Before any account, the app shows a short introduction (`WelcomeView`), then
+the terms (docs/11 §1.5), then sign-in on the server the introduction found
+(docs/03 §8).
+
+**Two pages, then the server.** Each page says one thing that makes the app
+different and is true on every server, with a small mockup that can be
+played with:
+
+1. **A calmer client for the social web.** The logo, and the feeds — posts,
+   photos and videos, each in a feed made for it. The mockup's tab bar is
+   `FeedMode.offered`, so it cannot show more feeds than the app offers.
+2. **Calm and private by design.** Sensitive media covered until tapped,
+   counts that can be switched off (they show by default), no ads, no
+   tracking, nothing collected (docs/11 §3). The mockup's two switches work.
+3. **The server.** The address or handle, found and shown before the terms
+   (`WelcomeServerStep`); it names Nextcloud first and says any server that
+   speaks the Mastodon API works.
+
+Rules the introduction keeps:
+
+- **Skip** is on every page before the server and reaches the server field in
+  one tap; Back and Continue are at the bottom, and a horizontal swipe does
+  the same.
+- **Nothing that depends on the server.** Stories, For you, News and any other
+  capability-gated feature are not promised before the server is known.
+- **No claim the defaults contradict.** The copy is checked against the
+  settings' defaults (`AccountSettings`) and the offered feeds.
+- **Accessible.** Titles are headings; text reflows at every Dynamic Type size
+  and the pages scroll rather than truncate; Reduce Motion turns the page
+  transition into a cut; every control in a mockup is a labelled button or
+  switch.
+- From Settings → About the same pages run as a tour without the server step,
+  with **Done** in place of Skip.

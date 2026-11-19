@@ -11,9 +11,16 @@ extension ComposerView {
     var mediaStrip: some View {
         ScrollView(.horizontal) {
             HStack(spacing: AlohaMetrics.space2) {
+                // What the device suggested waits here until the person has
+                // looked at each one; the tile steps through them in the
+                // editor (docs/10 §4).
+                if !model.isDescribingAll, !model.attachmentsAwaitingReview.isEmpty {
+                    reviewSuggestionsTile
+                }
+
                 // Describing four pictures one sheet at a time is four round
-                // trips through the same editor (docs/10 §5); one button does
-                // the lot, sequentially, and says where it is.
+                // trips through the same editor (docs/10 §4); one button
+                // suggests the lot, sequentially, and says where it is.
                 if model.imagesAwaitingDescription > 0,
                     environment.intelligence.availability.isAvailable
                 {
@@ -81,24 +88,13 @@ extension ComposerView {
                             .clipShape(RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall))
 
                         Button {
-                            model.isShowingAltTextFor = attachment
+                            model.editDescription(of: attachment)
                         } label: {
-                            Text("ALT", comment: "Composer alt text badge")
-                                .font(.caption2.weight(.semibold))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(
-                                    attachment.hasAltText ? palette.accent : palette.destructive,
-                                    in: Capsule()
-                                )
-                                .foregroundStyle(.white)
+                            altBadge(for: attachment)
                         }
                         .buttonStyle(.plain)
                         .padding(4)
-                        .accessibilityLabel(
-                            attachment.hasAltText
-                                ? Text("Edit description", comment: "Composer media action")
-                                : Text("Add a description", comment: "Composer media action"))
+                        .accessibilityLabel(altBadgeLabel(for: attachment))
                     }
                     .overlay(alignment: .topTrailing) {
                         // Both eyes went up: a reader on Vision Pro or a
@@ -133,7 +129,7 @@ extension ComposerView {
                             }
                         }
                         Button {
-                            model.isShowingAltTextFor = attachment
+                            model.editDescription(of: attachment)
                         } label: {
                             Label {
                                 Text("Describe", comment: "Composer media action")
@@ -168,6 +164,19 @@ extension ComposerView {
         }
         .frame(height: 112)
         .scrollIndicators(.hidden)
+        .onChange(of: model.isDescribingAll) { _, isDescribing in
+            // The strip changes quietly when the run ends; VoiceOver is told
+            // where the results are.
+            guard !isDescribing, model.describedCount > 0 else { return }
+            // An AttributedString, because only that (and `Text`) applies the
+            // inflection markup; a plain String would read it out literally.
+            AccessibilityNotification.Announcement(
+                AttributedString(
+                    localized:
+                        "^[\(model.describedCount) suggested description](inflect: true) ready to review",
+                    comment: "Alt text batch finished announcement")
+            ).post()
+        }
         .overlay(alignment: .bottom) {
             // A failure in the batch is reported in place — one bad image does
             // not undo the ones that succeeded, and it should not be surfaced
@@ -180,6 +189,76 @@ extension ComposerView {
                     .padding(.vertical, AlohaMetrics.space1)
                     .background(.regularMaterial, in: Capsule())
             }
+        }
+    }
+
+    /// The tile that steps through the suggestions waiting for review.
+    private var reviewSuggestionsTile: some View {
+        let waiting = model.attachmentsAwaitingReview.count
+        return Button {
+            model.reviewSuggestions()
+        } label: {
+            VStack(spacing: AlohaMetrics.space1) {
+                Image(systemName: AlohaSymbol.sparkles)
+                    .font(.title3)
+                Text("Review", comment: "Alt text suggestions review action")
+                    .font(.caption2.weight(.semibold))
+                Text(
+                    "^[\(waiting) suggestion](inflect: true)",
+                    comment: "Alt text suggestions waiting count"
+                )
+                .font(.caption2.monospacedDigit())
+            }
+            .foregroundStyle(palette.accent)
+            .frame(width: 96, height: 96)
+            .background(
+                palette.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall)
+                    .strokeBorder(palette.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            Text(
+                "Review ^[\(waiting) suggested description](inflect: true)",
+                comment: "Alt text suggestions review action"))
+    }
+
+    /// The badge on each picture: described, a suggestion waiting for
+    /// review, or nothing yet. A suggestion is drawn apart from both — it is
+    /// not a description until accepted — with a symbol as well as a colour.
+    @ViewBuilder
+    private func altBadge(for attachment: MediaAttachment) -> some View {
+        let isSuggested =
+            !attachment.hasAltText && model.altTextSuggestions[attachment.id] != nil
+        HStack(spacing: 2) {
+            if isSuggested {
+                Image(systemName: AlohaSymbol.sparkles)
+                    .font(.caption2.weight(.bold))
+            }
+            Text("ALT", comment: "Composer alt text badge")
+                .font(.caption2.weight(.semibold))
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(
+            attachment.hasAltText
+                ? palette.accent : isSuggested ? palette.accentMuted : palette.destructive,
+            in: Capsule()
+        )
+        .foregroundStyle(isSuggested ? palette.label : .white)
+    }
+
+    private func altBadgeLabel(for attachment: MediaAttachment) -> Text {
+        if attachment.hasAltText {
+            Text("Edit description", comment: "Composer media action")
+        } else if model.altTextSuggestions[attachment.id] != nil {
+            Text("Review suggested description", comment: "Composer media action")
+        } else {
+            Text("Add a description", comment: "Composer media action")
         }
     }
 

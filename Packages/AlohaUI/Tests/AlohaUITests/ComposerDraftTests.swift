@@ -775,6 +775,83 @@ struct ReplyPrefillTests {
     }
 }
 
+@Suite("Suggested descriptions wait for review")
+@MainActor
+struct AltTextSuggestionTests {
+    private func modelWithUndescribedUpload() async throws
+        -> (ComposerModel, RecordingTransport, MediaAttachment)
+    {
+        let (session, transport) = try await makeSession()
+        await transport.answerUploadsUndescribed()
+        let model = ComposerModel(session: session)
+        model.text = "Look"
+        await model.uploader.add(
+            prepared: .init(
+                data: Data(repeating: 1, count: 64), filename: "wave.mp4", mimeType: "video/mp4"))
+        let attachment = try #require(model.attachments.first)
+        #expect(!attachment.hasAltText)
+        return (model, transport, attachment)
+    }
+
+    private func descriptionUpdates(_ transport: RecordingTransport) async -> Int {
+        await transport.log.filter { $0.hasPrefix("PUT api/v1/media/") }.count
+    }
+
+    @Test("A suggestion is not sent, and does not count as a description")
+    func suggestionStaysLocal() async throws {
+        let (model, transport, attachment) = try await modelWithUndescribedUpload()
+        model.suggest("A wave breaking on rocks.", for: attachment.id)
+
+        #expect(model.altTextSuggestions[attachment.id] == "A wave breaking on rocks.")
+        #expect(model.attachmentsAwaitingReview.map(\.id) == [attachment.id])
+        #expect(model.firstUndescribedAttachment?.id == attachment.id)
+        #expect(await descriptionUpdates(transport) == 0)
+
+        // Post stops to say so, though nothing else would have.
+        #expect(await model.post() == false)
+        #expect(model.isShowingAltTextWarning)
+        #expect(await transport.posts.isEmpty)
+    }
+
+    @Test("Accepting sends it; discarding sends nothing")
+    func acceptOrDiscard() async throws {
+        let (model, transport, attachment) = try await modelWithUndescribedUpload()
+        model.suggest("A wave.", for: attachment.id)
+        model.discardSuggestion(for: attachment.id)
+        #expect(model.attachmentsAwaitingReview.isEmpty)
+        #expect(await descriptionUpdates(transport) == 0)
+
+        model.suggest("A wave.", for: attachment.id)
+        await model.saveDescription("A wave.", for: attachment.id).value
+        #expect(model.altTextSuggestions.isEmpty)
+        #expect(await descriptionUpdates(transport) == 1)
+        #expect(model.attachments.first?.description == "A wave.")
+    }
+
+    @Test("A removed picture takes its suggestion with it")
+    func removalClears() async throws {
+        let (model, _, attachment) = try await modelWithUndescribedUpload()
+        model.suggest("A wave.", for: attachment.id)
+        model.removeAttachment(attachment.id)
+        #expect(model.altTextSuggestions.isEmpty)
+    }
+
+    @Test("Review steps on only after a decision")
+    func reviewSequence() async throws {
+        let (model, _, attachment) = try await modelWithUndescribedUpload()
+        model.suggest("A wave.", for: attachment.id)
+        model.reviewSuggestions()
+        #expect(model.isShowingAltTextFor?.id == attachment.id)
+        #expect(model.isReviewingSuggestions)
+
+        // Cancelled with the suggestion undecided: the review stops.
+        model.isShowingAltTextFor = nil
+        model.altTextEditorDidClose()
+        #expect(!model.isReviewingSuggestions)
+        #expect(model.isShowingAltTextFor == nil)
+    }
+}
+
 // MARK: - Support
 
 @MainActor
@@ -838,6 +915,11 @@ private actor RecordingTransport: HTTPTransport {
 
     func holdUploads() { uploadsHeld = true }
 
+    /// Whether an uploaded file comes back with a description already.
+    private var uploadsDescribed = true
+
+    func answerUploadsUndescribed() { uploadsDescribed = false }
+
     func releaseUploads() {
         uploadsHeld = false
         for upload in heldUploads { upload.resume() }
@@ -858,7 +940,7 @@ private actor RecordingTransport: HTTPTransport {
             let body = #"""
                 {"id":"media-\#(uploadCount)","type":"video","url":"https://cloud.example.test/m.mp4",
                 "preview_url":"https://cloud.example.test/m.jpg","remote_url":null,
-                "description":"A wave","blurhash":null,"meta":{}}
+                "description":\#(uploadsDescribed ? #""A wave""# : "null"),"blurhash":null,"meta":{}}
                 """#
             return (
                 Data(body.utf8),

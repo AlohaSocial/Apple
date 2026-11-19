@@ -258,16 +258,69 @@ public enum RouteResolver {
         }
     }
 
-    /// A fediverse URL from anywhere else. It is resolved through the **active
-    /// account's** server so the post opens with that reader's relationship
-    /// state and working action buttons — the single most valuable link
-    /// behaviour in a client of this kind (docs/09 §10).
-    public static func isFediverseCandidate(_ url: URL) -> Bool {
-        guard let scheme = url.scheme, scheme == "https" else { return false }
-        let path = url.path()
-        return path.contains("/@") || path.contains("/users/") || path.contains("/statuses/")
-            || path.contains("/notice/") || path.contains("/objects/") || path.contains("/p/")
+    /// Whether a web link looks like a fediverse post or profile, and so is
+    /// worth asking the **active account's** server about before it goes to
+    /// the browser. Resolved there, a post opens with that reader's
+    /// relationship state and working action buttons — the single most
+    /// valuable link behaviour in a client of this kind (docs/09 §10).
+    ///
+    /// A guess from the address alone, and a cautious one: every candidate
+    /// costs the reader a moment of waiting for the server, so a path has to
+    /// have the shape of one of the fediverse's own, and the big sites that
+    /// borrow those shapes (`youtube.com/@channel`, `medium.com/@writer`,
+    /// `instagram.com/p/…`) are not asked about.
+    nonisolated public static func isFediverseCandidate(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https",
+            let host = url.host()?.lowercased(), !host.isEmpty,
+            !notFediverseHosts.contains(where: { host == $0 || host.hasSuffix("." + $0) })
+        else { return false }
+        let path = fediversePath(url)
+        guard let first = path.first, let last = path.last else { return false }
+        if !last.hasPrefix("@"), let dot = last.lastIndex(of: "."),
+            pageExtensions.contains(last[last.index(after: dot)...].lowercased())
+        {
+            return false
+        }
+        switch first {
+        // Mastodon, Nextcloud Social, Misskey, Akkoma: `/@alice`,
+        // `/@alice/109…`, `/@alice@elsewhere.example`.
+        case _ where first.hasPrefix("@"): return first.count > 1 && path.count <= 2
+        // ActivityPub ids: `/users/alice`, `/users/alice/statuses/109…`.
+        case "users": return path.count == 2 || (path.count == 4 && path[2] == "statuses")
+        // Pleroma and Akkoma (`/notice/…`, `/objects/…`), Misskey (`/notes/…`),
+        // PeerTube's short video links (`/w/…`).
+        case "notice", "objects", "notes", "w": return path.count == 2
+        // Pixelfed: `/p/alice/123`.
+        case "p": return path.count == 3
+        // PeerTube: `/videos/watch/<uuid>`.
+        case "videos": return path.count == 3 && path[1] == "watch"
+        default: return false
+        }
     }
+
+    /// The path of a link with the prefix Nextcloud Social's pages carry
+    /// removed — `/index.php/apps/social/@alice` without the rewrite rules,
+    /// `/apps/social/@alice` with them — so it reads like everybody else's.
+    nonisolated static func fediversePath(_ url: URL) -> [String] {
+        var path = url.pathComponents.filter { $0 != "/" }[...]
+        if path.first == "index.php" { path = path.dropFirst() }
+        if path.starts(with: ["apps", "social"]) { path = path.dropFirst(2) }
+        return Array(path)
+    }
+
+    /// Sites whose paths look like the fediverse's and are not part of it.
+    nonisolated static let notFediverseHosts: Set<String> = [
+        "youtube.com", "youtu.be", "medium.com", "tiktok.com", "instagram.com",
+        "twitter.com", "x.com", "facebook.com", "substack.com", "github.com",
+        "linkedin.com", "reddit.com", "vimeo.com", "soundcloud.com", "apple.com",
+    ]
+
+    /// A last path segment ending in one of these is a file or a page, not
+    /// a post.
+    nonisolated static let pageExtensions: Set<String> = [
+        "html", "htm", "php", "asp", "aspx", "pdf", "jpg", "jpeg", "png", "gif", "webp",
+        "svg", "mp4", "mov", "mp3", "m4a", "zip", "txt", "json", "xml", "rss",
+    ]
 }
 
 extension Notification.Name {
