@@ -12,6 +12,27 @@ import Foundation
 // reader changes one here.
 
 extension AccountSession {
+    /// Asks the server whether For you learns from this reader right now:
+    /// `reading:learn` in the preferences where the server has it, the
+    /// interests settings otherwise. A server that does not answer counts as
+    /// not learning.
+    func refreshReadingLearning(preferences: Preferences?) async {
+        if let learns = preferences?.learnsFromReading {
+            adoptReadingLearning(learns)
+            return
+        }
+        let state = try? await client.decode(InterestsState.self, from: Endpoint.interests.state)
+        adoptReadingLearning(state?.settings.isLearning ?? false)
+    }
+
+    /// Takes the server's answer about learning. Turning it off drops this
+    /// account's collector, and everything it had not sent yet.
+    func adoptReadingLearning(_ learns: Bool) {
+        guard learns != learnsFromReading else { return }
+        learnsFromReading = learns
+        if !learns { ReadingSignals.forget(id) }
+    }
+
     /// Reads the server's counts and notification delivery into this
     /// account's settings. A server that does not answer leaves them alone.
     func adoptServerReaderSettings() async {

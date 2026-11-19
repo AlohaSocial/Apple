@@ -309,6 +309,9 @@ public struct Preferences: Codable, Sendable, Hashable {
     /// ends up posting publicly for somebody whose default is followers-only.
     public var expandMedia: SensitiveMediaPolicy?
     @LenientBool public var expandSpoilers: Bool
+    /// Nextcloud Social: whether For you learns from this reader's reading
+    /// right now. `nil` where the server does not say.
+    public var learnsFromReading: Bool?
 
     enum CodingKeys: String, CodingKey {
         case defaultVisibility = "posting:default:visibility"
@@ -316,18 +319,20 @@ public struct Preferences: Codable, Sendable, Hashable {
         case defaultLanguage = "posting:default:language"
         case expandMedia = "reading:expand:media"
         case expandSpoilers = "reading:expand:spoilers"
+        case learnsFromReading = "reading:learn"
     }
 
     public init(
         defaultVisibility: Visibility? = nil, defaultSensitive: Bool = false,
         defaultLanguage: String? = nil, expandMedia: SensitiveMediaPolicy? = nil,
-        expandSpoilers: Bool = false
+        expandSpoilers: Bool = false, learnsFromReading: Bool? = nil
     ) {
         self.defaultVisibility = defaultVisibility
         _defaultSensitive = .init(wrappedValue: defaultSensitive)
         self.defaultLanguage = defaultLanguage
         self.expandMedia = expandMedia
         _expandSpoilers = .init(wrappedValue: expandSpoilers)
+        self.learnsFromReading = learnsFromReading
     }
 }
 
