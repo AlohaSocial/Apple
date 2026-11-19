@@ -158,12 +158,22 @@ pages `max_id`/`min_id` inward until the gap closes. **Never silently join two
 disjoint ranges** — that produces a timeline with invisible holes, which is the
 single most common bug in clients of this kind.
 
+A gap is filled from the side the reader is on. If the reader is above it
+(reading down), the page is `max_id` of the row just above the gap, and the
+gap moves down under it. If the reader is below it (the usual case after an
+absence: the timeline opens at the post they last saw, under the gap), the page
+is `min_id` of the row just below the gap (the posts *immediately* newer than
+it), so what arrives joins the post they are on. The gap stays above that page,
+under the same row, and closes when a page reaches the range above it or comes
+back short (`TimelineMerge.Direction.fillingGapFromBelow`). The reader's row
+stays where it was on screen while rows land above it.
+
 ## 4. Cache policy
 
 | Data | Retention |
 |---|---|
-| Home timeline entries | newest 500 per account |
-| Other timelines / modes | newest 200 per timeline key |
+| Home timeline entries | newest 500 per account (persisted; see below) |
+| Other timelines / modes | newest 200 per timeline key (persisted; see below) |
 | Statuses | kept while referenced by any `TimelineEntry`, thread cache, or bookmark; orphans swept after 7 days |
 | Notifications | newest 500 per account |
 | Relationships | 24 h |
@@ -173,6 +183,12 @@ single most common bug in clients of this kind.
 | Drafts | forever, until sent or deleted |
 | Watch positions | mirrored from the server; local copy 30 days |
 | Images on disk | LRU, 512 MB default ceiling |
+
+The timeline limits cap **what is persisted** for the next launch, not how far
+anybody can scroll. The timeline on screen merges each page into its own rows in
+memory by the same rules (`TimelineModel.merging`), so paging older goes on as far
+as the server does. A page entirely below the cap is not written, and its statuses
+are not stored, because they would be orphans as soon as they were saved.
 | Video segments | `URLCache`, 1 GB ceiling, purged on low disk |
 
 Sweeping runs on a background `ModelActor` at launch and after each successful

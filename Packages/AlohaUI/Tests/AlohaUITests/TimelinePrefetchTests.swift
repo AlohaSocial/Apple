@@ -39,7 +39,7 @@ struct TimelinePrefetchTests {
 
     @Test("A final partial page stops subsequent buffered requests")
     func finalPartialPageStops() async throws {
-        let total = Endpoint.defaultLimit + 5
+        let total = Endpoint.homeTimelineLimit + 5
         let (model, server) = try await makeModel(statusCount: total)
         await model.appear()
         #expect(model.rows.compactMap(\.status).count < total)
@@ -52,26 +52,26 @@ struct TimelinePrefetchTests {
 
     @Test("Overlapping near-end events share one older-page request")
     func overlappingRequestsAreBounded() async throws {
-        let (model, server) = try await makeModel(statusCount: Endpoint.defaultLimit * 3 + 5)
+        let (model, server) = try await makeModel(statusCount: Endpoint.homeTimelineLimit * 3 + 5)
         await model.appear()
         await server.delayOlderPages()
         async let first: Void = model.loadOlder()
         async let second: Void = model.loadOlder()
         _ = await (first, second)
         #expect(await timelineRequests(server) == 2)
-        #expect(model.rows.compactMap(\.status).count == Endpoint.defaultLimit * 2)
+        #expect(model.rows.compactMap(\.status).count == Endpoint.homeTimelineLimit * 2)
     }
 
     @Test("A successful older-page retry clears the offline state")
     func retryClearsOfflineState() async throws {
-        let total = Endpoint.defaultLimit + 5
+        let total = Endpoint.homeTimelineLimit + 5
         let (model, server) = try await makeModel(statusCount: total)
         await model.appear()
         await server.failNextOlderPage()
         await model.loadOlder()
         let wasOffline = model.isOffline
         #expect(wasOffline)
-        #expect(model.rows.compactMap(\.status).count == Endpoint.defaultLimit)
+        #expect(model.rows.compactMap(\.status).count == Endpoint.homeTimelineLimit)
         await model.loadOlder()
         #expect(!model.isOffline)
         #expect(model.errorMessage == nil)

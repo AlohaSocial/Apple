@@ -7146,6 +7146,17 @@
         }
       }
     },
+    "Load more posts" : {
+      "comment" : "Feed footer: fetches older posts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Beiträge laden"
+          }
+        }
+      }
+    },
     "Load the posts in between" : {
       "comment" : "Timeline gap row",
       "localizations" : {

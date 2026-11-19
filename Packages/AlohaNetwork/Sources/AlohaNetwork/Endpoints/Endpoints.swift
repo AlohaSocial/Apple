@@ -5,6 +5,10 @@ import Foundation
 
 extension Endpoint {
     public static let defaultLimit = 20
+    /// The most Mastodon serves of the home timeline at once, and what a
+    /// home refresh asks for (docs/08 §3): twenty new posts was a gap after
+    /// any lunch break.
+    public static let homeTimelineLimit = 40
     /// The server caps at 50 whatever is asked for.
     public static let maximumLimit = 50
 

@@ -504,7 +504,13 @@ public struct AudioModeView: View {
                     }
             }
 
-            if statuses.isEmpty && !model.isRefreshing {
+            if model.canLoadOlder || model.isPagingOlder {
+                OlderPostsFooter(isLoading: model.isPagingOlder) {
+                    Task { await model.loadOlder() }
+                }
+            }
+
+            if statuses.isEmpty && model.hasSettledLoading {
                 ContentUnavailableView {
                     Text("No audio yet", comment: "Empty Audio mode")
                 } description: {

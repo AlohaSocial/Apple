@@ -129,7 +129,7 @@ public struct ShortsView: View {
                 // Three states, not two: the first page arriving is the shape
                 // of the feed; the empty state only shows once the server has
                 // actually said there is nothing there.
-                if shorts.isEmpty && model.isRefreshing {
+                if shorts.isEmpty && (!model.hasCompletedFirstLoad || model.isRefreshing) {
                     shortsSkeleton
                 } else if shorts.isEmpty {
                     emptyState
@@ -143,6 +143,17 @@ public struct ShortsView: View {
                                 )
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(status.id)
+                            }
+                            // A last page that asks for more as it is
+                            // reached: paging ahead is driven by the current
+                            // short, and a page the filter emptied gives it
+                            // no new short to move to.
+                            if model.canLoadOlder || model.isPagingOlder {
+                                OlderPostsFooter(isLoading: model.isPagingOlder) {
+                                    Task { await model.loadOlder() }
+                                }
+                                .foregroundStyle(.white)
+                                .containerRelativeFrame([.horizontal, .vertical])
                             }
                         }
                         .scrollTargetLayout()
@@ -759,6 +770,14 @@ public struct ShortsView: View {
                 )
                 .font(.footnote)
                 .multilineTextAlignment(.center)
+            }
+            // Pages the filter emptied are no proof there are no shorts
+            // further down. Not asked for by appearing: this state comes
+            // back after every empty run, and would keep asking by itself.
+            if model.canLoadOlder || model.isPagingOlder {
+                OlderPostsFooter(isLoading: model.isPagingOlder, loadsOnAppear: false) {
+                    Task { await model.loadOlder() }
+                }
             }
         }
         .foregroundStyle(.white)

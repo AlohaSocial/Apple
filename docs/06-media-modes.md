@@ -40,6 +40,10 @@ Client-side filtering rules:
   Home) but gets no `TimelineEntry` in the mode's timeline.
 - The `Link` header cursor from the **last upstream page fetched** is what the
   mode pages from, so no rows are skipped.
+- A page that the filter leaves empty does not end the feed. Paging continues,
+  up to 4 user-visible pages at a time, until something is found or the server
+  has no more. After that, the feed's footer offers "Load more posts" (see
+  [05-core-ui.md](05-core-ui.md) §Loading and refresh).
 - The UI says, once, in the mode's empty state, that this server does not
   support media filtering and results may be sparse.
 

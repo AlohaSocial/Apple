@@ -25,6 +25,11 @@ public final class TimelineModel {
     private(set) var index = TimelineIndex(rows: [], webLinks: [:])
     public private(set) var isRefreshing = false
     public private(set) var isPagingOlder = false
+    /// Whether a fetch has finished at least once, with or without posts.
+    /// Before that an empty list is one still loading, not one with nothing
+    /// in it, and saying "Nothing here yet" over it was a flash of the wrong
+    /// screen on every cold open.
+    public private(set) var hasCompletedFirstLoad = false
     public private(set) var errorMessage: String?
     public private(set) var isOffline = false
     /// New content never moves the scroll position; it waits behind this
@@ -63,8 +68,11 @@ public final class TimelineModel {
     /// which a marker read back late must not move the divider under them.
     @ObservationIgnored private var markerMovedThisVisit = false
     /// The posts on screen, reported by the rows as they come and go, so the
-    /// topmost of them can be saved as the marker.
+    /// topmost of them can be saved as the marker, and a gap knows which
+    /// side of it the reader is on.
     @ObservationIgnored private var visibleStatusIDs: Set<String> = []
+    /// Gaps with a fill under way, so a second tap does not ask twice.
+    @ObservationIgnored private var fillingGapIDs: Set<String> = []
     @ObservationIgnored private var markerSaveTask: Task<Void, Never>?
     @ObservationIgnored private var lastMarkerSave = Date.distantPast
     /// Whether the list is scrolled to its very top, reported by the view.
@@ -82,6 +90,17 @@ public final class TimelineModel {
     /// How the rows are laid out, reported by the view, so a prefetch asks
     /// for the sizes the rows will ask for and lands in the same cache entry.
     @ObservationIgnored public var prefetchGeometry = PrefetchGeometry()
+
+    /// A row the list should put back at the top of the screen: rows were
+    /// just added above the one the reader was on (`fillGap` from below),
+    /// and they are reading down from it, not up from what arrived.
+    public private(set) var keepInPlace: KeepInPlace?
+
+    public struct KeepInPlace: Equatable, Sendable {
+        public let statusID: String
+        /// Distinguishes two requests for the same row.
+        let serial: Int
+    }
 
     /// Each status's filter verdict, decided once per content rather than on
     /// every evaluation of the row — the same object every other list of
@@ -203,12 +222,12 @@ public final class TimelineModel {
     /// most every ten seconds; leaving the screen or the app saves at once
     /// (docs/08 §7).
     public func noteRow(_ statusID: String, isVisible: Bool) {
-        guard tracksReadingPosition else { return }
         if isVisible {
             visibleStatusIDs.insert(statusID)
         } else {
             visibleStatusIDs.remove(statusID)
         }
+        guard tracksReadingPosition else { return }
         let delay = max(2, 10 - Date().timeIntervalSince(lastMarkerSave))
         markerSaveTask?.cancel()
         markerSaveTask = Task { [weak self] in
@@ -359,6 +378,7 @@ public final class TimelineModel {
     public func appear() async {
         if rows.isEmpty { await loadFromCache() }
         await refreshIfStale(olderThan: 60)
+        await catchUpAboveReader()
     }
 
     /// A refresh unless one landed within `interval` — on appearing, and on
@@ -431,7 +451,10 @@ public final class TimelineModel {
 
     private func performRefresh(revealingArrivals: Bool) async {
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer {
+            isRefreshing = false
+            hasCompletedFirstLoad = true
+        }
 
         let direction = Self.refreshDirection(
             hasRows: rows.contains { $0.status != nil },
@@ -457,9 +480,10 @@ public final class TimelineModel {
             // its way to the server. Their copies stay, in the store and here.
             let protected = protectedStatusIDs(
                 in: harvest.statuses.map(\.displayed.id), since: requestedAt)
-            let merged = try await session.timelineStore.apply(
-                page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
-                direction: direction, pageWasFull: harvest.pageWasFull, preserving: protected)
+            await persist(harvest, direction: direction, preserving: protected)
+            let merged = Self.merging(
+                harvest.statuses, into: direction == .cold ? [] : mergeBase,
+                direction: direction, pageWasFull: harvest.pageWasFull)
 
             await verdicts.warm(harvest.statuses)
             // Asked again after the awaits: an interaction may have landed
@@ -475,6 +499,12 @@ public final class TimelineModel {
                 commit(incoming)
                 nextCursor = harvest.nextCursor
                 hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
+                // A media mode filtered here can find nothing in the newest
+                // pages of a server that has plenty further down; an empty
+                // list with no row to scroll to would never ask again.
+                if !incoming.contains(where: { $0.status != nil }), hasMoreOlderPosts {
+                    Task { await loadOlder() }
+                }
             } else {
                 let knownIDs = Set(rows.map(\.id))
                 let arrivals = incoming.filter { $0.status != nil && !knownIDs.contains($0.id) }
@@ -570,15 +600,113 @@ public final class TimelineModel {
     private func commitMerged(_ incoming: [TimelineRow]) {
         guard pendingNewCount > 0 else {
             commit(incoming)
+            pendingRows = []
             return
         }
+        // Everything not on screen that lands above the newest row that is
+        // waits behind the pill with the rest — a gap among the new posts
+        // filled from below lands there too. What lands below it, an older
+        // page, is shown: it moves nothing the reader is looking at.
         let shown = Set(rows.map(\.id))
-        let held = Set(pendingRows.map(\.id)).subtracting(shown)
-        commit(incoming.filter { !held.contains($0.id) })
+        let firstShown =
+            incoming.firstIndex { $0.status != nil && shown.contains($0.id) } ?? incoming.endIndex
+        let held = incoming[..<firstShown].filter { !shown.contains($0.id) }
+        let heldIDs = Set(held.map(\.id))
+        commit(incoming.filter { !heldIDs.contains($0.id) })
         pendingRows = incoming
+        pendingNewCount = held.filter { $0.status != nil }.count
     }
 
-    private var hasMoreOlderPosts = true
+    /// What a merge adds to: the rows with the new posts held behind the
+    /// pill, where there are any — they are as much a part of the timeline
+    /// as the rows on screen, just not shown yet.
+    private var mergeBase: [TimelineRow] { pendingRows.isEmpty ? rows : pendingRows }
+
+    /// Writes a page into the cache, which keeps the newest few hundred rows
+    /// for the next launch. A cache that cannot be written is no reason to
+    /// keep the page from the reader: the rows on screen are merged in
+    /// memory either way.
+    private func persist(
+        _ harvest: Harvest, direction: TimelineMerge.Direction, preserving: Set<String> = []
+    ) async {
+        do {
+            _ = try await session.timelineStore.apply(
+                page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
+                direction: direction, pageWasFull: harvest.pageWasFull, preserving: preserving)
+        } catch {
+            logger.error("cache write failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    /// A page merged into the rows held in memory, by the rules the cache
+    /// merges its own copy with (`TimelineMerge`).
+    ///
+    /// The rows on screen used to be whatever the cache handed back, and the
+    /// cache keeps two hundred rows — five hundred on Home. Paging older
+    /// past that wrote the page, trimmed it straight off again and showed
+    /// the trimmed rows: the list stopped growing while the next page was
+    /// asked for forever. In memory, scrolling goes as far as the server
+    /// does.
+    ///
+    /// The divider is left out: `commit` places it again.
+    nonisolated static func merging(
+        _ page: [Status], into rows: [TimelineRow], direction: TimelineMerge.Direction,
+        pageWasFull: Bool
+    ) -> [TimelineRow] {
+        let held = rows.filter {
+            if case .caughtUpDivider = $0 { return false }
+            return true
+        }
+        // Positions only order the rows here; spaced so a merge rarely has
+        // to renumber.
+        let slots = held.enumerated().map { offset, row in
+            TimelineMerge.Slot(
+                statusID: row.id, position: Int64(held.count - offset) * 1_024,
+                isGapMarker: row.status == nil)
+        }
+        let plan = TimelineMerge.plan(
+            existing: slots, page: page.map(\.id), direction: direction, pageWasFull: pageWasFull)
+
+        // The page's copy is the newer one; a row it does not carry keeps
+        // its own.
+        var byID = Dictionary(
+            held.compactMap { row in row.status.map { ($0.id, $0) } },
+            uniquingKeysWith: { first, _ in first })
+        for status in page { byID[status.id] = status }
+        return plan.slots.compactMap { slot in
+            if slot.isGapMarker { return .gap(id: slot.statusID) }
+            return byID[slot.statusID].map(TimelineRow.status)
+        }
+    }
+
+    /// Whether there may be older posts to fetch.
+    public private(set) var hasMoreOlderPosts = true
+
+    /// Whether `loadOlder` has anywhere to go: a cursor from the server, or
+    /// a post to page below. What the list's footer offers.
+    public var canLoadOlder: Bool {
+        guard hasMoreOlderPosts else { return false }
+        if nextCursor != nil { return true }
+        return !key.source.pagesOnlyByLink && rows.contains { $0.status != nil }
+    }
+
+    /// Whether loading has settled: the first fetch is back, none is still
+    /// out, and none failed — an error or the offline strip says what is
+    /// really the matter. Only then is an empty feed one with nothing in it.
+    public var hasSettledLoading: Bool {
+        hasCompletedFirstLoad && !isRefreshing && !isPagingOlder && errorMessage == nil
+            && !isOffline
+    }
+
+    /// The only time "Nothing here yet" is true.
+    public var showsEmptyState: Bool {
+        hasSettledLoading && !rows.contains { $0.status != nil }
+    }
+
+    /// Whether the list is empty because it is still being loaded.
+    public var isLoadingFirstPage: Bool {
+        !rows.contains { $0.status != nil } && (!hasCompletedFirstLoad || isRefreshing)
+    }
 
     /// Request the next page while a screenful of cached posts remains.
     public func prefetchOlder(near statusID: String) async {
@@ -592,72 +720,174 @@ public final class TimelineModel {
         return loadedIDs.count - index - 1 < 8
     }
 
+    /// How many older pages in a row may come back empty — a media mode
+    /// filtered here, on a stretch of the timeline with no photos in it —
+    /// before paging waits to be asked again. Each of them is up to
+    /// `OverFetch.maximumUpstreamPages` requests.
+    static let maximumEmptyOlderPages = 4
+
     public func loadOlder() async {
-        guard hasMoreOlderPosts, !isPagingOlder,
-            let oldest = rows.compactMap(\.status).last?.id
-        else { return }
+        guard hasMoreOlderPosts, !isPagingOlder else { return }
         isPagingOlder = true
         defer { isPagingOlder = false }
 
-        let anchor: PageAnchor
-        if let nextCursor {
-            anchor = .url(nextCursor)
-        } else if key.source.pagesOnlyByLink {
-            // Favourites and bookmarks page by the mark's id; without the
-            // server's cursor there is no older page this side can name.
-            hasMoreOlderPosts = false
-            return
-        } else {
-            anchor = .olderThan(oldest)
-        }
-
-        do {
-            let harvest = try await fetch(anchor: anchor)
-            isOffline = false
-            errorMessage = nil
-            guard !harvest.statuses.isEmpty else {
-                // A client-side media filter can leave a fetched page empty
-                // even though the server still has another cursor.
+        // Until something is found or the server runs out: a page that the
+        // filter emptied added no row, and with no new row on screen nothing
+        // would ever ask for the page after it. The bound keeps a feed with
+        // no photos at all from walking the whole timeline at once; the
+        // footer's button carries on from where it stopped.
+        var previous: PageAnchor?
+        for _ in 0..<Self.maximumEmptyOlderPages {
+            // A page whose every post the reader's own filters hid leaves the
+            // oldest row where it was; asking from it again would fetch the
+            // same page.
+            guard let anchor = olderAnchor(), anchor != previous else { return }
+            previous = anchor
+            do {
+                let harvest = try await fetch(anchor: anchor)
+                isOffline = false
+                errorMessage = nil
                 nextCursor = harvest.nextCursor
-                hasMoreOlderPosts = harvest.nextCursor != nil
+                hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
+                guard !harvest.statuses.isEmpty else {
+                    // Nothing left to name an older page by but the cursor.
+                    hasMoreOlderPosts = harvest.nextCursor != nil
+                    continue
+                }
+                await persist(harvest, direction: .older)
+                let merged = Self.merging(
+                    harvest.statuses, into: mergeBase, direction: .older,
+                    pageWasFull: harvest.pageWasFull)
+                await verdicts.warm(harvest.statuses)
+                let before = rows.count(where: { $0.status != nil })
+                commitMerged(applyFilters(to: merged))
+                let statuses = harvest.statuses
+                Task { await indexLinks(statuses) }
+                await session.latchCapabilities(observing: harvest.statuses)
+                // Every post on it filtered out by the reader's own filters
+                // is as empty as a page with none.
+                if rows.count(where: { $0.status != nil }) > before { return }
+            } catch {
+                await handle(error)
                 return
             }
-            let merged = try await session.timelineStore.apply(
-                page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
-                direction: .older, pageWasFull: harvest.pageWasFull)
-            await verdicts.warm(harvest.statuses)
-            commitMerged(applyFilters(to: merged))
-            nextCursor = harvest.nextCursor
-            hasMoreOlderPosts = harvest.pageWasFull || harvest.nextCursor != nil
-            let statuses = harvest.statuses
-            Task { await indexLinks(statuses) }
-            await session.latchCapabilities(observing: harvest.statuses)
-        } catch {
-            await handle(error)
         }
     }
 
+    /// Where the next older page starts, or `nil` where there is none.
+    private func olderAnchor() -> PageAnchor? {
+        guard hasMoreOlderPosts else { return nil }
+        if let nextCursor { return .url(nextCursor) }
+        if key.source.pagesOnlyByLink {
+            // Favourites and bookmarks page by the mark's id; without the
+            // server's cursor there is no older page this side can name.
+            hasMoreOlderPosts = false
+            return nil
+        }
+        guard let oldest = mergeBase.compactMap(\.status).last?.id else { return nil }
+        return .olderThan(oldest)
+    }
+
     /// Fills a hole rather than closing it blindly.
+    ///
+    /// From whichever side the reader is on. Above it, reading down, the
+    /// posts that follow what they read are the ones under the row above
+    /// (`max_id`). Below it — where the timeline opens after an absence,
+    /// at the post they last saw — they are the ones just newer than the
+    /// row below (`min_id`); filled from the top, as every gap once was,
+    /// the posts that arrived joined the wrong end and the reader's own
+    /// post stayed cut off from them.
     public func fillGap(id gapID: String) async {
-        guard let index = rows.firstIndex(where: { $0.id == gapID }) else { return }
+        guard let index = mergeBase.firstIndex(where: { $0.id == gapID }) else { return }
+        _ = await fillGap(id: gapID, fromBelow: readerIsBelow(gapAt: index))
+    }
+
+    /// Fills the gap above the reader from below, a page at a time, up to
+    /// `maximumPages` — what coming back to the app after a while does, so
+    /// the posts just above where the reader is are there to scroll up into.
+    public func catchUpAboveReader(maximumPages: Int = 3) async {
+        guard tracksReadingPosition, !key.source.pagesOnlyByLink else { return }
+        for _ in 0..<maximumPages {
+            guard let gapID = gapAboveReader(),
+                await fillGap(id: gapID, fromBelow: true)
+            else { return }
+        }
+    }
+
+    /// The post the reader is on: the topmost on screen, or before any is,
+    /// the one the visit opens at.
+    private var readerStatusID: String? {
+        topmostVisibleStatusID ?? (tracksReadingPosition ? visitMarkerID : nil)
+    }
+
+    private func readerIsBelow(gapAt gapIndex: Int) -> Bool {
+        guard let reader = readerStatusID,
+            let readerIndex = mergeBase.firstIndex(where: { $0.id == reader })
+        else { return false }
+        return readerIndex > gapIndex
+    }
+
+    /// The nearest gap above the reader, if any.
+    func gapAboveReader() -> String? {
+        let base = mergeBase
+        guard let reader = readerStatusID,
+            let readerIndex = base.firstIndex(where: { $0.id == reader })
+        else { return nil }
+        return base[..<readerIndex].last {
+            if case .gap = $0 { return true }
+            return false
+        }?.id
+    }
+
+    /// Returns whether the page added anything, so a caller filling in a
+    /// loop knows when to stop.
+    @discardableResult
+    func fillGap(id gapID: String, fromBelow: Bool) async -> Bool {
+        let base = mergeBase
+        guard let index = base.firstIndex(where: { $0.id == gapID }),
+            fillingGapIDs.insert(gapID).inserted
+        else { return false }
+        defer { fillingGapIDs.remove(gapID) }
         if key.source.pagesOnlyByLink {
             // No status id can name the window under the gap (see
             // `pagesOnlyByLink`), so the list is loaded again from the top.
             replacesCacheOnNextRefresh = true
             await refresh()
-            return
+            return false
         }
-        let above = rows[..<index].compactMap(\.status).last?.id
+        let above = base[..<index].compactMap(\.status).last?.id
+        let below = base[(index + 1)...].lazy.compactMap(\.status).first?.id
+
+        let anchor: PageAnchor
+        let direction: TimelineMerge.Direction
+        if fromBelow, let below {
+            anchor = .newerThan(below)
+            direction = .fillingGapFromBelow(id: gapID)
+        } else {
+            anchor = above.map { .olderThan($0) } ?? .cold
+            direction = .fillingGap(id: gapID)
+        }
+        // The reader's row, to put back where it was once rows land above it.
+        let reader = fromBelow && pendingNewCount == 0 ? topmostVisibleStatusID : nil
 
         do {
-            let harvest = try await fetch(anchor: above.map { .olderThan($0) } ?? .cold)
-            let merged = try await session.timelineStore.apply(
-                page: harvest.statuses, accountID: session.id, timelineKey: storageKey,
-                direction: .fillingGap(id: gapID), pageWasFull: harvest.pageWasFull)
+            let harvest = try await fetch(anchor: anchor)
+            await persist(harvest, direction: direction)
+            let merged = Self.merging(
+                harvest.statuses, into: mergeBase, direction: direction,
+                pageWasFull: harvest.pageWasFull)
             await verdicts.warm(harvest.statuses)
+            let before = Set(mergeBase.map(\.id))
             commitMerged(applyFilters(to: merged))
+            if let reader, rows.contains(where: { $0.id == reader }) {
+                keepInPlace = KeepInPlace(statusID: reader, serial: (keepInPlace?.serial ?? 0) + 1)
+            }
+            let statuses = harvest.statuses
+            Task { await indexLinks(statuses) }
+            return mergeBase.contains { !before.contains($0.id) }
         } catch {
             await handle(error)
+            return false
         }
     }
 
@@ -674,10 +904,15 @@ public final class TimelineModel {
     /// a short page so no rows are skipped (docs/06 §2).
     private func fetch(anchor: PageAnchor) async throws -> Harvest {
         let serverFilters = TimelineFilters.forMode(key.mode, capabilities: session.capabilities)
-        let limit = Endpoint.defaultLimit
+        let limit = pageLimit
         let needsClientFiltering = key.mode != .home && serverFilters.isEmpty
+        // A page from `min_id` runs upwards, while the server's `next` link
+        // always points further down: following it would fetch the posts
+        // under the gap all over again.
+        var isUpward = false
+        if case .newerThan = anchor { isUpward = true }
         let budget =
-            needsClientFiltering
+            needsClientFiltering && !isUpward
             ? min(
                 OverFetch.maximumUpstreamPages,
                 OverFetch.multiplier(for: key.mode, serverFilters: serverFilters))
@@ -712,6 +947,13 @@ public final class TimelineModel {
 
         let kept = needsClientFiltering ? matching(collected) : collected
         return Harvest(statuses: kept, pageWasFull: lastPageWasFull, nextCursor: cursor)
+    }
+
+    /// Forty on your own home feed — the most Mastodon serves of it, and
+    /// what docs/08 §3 asks for — so coming back after an hour reaches
+    /// further before a gap opens. The default everywhere else.
+    var pageLimit: Int {
+        tracksReadingPosition ? Endpoint.homeTimelineLimit : Endpoint.defaultLimit
     }
 
     private func matching(_ statuses: [Status]) -> [Status] {

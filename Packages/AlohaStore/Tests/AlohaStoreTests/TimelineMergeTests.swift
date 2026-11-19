@@ -195,6 +195,90 @@ struct TimelineMergeTests {
         #expect(plan.closedGapIDs == ["gap:8"])
     }
 
+    // MARK: - Filling from below
+
+    /// After an absence the reader is under the gap, at the post they last
+    /// saw. A page from `min_id` of that post is what they scroll up into,
+    /// so it goes directly on top of it and the gap stays above.
+    @Test("A full page from below joins the row under the gap and keeps the gap above it")
+    func fillFromBelowKeepsGapAbove() {
+        var existing = slots(["99", "98"])
+        existing.append(Slot.gap(below: "98", position: 970))
+        existing.append(contentsOf: [
+            Slot(statusID: "10", position: 960), Slot(statusID: "9", position: 950),
+        ])
+
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["13", "12", "11"],
+            direction: .fillingGapFromBelow(id: "gap:98"), pageWasFull: true)
+
+        #expect(plan.slots.map(\.statusID) == ["99", "98", "gap:98", "13", "12", "11", "10", "9"])
+        #expect(plan.closedGapIDs.isEmpty)
+        #expect(plan.insertedStatusIDs == ["13", "12", "11"])
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+    }
+
+    @Test("A page from below that reaches the range above closes the gap")
+    func fillFromBelowCloses() {
+        var existing = slots(["14", "13"])
+        existing.append(Slot.gap(below: "13", position: 970))
+        existing.append(Slot(statusID: "10", position: 960))
+
+        let plan = TimelineMerge.plan(
+            existing: existing, page: ["13", "12", "11"],
+            direction: .fillingGapFromBelow(id: "gap:13"), pageWasFull: true)
+
+        #expect(plan.slots.map(\.statusID) == ["14", "13", "12", "11", "10"])
+        #expect(plan.closedGapIDs == ["gap:13"])
+        #expect(TimelineMerge.isWellFormed(plan.slots))
+    }
+
+    @Test("A short page from below closes the gap; an empty one too")
+    func fillFromBelowShortPageCloses() {
+        var existing = slots(["99"])
+        existing.append(Slot.gap(below: "99", position: 980))
+        existing.append(Slot(statusID: "10", position: 970))
+
+        let short = TimelineMerge.plan(
+            existing: existing, page: ["11"],
+            direction: .fillingGapFromBelow(id: "gap:99"), pageWasFull: false)
+        #expect(short.slots.map(\.statusID) == ["99", "11", "10"])
+        #expect(short.closedGapIDs == ["gap:99"])
+
+        let empty = TimelineMerge.plan(
+            existing: existing, page: [],
+            direction: .fillingGapFromBelow(id: "gap:99"), pageWasFull: false)
+        #expect(empty.slots.map(\.statusID) == ["99", "10"])
+    }
+
+    /// Several pages from below in a row, each into the room the last left,
+    /// with the neighbours as tight as a refresh leaves them.
+    @Test("Repeated fills from below stay ordered, renumbering only when out of room")
+    func repeatedFillsFromBelowStayOrdered() {
+        var existing = [
+            Slot(statusID: "200", position: 10),
+            Slot.gap(below: "200", position: 9),
+            Slot(statusID: "100", position: 8),
+        ]
+        var next = 101
+        for _ in 0..<4 {
+            let page = (next..<(next + 5)).reversed().map(String.init)
+            next += 5
+            existing =
+                TimelineMerge.plan(
+                    existing: existing, page: page,
+                    direction: .fillingGapFromBelow(id: "gap:200"), pageWasFull: true
+                ).slots
+            #expect(TimelineMerge.isWellFormed(existing))
+        }
+        let ids = existing.map(\.statusID)
+        #expect(ids.first == "200")
+        #expect(ids[1] == "gap:200")
+        #expect(ids[2] == "120")
+        #expect(ids.last == "100")
+        #expect(ids.count == 23)
+    }
+
     @Test("Re-fetching the same page changes nothing")
     func refetchIsIdempotent() {
         let existing = slots(["3", "2", "1"])

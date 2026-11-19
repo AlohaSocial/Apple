@@ -55,8 +55,9 @@ Manual), with Normal as the table above.
 Per tick, in priority order, with a total budget of 3 requests per account:
 
 1. `GET /api/v2/notifications/unread_count` (or v1) — cheapest, drives the badge.
-2. `GET /api/v1/timelines/home?min_id={newestCachedID}&limit=40` — only when the
-   Home mode is visible or was visible in the last 5 minutes.
+2. `GET /api/v1/timelines/home?limit=40` (the head, merged above the cache;
+   §9) — only when the Home mode is visible or was visible in the last 5
+   minutes.
 3. `GET /api/v2/notifications?min_id={newestCachedID}&limit=40` — only when
    step 1 reported a change.
 
@@ -83,7 +84,15 @@ it differs. No other timeline is polled; they refresh on appear.
   cancels in-flight work and saves what it has.
 - It polls notifications for every account, posts local notifications for what
   is new (§5), updates widget timelines via `WidgetCenter.reloadAllTimelines()`,
-  and updates the app badge.
+  and updates the app badge. Notifications and the badge go **first**; then a
+  post waiting in the send queue; then the cheap rest (the Memories snapshot,
+  once a day; the widget snapshots, which have a 4 s budget and skip any that
+  are still fresh). Draft sync waits for the next launch. A short wake is what
+  keeps iOS granting wakes.
+- **macOS** has no `BGAppRefreshTask`, and the process outlives its windows.
+  When the last window closes or is hidden, polling does not stop. It narrows to
+  notifications only, at the longest foreground interval, for as long as the
+  app runs.
 - It does **not** fetch timelines — a background refresh exists to tell somebody
   something happened, not to warm a cache.
 - A `BGProcessingTaskRequest` (`…​.maintenance`) runs cache sweeping and image
@@ -92,6 +101,13 @@ it differs. No other timeline is polled; they refresh on appear.
 ## 5. Local notifications
 
 Because the server cannot push, the app raises its own from what polling finds.
+
+Local alerts stand down only for an account whose push is **confirmed
+delivering**: Nextcloud's push proxy registered (`AccountSession.isPushActive`),
+or a Web Push subscription once one is made. A server that only *advertises* Web
+Push (every Mastodon sends a VAPID key) is polled and alerted locally like any
+other, because the app does not create a Web Push subscription yet. Suppressing
+on the VAPID key alone meant no alerts at all on those servers.
 
 - Notification categories: `mention`, `reply`, `favourite`, `reblog`, `follow`,
   `follow_request`, `poll`, `status`, `update`, `moderation_warning`,
@@ -149,7 +165,8 @@ When `capabilities.webPushVAPIDKey != nil`:
   extension**, so the notification carries real content rather than "New
   activity".
 - Disable the corresponding local-notification raising for that account so
-  nothing is shown twice.
+  nothing is shown twice, **only once the subscription is confirmed** (§5);
+  until then the account polls and raises local alerts.
 - Unsubscribe on sign-out.
 - **This path is written but dormant for Nextcloud.** Do not delete it
   and do not let it bit-rot: it is what makes the app correct the day the server

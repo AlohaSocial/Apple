@@ -212,7 +212,7 @@ public struct PhotosModeView: View {
                 }
 
                 loadingIndicator
-                if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil {
+                if statuses.isEmpty && model.hasSettledLoading {
                     emptyState
                 }
             }
@@ -268,8 +268,10 @@ public struct PhotosModeView: View {
                 }
             #endif
 
-            loadingIndicator
-            if statuses.isEmpty && !model.isRefreshing && model.errorMessage == nil { emptyState }
+            // Lazy, so the footer asks for the next page as it scrolls into
+            // view rather than the moment the grid is built.
+            LazyVStack { loadingIndicator }
+            if statuses.isEmpty && model.hasSettledLoading { emptyState }
         }
     }
 
@@ -467,14 +469,21 @@ public struct PhotosModeView: View {
         stories = live.filter { $0.account.id == mine } + live.filter { $0.account.id != mine }
     }
 
+    /// The first load's spinner, and after it the footer that keeps the
+    /// feed going: a page the photo filter emptied added no tile, and with
+    /// no tile appearing nothing asked for the page after it.
     @ViewBuilder
     private var loadingIndicator: some View {
-        if (model.isRefreshing && statuses.isEmpty) || model.isPagingOlder {
+        if statuses.isEmpty && (!model.hasCompletedFirstLoad || model.isRefreshing) {
             ProgressView {
                 Text("Loading photos", comment: "Photos loading state")
             }
             .frame(maxWidth: .infinity)
             .padding(AlohaMetrics.space4)
+        } else if model.canLoadOlder || model.isPagingOlder {
+            OlderPostsFooter(isLoading: model.isPagingOlder) {
+                Task { await model.loadOlder() }
+            }
         }
     }
 

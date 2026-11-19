@@ -73,10 +73,22 @@ public struct VideoModeView: View {
                     }
                 }
 
-                if statuses.isEmpty && !model.isRefreshing { emptyState }
+                if statuses.isEmpty && model.hasSettledLoading { emptyState }
             }
             .padding(.horizontal, isCompact ? 0 : AlohaMetrics.space4)
             .padding(.vertical, AlohaMetrics.space3)
+
+            // Outside the grid, so it is not a tile, and lazy, so it asks for
+            // the next page as it scrolls into view: a page the video filter
+            // emptied added no card, and with no card appearing nothing
+            // asked for the page after it.
+            LazyVStack {
+                if model.canLoadOlder || model.isPagingOlder {
+                    OlderPostsFooter(isLoading: model.isPagingOlder) {
+                        Task { await model.loadOlder() }
+                    }
+                }
+            }
         }
         .background(palette.background)
         .toolbar {
