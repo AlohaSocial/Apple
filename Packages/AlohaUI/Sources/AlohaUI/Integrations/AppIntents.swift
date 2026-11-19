@@ -99,13 +99,17 @@ public struct PostStatusIntent: AppIntent {
     /// window, which is what a duplicate is. The attachments are part of
     /// what is posted, so the same words with another picture are another
     /// post.
+    ///
+    /// A reply is part of what is posted too: the same words in answer to
+    /// two people are two posts.
     static func idempotencyKey(
         accountID: UUID, text: String, visibility: Visibility, mediaDigests: [String] = [],
-        now: Date = Date()
+        inReplyToID: String? = nil, now: Date = Date()
     ) -> String {
         let window = Int(now.timeIntervalSince1970 / 600)
         var material = "\(accountID.uuidString)|\(visibility.rawValue)|\(window)|\(text)"
         if !mediaDigests.isEmpty { material += "|" + mediaDigests.joined(separator: ",") }
+        if let inReplyToID { material += "|reply:\(inReplyToID)" }
         return digest(of: Data(material.utf8))
     }
 
@@ -394,6 +398,10 @@ public enum FeedModeAppEnum: String, AppEnum {
 
 public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
     case noAccount
+    /// "Reply to my latest mention" with nobody having mentioned the account.
+    case noMention
+    /// A reply that came back from Siri with no words in it.
+    case emptyReply
     /// "Post my last photo" without access to the photo library.
     case noPhotoAccess
     /// An empty library, or a picture Photos would not hand over.
@@ -402,6 +410,13 @@ public enum IntentError: Error, CustomLocalizedStringResourceConvertible {
     public var localizedStringResource: LocalizedStringResource {
         switch self {
         case .noAccount: "Add an account in Aloha Social first."
+        case .noMention:
+            LocalizedStringResource(
+                "Nobody has mentioned you lately.", comment: "App Intent error")
+        case .emptyReply:
+            LocalizedStringResource(
+                "There was nothing to reply with, so nothing was posted.",
+                comment: "App Intent error")
         case .noPhotoAccess:
             LocalizedStringResource(
                 "Allow Aloha Social to use your photos in Settings first.",
@@ -422,6 +437,9 @@ enum IntentContext {
         let client: APIClient
         /// `@name@server`, for anything that asks before acting as them.
         let handle: String
+        /// The account's `acct` as its own server writes it, which is what a
+        /// reply leaves out of the people it addresses.
+        let viewerAcct: String
         /// What the composer starts a new post as.
         let defaultVisibility: Visibility
         /// What the server takes, for a picture an intent uploads.
@@ -451,6 +469,7 @@ enum IntentContext {
                 return Context(
                     accountID: session.id, serverAccountID: session.snapshot.serverAccountID,
                     client: session.client, handle: session.snapshot.qualifiedHandle,
+                    viewerAcct: session.snapshot.handle,
                     defaultVisibility: session.settings.defaultVisibility,
                     limits: session.capabilities.limits)
             }
@@ -473,8 +492,16 @@ enum IntentContext {
             client: APIClient(
                 accountID: active.id, apiBase: active.capabilities.apiBase, accessToken: token),
             handle: active.qualifiedHandle,
+            viewerAcct: active.handle,
             defaultVisibility: active.settings.defaultVisibility,
             limits: active.capabilities.limits)
+    }
+
+    /// Tells the running app about a post an intent made, as the composer
+    /// does, so a thread or profile on screen shows it.
+    @MainActor
+    static func notePosted(_ status: Status, accountID: UUID) {
+        live?.sessions.first { $0.id == accountID }?.notePosted(status)
     }
 
     /// Writes a post an intent changed into the running app's cache, which
@@ -546,6 +573,26 @@ public struct AlohaShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Mentions",
             systemImageName: "at")
+
+        AppShortcut(
+            intent: ReplyToLatestMentionIntent(),
+            phrases: [
+                "Reply to my latest mention in \(.applicationName)",
+                "Reply to my last mention on \(.applicationName)",
+                "Answer my latest \(.applicationName) mention",
+            ],
+            shortTitle: LocalizedStringResource("Reply to mention", comment: "App Shortcut title"),
+            systemImageName: "bubble.left")
+
+        AppShortcut(
+            intent: ReadMessagesIntent(),
+            phrases: [
+                "Read my messages in \(.applicationName)",
+                "Read my \(.applicationName) messages",
+                "Any new messages in \(.applicationName)",
+            ],
+            shortTitle: LocalizedStringResource("Read messages", comment: "App Shortcut title"),
+            systemImageName: "paperplane")
 
         AppShortcut(
             intent: SearchIntent(),

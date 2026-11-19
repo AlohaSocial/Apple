@@ -15,12 +15,11 @@ struct WidgetSnapshotWriterTests {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func merge(
-        _ fetched: WidgetSnapshotWriter.Fetched, previous: WidgetSnapshot? = nil,
-        aloha: Bool = true
+        _ fetched: WidgetSnapshotWriter.Fetched, previous: WidgetSnapshot? = nil
     ) -> WidgetSnapshot {
         WidgetSnapshotWriter.merge(
             fetched, into: previous, accountID: accountID, handle: "@me@example.com",
-            serverAccountID: "me", aloha: aloha, now: now)
+            serverAccountID: "me", now: now)
     }
 
     private func status(
@@ -52,26 +51,18 @@ struct WidgetSnapshotWriterTests {
     func keepsFailedSections() {
         let previous = WidgetSnapshot(
             accountID: accountID, handle: "@me", writtenAt: now.addingTimeInterval(-3600),
-            messages: .init(unread: 2, conversations: []), followRequests: 3,
-            notificationRequests: 1, openReports: 4)
+            messages: .init(unread: 2, conversations: []),
+            scheduled: [
+                .init(id: "s", text: "Later", at: now.addingTimeInterval(600), mediaCount: 0)
+            ],
+            photoSets: [.init(sourceKey: "home", photos: [])])
         var fetched = WidgetSnapshotWriter.Fetched()
-        fetched.reports = .failed
+        fetched.wantedSources = ["home"]
         let merged = merge(fetched, previous: previous)
         #expect(merged.messages == previous.messages)
-        #expect(merged.followRequests == 3)
-        #expect(merged.notificationRequests == 1)
-        #expect(merged.openReports == 4)
+        #expect(merged.scheduled == previous.scheduled)
+        #expect(merged.photoSets == previous.photoSets)
         #expect(merged.writtenAt == now)
-    }
-
-    @Test("A refused report queue means the account does not moderate")
-    func refusedReports() {
-        let previous = WidgetSnapshot(accountID: accountID, handle: "@me", openReports: 4)
-        var fetched = WidgetSnapshotWriter.Fetched()
-        fetched.reports = .refused
-        #expect(merge(fetched, previous: previous).openReports == nil)
-        fetched.reports = .count(0)
-        #expect(merge(fetched, previous: previous).openReports == 0)
     }
 
     @Test("Conversations name the other people and count the unread")
@@ -124,25 +115,6 @@ struct WidgetSnapshotWriterTests {
         #expect(WidgetSnapshotWriter.poll(in: [boosted], now: now, text: text) == nil)
     }
 
-    @Test("A person whose request failed keeps their last row, in the order picked")
-    func people() {
-        let previousAna = WidgetSnapshot.Person(
-            id: "ana", name: "Ana", handle: "ana", avatarFile: nil, latestText: "Old",
-            latestDate: nil, latestStatusID: nil, hasNewStory: false)
-        let previous = WidgetSnapshot(accountID: accountID, handle: "@me", people: [previousAna])
-        var fetched = WidgetSnapshotWriter.Fetched()
-        let ben = Account(id: "ben", username: "ben", acct: "ben", displayName: "Ben")
-        fetched.people = ["ben": .init(account: ben, latest: status("20", by: ben))]
-        fetched.unseenStoryAuthors = ["ben"]
-        fetched.wantedPeople = ["ana", "ben"]
-
-        let people = merge(fetched, previous: previous).people
-        #expect(people.map(\.id) == ["ana", "ben"])
-        #expect(people.first?.latestText == "Old")
-        #expect(people.last?.latestText == "Hello")
-        #expect(people.last?.hasNewStory == true)
-    }
-
     @Test("Photos skip pictures behind a warning and stop at the widget's count")
     func photos() {
         var fetched = WidgetSnapshotWriter.Fetched()
@@ -167,28 +139,12 @@ struct WidgetSnapshotWriterTests {
         let fresh = WidgetSnapshot(
             accountID: accountID, handle: "@me", writtenAt: now.addingTimeInterval(-60),
             photoSets: [.init(sourceKey: "home", photos: [])])
-        #expect(
-            !WidgetSnapshotWriter.needsRefresh(fresh, people: [], sources: [.home], now: now))
-        #expect(
-            WidgetSnapshotWriter.needsRefresh(fresh, people: ["ana"], sources: [], now: now))
-        #expect(
-            WidgetSnapshotWriter.needsRefresh(
-                fresh, people: [], sources: [.hashtag("cats")], now: now))
+        #expect(!WidgetSnapshotWriter.needsRefresh(fresh, sources: [.home], now: now))
+        #expect(WidgetSnapshotWriter.needsRefresh(fresh, sources: [.hashtag("cats")], now: now))
 
         let old = WidgetSnapshot(
             accountID: accountID, handle: "@me",
             writtenAt: now.addingTimeInterval(-WidgetSnapshotWriter.minimumInterval))
-        #expect(WidgetSnapshotWriter.needsRefresh(old, people: [], sources: [], now: now))
-    }
-
-    @Test("Followers are recorded into the history each day")
-    func followerHistory() {
-        var fetched = WidgetSnapshotWriter.Fetched()
-        var account = me
-        account.followersCount = 42
-        fetched.me = account
-        let stats = merge(fetched).stats
-        #expect(stats?.followers == 42)
-        #expect(stats?.history.map(\.followers) == [42])
+        #expect(WidgetSnapshotWriter.needsRefresh(old, sources: [], now: now))
     }
 }

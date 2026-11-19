@@ -12,11 +12,11 @@ import UniformTypeIdentifiers
 
 /// Writes the snapshot-backed widgets' data into the app group.
 ///
-/// Direct messages, requests, reports, scheduled posts, statistics, polls,
-/// trends, people and photos are server queries, and a widget never
-/// downloads (docs/09 §8). So the app asks once in a while — when it becomes
-/// active, and on background refresh — and the widgets read only what is
-/// written here (`WidgetSnapshotStore`).
+/// Direct messages and photos (the widgets), and scheduled posts and the
+/// account's own poll (the countdown Live Activities) are server queries, and
+/// a widget never downloads (docs/09 §8). So the app asks once in a while —
+/// when it becomes active, and on background refresh — and the widgets read
+/// only what is written here (`WidgetSnapshotStore`).
 ///
 /// Each section is fetched on its own and keeps its last answer when its
 /// request fails: one server hiccup must not empty every widget.
@@ -27,11 +27,9 @@ public enum WidgetSnapshotWriter {
     nonisolated static let minimumInterval: TimeInterval = 600
     nonisolated static let conversationLimit = 6
     nonisolated static let scheduledLimit = 3
-    nonisolated static let trendLimit = 5
     nonisolated static let photosPerSource = 6
     nonisolated static let avatarPixels = 96
     nonisolated static let photoPixels = 720
-    nonisolated static let linkPixels = 240
     /// A closed poll stays on the widget for a day, with its final result.
     nonisolated static let closedPollGrace: TimeInterval = 86_400
 
@@ -66,24 +64,20 @@ public enum WidgetSnapshotWriter {
     ) async {
         guard let store, !session.needsReauthentication else { return }
         let previous = store.read(accountID: session.id)
-        let people = WidgetWants.people(for: session.id)
         let sources = WidgetWants.photoSources(for: session.id)
-        if !force, let previous,
-            !needsRefresh(previous, people: people, sources: sources, now: now)
-        {
+        if !force, let previous, !needsRefresh(previous, sources: sources, now: now) {
             return
         }
 
         let fetched = await fetch(
-            client: session.client, capabilities: session.capabilities,
-            serverAccountID: session.snapshot.serverAccountID, people: people, sources: sources)
+            client: session.client, serverAccountID: session.snapshot.serverAccountID,
+            sources: sources)
         guard !Task.isCancelled else { return }
 
         var snapshot = merge(
             fetched, into: previous, accountID: session.id,
             handle: session.snapshot.qualifiedHandle,
-            serverAccountID: session.snapshot.serverAccountID,
-            aloha: session.capabilities.isNextcloudSocial, now: now)
+            serverAccountID: session.snapshot.serverAccountID, now: now)
         let images = await download(
             pictures(
                 for: fetched, serverAccountID: session.snapshot.serverAccountID, in: &snapshot
@@ -105,14 +99,12 @@ public enum WidgetSnapshotWriter {
         }
     }
 
-    /// Stale by age, or missing a person or photo source a widget picked
-    /// since it was written.
+    /// Stale by age, or missing a photo source a widget picked since it was
+    /// written.
     nonisolated static func needsRefresh(
-        _ previous: WidgetSnapshot, people: [String], sources: [WidgetPhotoSource], now: Date
+        _ previous: WidgetSnapshot, sources: [WidgetPhotoSource], now: Date
     ) -> Bool {
         if now.timeIntervalSince(previous.writtenAt) >= minimumInterval { return true }
-        let known = Set(previous.people.map(\.id))
-        if people.contains(where: { !known.contains($0) }) { return true }
         return sources.contains { previous.photoSet(for: $0) == nil }
     }
 
@@ -121,69 +113,27 @@ public enum WidgetSnapshotWriter {
     /// What the server answered, section by section; nil where it did not.
     struct Fetched: Sendable {
         var conversations: [Conversation]?
-        var followRequests: Int?
-        var policy: NotificationPolicy?
-        var reports: ReportsAnswer = .notAsked
         var scheduled: [ScheduledStatus]?
-        var me: Account?
-        var weekStatistics: AccountStatistics?
-        var fortnightStatistics: AccountStatistics?
         var ownPosts: [Status]?
-        var trendingTags: [Tag]?
-        var trendingLinks: [Card]?
-        var people: [String: PersonAnswer] = [:]
-        var unseenStoryAuthors: Set<String>?
         var photos: [String: [Status]] = [:]
-        /// What the widgets asked for, so a failed request keeps its old row.
-        var wantedPeople: [String] = []
+        /// What the widgets asked for, so a failed request keeps its old set.
         var wantedSources: [String] = []
     }
 
-    enum ReportsAnswer: Sendable {
-        /// Not an Aloha Social server, or a request that failed for a
-        /// reason that says nothing about the account.
-        case notAsked, failed
-        /// The server refused: this account does not moderate.
-        case refused
-        case count(Int)
-    }
-
-    struct PersonAnswer: Sendable {
-        var account: Account
-        var latest: Status?
-    }
-
     private static func fetch(
-        client: APIClient, capabilities: ServerCapabilities, serverAccountID: String,
-        people: [String], sources: [WidgetPhotoSource]
+        client: APIClient, serverAccountID: String, sources: [WidgetPhotoSource]
     ) async -> Fetched {
-        let aloha = capabilities.isNextcloudSocial
         async let conversations = attempt {
             try await client.decode(
                 LossyArray<Conversation>.self,
                 from: Endpoint.timelines.conversations(limit: 20)
             ).elements
         }
-        async let followRequests = attempt {
-            try await client.decode(
-                LossyArray<Account>.self, from: Endpoint.accounts.followRequests
-            ).elements.count
-        }
-        async let policy = attempt {
-            try await client.decode(
-                NotificationPolicy.self, from: Endpoint.notifications.policy(v2: true))
-        }
-        async let reports = aloha ? reportCount(client) : ReportsAnswer.notAsked
         async let scheduled = attempt {
             try await client.decode(
                 LossyArray<ScheduledStatus>.self, from: Endpoint.composing.scheduled
             ).elements
         }
-        async let me = attempt {
-            try await client.decode(Account.self, from: Endpoint.session.verifyCredentials)
-        }
-        async let week = aloha ? statistics(client, days: 7) : nil
-        async let fortnight = aloha ? statistics(client, days: 14) : nil
         async let ownPosts = attempt {
             try await client.decode(
                 LossyArray<Status>.self,
@@ -192,88 +142,17 @@ public enum WidgetSnapshotWriter {
                     limit: 20)
             ).elements
         }
-        async let tags = attempt {
-            try await client.decode(
-                LossyArray<Tag>.self, from: Endpoint.search.trendingTags(limit: trendLimit)
-            ).elements
-        }
-        async let links = attempt {
-            try await client.decode(
-                LossyArray<Card>.self, from: Endpoint.search.trendingLinks(limit: trendLimit)
-            ).elements
-        }
-        async let personAnswers = fetchPeople(client, ids: people)
-        async let stories = capabilities.stories ? unseenStoryAuthors(client) : nil
         async let photos = fetchPhotos(client, sources: sources)
 
         return await Fetched(
-            conversations: conversations, followRequests: followRequests, policy: policy,
-            reports: reports, scheduled: scheduled, me: me, weekStatistics: week,
-            fortnightStatistics: fortnight, ownPosts: ownPosts, trendingTags: tags,
-            trendingLinks: links, people: personAnswers, unseenStoryAuthors: stories,
-            photos: photos, wantedPeople: people, wantedSources: sources.map(\.key))
+            conversations: conversations, scheduled: scheduled, ownPosts: ownPosts,
+            photos: photos, wantedSources: sources.map(\.key))
     }
 
     nonisolated private static func attempt<T: Sendable>(
         _ work: @Sendable () async throws -> T
     ) async -> T? {
         try? await work()
-    }
-
-    nonisolated private static func reportCount(_ client: APIClient) async -> ReportsAnswer {
-        do {
-            let reports = try await client.decode(
-                LossyArray<AdminReport>.self,
-                from: Endpoint.moderation.reports(resolved: false, limit: 40))
-            return .count(reports.elements.count)
-        } catch APIError.forbidden, APIError.unauthorised, APIError.notFound {
-            return .refused
-        } catch {
-            return .failed
-        }
-    }
-
-    nonisolated private static func statistics(
-        _ client: APIClient, days: Int
-    ) async -> AccountStatistics? {
-        try? await client.decode(
-            AccountStatistics.self, from: Endpoint.statistics.overview(days: days))
-    }
-
-    nonisolated private static func fetchPeople(
-        _ client: APIClient, ids: [String]
-    ) async -> [String: PersonAnswer] {
-        await withTaskGroup(of: (String, PersonAnswer?).self) { group in
-            for id in ids {
-                group.addTask {
-                    let latest = try? await client.decode(
-                        LossyArray<Status>.self,
-                        from: Endpoint.timelines.timeline(
-                            .account(id: id, includeReplies: false, onlyMedia: false), limit: 1)
-                    ).elements.first
-                    if let latest {
-                        return (id, PersonAnswer(account: latest.account, latest: latest))
-                    }
-                    // Nobody has posted yet: the account alone, for a name.
-                    guard
-                        let account = try? await client.decode(
-                            Account.self, from: Endpoint.accounts.account(id))
-                    else { return (id, nil) }
-                    return (id, PersonAnswer(account: account, latest: nil))
-                }
-            }
-            var answers: [String: PersonAnswer] = [:]
-            for await (id, answer) in group { answers[id] = answer }
-            return answers
-        }
-    }
-
-    nonisolated private static func unseenStoryAuthors(_ client: APIClient) async -> Set<String>? {
-        guard
-            let carousel = try? await client.decode(
-                StoryCarousel.self, from: Endpoint.stories.carousel)
-        else { return nil }
-        return Set(carousel.others.filter { !$0.seen }.map(\.account.id))
     }
 
     nonisolated private static func fetchPhotos(
@@ -312,7 +191,7 @@ public enum WidgetSnapshotWriter {
     /// snapshot's for those it did not. Picture files are filled in later.
     nonisolated static func merge(
         _ fetched: Fetched, into previous: WidgetSnapshot?, accountID: UUID, handle: String,
-        serverAccountID: String, aloha: Bool, now: Date
+        serverAccountID: String, now: Date
     ) -> WidgetSnapshot {
         let parser = StatusHTMLParser()
         func text(of status: Status) -> String {
@@ -340,16 +219,6 @@ public enum WidgetSnapshotWriter {
                     })
             } ?? previous?.messages
 
-        snapshot.followRequests = fetched.followRequests ?? previous?.followRequests
-        snapshot.notificationRequests =
-            fetched.policy?.summary?.pendingRequestsCount ?? previous?.notificationRequests
-
-        switch fetched.reports {
-        case .count(let count): snapshot.openReports = count
-        case .refused, .notAsked: snapshot.openReports = nil
-        case .failed: snapshot.openReports = aloha ? previous?.openReports : nil
-        }
-
         snapshot.scheduled =
             fetched.scheduled.map { scheduled in
                 scheduled.filter { $0.scheduledAt > now }
@@ -365,44 +234,9 @@ public enum WidgetSnapshotWriter {
                     }
             } ?? previous?.scheduled.map { $0.filter { $0.at > now } }
 
-        snapshot.stats = stats(fetched, previous: previous?.stats, now: now)
         snapshot.poll =
             poll(in: fetched.ownPosts, now: now, text: text(of:))
             ?? previousPoll(previous, fetched: fetched, now: now)
-
-        if fetched.trendingTags != nil || fetched.trendingLinks != nil {
-            snapshot.trends = WidgetSnapshot.Trends(
-                tags: fetched.trendingTags.map { tags in
-                    tags.prefix(trendLimit).map { tag in
-                        WidgetSnapshot.Trends.Tag(
-                            name: tag.name, uses: tag.history.first?.usesCount ?? 0,
-                            accounts: tag.history.first?.accountsCount ?? 0)
-                    }
-                } ?? previous?.trends?.tags ?? [],
-                links: fetched.trendingLinks.map { cards in
-                    cards.prefix(trendLimit).compactMap { card in
-                        guard let url = card.url, !card.title.isEmpty else { return nil }
-                        return WidgetSnapshot.Trends.Link(
-                            url: url, title: card.title, provider: card.providerName,
-                            imageFile: nil)
-                    }
-                } ?? previous?.trends?.links ?? [])
-        } else {
-            snapshot.trends = previous?.trends
-        }
-
-        // A person or source whose request failed keeps its last row.
-        let previousPeople = Dictionary(
-            (previous?.people ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        snapshot.people = fetched.wantedPeople.compactMap { id in
-            guard let answer = fetched.people[id] else { return previousPeople[id] }
-            return WidgetSnapshot.Person(
-                id: id, name: answer.account.bestDisplayName, handle: answer.account.acct,
-                avatarFile: nil, latestText: answer.latest.map(text(of:)),
-                latestDate: answer.latest?.createdAt, latestStatusID: answer.latest?.id,
-                hasNewStory: fetched.unseenStoryAuthors?.contains(id)
-                    ?? previousPeople[id]?.hasNewStory ?? false)
-        }
 
         let previousSets = Dictionary(
             (previous?.photoSets ?? []).map { ($0.sourceKey, $0) },
@@ -412,32 +246,6 @@ public enum WidgetSnapshotWriter {
             return WidgetSnapshot.PhotoSet(sourceKey: key, photos: [])
         }
         return snapshot
-    }
-
-    nonisolated private static func stats(
-        _ fetched: Fetched, previous: WidgetSnapshot.Stats?, now: Date
-    ) -> WidgetSnapshot.Stats? {
-        guard let followers = fetched.me?.followersCount ?? previous?.followers else { return nil }
-        var stats = (previous ?? WidgetSnapshot.Stats(followers: followers, history: []))
-            .recording(followers: followers, day: MemoriesSnapshot.dayKey(for: now))
-        if let week = fetched.weekStatistics {
-            let thisWeek = engagement(week)
-            stats.engagementThisWeek = thisWeek
-            stats.postsThisWeek = week.posts["count"].map { Int($0) }
-            if let fortnight = fetched.fortnightStatistics {
-                stats.engagementLastWeek = max(0, engagement(fortnight) - thisWeek)
-            }
-        }
-        return stats
-    }
-
-    /// Favourites, boosts and replies, under the names either server uses.
-    nonisolated static func engagement(_ statistics: AccountStatistics) -> Int {
-        let e = statistics.engagement
-        let total =
-            (e["favourites"] ?? e["likes"] ?? 0) + (e["boosts"] ?? e["reblogs"] ?? 0)
-            + (e["replies"] ?? 0)
-        return Int(total)
     }
 
     /// The newest poll of the account's own, while open or for a day after.
@@ -509,20 +317,6 @@ public enum WidgetSnapshotWriter {
                     other?.preferredAvatarURL, pixels: avatarPixels)
             }
             snapshot.messages = messages
-        }
-
-        for index in snapshot.people.indices {
-            guard let answer = fetched.people[snapshot.people[index].id] else { continue }
-            snapshot.people[index].avatarFile = picture(
-                answer.account.preferredAvatarURL, pixels: avatarPixels)
-        }
-
-        if let cards = fetched.trendingLinks, var trends = snapshot.trends {
-            for index in trends.links.indices {
-                let card = cards.first { $0.url == trends.links[index].url }
-                trends.links[index].imageFile = picture(card?.image, pixels: linkPixels)
-            }
-            snapshot.trends = trends
         }
 
         for index in snapshot.photoSets.indices {

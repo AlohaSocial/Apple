@@ -219,6 +219,8 @@ Target: `AlohaIntents`.
 | `LatestMentionsIntent` | count, account | Returns mentions as an entity list, usable in Shortcuts, and Siri reads the first three aloud with their authors ("Read my mentions"). |
 | `PostLastPhotoIntent` | caption, visibility, account | "Post my last photo" (iPhone, iPad, Vision Pro): the newest picture in the library, with the caption, after a confirmation naming the account. Goes the composer's way: no location, HEIC kept, spatial kept. |
 | `LatestPostsFromPersonIntent` | person | "What's new from <person>?": their latest posts, the first three read aloud. The people Siri knows are the ones the account follows, refreshed with the Spotlight index (`updateAppShortcutParameters`). |
+| `ReplyToLatestMentionIntent` | text, account | "Reply to my latest mention": Siri reads the newest mention (its content warning instead, where it has one), asks for the reply, reads it back with the account and posts only after a confirmation. Addressed and restricted as a lock-screen reply is (`NotificationResponder.replyDraft`); the idempotency key is `PostStatusIntent`'s, with the post replied to as part of what is posted, so a retry is the same reply. |
+| `ReadMessagesIntent` | count, account | "Read my messages": the newest unread direct conversations, newest first, each read as its last sender and text, without opening the app. Returns the messages as posts. Nothing is marked read. |
 | `FavouriteStatusIntent` | status entity | For automations. |
 | `NextShortIntent` | — | Opens Shorts mode. |
 
@@ -226,8 +228,19 @@ Target: `AlohaIntents`.
   with `DisplayRepresentation` and `EntityQuery`, so Shortcuts can browse them.
 - `AppShortcutsProvider` with phrases for the most useful: "Post to Aloha
   Social", "Show my Aloha mentions" / "Read my mentions in Aloha Social",
-  "Search Aloha Social", "Open Aloha Shorts", "Post my last photo to Aloha
-  Social" and "What's new from <person> in Aloha Social".
+  "Reply to my latest mention in Aloha Social", "Read my messages in Aloha
+  Social", "Search Aloha Social", "Open Aloha Shorts", "Post my last photo to
+  Aloha Social" and "What's new from <person> in Aloha Social".
+- Every intent that reads or writes as the account requires an unlocked
+  device (`authenticationPolicy`).
+- Assistant schemas (`@AppIntent(schema:)`): none adopted. The SDK's messages
+  domain has sending, drafting and marking read, but nothing that returns
+  messages to read out, and a public reply in a thread is not a `sendMessage`.
+- **On-screen awareness**: the Handoff activity of a thread (and the thread
+  reader and a video) carries `appEntityIdentifier` for its `PostEntity`, and
+  a profile's for its `PersonEntity`, so Siri and Apple Intelligence know
+  which post or person is on screen (`Continuity.entityIdentifier`). A
+  profile opened by handle has no id yet and is left untagged.
 - Intents are donated on use so Spotlight and Siri suggestions learn them.
 - Controls (Control Center, the Lock Screen, the Action button), each an
   `alohasocial://` link handed over by `ControlLink`, so none needs the app
@@ -239,29 +252,30 @@ Target: `AlohaIntents`.
 
 ## 8. Widgets
 
-Target: `AlohaWidgets`. All widgets are configurable via `AppIntent`
-configuration (account, timeline, list).
+Target: `AlohaWidgets`. All widgets but Quick compose are configurable via
+`AppIntent` configuration (account, and for Latest posts the feed and list).
 
-| Widget | Families |
+Six widgets, the ones a social app is looked at for. The gallery once had
+seventeen; the people, poll, scheduled-post, requests, reports, weekly-stats,
+creator-dashboard, trends and "On this day" widgets were removed with their
+code and the snapshot sections that fed them. A placed widget of a removed
+kind disappears.
+
+| Widget (kind) | Families |
 |---|---|
-| Latest posts | `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge` (iPad/Mac) |
-| Unread notifications | `systemSmall`, `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
-| Mentions | `systemMedium`, `systemLarge` |
-| Quick compose | `systemSmall` (deep-links into the composer) |
-| On this day | `systemSmall`, `systemMedium`, `systemLarge` (Aloha Social servers) |
-| Direct messages | `systemSmall`, `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
-| Next scheduled post | `systemSmall`, `accessoryRectangular`, `accessoryInline` |
-| Requests (follow and message requests) | `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
-| Open reports (moderators, Aloha Social servers) | `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
-| Weekly stats | `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
-| Conversations | `systemMedium`, `systemLarge` |
-| Photo frame (Home, a hashtag, a person or a list) | `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge` |
-| People (up to four) | `systemSmall`, `systemMedium` |
-| Live poll | `systemMedium`, `systemLarge` |
-| Creator dashboard | `systemMedium` |
-| What's happening (server trends) | `systemMedium`, `systemLarge` |
+| Latest posts (`LatestPosts`) | `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge` (iPad/Mac) |
+| Unread notifications (`Unread`) | `systemSmall`, `accessoryCircular`, `accessoryRectangular`, `accessoryInline` |
+| Mentions (`Mentions`) | `systemMedium`, `systemLarge` |
+| Direct messages (`DirectMessages`) | `systemSmall`, `accessoryCircular`, `accessoryRectangular`, `accessoryInline`: the unread count and who sent them; `systemMedium`, `systemLarge`: the newest conversations as rows |
+| Photo frame (`PhotoFrame`; Home, a hashtag, a person or a list) | `systemSmall`, `systemMedium`, `systemLarge`, `systemExtraLarge` |
+| Quick compose (`QuickCompose`) | `systemSmall` (deep-links into the composer) |
 
-Controls: New post, New story, Messages.
+Direct messages was two widgets, a count and a list (`Conversations`), that
+read the same snapshot and opened the same screen; the family now says which
+is wanted, and the count's kind was kept so Lock Screens that had it keep it.
+
+Controls: New post, New story, Story camera, Messages, Scheduled posts,
+Search (§7).
 
 - Timelines are built from the SwiftData store in the app group, never from the
   network inside the widget extension.
@@ -274,23 +288,26 @@ Controls: New post, New story, Messages.
   from behind a content warning — into the app group when it becomes active
   and on background refresh (`MemoriesWidgetWriter`), and the widget reads
   only that.
-- **Snapshot widgets**: direct messages, requests, reports, scheduled posts,
-  statistics, polls, trends, people and photos are server queries too. The app
-  writes one snapshot per account (`WidgetSnapshotWriter` into
-  `WidgetSnapshotStore`) when it becomes active, at most every ten minutes,
-  and in what is left of a background refresh. Each section is fetched on its
-  own and keeps its last answer when its request fails. Pictures are shrunk
-  once by the app; none comes from behind a content warning.
+- **Snapshot widgets**: direct messages and photos are server queries too,
+  as are the scheduled posts and the account's own poll that the countdown
+  Live Activities read (§9). The app writes one snapshot per account
+  (`WidgetSnapshotWriter` into `WidgetSnapshotStore`) when it becomes active,
+  at most every ten minutes, and in what is left of a background refresh.
+  Each section is fetched on its own and keeps its last answer when its
+  request fails. Pictures are shrunk once by the app; none comes from behind
+  a content warning. A snapshot written by an older build decodes with its
+  retired sections ignored, and what "On this day" left in the folder is
+  deleted on the next write or sign-out.
 - **What the widgets want**: a widget's configuration lives in the extension,
-  so each provider records the account, people and photo sources it shows in
-  the shared defaults (`WidgetWants`), and the writer fetches those. A want not
+  so each provider records the account and photo sources it shows in the
+  shared defaults (`WidgetWants`), and the writer fetches those. A want not
   renewed for three days belonged to a removed widget and is dropped.
 - **Account links**: a snapshot widget opens its screen as
   `alohasocial://<screen>/<account UUID>`, so a tap switches to the account the
   widget shows.
 - **Smart Stack**: entries carry a `TimelineEntryRelevance` — high while
-  something is unread or waiting, during the hour before a scheduled post and
-  the hours before a poll closes, and zero when there is nothing.
+  something is unread and for two hours after a mention arrives, and zero
+  when there is nothing.
 - **Bookmark from the widget**: post and mention rows carry a bookmark beside
   the heart, recorded in `WidgetBookmarks` the same way.
 - Reload triggered from the app's background refresh and after any post.
@@ -304,7 +321,12 @@ Controls: New post, New story, Messages.
 
 ## 9. Live Activities
 
-`ActivityKit`, iOS and iPadOS.
+`ActivityKit`, iOS and iPadOS. Both activities also declare the small
+supplemental family (`.supplementalActivityFamilies([.small])`), so a paired
+Apple Watch shows them in its Smart Stack with a layout of its own: a
+two-word title, the bar or the countdown large enough to read at a glance,
+and one line of the post. The watch layout has no Cancel; a tap there opens
+the activity on the watch.
 
 - **Media upload**: shown for any upload over 5 MB or any video. Per-file
   progress, total progress, cancel action, and a completion state that persists
@@ -397,6 +419,8 @@ scheme, universal link, Handoff, Spotlight, intent, notification — produces a
   `isEligibleForSearch` and `isEligibleForPrediction`.
 - Activity types: `…​.viewingTimeline`, `…​.viewingStatus`, `…​.viewingProfile`,
   `…​.composing`.
+- A post's or a profile's activity names its App Entity
+  (`appEntityIdentifier`, §7), which is how Siri knows what is on screen.
 - The composing activity carries the draft text, so a post started on a phone
   continues on a Mac. Media is **not** handed off (it may not exist on the other
   device); the activity says so.

@@ -256,7 +256,7 @@ struct ThemedAppShell: View {
             .onDisappear { environment.sync.sceneDidDisappear(syncSceneID) }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await environment.sendQueue.drainAll() } }
-                if phase == .active { refreshMemoriesWidget() }
+                if phase == .active { refreshWidgetSnapshots() }
                 // An intent with `openAppWhenRun` brings a running app to the
                 // front rather than launching it, so `start()` never sees
                 // what it left behind; this does.
@@ -544,7 +544,7 @@ struct ThemedAppShell: View {
         environment.sendQueue.attach(to: environment)
         environment.notifier.registerCategories()
         AlohaTips.configure()
-        refreshMemoriesWidget()
+        refreshWidgetSnapshots()
         // Permission is asked once an account exists — there is nothing to
         // notify about before that, and a prompt on the welcome screen is the
         // pattern Apple's guidance says not to use.
@@ -631,16 +631,14 @@ struct ThemedAppShell: View {
             })
     }
 
-    /// Writes today's "on this day" for the Memories widget, once per day and
-    /// account, and the snapshot widgets' data; each a no-op when fresh.
-    private func refreshMemoriesWidget() {
+    /// Writes the snapshot widgets' data; a no-op within ten minutes of the
+    /// last.
+    private func refreshWidgetSnapshots() {
         #if DEBUG
-            // The tours' mock server has no memories worth a widget.
+            // The tours' mock server has nothing worth a widget.
             if MockMode.isEnabled { return }
         #endif
-        guard let session = environment.activeSession else { return }
-        Task(priority: .utility) { await MemoriesWidgetWriter.refreshIfStale(session) }
-        // The snapshot widgets too; a no-op within ten minutes of the last.
+        guard environment.activeSession != nil else { return }
         Task(priority: .utility) {
             await WidgetSnapshotWriter.refreshAll(environment, budget: .seconds(20))
             // The countdowns read the snapshot just written; ActivityKit

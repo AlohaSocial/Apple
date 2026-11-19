@@ -64,6 +64,25 @@ public enum Continuity {
         if let account { info["account"] = account.handle }
         activity.userInfo = info
         activity.webpageURL = account.flatMap { webpageURL(for: route, host: $0.host) }
+        // SwiftUI hands the same activity back as the screen changes, so a
+        // screen with no entity clears the one before it.
+        activity.appEntityIdentifier = entityIdentifier(for: route)
+    }
+
+    /// The post or person on screen, as the App Entity Siri and Apple
+    /// Intelligence resolve it, so "reply to this" or "who is this?" means
+    /// what is being read. Their ids are the active account's server ids,
+    /// which is the account the screen is showing. A profile opened by
+    /// handle has no id until it loads, and is left untagged.
+    static func entityIdentifier(for route: Route) -> EntityIdentifier? {
+        switch route {
+        case .thread(let statusID), .threadReader(let statusID), .video(let statusID):
+            EntityIdentifier(for: PostEntity.self, identifier: statusID)
+        case .profile(let accountID):
+            EntityIdentifier(for: PersonEntity.self, identifier: accountID)
+        default:
+            nil
+        }
     }
 
     /// A draft continues between devices; its media does not, because it may

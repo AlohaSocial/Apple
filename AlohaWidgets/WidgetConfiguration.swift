@@ -201,8 +201,9 @@ struct WidgetAccount: WidgetConfigurationIntent {
     init() {}
 }
 
-/// Whose notifications: the Mentions and Unread widgets. Left unset, the
-/// account the app last had active — and, for Unread, every account's total.
+/// Whose notifications or messages: the Mentions, Unread and Direct messages
+/// widgets. Left unset, the account the app last had active — and, for
+/// Unread, every account's total.
 struct NotificationsWidgetAccount: WidgetConfigurationIntent {
     static let title = LocalizedStringResource("Account", comment: "Widget configuration")
     static let description = IntentDescription(

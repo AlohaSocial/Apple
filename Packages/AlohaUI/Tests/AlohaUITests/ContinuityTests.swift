@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+import AppIntents
 import Foundation
 import Testing
 
@@ -59,6 +60,24 @@ struct ContinuityTests {
             account: AccountIdentity(handle: "@me@example.test", host: "example.test"))
         #expect(Continuity.route(from: activity) == .thread(statusID: "3"))
         #expect(Continuity.accountHandle(from: activity) == "@me@example.test")
+    }
+
+    @Test("A post or profile on screen is tagged with its App Entity; a feed is not")
+    func activityCarriesEntity() {
+        let activity = NSUserActivity(activityType: Continuity.viewingStatus)
+        Continuity.configure(activity, route: .thread(statusID: "3"), title: "t", account: nil)
+        #expect(
+            activity.appEntityIdentifier == EntityIdentifier(for: PostEntity.self, identifier: "3"))
+
+        Continuity.configure(activity, route: .profile(accountID: "9"), title: "t", account: nil)
+        #expect(
+            activity.appEntityIdentifier
+                == EntityIdentifier(for: PersonEntity.self, identifier: "9"))
+
+        // The same activity, handed back for a feed, must not keep the person.
+        Continuity.configure(activity, route: .notifications, title: "t", account: nil)
+        #expect(activity.appEntityIdentifier == nil)
+        #expect(Continuity.entityIdentifier(for: .video(statusID: "4"))?.identifier == "4")
     }
 
     @Test("Public pages exist only where the web path is knowable")

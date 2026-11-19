@@ -8,7 +8,8 @@ import Foundation
 
 // MARK: - People
 
-/// Somebody on the fediverse, as one account's server knows them.
+/// Somebody on the fediverse, as one account's server knows them: a Photo
+/// frame's source.
 ///
 /// Its id carries the local account, so a person picked under one account is
 /// never looked up under another, where the same id is somebody else. Names
@@ -33,16 +34,13 @@ struct WidgetPersonEntity: AppEntity {
 }
 
 struct WidgetPersonQuery: EntityStringQuery {
-    /// The account the people are offered for, in whichever configuration
-    /// asks: the one picked there, or the active one.
-    @IntentParameterDependency<PeopleWidgetConfiguration>(\.$account)
-    var peopleConfiguration
-
+    /// The account the people are offered for: the one picked in the Photo
+    /// frame's settings, or the active one.
     @IntentParameterDependency<PhotoFrameConfiguration>(\.$account)
     var photoConfiguration
 
     private var pickedAccount: UUID? {
-        peopleConfiguration?.account.id ?? photoConfiguration?.account.id
+        photoConfiguration?.account.id
     }
 
     func entities(for identifiers: [String]) async throws -> [WidgetPersonEntity] {
@@ -117,30 +115,6 @@ struct WidgetPersonQuery: EntityStringQuery {
             UserDefaults.standard.dictionary(forKey: peopleKey) as? [String: [String]] ?? [:]
         for entity in entities { stored[entity.id] = [entity.id, entity.name, entity.handle] }
         UserDefaults.standard.set(stored, forKey: peopleKey)
-    }
-}
-
-/// The People widget's configuration: whose follows, and who of them.
-struct PeopleWidgetConfiguration: WidgetConfigurationIntent {
-    static let title = LocalizedStringResource("People", comment: "Widget configuration")
-    static let description = IntentDescription(
-        LocalizedStringResource(
-            "Up to four people to keep an eye on.", comment: "Widget configuration description"))
-
-    @Parameter(title: LocalizedStringResource("Account", comment: "Widget configuration parameter"))
-    var account: WidgetAccountEntity?
-
-    @Parameter(
-        title: LocalizedStringResource("People", comment: "Widget configuration parameter"),
-        size: 4)
-    var people: [WidgetPersonEntity]?
-
-    init() {}
-
-    /// The picked people that belong to the account shown; one picked while
-    /// another account was chosen means nothing here.
-    func personIDs(for accountID: UUID) -> [String] {
-        (people ?? []).filter { $0.accountID == accountID }.compactMap(\.personID)
     }
 }
 

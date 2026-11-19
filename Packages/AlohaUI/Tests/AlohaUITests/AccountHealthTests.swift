@@ -227,9 +227,9 @@ struct AccountTeardownTests {
 
         let id = UUID()
         let other = UUID()
-        let memories = MemoriesSnapshotStore(directory: root.appending(path: "Widgets"))
-        try memories.write(
-            MemoriesSnapshot(accountID: id, day: "2026-10-16", memories: []), images: [:])
+        let widgets = WidgetSnapshotStore(directory: root.appending(path: "Widgets"))
+        try widgets.write(WidgetSnapshot(accountID: id, handle: "@ana"), images: [:])
+        try widgets.write(WidgetSnapshot(accountID: other, handle: "@bo"), images: [:])
         let topShelf = TopShelfSnapshotStore(directory: root.appending(path: "TopShelf"))
         try topShelf.write(TopShelfSnapshot(accountID: id, createdAt: Date(), sections: []))
         WidgetFavourites.set(true, statusID: "1", accountID: id, in: defaults)
@@ -239,9 +239,10 @@ struct AccountTeardownTests {
             forKey: FocusFilterState.key)
 
         AccountTeardown.removeSharedState(
-            for: id, in: defaults, memories: memories, topShelf: topShelf)
+            for: id, in: defaults, topShelf: topShelf, widgets: widgets)
 
-        #expect(memories.read() == nil)
+        #expect(widgets.read(accountID: id) == nil)
+        #expect(widgets.read(accountID: other) != nil)
         #expect(topShelf.read() == nil)
         #expect(WidgetFavourites.state(statusID: "1", accountID: id, in: defaults) == nil)
         // Somebody else's tap is theirs.
