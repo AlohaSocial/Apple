@@ -47,12 +47,20 @@ public struct PhotosModeView: View {
         session: AccountSession, source: TimelineSource,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
+        self.init(session: session, source: source, models: nil, onAction: onAction)
+    }
+
+    /// The shell's feed, whose model it keeps across a shell swap (`FeedModels`).
+    init(
+        session: AccountSession, source: TimelineSource, models: FeedModels?,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.session = session
         self.source = source
         self.onAction = onAction
         _model = State(
-            initialValue: TimelineModel(
-                key: TimelineKey(mode: .photos, source: source), session: session))
+            initialValue: TimelineModel.kept(
+                for: TimelineKey(mode: .photos, source: source), session: session, in: models))
     }
 
     public var body: some View {
@@ -216,9 +224,11 @@ public struct PhotosModeView: View {
                     emptyState
                 }
             }
+            .scrollTargetLayout()
             .frame(maxWidth: 620)
             .frame(maxWidth: .infinity)
         }
+        .keepsFeedPlace(model)
         .accessibilityIdentifier("photos.feed")
     }
 
@@ -266,6 +276,7 @@ public struct PhotosModeView: View {
                             }
                     }
                 }
+                .scrollTargetLayout()
             #endif
 
             // Lazy, so the footer asks for the next page as it scrolls into
@@ -273,6 +284,9 @@ public struct PhotosModeView: View {
             LazyVStack { loadingIndicator }
             if statuses.isEmpty && model.hasSettledLoading { emptyState }
         }
+        #if !os(macOS)
+            .keepsFeedPlace(model)
+        #endif
     }
 
     #if os(macOS)

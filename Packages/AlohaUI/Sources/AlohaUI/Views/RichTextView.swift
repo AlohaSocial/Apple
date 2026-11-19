@@ -7,9 +7,12 @@ import SwiftUI
 
 /// Renders parsed status content.
 ///
-/// Parsing happens off the main actor and is cached by content hash; a row that
-/// arrives uncached shows plain text for one frame and upgrades rather than
-/// blocking (docs/05 §3).
+/// A row draws its final text on its first layout: the page it came in was
+/// parsed off the main actor as it arrived (`TimelineModel`), and a post
+/// that came some other way is small enough to parse in place
+/// (`RichTextCache.immediateEntry`). Only a body too large for that shows
+/// plain text until its parse lands — a row that changed height a frame
+/// after appearing moved a list being scrolled upwards (docs/05 §3).
 ///
 /// A post laid out in full keeps its shape: paragraphs apart, lists with
 /// their bullets and numbers, a quote with its bar, code in a block of its
@@ -30,7 +33,9 @@ public struct RichTextView: View {
     private let isSelectable: Bool
     private let onTap: (RichText.Link) -> Void
 
-    @State private var rendered: Rendered?
+    /// A body over the inline limit, parsed off the main actor, with the
+    /// content it was parsed from so an edit is not drawn with the old words.
+    @State private var deferred: (key: RenderKey, entry: Rendered)?
     @State private var translated: Rendered?
 
     public init(
@@ -44,15 +49,7 @@ public struct RichTextView: View {
     }
 
     /// A parse and its layout, computed together so they cannot disagree.
-    struct Rendered: Equatable {
-        var richText: RichText
-        var layout: RichTextLayout
-
-        init(_ richText: RichText) {
-            self.richText = richText
-            self.layout = RichTextLayout(richText)
-        }
-    }
+    typealias Rendered = RichTextCache.Entry
 
     /// What the parse depends on. An edit keeps the post's id, so keying on
     /// the id alone left an edited post showing its old words.
@@ -71,30 +68,52 @@ public struct RichTextView: View {
             emojis: displayed.emojis)
     }
 
+    /// Read per post: `Translator` keeps each post's translation in an
+    /// observable of its own, so translating one post redraws that post and
+    /// not every other one on screen.
     private var translation: Translator.Result? {
         translator?.translation(for: displayed.id)
     }
 
+    /// The parse to draw now, if there is one: from the cache, made in place,
+    /// or — for a very large body — the one parsed off the main actor below.
+    private var rendered: Rendered? {
+        if let immediate = RichTextCache.shared.immediateEntry(for: status) { return immediate }
+        guard let deferred, deferred.key == renderKey else { return nil }
+        return deferred.entry
+    }
+
     public var body: some View {
+        let rendered = rendered
         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
             if let translation, let translated {
                 content(translated)
                 translationFooter(translation)
             } else if let rendered {
                 content(rendered)
-                if translator?.inFlight.contains(displayed.id) == true { translatingLine }
+                if translator?.isTranslating(displayed.id) == true { translatingLine }
             } else {
-                // The one-frame fallback. Never a spinner, never empty space.
+                // Only a body over the inline limit gets here, for as long
+                // as its parse takes. Never a spinner, never empty space.
                 Text(fallbackText)
                     .font(bodyFont)
                     .foregroundStyle(palette.label)
                     .lineLimit(lineLimit)
             }
         }
-        .task(id: renderKey) {
-            let parsed = Rendered(await RichTextCache.shared.richText(for: status))
-            EmojiImages.shared.load(parsed.layout.emojis)
-            rendered = parsed
+        .onChange(of: renderKey, initial: true) {
+            if let rendered {
+                let emojis = rendered.layout.emojis
+                if !emojis.isEmpty { EmojiImages.shared.load(emojis) }
+                return
+            }
+            let key = renderKey
+            let status = status
+            Task {
+                let parsed = await RichTextCache.shared.parsedEntry(for: status)
+                EmojiImages.shared.load(parsed.layout.emojis)
+                deferred = (key, parsed)
+            }
         }
         .task(id: translation) {
             guard let translation else {

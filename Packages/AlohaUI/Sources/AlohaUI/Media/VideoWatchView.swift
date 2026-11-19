@@ -647,6 +647,14 @@ public struct VideoWatchView: View {
     /// as a seek. Set before the player exists, so `prepare()` picks it up the
     /// moment the item is ready rather than starting from the top.
     private func resumeWhereTheyLeftOff() async {
+        // A player rebuilt a moment ago — the shell swapped as an iPhone Duo
+        // folded — resumes from the hand-over, which is newer than anything
+        // reported to the server.
+        if let video = status?.displayed.mediaAttachments.first(where: \.isVideo),
+            PlaybackHandover.shared.position(for: video.id) != nil
+        {
+            return
+        }
         guard session.capabilities.watchPositions,
             let saved = try? await session.supportStore.watchPosition(
                 accountID: session.id, statusID: statusID),

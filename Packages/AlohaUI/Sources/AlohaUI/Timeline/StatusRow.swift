@@ -40,10 +40,6 @@ public struct StatusRow: View {
     @State private var isFilterRevealed = false
     /// A quoted post fetched by id, when the server sent only `quote_id`.
     @State private var fetchedQuote: Status?
-    /// The post's words for VoiceOver, from the rich-text cache. The label
-    /// used to parse the HTML itself, on the main actor, in every evaluation
-    /// of every row's body.
-    @State private var spokenBody: String?
     #if os(macOS)
         /// Whether the pointer is over this row. A Mac row that does not
         /// answer the pointer reads as a picture of a row.
@@ -268,10 +264,15 @@ public struct StatusRow: View {
         // Voice Control: "Tap Alice" rather than reading out the whole post.
         .accessibilityInputLabels(inputLabels)
         .accessibilityActions { accessibilityActions }
-        .task(id: FilterCacheKey(status)) {
-            spokenBody = await RichTextCache.shared.plainText(for: status)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+    }
+
+    /// The post's words for VoiceOver, from the same parse the body is drawn
+    /// from — read synchronously, so the label is complete on the row's first
+    /// layout without a task and an actor hop per row. A body too large to
+    /// parse in place is read without its words until it scrolls back in.
+    private var spokenBody: String? {
+        RichTextCache.shared.immediateEntry(for: status)?.richText.plainText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// What Voice Control lets a person say to open this post: the name as
@@ -932,6 +933,32 @@ struct QuotedStatusCard: View {
     }
 }
 
+/// Two rows are the same row when they would draw the same thing.
+///
+/// `onAction` is left out on purpose. A closure cannot be compared, so a
+/// list whose rows each carry one had SwiftUI treat every visible row as
+/// changed whenever the list's body ran — a refresh that touched one post
+/// re-evaluated all of them. The closure a list hands its rows routes to the
+/// shell and does not change while the row is on screen. A list opts in with
+/// `.equatable()` (`TimelineView`). The row's own state and environment still
+/// redraw it as before.
+extension StatusRow: @MainActor Equatable {
+    public static func == (lhs: StatusRow, rhs: StatusRow) -> Bool {
+        lhs.status == rhs.status
+            && lhs.policy == rhs.policy
+            && lhs.localHost == rhs.localHost
+            && lhs.filterWarning == rhs.filterWarning
+            && lhs.showActions == rhs.showActions
+            && lhs.showsContextLine == rhs.showsContextLine
+            && lhs.canReact == rhs.canReact
+            && lhs.isOwn == rhs.isOwn
+            && lhs.showsCounts == rhs.showsCounts
+            && lhs.selectableText == rhs.selectableText
+            && lhs.showsTimestamp == rhs.showsTimestamp
+            && lhs.showsOwnMarker == rhs.showsOwnMarker
+    }
+}
+
 public enum StatusRowAction: Sendable {
     case open(Status)
     /// A look at the post without leaving the list: Space on the Mac, the
@@ -939,7 +966,10 @@ public enum StatusRowAction: Sendable {
     case peek(Status)
     /// The watch page rather than the thread: player first, comments under it.
     case watch(Status)
-    case reply(Status)
+    /// Opens the composer answering the post. `draft` is what was already
+    /// written for it — in a thread's reply bar — mentions included, so the
+    /// composer opens on it rather than starting again.
+    case reply(Status, draft: String = "")
     case boost(Status)
     case favourite(Status)
     case bookmark(Status)

@@ -74,6 +74,11 @@ public final class TimelineModel {
     /// Gaps with a fill under way, so a second tap does not ask twice.
     @ObservationIgnored private var fillingGapIDs: Set<String> = []
     @ObservationIgnored private var markerSaveTask: Task<Void, Never>?
+    /// The post at the top of the screen when the reader was last here, in
+    /// every feed, not only the home one. The model outlives its view when
+    /// the shell keeps it (`FeedModels`) — an iPhone Duo folding swaps the
+    /// whole shell — and a view built again over it scrolls back here.
+    @ObservationIgnored public var readingAnchorID: String?
     @ObservationIgnored private var lastMarkerSave = Date.distantPast
     /// Whether the list is scrolled to its very top, reported by the view.
     /// Only there may new posts go straight into the list: anywhere else they
@@ -224,6 +229,10 @@ public final class TimelineModel {
     public func noteRow(_ statusID: String, isVisible: Bool) {
         if isVisible {
             visibleStatusIDs.insert(statusID)
+            // Only as rows arrive, never as they leave: when the shell is
+            // rebuilt every row leaves at once, in no particular order, and
+            // the anchor has to be the one the reader was looking at.
+            if let top = topmostVisibleStatusID { readingAnchorID = top }
         } else {
             visibleStatusIDs.remove(statusID)
         }
@@ -394,9 +403,8 @@ public final class TimelineModel {
                 accountID: session.id, timelineKey: storageKey)
             await verdicts.load(from: session)
             await verdicts.warm(cached.compactMap(\.status))
+            await indexLinks(cached.compactMap(\.status))
             commit(applyFilters(to: cached))
-            let statuses = cached.compactMap(\.status)
-            Task { await indexLinks(statuses) }
         } catch {
             logger.error("cache read failed: \(String(describing: error), privacy: .public)")
         }
@@ -486,6 +494,7 @@ public final class TimelineModel {
                 direction: direction, pageWasFull: harvest.pageWasFull)
 
             await verdicts.warm(harvest.statuses)
+            await indexLinks(harvest.statuses)
             // Asked again after the awaits: an interaction may have landed
             // while the merge was being written.
             let local = localCopies(
@@ -530,11 +539,10 @@ public final class TimelineModel {
                 }
             }
 
-            // Painting the rows is the user-visible critical path. Parsing
-            // rich text and promoting optional capabilities can finish just
-            // behind it without holding the whole first screen hostage.
-            let statuses = harvest.statuses
-            Task { await indexLinks(statuses) }
+            // Promoting optional capabilities can finish just behind the
+            // rows without holding the first screen hostage. The page's rich
+            // text cannot: it was parsed above, before the rows were handed
+            // over, so no row changes height after its first layout.
             await session.latchCapabilities(observing: harvest.statuses)
         } catch {
             await handle(error)
@@ -759,10 +767,10 @@ public final class TimelineModel {
                     harvest.statuses, into: mergeBase, direction: .older,
                     pageWasFull: harvest.pageWasFull)
                 await verdicts.warm(harvest.statuses)
+                // Parsed before the rows are drawn, so they never change height.
+                await indexLinks(harvest.statuses)
                 let before = rows.count(where: { $0.status != nil })
                 commitMerged(applyFilters(to: merged))
-                let statuses = harvest.statuses
-                Task { await indexLinks(statuses) }
                 await session.latchCapabilities(observing: harvest.statuses)
                 // Every post on it filtered out by the reader's own filters
                 // is as empty as a page with none.
@@ -878,12 +886,11 @@ public final class TimelineModel {
                 pageWasFull: harvest.pageWasFull)
             await verdicts.warm(harvest.statuses)
             let before = Set(mergeBase.map(\.id))
+            await indexLinks(harvest.statuses)
             commitMerged(applyFilters(to: merged))
             if let reader, rows.contains(where: { $0.id == reader }) {
                 keepInPlace = KeepInPlace(statusID: reader, serial: (keepInPlace?.serial ?? 0) + 1)
             }
-            let statuses = harvest.statuses
-            Task { await indexLinks(statuses) }
             return mergeBase.contains { !before.contains($0.id) }
         } catch {
             await handle(error)
@@ -963,18 +970,16 @@ public final class TimelineModel {
 
     /// Parses a page's content before its rows are handed to the list.
     ///
-    /// `RichTextView` falls back to plain text for one frame when a parse is
-    /// not yet cached; warming the whole page here means that path is only ever
-    /// taken for content that arrived some other way.
+    /// Off the main actor (`RichTextCache.warm`), and awaited before the
+    /// commit, so every row of the page draws its final text on its first
+    /// layout. It used to run just behind the commit, and each row drew a
+    /// plain-text stand-in first and grew when its parse landed — a list
+    /// being scrolled upwards jumped by the difference (docs/05 §3).
     ///
     /// The same pass records each post's web links for the links rotor, so
     /// that index costs no second parse.
     private func indexLinks(_ statuses: [Status]) async {
-        var found: [String: [URL]] = [:]
-        for status in statuses {
-            let links = await RichTextCache.shared.richText(for: status).webLinks
-            if !links.isEmpty { found[status.id] = links }
-        }
+        let found = await RichTextCache.shared.warm(statuses)
         guard !found.isEmpty else { return }
         webLinks.merge(found) { _, new in new }
     }

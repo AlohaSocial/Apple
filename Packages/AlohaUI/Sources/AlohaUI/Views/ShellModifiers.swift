@@ -11,23 +11,14 @@ extension View {
     ///
     /// Full window width runs a post's text to twelve hundred point, which is
     /// unreadable — the eye cannot find the start of the next line. Mail and
-    /// Reader constrain their columns, and so does this: 820 points on iPad
-    /// and 680 on Mac, centred, with the rest of the window quiet around it.
-    /// In compact width — a phone, or an iPad in Slide Over or a narrow
-    /// window — the screen is already a column and the constraint would only
-    /// add margins, so it does nothing there. The size class decides, not
-    /// the device: an iPad can be either.
+    /// Reader constrain their columns, and so does this: `ReadingMeasure`
+    /// wide, centred, with the rest of the window quiet around it, on iPad,
+    /// Mac and Vision alike. In compact width — a phone, or an iPad in Slide
+    /// Over or a narrow window — the screen is already a column and the
+    /// constraint would only add margins, so it does nothing there. The size
+    /// class decides, not the device: an iPad can be either.
     var readerColumn: some View {
-        #if os(iOS)
-            modifier(ReaderColumn(width: 820))
-        #elseif os(visionOS)
-            // A little wider than the Mac's: text is read from further away,
-            // at a larger size, and the window is sized to the column
-            // (`AlohaSocialApp`) rather than the column floating in it.
-            modifier(ReaderColumn(width: 760))
-        #else
-            modifier(ReaderColumn(width: 680))
-        #endif
+        modifier(ReaderColumn(width: ReadingMeasure.width))
     }
 
     /// `fullScreenCover` does not exist on macOS; a sheet is the right
@@ -45,6 +36,29 @@ extension View {
         #else
             fullScreenCover(item: item, content: content)
         #endif
+    }
+}
+
+/// How wide a column of posts is allowed to grow.
+///
+/// About seventy characters of body text a line, beside the avatar: the
+/// measure a reader can follow back to the start of the next line. It was
+/// 820 points on iPad and 960 for the iPad's home rows, where a line ran past
+/// a hundred characters; one measure now holds on iPad, Mac and Vision.
+/// Pictures and video sit in the same column, so a post's media lines up
+/// with its words.
+enum ReadingMeasure {
+    nonisolated static let width: CGFloat = 680
+
+    /// The inset either side of a list that fills the window, so its rows
+    /// are `width` wide and centred, and its scroll indicator stays at the
+    /// window's edge rather than the column's. Never less than `minimum`.
+    nonisolated static func inset(
+        forListWidth listWidth: CGFloat, minimum: CGFloat = 24
+    )
+        -> CGFloat
+    {
+        max(minimum, (listWidth - width) / 2)
     }
 }
 

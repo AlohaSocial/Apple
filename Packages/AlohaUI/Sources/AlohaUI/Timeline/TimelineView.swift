@@ -44,13 +44,28 @@ public struct TimelineView: View {
     /// Where the VoiceOver rotors point: each post registers its row here.
     @Namespace private var rotorNamespace
 
+    /// Where the reader was, when this screen is built over a model the shell
+    /// kept (`FeedModels`): the list scrolls back there once, on appearing.
+    @State private var resumeAnchorID: String?
+
     public init(
         key: TimelineKey, session: AccountSession,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
+        self.init(key: key, session: session, models: nil, onAction: onAction)
+    }
+
+    /// A feed the shell keeps the model of, so a shell built again — an
+    /// iPhone Duo folding — finds its rows and its place where they were.
+    init(
+        key: TimelineKey, session: AccountSession, models: FeedModels?,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.session = session
         self.onAction = onAction
-        _model = State(initialValue: TimelineModel(key: key, session: session))
+        let model = TimelineModel.kept(for: key, session: session, in: models)
+        _model = State(initialValue: model)
+        _resumeAnchorID = State(initialValue: model.rows.isEmpty ? nil : model.readingAnchorID)
     }
 
     public var body: some View {
@@ -190,6 +205,7 @@ public struct TimelineView: View {
                 // post, which is what a storefront expects.
                 .onChange(of: model.rows.isEmpty) { _, _ in restorePosition(proxy) }
                 .onChange(of: model.visitMarkerID) { _, _ in restorePosition(proxy) }
+                .onAppear { resumeReading(proxy) }
                 // Whether new posts may go straight in: only at the very top.
                 .onScrollGeometryChange(for: Bool.self) { geometry in
                     geometry.contentOffset.y <= -geometry.contentInsets.top + 4
@@ -240,6 +256,23 @@ public struct TimelineView: View {
         }
     }
 
+    /// Back to where the reader was when this screen was last built over the
+    /// same model. Before the rows report themselves, which would otherwise
+    /// make the top of the list the place to come back to.
+    private func resumeReading(_ proxy: ScrollViewProxy) {
+        guard let anchor = resumeAnchorID else { return }
+        resumeAnchorID = nil
+        guard model.index.status(id: anchor) != nil else { return }
+        didRestorePosition = true
+        guard model.index.statusIDs.first != anchor else { return }
+        model.readerIsAtTop = false
+        // A turn later, so the list has laid out the rows to scroll to.
+        Task { @MainActor in
+            await Task.yield()
+            proxy.scrollTo(anchor, anchor: .top)
+        }
+    }
+
     /// What the rows will ask the image loader for, so the prefetch asks for
     /// the same sizes (`TimelineModel.prefetchRequests`).
     private func reportPrefetchGeometry() {
@@ -255,7 +288,7 @@ public struct TimelineView: View {
             // The sidebar shell's reading column: iPad, and an unfolded
             // iPhone Duo.
             if !shellUsesTabBar {
-                return max(24, (width - 960) / 2)
+                return ReadingMeasure.inset(forListWidth: width)
             }
         #endif
         return AlohaMetrics.space4
@@ -308,6 +341,8 @@ public struct TimelineView: View {
                         showsCounts: session.settings.showPopularityCounts,
                         onAction: onAction
                     )
+                    // Only the rows whose post changed redraw (`StatusRow: Equatable`).
+                    .equatable()
                     .listRowInsets(
                         EdgeInsets(
                             top: AlohaMetrics.space1, leading: horizontalInset,

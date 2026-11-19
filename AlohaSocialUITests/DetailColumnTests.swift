@@ -5,8 +5,8 @@ import XCTest
     import UIKit
 
     /// The iPad's detail column: in a wide window a post opens beside the
-    /// timeline rather than over it, and turning the iPad upright shows the
-    /// same post pushed instead.
+    /// timeline rather than over it, and turning a smaller iPad upright shows
+    /// the same post pushed instead.
     @MainActor
     final class DetailColumnTests: XCTestCase {
         override func tearDown() async throws {
@@ -39,11 +39,18 @@ import XCTest
                 close.frame.minX, bodyFrame.minX, "The detail column is not to the trailing side")
             shoot("97-detail-column-thread")
 
-            // Upright, the window is too narrow for two columns: the same post
-            // is shown pushed, with Back to the timeline.
+            // Upright, an iPad under 1000 points wide is too narrow for two
+            // columns: the same post is shown pushed, with Back to the
+            // timeline. A 13-inch upright (1032) keeps the column.
             XCUIDevice.shared.orientation = .portrait
             XCTAssertTrue(app.navigationBars["Post"].waitForExistence(timeout: 5))
-            XCTAssertFalse(app.buttons["Close"].exists, "A detail column in a narrow window")
+            if app.windows.firstMatch.frame.width < 1000 {
+                XCTAssertFalse(app.buttons["Close"].exists, "A detail column in a narrow window")
+            } else {
+                XCTAssertTrue(
+                    app.buttons["Close"].firstMatch.waitForExistence(timeout: 5),
+                    "No detail column on a 13-inch iPad upright")
+            }
             shoot("97-detail-column-portrait")
 
             // Nothing was changed while upright, so turning back finds the

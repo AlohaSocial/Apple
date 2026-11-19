@@ -122,6 +122,18 @@ extension XCUIApplication {
     }
 
     #if os(iOS)
+        /// Opens the iPad sidebar's "More" section, where the account and
+        /// library places are folded, if it is closed.
+        func expandSidebarMore() {
+            guard !sidebarRow("Your lists").exists else { return }
+            let header = sidebarRow("More")
+            if header.waitForExistence(timeout: 3) {
+                header.tap()
+            } else {
+                collectionViews.buttons["More"].firstMatch.tap()
+            }
+        }
+
         /// Springboard owns the permission and "Open in" dialogs.
         func dismissSystemAlertsIfPresent() {
             let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")

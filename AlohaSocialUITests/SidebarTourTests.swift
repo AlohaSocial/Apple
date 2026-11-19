@@ -168,6 +168,10 @@ import XCTest
                 ("My Feed", "My Feed"),
             ]
             for (row, marker) in expectations {
+                #if os(iOS)
+                    // Lists live in the sidebar's folded "More" section.
+                    if row == "Your lists" { app.expandSidebarMore() }
+                #endif
                 let cell = app.sidebarRow(row)
                 XCTAssertTrue(cell.waitForExistence(timeout: 5), "Sidebar row \(row) missing")
                 cell.tapOrClick()

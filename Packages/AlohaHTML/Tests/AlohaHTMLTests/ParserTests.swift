@@ -269,4 +269,101 @@ struct CacheTests {
 
         #expect(await cache.richText(for: boost).plainText == "Original")
     }
+
+    @Test("A row can ask synchronously, and a page warmed off the main actor is there")
+    func synchronousLookupAfterWarm() async {
+        let cache = RichTextCache()
+        let account = Account(id: "1", username: "a", acct: "a")
+        let status = Status(
+            id: "1", content: #"<p>One</p><p>Two <a href="https://example.com/x">link</a></p>"#,
+            account: account)
+
+        #expect(cache.cachedEntry(for: status) == nil)
+        let links = await cache.warm([status])
+        #expect(links["1"]?.map(\.absoluteString) == ["https://example.com/x"])
+        let entry = cache.cachedEntry(for: status)
+        #expect(entry?.richText.plainText.contains("One") == true)
+        // The layout comes with the parse, so a view has nothing left to do.
+        #expect(entry?.layout == entry.map { RichTextLayout($0.richText) })
+    }
+
+    @Test("A small uncached body is parsed in place; a huge one is left for later")
+    func immediateEntry() {
+        let cache = RichTextCache()
+        let account = Account(id: "1", username: "a", acct: "a")
+        let small = Status(id: "1", content: "<p>Short</p>", account: account)
+        let huge = Status(
+            id: "2",
+            content: "<p>" + String(repeating: "word ", count: RichTextCache.inlineParseLimit)
+                + "</p>",
+            account: account)
+
+        #expect(cache.immediateEntry(for: small)?.richText.plainText == "Short")
+        #expect(cache.cachedEntry(for: small) != nil)
+        #expect(cache.immediateEntry(for: huge) == nil)
+    }
+
+    @Test("A launch-sized page is warmed whole, across slices")
+    func warmManySlices() async {
+        let cache = RichTextCache()
+        let account = Account(id: "1", username: "a", acct: "a")
+        let statuses = (0..<130).map {
+            Status(
+                id: "\($0)", content: #"<p>Post <a href="https://example.com/\#($0)">x</a></p>"#,
+                account: account)
+        }
+        let links = await cache.warm(statuses)
+        #expect(links.count == 130)
+        #expect(statuses.allSatisfy { cache.cachedEntry(for: $0) != nil })
+    }
+
+    @Test("An edit is a different body, not the cached one")
+    func editedContentIsReparsed() {
+        let cache = RichTextCache()
+        let account = Account(id: "1", username: "a", acct: "a")
+        let original = Status(id: "1", content: "<p>Before</p>", account: account)
+        var edited = original
+        edited.content = "<p>After</p>"
+
+        #expect(cache.entry(for: original).richText.plainText == "Before")
+        #expect(cache.entry(for: edited).richText.plainText == "After")
+    }
+
+    @Test("The table stays within its capacity")
+    func eviction() {
+        let cache = RichTextCache(capacity: 10)
+        let account = Account(id: "1", username: "a", acct: "a")
+        let statuses = (0..<25).map {
+            Status(id: "\($0)", content: "<p>Post \($0)</p>", account: account)
+        }
+        for status in statuses { _ = cache.entry(for: status) }
+
+        let kept = statuses.filter { cache.cachedEntry(for: $0) != nil }
+        #expect(kept.count <= 10)
+        // The newest is never the one evicted.
+        #expect(cache.cachedEntry(for: statuses[24]) != nil)
+        #expect(cache.cachedEntry(for: statuses[0]) == nil)
+    }
+
+    @Test("A typical post parses quickly enough to do in a view's first layout")
+    func inlineParseIsCheap() {
+        let cache = RichTextCache()
+        let account = Account(id: "1", username: "a", acct: "a")
+        let paragraph =
+            #"<p>Hello <span class="h-card"><a href="https://example.com/@b" class="u-url mention">@<span>b</span></a></span>, "#
+            + #"see <a href="https://example.com/a/long/path">example.com/a/long/path</a> and "#
+            + #"<a href="https://example.com/tags/swift" class="mention hashtag">#<span>swift</span></a>.</p>"#
+        let html = String(repeating: paragraph, count: 8)
+        #expect(html.utf8.count < RichTextCache.inlineParseLimit)
+        let statuses = (0..<100).map {
+            Status(id: "\($0)", content: html + "\($0)", account: account)
+        }
+
+        let started = ContinuousClock.now
+        for status in statuses { _ = cache.immediateEntry(for: status) }
+        let perPost = (ContinuousClock.now - started) / 100
+        // Generous for a debug build on a loaded CI machine; in a release
+        // build this is a few tens of microseconds.
+        #expect(perPost < .milliseconds(4))
+    }
 }

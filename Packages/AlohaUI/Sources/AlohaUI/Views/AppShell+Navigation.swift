@@ -116,18 +116,24 @@ extension ThemedAppShell {
         repairFeedSelection(session.visibleModes)
     }
 
-    // Erase at the platform boundary so the root does not embed every tab tree.
-    func shell(_ session: AccountSession) -> AnyView {
+    /// The shell for this screen. Not type-erased: the swap on an iPhone Duo
+    /// is a branch SwiftUI can see, and what must outlive it — the feeds'
+    /// models, each stack's routes, the media on show — is held above it, in
+    /// this view's state (`feedModels`, `tabPaths`, `sidebarPaths`), rather
+    /// than in either shell. Each tab's screen is erased where it is built
+    /// (`iPadDestination`), so the type stays small.
+    @ViewBuilder
+    func shell(_ session: AccountSession) -> some View {
         #if os(iOS)
             if usesSidebar {
-                return AnyView(iPadShell(session))
+                iPadShell(session)
             } else {
-                return AnyView(tabShell(session))
+                tabShell(session)
             }
         #elseif os(visionOS)
-            return AnyView(visionShell(session))
+            visionShell(session)
         #else
-            return AnyView(splitShell(session))
+            splitShell(session)
         #endif
     }
 

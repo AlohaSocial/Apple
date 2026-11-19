@@ -483,12 +483,20 @@ public struct AudioModeView: View {
         session: AccountSession, source: TimelineSource,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
+        self.init(session: session, source: source, models: nil, onAction: onAction)
+    }
+
+    /// The shell's feed, whose model it keeps across a shell swap (`FeedModels`).
+    init(
+        session: AccountSession, source: TimelineSource, models: FeedModels?,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.session = session
         self.source = source
         self.onAction = onAction
         _model = State(
-            initialValue: TimelineModel(
-                key: TimelineKey(mode: .audio, source: source), session: session))
+            initialValue: TimelineModel.kept(
+                for: TimelineKey(mode: .audio, source: source), session: session, in: models))
     }
 
     private var statuses: [Status] { model.rows.compactMap(\.status) }
@@ -673,14 +681,24 @@ struct AudioMiniPlayer: View {
 public struct NewsModeView: View {
     private let session: AccountSession
     private let source: TimelineSource
+    private let models: FeedModels?
     private let onAction: (StatusRowAction) -> Void
 
     public init(
         session: AccountSession, source: TimelineSource,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
+        self.init(session: session, source: source, models: nil, onAction: onAction)
+    }
+
+    /// The shell's feed, whose model it keeps across a shell swap (`FeedModels`).
+    init(
+        session: AccountSession, source: TimelineSource, models: FeedModels?,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.session = session
         self.source = source
+        self.models = models
         self.onAction = onAction
     }
 
@@ -688,7 +706,8 @@ public struct NewsModeView: View {
         // Only ever reached where `only_news` exists — there is no client-side
         // equivalent worth faking, so the mode is hidden otherwise (docs/06 §2).
         TimelineView(
-            key: TimelineKey(mode: .news, source: source), session: session, onAction: onAction
+            key: TimelineKey(mode: .news, source: source), session: session, models: models,
+            onAction: onAction
         )
         // Long articles want reader typography, whatever the person chose
         // for the conversational modes.

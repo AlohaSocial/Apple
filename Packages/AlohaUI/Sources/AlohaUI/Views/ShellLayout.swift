@@ -44,10 +44,29 @@ enum ShellLayout {
     // MARK: - The iPad's detail column
 
     /// The window width from which the iPad shell reads a post or a profile
-    /// in a column beside the list it came from, rather than over it. Below
-    /// it the primary column would be squeezed under a phone's width once a
-    /// detail column and the sidebar take their share.
-    nonisolated static let detailColumnMinimumWidth: CGFloat = 1100
+    /// in a column beside the list it came from, rather than over it.
+    ///
+    /// It was 1100, which left the 13-inch iPad upright (1032 points) and
+    /// most Stage Manager windows pushing every post over the list. At 1000
+    /// the 13-inch upright gets the column: the detail takes its minimum
+    /// (420) and the list keeps about 610 — wider than any phone — with the
+    /// sidebar folded away, as it is upright. The 11-inch upright (834) and
+    /// an unfolded iPhone Duo stay below it: a list beside a 420-point column
+    /// there would be narrower than the column (`listWidth`).
+    nonisolated static let detailColumnMinimumWidth: CGFloat = 1000
+
+    /// The narrowest the list beside a detail column may be.
+    nonisolated static let minimumListWidth: CGFloat = 420
+
+    /// Whether a window this wide shows the detail column.
+    nonisolated static func showsDetailColumn(forWindowWidth width: CGFloat) -> Bool {
+        width >= detailColumnMinimumWidth
+    }
+
+    /// What is left for the list once the detail column has its share.
+    nonisolated static func listWidth(forWindowWidth width: CGFloat) -> CGFloat {
+        width - detailColumnWidth(forWindowWidth: width)
+    }
 
     /// The same on the Mac, where the sidebar is always showing and takes
     /// its share first: a window has to be wider before a list and a post

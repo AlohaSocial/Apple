@@ -27,12 +27,20 @@ public struct VideoModeView: View {
         session: AccountSession, source: TimelineSource,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
+        self.init(session: session, source: source, models: nil, onAction: onAction)
+    }
+
+    /// The shell's feed, whose model it keeps across a shell swap (`FeedModels`).
+    init(
+        session: AccountSession, source: TimelineSource, models: FeedModels?,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.session = session
         self.source = source
         self.onAction = onAction
         _model = State(
-            initialValue: TimelineModel(
-                key: TimelineKey(mode: .video, source: source), session: session))
+            initialValue: TimelineModel.kept(
+                for: TimelineKey(mode: .video, source: source), session: session, in: models))
     }
 
     private var statuses: [Status] {
@@ -75,6 +83,7 @@ public struct VideoModeView: View {
 
                 if statuses.isEmpty && model.hasSettledLoading { emptyState }
             }
+            .scrollTargetLayout()
             .padding(.horizontal, isCompact ? 0 : AlohaMetrics.space4)
             .padding(.vertical, AlohaMetrics.space3)
 
@@ -90,6 +99,7 @@ public struct VideoModeView: View {
                 }
             }
         }
+        .keepsFeedPlace(model)
         .background(palette.background)
         .toolbar {
             // Your channels: the PeerTube notion of what a video belongs to.
