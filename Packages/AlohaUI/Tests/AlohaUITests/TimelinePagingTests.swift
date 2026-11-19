@@ -63,7 +63,7 @@ struct TimelinePagingTests {
         #expect(model.pendingNewCount == 150)
         model.revealPendingRows()
         let ids = model.rows.compactMap(\.status).map(\.id)
-        #expect(ids == (961...1150).reversed().map(String.init))
+        #expect(ids == newestFirst(961...1150))
         #expect(!model.rows.contains { if case .gap = $0 { true } else { false } })
     }
 
@@ -86,8 +86,8 @@ struct TimelinePagingTests {
         let gapIndex = try #require(ids.firstIndex(of: gapID))
         // The forty just newer than the reader's post, directly on top of
         // it, with the gap still above them.
-        #expect(
-            Array(ids[(gapIndex + 1)...].prefix(41)) == (1000...1040).reversed().map(String.init))
+        let belowGap: [String] = Array(ids[(gapIndex + 1)...].prefix(41))
+        #expect(belowGap == newestFirst(1000...1040))
         #expect(model.keepInPlace?.statusID == "1000")
     }
 
@@ -104,7 +104,7 @@ struct TimelinePagingTests {
         await model.fillGap(id: gapID)
 
         let ids = rowIDs(model)
-        #expect(Array(ids.prefix(80)) == (1021...1100).reversed().map(String.init))
+        #expect(Array(ids.prefix(80)) == newestFirst(1021...1100))
         #expect(model.keepInPlace == nil)
     }
 
@@ -151,6 +151,14 @@ struct TimelinePagingTests {
     }
 
     // MARK: - Helpers
+
+    /// Status IDs for a range, newest first, the way a timeline lists them.
+    /// Spelled out with types so `#expect` does not leave the compiler to
+    /// solve `reversed()` and `String.init` overloads inside the macro.
+    private func newestFirst(_ range: ClosedRange<Int>) -> [String] {
+        let descending: [Int] = range.reversed()
+        return descending.map { (id: Int) -> String in String(id) }
+    }
 
     private func rowIDs(_ model: TimelineModel) -> [String] {
         model.rows.filter {
