@@ -543,7 +543,7 @@ public struct AudioModeView: View {
             }
         }
         .task { await model.appear() }
-        .refreshable { await model.refresh() }
+        .alohaRefreshable { await model.refresh() }
     }
 
     private func row(_ status: Status) -> some View {

@@ -75,7 +75,7 @@ public struct StarterPacksView: View {
         .background(palette.background)
         .navigationTitle(Text("Starter packs", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorStrip(_ message: String) -> some View {

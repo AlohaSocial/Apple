@@ -22,19 +22,74 @@ full-screen media viewer, all six modes.
 
 Native SwiftUI on AppKit. **Not Catalyst.**
 
-- Window management: a main window per account-and-route, `⌘N` new window,
-  `⌘⌥N` new compose window, full window restoration.
-- A complete menu bar: File (New Post, New Window, Open Link…), Edit, View
-  (mode switching, density, theme), Post (Reply, Boost, Favourite, Bookmark,
-  Translate), Account (switch, add, sign out), Window, Help.
-- Toolbar with a real search field, not a pushed screen.
+- **Windows.** A main window per account-and-route, `⌘N` a new post (a
+  compose window of its own), `⌥⌘N` a new main window, full window
+  restoration. "Open in New Window" opens the thread or profile alone,
+  without a sidebar, titled by its author and handle, the way Mail opens a
+  message (`RouteWindow`, `WindowGroup(for: RouteWindowRequest.self)`). A
+  post's media opens in a window of its own — resizable, full screen with
+  ⌃⌘F, ←/→ between items, Esc closes (`MediaWindow`) — not a sheet over the
+  main window.
+- **An account per window.** Each main window keeps its own account in its
+  scene storage; switching account in one window (sidebar, Account menu,
+  ⌃⌘1–9) leaves every other window where it is. The active account is only
+  the default a new window starts on, and what the widgets, Dock menu and
+  menu bar extra use. A request from outside a window — the Dock menu, a
+  notification, a link, a Focus — is taken up by the window last in front.
+  A thread or profile window carries its account in its value, so a restored
+  thread is looked up on the server it came from (`WindowAccount`).
+- **The menu bar.**
+  - File: New Post `⌘N`, New Window `⌥⌘N`, Open Link… `⌘L` (a post's or a
+    profile's address, or `@name@server`, resolved through the window's
+    account).
+  - View: Show Columns `⌃⌘D` (the Deck), Show Trends `⌃⌘T`, Refresh `⌘R` (every
+    list that can be pulled to refresh), Actual Size `⌘0`, Bigger `⌘+`,
+    Smaller `⌘−` (Dynamic Type steps, `MacTextSize`), then the system's
+    sidebar and toolbar items.
+  - Go: Go to… `⌘K`, Back `⌘[`, Home `⇧⌘H`, the sidebar's places `⌘1–⌘9`,
+    Search `⌘F` (focuses the toolbar's search field).
+  - Post, acting on the selected post: Open `⌘O`, Quick Look `⌘Y`, Reply
+    `⇧⌘R`, Boost `⇧⌘B`, Favourite `⇧⌘L`, Bookmark `⌘D`, Translate `⇧⌘T`,
+    Copy Link `⇧⌘C`, Open in Browser `⌥⌘O`, Next/Previous Post. ⌘R stays
+    Refresh, as in every reading app on the Mac, which is why Reply has ⇧.
+  - Account: the accounts (`⌃⌘1–⌃⌘9`, checked for this window's), Add
+    Account…, Sign Out….
+  - Window: Mini Timeline `⇧⌘M` (not `⌥⌘M`, the system's Minimize All).
+  - Help: Keyboard Shortcuts `⌘/`, the project on GitHub.
+  In the Deck the Post menu and ⌘R act on the column that has the focus.
+- **Lists of posts and the keyboard.** Every list of posts — timelines,
+  Activities, threads, profiles, search results, each Deck column — has a
+  selected row (`statusListNavigation`). The list takes the keyboard focus
+  when its window appears. `j`/`k` and ↑/↓ move the selection, Home/End go to
+  the ends, Space pages down without moving it (the next `j` carries on from
+  what is on screen), `⇧Space` or `⌘Y` previews the post over the list,
+  Return opens it, `l`/`f`, `b`, `r` favourite, boost and reply, `?` shows the
+  shortcuts. **A click selects; a double click or Return opens** — the way
+  Mail and the Finder work, and what lets the keyboard and the pointer share
+  one selection, which VoiceOver and Full Keyboard Access follow. Activities'
+  rows stay buttons that open on a click. The selection is drawn in the
+  theme's accent rather than the system's blue, because rows are drawn in the
+  theme's label colours.
+- **Toolbar** with a real search field (`⌘F`), not a pushed screen; the
+  screens that search themselves (Search, Discover, Messages) show their own.
 - Sidebar with disclosure groups, drag-to-reorder for lists and hashtags.
+- **Running without windows.** Closing the last window leaves the app running,
+  in the Dock and (optional) the menu bar, so the sync engine keeps polling
+  and notifications keep arriving; there is no push from the server to the
+  Mac. Settings ▸ Login has Open at Login (`SMAppService.mainApp`).
 - Menu bar extra (optional, off by default): unread count and a compact
-  notifications popover.
+  notifications popover. Its latest posts come from the cache, and are asked
+  of the server at most every five minutes.
 - Services menu integration: "Post to Aloha Social" for selected text and images.
 - Dock badge, Dock menu (New Post, accounts), and bounce-free notifications.
 - Full pointer and keyboard parity with iPad, plus right-click context menus
-  everywhere a long-press exists on iOS.
+  everywhere a long-press exists on iOS. The post menu has a Share & Copy
+  submenu (Share…, Copy Link, Copy Text, Open in Browser, Share as Image, and
+  "Links in This Post" with each link to open or copy — SwiftUI does not say
+  which link in a text a secondary click is on).
+- Composer: `⌘V` of a copied picture or of media files copied in the Finder
+  attaches them; the paperclip is Attach Files… (an open panel).
+- Settings window: reopens on the pane last shown.
 - Sandboxed, hardened runtime, notarised. Entitlements: outgoing network,
   user-selected files read-only, Photos (add-only), camera and microphone for
   capture, app group.
@@ -270,11 +325,6 @@ Search (§7).
   an intent in the extension. It reads the token from the shared Keychain
   group, favourites on the server, and records the tap in the shared defaults
   (`WidgetFavourites`) so the row redraws filled before the next sync.
-- **On this day**: memories are a server query rather than a cached timeline,
-  so the app writes the day's snapshot — text and one small picture each, none
-  from behind a content warning — into the app group when it becomes active
-  and on background refresh (`MemoriesWidgetWriter`), and the widget reads
-  only that.
 - **Snapshot widgets**: direct messages and photos are server queries too,
   as are the scheduled posts and the account's own poll that the countdown
   Live Activities read (§9). The app writes one snapshot per account

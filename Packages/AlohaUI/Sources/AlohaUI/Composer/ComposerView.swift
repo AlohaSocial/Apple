@@ -41,6 +41,10 @@ public struct ComposerView: View {
     @State var focusingAttachment: MediaAttachment?
     @State var filteringAttachment: MediaAttachment?
     @State var trimmingVideoAt: URL?
+    #if os(macOS)
+        /// The Mac's "Attach Files…" open panel.
+        @State var isImportingFiles = false
+    #endif
     @State var rewritingStyle: RewriteStyle?
     @State var isShowingCamera = false
     @State var isShowingDrafts = false
@@ -213,6 +217,17 @@ public struct ComposerView: View {
                     Task { await attach(items) }
                     return true
                 }
+            #endif
+            #if os(macOS)
+                .modifier(
+                    MacMediaPaste(isImporting: $isImportingFiles, canAttach: model.canAddMedia) {
+                        pasted in
+                        switch pasted {
+                        case .files(let urls): Task { await attachFiles(urls) }
+                        case .image(let data):
+                            Task { await attach([.image(DroppedImage(data: data))]) }
+                        }
+                    })
             #endif
             .navigationTitle(model.title)
             #if os(iOS)

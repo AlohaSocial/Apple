@@ -83,6 +83,9 @@ struct ReaderView: View {
 
     let status: Status
     let session: AccountSession
+    /// A link in the post: the shell opens mentions, hashtags and fediverse
+    /// posts in the app and anything else in the browser.
+    var followLink: ((RichText.Link) -> Void)?
 
     @AppStorage(ReaderPreferences.serifKey) private var serif = true
     @AppStorage(ReaderPreferences.stepKey) private var step = 1
@@ -103,7 +106,11 @@ struct ReaderView: View {
                         warning
                     } else {
                         RichTextView(status: status, isSelectable: true) { link in
-                            if case .web(let url) = link { LinkOpening.open(url, with: openURL) }
+                            if let followLink {
+                                followLink(link)
+                            } else if case .web(let url) = link {
+                                LinkOpening.open(url, with: openURL)
+                            }
                         }
                         .environment(\.alohaMetrics, metrics)
                         if let card = post.card, let url = card.url {

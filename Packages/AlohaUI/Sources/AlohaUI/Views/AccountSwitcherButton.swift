@@ -7,6 +7,7 @@ import SwiftUI
 /// Native navigation menu and checked account picker, shared across platforms.
 struct AccountMenuButton: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.windowAccountID) private var windowAccountID
     @Environment(\.signInAgain) private var signInAgain
     #if os(macOS)
         @Environment(\.openWindow) private var openWindow
@@ -76,7 +77,7 @@ struct AccountMenuButton: View {
             Section {
                 Picker(
                     selection: Binding(
-                        get: { environment.activeSession?.id ?? session.id },
+                        get: { windowAccountID ?? session.id },
                         set: { environment.setActiveAccount($0) }
                     )
                 ) {

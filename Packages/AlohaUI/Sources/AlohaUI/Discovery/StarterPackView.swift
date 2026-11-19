@@ -134,7 +134,7 @@ public struct StarterPackView: View {
             .navigationBarTitleDisplayMode(.inline)
         #endif
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorStrip(_ message: String) -> some View {

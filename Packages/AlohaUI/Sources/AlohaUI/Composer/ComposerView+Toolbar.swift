@@ -97,6 +97,19 @@ extension ComposerView {
             .disabled(!model.canAddMedia)
         #endif
 
+        #if os(macOS)
+            // Photos is not where a Mac keeps most of its pictures: a file
+            // from the Finder, the way every Mac app attaches one.
+            Button {
+                isImportingFiles = true
+            } label: {
+                Image(systemName: "paperclip")
+            }
+            .disabled(!model.canAddMedia)
+            .accessibilityLabel(Text("Attach Files…", comment: "Composer action"))
+            .help(Text("Attach Files…", comment: "Composer action"))
+        #endif
+
         Button {
             if !model.hasPoll { model.togglePoll() }
             isShowingPollEditor = true
@@ -438,21 +451,16 @@ extension ComposerView {
             SchedulePicker(scheduledAt: $model.scheduledAt)
         }
         .composerPicker(isPresented: $isShowingPlacePicker) {
-            if let session = environment.activeSession {
-                PlacePicker(session: session) { model.place = $0 }
-            }
+            // The composer's own account, which need not be the active one.
+            PlacePicker(session: model.session) { model.place = $0 }
         }
         .composerPicker(isPresented: $isShowingGIFPicker) {
-            if let session = environment.activeSession {
-                GIFPicker(session: session) { entry in
-                    Task { await model.attachLibraryPicture(entry) }
-                }
+            GIFPicker(session: model.session) { entry in
+                Task { await model.attachLibraryPicture(entry) }
             }
         }
         .composerPicker(isPresented: $isShowingEmojiPicker) {
-            if let session = environment.activeSession {
-                EmojiPicker(session: session) { insertAtCursor(":\($0.shortcode):") }
-            }
+            EmojiPicker(session: model.session) { insertAtCursor(":\($0.shortcode):") }
         }
         #if canImport(ImagePlayground) && !os(watchOS)
             .imagePlaygroundSheet(

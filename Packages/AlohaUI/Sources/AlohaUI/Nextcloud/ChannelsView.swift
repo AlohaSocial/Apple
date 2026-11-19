@@ -105,7 +105,7 @@ public struct ChannelsView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorRow(_ message: String) -> some View {

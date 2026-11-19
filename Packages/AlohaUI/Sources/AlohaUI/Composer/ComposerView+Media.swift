@@ -4,6 +4,11 @@ import AlohaDesign
 import AlohaModels
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
+
+#if canImport(AppKit)
+    import AppKit
+#endif
 
 /// The attachments: the strip of pictures and videos with their
 /// descriptions, and taking in what was picked, dropped or pasted.
@@ -329,3 +334,106 @@ struct PickedMovie: Transferable {
         }
     }
 }
+
+#if os(macOS)
+    extension ComposerView {
+        /// Pictures and videos chosen in the open panel or pasted as files:
+        /// a picture goes straight up, a video through the trim sheet, as a
+        /// dropped one does.
+        func attachFiles(_ urls: [URL]) async {
+            var movie: URL?
+            for url in urls {
+                let isScoped = url.startAccessingSecurityScopedResource()
+                defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+                let type = UTType(filenameExtension: url.pathExtension)
+                if type?.conforms(to: .movie) == true {
+                    // The trim sheet reads it after access has ended, so it
+                    // works on its own copy, as a dropped movie does.
+                    guard movie == nil, let copy = try? Self.copyIn(url) else { continue }
+                    movie = copy
+                } else if type?.conforms(to: .image) == true,
+                    let data = try? Data(contentsOf: url)
+                {
+                    let image = DroppedImage(data: data)
+                    await model.uploader.add(
+                        data: image.data, filename: image.filename, mimeType: image.mimeType)
+                }
+            }
+            if let movie { trimmingVideoAt = movie }
+        }
+
+        private static func copyIn(_ file: URL) throws -> URL {
+            let ext = file.pathExtension.isEmpty ? "mov" : file.pathExtension
+            let destination = FileManager.default.temporaryDirectory
+                .appending(path: "attached-\(UUID().uuidString).\(ext)")
+            try FileManager.default.copyItem(at: file, to: destination)
+            return destination
+        }
+    }
+
+    /// ⌘V of a picture in the composer, and the toolbar's Attach Files….
+    ///
+    /// The editor is plain text, so its own Paste had nothing to do with a
+    /// copied picture — Paste was greyed out and only the toolbar's paste
+    /// button attached one. ⌘V here looks first: pictures or videos copied in
+    /// the Finder, then a picture with no text beside it, are attachments;
+    /// anything else is handed to the field being typed in, as Paste.
+    struct MacMediaPaste: ViewModifier {
+        enum Pasted {
+            case files([URL])
+            case image(Data)
+        }
+
+        @Binding var isImporting: Bool
+        let canAttach: Bool
+        let attach: (Pasted) -> Void
+
+        func body(content: Content) -> some View {
+            content
+                .background {
+                    Button {
+                        paste()
+                    } label: {
+                        EmptyView()
+                    }
+                    .keyboardShortcut("v", modifiers: .command)
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+                }
+                .fileImporter(
+                    isPresented: $isImporting, allowedContentTypes: [.image, .movie],
+                    allowsMultipleSelection: true
+                ) { result in
+                    if case .success(let urls) = result, !urls.isEmpty { attach(.files(urls)) }
+                }
+        }
+
+        private func paste() {
+            let pasteboard = NSPasteboard.general
+            if canAttach {
+                let files =
+                    pasteboard.readObjects(
+                        forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+                    as? [URL] ?? []
+                let media = files.filter { url in
+                    let type = UTType(filenameExtension: url.pathExtension)
+                    return type?.conforms(to: .image) == true || type?.conforms(to: .movie) == true
+                }
+                if !media.isEmpty {
+                    attach(.files(media))
+                    return
+                }
+                if pasteboard.availableType(from: [.string]) == nil,
+                    let type = pasteboard.availableType(from: [.png, .tiff]),
+                    let data = pasteboard.data(forType: type)
+                {
+                    attach(.image(data))
+                    return
+                }
+            }
+            // Text, for whichever field has the cursor.
+            NSApplication.shared.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+        }
+    }
+#endif

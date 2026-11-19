@@ -149,7 +149,7 @@ public struct CollectionsView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func create() async {

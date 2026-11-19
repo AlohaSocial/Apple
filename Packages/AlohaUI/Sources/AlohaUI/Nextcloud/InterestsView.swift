@@ -47,6 +47,9 @@ public struct InterestsView: View {
         self.onAction = onAction
     }
 
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
+
     public var body: some View {
         feed
             .background(palette.background)
@@ -103,7 +106,7 @@ public struct InterestsView: View {
                 }
                 .readingSignal(status, context: .interests, session: session)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .listRowBackground(palette.background)
+                .statusListRow(status.id, ground: palette.background)
                 .listRowSeparator(.hidden)
                 .contextMenu {
                     Button {
@@ -147,12 +150,17 @@ public struct InterestsView: View {
             }
         }
         .listStyle(.plain)
+        .statusListNavigation(
+            selection: $selectedID, ids: visibleStatuses.map(\.id),
+            status: { id in visibleStatuses.first { $0.id == id } }, onAction: onAction,
+            refresh: { await refresh() }, isNativeList: false
+        )
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
         .onStatusesRemoved(for: session) { removal in
             statuses.removeAll { removal.removes($0) }
         }
-        .refreshable { await refresh() }
+        .alohaRefreshable { await refresh() }
         .safeAreaInset(edge: .bottom) {
             if undoable != nil { undoBar }
         }
@@ -532,7 +540,7 @@ struct InterestsSettingsView: View {
             }
         }
         .task { if !isLoaded { await load() } }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .alert(
             Text("Reset your interests?", comment: "Interests reset confirmation title"),
             isPresented: $isConfirmingReset

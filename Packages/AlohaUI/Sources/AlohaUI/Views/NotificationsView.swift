@@ -137,6 +137,15 @@ public struct NotificationsView: View {
             }
         }
         .listStyle(.plain)
+        // The keyboard walks the activities as it walks posts. Each row is a
+        // button that opens on a click, as before; the list draws the
+        // selection itself rather than being a selecting `List`, whose
+        // click would compete with the button's.
+        .statusListNavigation(
+            selection: $selectedID, ids: navigableIDs, status: navigableStatus,
+            onAction: onAction, open: openActivity, refresh: { await load() },
+            isNativeList: false, rowsAreButtons: true
+        )
         .alohaGround(palette)
         // A bar, not an opaque inset: the system's scroll-edge effect keeps
         // the chips legible over the rows passing under them, the way a
@@ -158,7 +167,7 @@ public struct NotificationsView: View {
             }
         }
         .navigationTitle(Text("Activities", comment: "Screen title"))
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task { await load() }
         // The chips ask the server (`types[]`), so the older mentions are
         // reachable too; what is on screen narrows at once meanwhile.
@@ -197,6 +206,36 @@ public struct NotificationsView: View {
             return false
         }
         return group.sampleAccountIDs.allSatisfy { $0 == authorID }
+    }
+
+    /// The selected activity (`statusListNavigation`).
+    @State private var selectedID: String?
+
+    private var navigableIDs: [String] {
+        session.capabilities.groupedNotifications
+            ? visibleGroups.map(\.id) : visibleFlat.map(\.id)
+    }
+
+    /// The post an activity is about, which the post keys act on.
+    private func navigableStatus(_ id: String) -> Status? {
+        if session.capabilities.groupedNotifications {
+            return visibleGroups.first { $0.id == id }?.statusID.flatMap { statuses[$0] }
+        }
+        return visibleFlat.first { $0.id == id }?.status
+    }
+
+    /// What a click on the activity does: its post, or else who it is from.
+    private func openActivity(_ id: String) {
+        if let status = navigableStatus(id) {
+            onAction(.open(status))
+        } else if session.capabilities.groupedNotifications,
+            let group = visibleGroups.first(where: { $0.id == id }),
+            let account = group.sampleAccountIDs.first.flatMap({ accounts[$0] })
+        {
+            onAction(.openProfile(account))
+        } else if let notification = visibleFlat.first(where: { $0.id == id }) {
+            onAction(.openProfile(notification.account))
+        }
     }
 
     private var visibleGroups: [NotificationGroup] {
@@ -243,7 +282,7 @@ public struct NotificationsView: View {
                 activityDayHeader(date)
             case .item(let notification):
                 flatRow(notification)
-                    .listRowBackground(Color.clear)
+                    .statusListRow(notification.id, ground: .clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(
                         EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
@@ -461,7 +500,7 @@ public struct NotificationsView: View {
                 activityDayHeader(date)
             case .item(let group):
                 groupRow(group)
-                    .listRowBackground(Color.clear)
+                    .statusListRow(group.id, ground: .clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(
                         EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))

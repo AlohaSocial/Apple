@@ -90,7 +90,7 @@ public struct FiltersView: View {
             }
         }
         .navigationTitle(Text("Filtered words", comment: "Screen title"))
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task { await load() }
         .sheet(item: $editing) { draft in
             FilterEditorView(draft: draft, session: session) {

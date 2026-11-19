@@ -27,8 +27,11 @@ public struct ArchivedPostsView: View {
         self.onAction = onAction
     }
 
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
+
     public var body: some View {
-        List {
+        SelectableList(selection: $selectedID) {
             if let errorMessage {
                 errorRow(errorMessage)
             }
@@ -45,7 +48,7 @@ public struct ArchivedPostsView: View {
                 // The swipe here is the list's own: unarchive.
                 .statusRowInteractions(status, session: session, swipes: false, onAction: onAction)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .listRowBackground(palette.background)
+                .statusListRow(status.id, ground: palette.background)
                 .listRowSeparator(.hidden)
                 .swipeActions(edge: .trailing) {
                     Button {
@@ -85,6 +88,11 @@ public struct ArchivedPostsView: View {
             }
         }
         .listStyle(.plain)
+        .statusListNavigation(
+            selection: $selectedID, ids: statuses.map(\.id),
+            status: { id in statuses.first { $0.id == id } }, onAction: onAction,
+            refresh: { await load() }
+        )
         .alohaGround(palette)
         .overlay {
             if isLoading && statuses.isEmpty {
@@ -100,7 +108,7 @@ public struct ArchivedPostsView: View {
         .onStatusesRemoved(for: session) { removal in
             statuses.removeAll { removal.removes($0) }
         }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorRow(_ message: String) -> some View {

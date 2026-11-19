@@ -80,11 +80,7 @@ public final class AppEnvironment {
     /// Mastodon and on a Nextcloud with the Theming app off, which leaves the
     /// app's own accent in place (docs/05 §2).
     public var serverAccent: AlohaThemeModifier.ServerTheme? {
-        guard let theme = activeSession?.capabilities.theme, theme.hasColour else { return nil }
-        return AlohaThemeModifier.ServerTheme(
-            brightHex: theme.hex(onDarkBackground: false),
-            darkHex: theme.hex(onDarkBackground: true),
-            textHex: theme.textHex)
+        serverAccent(for: activeSession)
     }
 
     /// What the watch needs to follow the active account, or `nil` when there
@@ -106,6 +102,39 @@ public final class AppEnvironment {
         guard let activeAccountID else { return sessions.first }
         return sessions.first { $0.id == activeAccountID } ?? sessions.first
     }
+
+    /// The session a window shows: its own account where it has one that is
+    /// still signed in here, the active account otherwise (`WindowAccount`).
+    public func session(for accountID: UUID?) -> AccountSession? {
+        if let accountID, let session = sessions.first(where: { $0.id == accountID }) {
+            return session
+        }
+        return activeSession
+    }
+
+    /// The colour a window wears: its own account's server's, which is not
+    /// the active account's once two windows show two accounts.
+    public func serverAccent(for session: AccountSession?) -> AlohaThemeModifier.ServerTheme? {
+        guard let theme = session?.capabilities.theme, theme.hasColour else { return nil }
+        return AlohaThemeModifier.ServerTheme(
+            brightHex: theme.hex(onDarkBackground: false),
+            darkHex: theme.hex(onDarkBackground: true),
+            textHex: theme.textHex)
+    }
+
+    /// The last request, from anywhere, to show an account (`setActiveAccount`).
+    ///
+    /// Each main window keeps its own account (docs/09 §2), so a request is
+    /// not a global switch: only the window in front adopts it
+    /// (`frontWindowID`), and the others stay where they were. A request
+    /// made with every window closed is simply the account the next window
+    /// opens on.
+    public private(set) var accountRequest = WindowAccount.Request(serial: 0, accountID: nil)
+
+    /// The main window that was last in front, by the id its shell gave the
+    /// sync engine. Not observed: nothing redraws because focus moved, and
+    /// the shells read it only when a request arrives.
+    @ObservationIgnored public var frontWindowID: UUID?
 
     public var hasAccounts: Bool { !sessions.isEmpty }
 
@@ -195,10 +224,16 @@ public final class AppEnvironment {
 
     /// Switching is instantaneous: the new account's cached timeline paints
     /// before any network call (docs/03 §6).
+    ///
+    /// The account becomes the default for windows opened from now on — and
+    /// for the widgets, the Dock menu and the menu bar — and the window in
+    /// front switches to it. Other windows keep the account they show.
     public func setActiveAccount(_ id: UUID) {
         guard sessions.contains(where: { $0.id == id }) else { return }
         activeAccountID = id
         AppGroup.defaults.set(id.uuidString, forKey: Self.activeAccountKey)
+        accountRequest = WindowAccount.Request(
+            serial: accountRequest.serial + 1, accountID: id)
     }
 
     // MARK: - Adding and removing

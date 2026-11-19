@@ -128,7 +128,7 @@ public struct PlaceView: View {
             .navigationBarTitleDisplayMode(.inline)
         #endif
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     /// The fetched name, and the screen's own word for a place when the
