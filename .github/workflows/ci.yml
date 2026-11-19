@@ -290,7 +290,7 @@ jobs:
           - shard: accessibility
             tests: AccessibilityAuditTests
           - shard: interaction
-            tests: InteractionTourTests
+            tests: InteractionTourTests ReadingTourTests
           # Playback is its own shard: the tests play a real file through a
           # loopback socket and wait for the picture to move, so they take
           # their own minutes rather than crowding a tour shard.
@@ -307,7 +307,8 @@ jobs:
             tests: ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests DetailColumnTests
     env:
       ALL_SHARDS: >-
-        AccessibilityAuditTests InteractionTourTests VideoPlaybackTests
+        AccessibilityAuditTests InteractionTourTests ReadingTourTests
+        VideoPlaybackTests
         AddedScreensTourTests PseudolocalisationTourTests StressTourTests
         ScreenTourTests ThemeTourTests SidebarTourTests NativeSidebarTests
         DetailColumnTests
