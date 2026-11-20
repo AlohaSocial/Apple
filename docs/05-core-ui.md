@@ -48,6 +48,17 @@ regular wide but compact tall, and keeps the tab bar.
   posts, Statistics, Blocking, Settings, and the other accounts to switch to.
   For you's own settings — what the server has learned, and the learning
   switches — are in Settings → Home feed, as the web app's Settings → Reading.
+  What For you learns from reading — how long a post stays on screen,
+  which are scrolled past, which are opened — is collected and sent
+  (`POST /api/v1/interests/signals`) only while the server says it learns
+  from this reader: `reading:learn` in `/api/v1/preferences`, or
+  `settings.active` of `/api/v1/interests` on a server without it, and off
+  when neither answers. Turning learning off or pausing it stops collection
+  at once and drops what was not sent; a 403 or 404 from the signals route
+  does the same until the account's state is next refreshed. The first time
+  For you is opened while learning is on, it shows what is learned from,
+  with Got it and Turn off, and the answer is kept on the server
+  (`noticeAcknowledged`) so the web does not ask again.
 - *Content*: the selected timeline.
 - *Detail*: the selected status's thread, or a profile, or a media viewer.
 

@@ -571,6 +571,7 @@
                         "posting:default:language": "en",
                         "reading:expand:media": "default",
                         "reading:expand:spoilers": false,
+                        "reading:learn": learnsFromReading,
                     ])
 
             // MARK: Timelines

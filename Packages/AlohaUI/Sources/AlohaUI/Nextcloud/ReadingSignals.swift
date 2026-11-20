@@ -15,6 +15,11 @@ import SwiftUI
 /// Nothing here leaves the reader's own server, and the server keeps none of
 /// it: each signal is folded into the scores as it arrives (`InterestService`).
 ///
+/// Collected only while the server says it learns from this reader
+/// (`AccountSession.learnsFromReading`): For you on, learning on, nothing
+/// paused, and the reader told what is learned. Otherwise nothing is even
+/// timed, let alone sent.
+///
 /// Batched and slow on purpose. The server takes at most 100 events per
 /// request and 30 requests a minute; this sends at most one request every 20
 /// seconds, so a fast scroll never comes near either.
@@ -32,14 +37,18 @@ final class ReadingSignals {
     private var onScreen: [String: ContinuousClock.Instant] = [:]
     private var lastSent: ContinuousClock.Instant?
     private var pendingFlush: Task<Void, Never>?
-    /// Set when the server refuses (For you switched off is a 403): there is
-    /// nothing to learn for, so nothing more is sent this session.
+    /// Set when the server refuses: 403 when it does not learn from this
+    /// reader (learning off, paused, or the notice not yet seen), 404 when
+    /// For you is switched off. Nothing more is sent by this collector; the
+    /// next refresh of the account's state decides whether a new one starts.
     private var isRefused = false
+    private let onRefused: @MainActor () -> Void
     private let clock = ContinuousClock()
     private let logger = Logger(subsystem: "social.aloha.app", category: "signals")
 
-    private init(client: APIClient) {
+    private init(client: APIClient, onRefused: @escaping @MainActor () -> Void) {
         self.client = client
+        self.onRefused = onRefused
     }
 
     private static var collectors: [UUID: ReadingSignals] = [:]
@@ -53,9 +62,11 @@ final class ReadingSignals {
     }
 
     static func forSession(_ session: AccountSession) -> ReadingSignals? {
-        guard session.capabilities.isNextcloudSocial else { return nil }
+        guard session.capabilities.isNextcloudSocial, session.learnsFromReading else { return nil }
         if let existing = collectors[session.id] { return existing }
-        let collector = ReadingSignals(client: session.client)
+        let collector = ReadingSignals(client: session.client) { [weak session] in
+            session?.adoptReadingLearning(false)
+        }
         collectors[session.id] = collector
         return collector
     }
@@ -129,9 +140,11 @@ final class ReadingSignals {
         } catch let error as APIError {
             switch error {
             case .forbidden, .notFound, .unauthorised, .accountNotSetUp:
-                // For you is off, or not there: stop asking.
+                // Not learned from, or no For you here: stop collecting.
                 isRefused = true
                 queue.removeAll()
+                onScreen.removeAll()
+                onRefused()
             default:
                 // A signal is a hint, not a record: one that could not be
                 // delivered is dropped rather than retried into a backlog.

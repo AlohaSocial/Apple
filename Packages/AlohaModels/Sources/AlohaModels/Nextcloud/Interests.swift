@@ -21,11 +21,30 @@ public struct InterestsState: Decodable, Sendable, Hashable {
         @LenientBool public var learning: Bool
         @LenientBool public var paused: Bool
         public var languages: [String]
+        /// For you switched on for the whole instance.
+        @LenientBool public var enabled: Bool
+        /// The administrator stopped learning for everybody.
+        @LenientBool public var instancePaused: Bool
+        /// The reader has seen what For you learns from.
+        @LenientBool public var noticeAcknowledged: Bool
+        /// The server's own answer to whether this reader is learned from
+        /// right now. Older servers leave it out; `isLearning` then works it
+        /// out from the switches, and asks for the notice too, so a client
+        /// never collects for a reader the server would not learn from.
+        public var active: Bool?
 
-        public init(learning: Bool = true, paused: Bool = false, languages: [String] = []) {
+        public init(
+            learning: Bool = true, paused: Bool = false, languages: [String] = [],
+            enabled: Bool = true, instancePaused: Bool = false,
+            noticeAcknowledged: Bool = false, active: Bool? = nil
+        ) {
             _learning = .init(wrappedValue: learning)
             _paused = .init(wrappedValue: paused)
             self.languages = languages
+            _enabled = .init(wrappedValue: enabled)
+            _instancePaused = .init(wrappedValue: instancePaused)
+            _noticeAcknowledged = .init(wrappedValue: noticeAcknowledged)
+            self.active = active
         }
 
         public init(from decoder: any Decoder) throws {
@@ -35,9 +54,35 @@ public struct InterestsState: Decodable, Sendable, Hashable {
             _paused =
                 (try? c.decode(LenientBool.self, forKey: .paused)) ?? .init(wrappedValue: false)
             languages = (try? c.decode(LossyArray<String>.self, forKey: .languages))?.elements ?? []
+            // decodeIfPresent: a missing key is "not said", which the
+            // container's lenient decode would turn into `false`
+            _enabled =
+                (try? c.decodeIfPresent(LenientBool.self, forKey: .enabled))?.flatMap { $0 }
+                ?? .init(wrappedValue: true)
+            _instancePaused =
+                (try? c.decode(LenientBool.self, forKey: .instancePaused))
+                ?? .init(wrappedValue: false)
+            _noticeAcknowledged =
+                (try? c.decode(LenientBool.self, forKey: .noticeAcknowledged))
+                ?? .init(wrappedValue: false)
+            active =
+                (try? c.decodeIfPresent(LenientBool.self, forKey: .active))?.flatMap { $0 }?
+                .wrappedValue
         }
 
-        enum CodingKeys: String, CodingKey { case learning, paused, languages }
+        /// Whether anything the reader does is learned from right now.
+        public var isLearning: Bool {
+            active ?? (enabled && learning && !paused && !instancePaused && noticeAcknowledged)
+        }
+
+        /// Whether the reader still has to be told what For you learns from.
+        public var needsNotice: Bool {
+            enabled && learning && !noticeAcknowledged
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case learning, paused, languages, enabled, instancePaused, noticeAcknowledged, active
+        }
     }
 
     public init(
