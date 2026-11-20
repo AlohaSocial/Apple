@@ -131,7 +131,7 @@ public struct ImageDescriber: Sendable {
 
         var sentence = parts.joined(separator: " ")
         if sentence.isEmpty {
-            sentence = String(localized: "A picture", comment: "Alt text fallback")
+            sentence = String(localized: "A photo", comment: "Alt text fallback")
         }
         if !sentence.hasSuffix(".") { sentence += "." }
 

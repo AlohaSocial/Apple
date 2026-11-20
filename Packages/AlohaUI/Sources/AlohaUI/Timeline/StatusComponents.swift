@@ -653,9 +653,9 @@ public struct StatusMenu: View {
             } label: {
                 Label {
                     if displayed.favourited {
-                        Text("Unfavourite", comment: "Status menu item")
+                        Text("Unlike", comment: "Status menu item")
                     } else {
-                        Text("Favourite", comment: "Status menu item")
+                        Text("Like", comment: "Status menu item")
                     }
                 } icon: {
                     Image(

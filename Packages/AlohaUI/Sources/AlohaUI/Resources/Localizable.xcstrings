@@ -2,6 +2,631 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {},
+    "%@ liked your post" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ hat deinen Beitrag favorisiert"
+          }
+        }
+      }
+    },
+    "%@ reacted to your short" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ hat auf deine Story reagiert"
+          }
+        }
+      }
+    },
+    "%@ replied to your short" : {
+      "comment" : "Notification summary\nNotification title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ hat auf deine Story geantwortet"
+          }
+        }
+      }
+    },
+    "%@. ^[%lld like](inflect: true), ^[%lld boost](inflect: true), ^[%lld reply](inflect: true), ^[%lld quote](inflect: true)." : {
+      "comment" : "Statistics best post, read aloud",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@. ^[%lld Favorit](inflect: true), ^[%lld mal geteilt](inflect: true), ^[%lld Antwort](inflect: true), ^[%lld Zitat](inflect: true)."
+          }
+        }
+      }
+    },
+    "A grid of photos" : {
+      "comment" : "Mode detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ein Raster aus Bildern"
+          }
+        }
+      }
+    },
+    "A soft tick when you like something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting." : {
+      "comment" : "Senses explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ein sanftes Ticken, wenn dir etwas gefällt, ein Lufthauch, wenn ein Beitrag rausgeht, und ein Zweiklang bei einer Direktnachricht. Aus, bis du es einschaltest. Das Tippen in der Hand richtet sich nach deiner Einstellung „Bewegung reduzieren“."
+          }
+        }
+      }
+    },
+    "Activities from people you don't know can wait in Filtered activities instead of your inbox. New accounts start this way; yours can too." : {
+      "comment" : "Notification policy notice detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen von Leuten, die du nicht kennst, können in den gefilterten Benachrichtigungen warten statt in deinem Posteingang. Neue Konten starten so; deins kann das auch."
+          }
+        }
+      }
+    },
+    "Activities your policy holds back appear here, one row per sender." : {
+      "comment" : "Notification requests explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen, die deine Regeln zurückhalten, erscheinen hier – eine Zeile pro Absender."
+          }
+        }
+      }
+    },
+    "Activities, Discover, Messages" : {
+      "comment" : "Keyboard shortcut",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen, Entdecken, Nachrichten"
+          }
+        }
+      }
+    },
+    "Activity policy" : {
+      "comment" : "Notifications header\nScreen title\nSettings item"
+    },
+    "Add a photo from the library" : {
+      "comment" : "Composer action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Bild aus der Mediathek hinzufügen"
+          }
+        }
+      }
+    },
+    "Add a short" : {
+      "comment" : "Story rail action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Story hinzufügen"
+          }
+        }
+      }
+    },
+    "Adjust photo" : {
+      "comment" : "Story crop title"
+    },
+    "Allow photo access in Settings to see your last photos here. You can still choose one from the library." : {
+      "comment" : "Story composer recent photos unavailable"
+    },
+    "Choose a photo or video" : {
+      "comment" : "Story composer picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Bild oder Video auswählen"
+          }
+        }
+      }
+    },
+    "Crop and zoom the photo" : {
+      "comment" : "Story adjust hint"
+    },
+    "Delete short" : {
+      "comment" : "Story action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Story löschen"
+          }
+        }
+      }
+    },
+    "Delete this short?" : {
+      "comment" : "Story delete confirmation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Diese Story löschen?"
+          }
+        }
+      }
+    },
+    "Double-tap a photo to like it." : {
+      "comment" : "Tip detail: double-tap a photo",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tippe doppelt auf ein Foto, um es zu favorisieren."
+          }
+        }
+      }
+    },
+    "Double-tap a photo to like or unlike it. Tap it once to open it full size." : {
+      "comment" : "Photos hint"
+    },
+    "Double-tap anywhere on a short to like it without looking for the button." : {
+      "comment" : "Tip detail: double-tap a short",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tippe irgendwo doppelt auf ein Short, um es zu favorisieren, ohne nach der Taste zu suchen."
+          }
+        }
+      }
+    },
+    "Drag a sticker to place it. Use Adjust to crop and zoom the photo. Both are drawn into the photo when you share." : {
+      "comment" : "Story sticker hint"
+    },
+    "Favorites" : {
+      "comment" : "Notification filter\nScreen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favoriten"
+          }
+        }
+      }
+    },
+    "Fetch the photos and videos too" : {
+      "comment" : "Migration switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Auch Bilder und Videos abrufen"
+          }
+        }
+      }
+    },
+    "Filtered activities" : {
+      "comment" : "Filtered notifications section\nScreen title\nSettings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gefilterte Benachrichtigungen"
+          }
+        }
+      }
+    },
+    "Filtered activities: %lld waiting" : {
+      "comment" : "Filtered count"
+    },
+    "Follow some people who post photos." : {
+      "comment" : "Empty Photos detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Folge ein paar Leuten, die Bilder veröffentlichen."
+          }
+        }
+      }
+    },
+    "Kind of short" : {
+      "comment" : "Story composer picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Art der Story"
+          }
+        }
+      }
+    },
+    "Like" : {
+      "comment" : "Accessibility action\nMenu item: the post in focus\nNotification action\nShorts action\nStatus action\nStatus menu item\nSwipe action on a post\nSwipe action setting",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Favorisieren"
+          }
+        }
+      }
+    },
+    "Like the post in focus" : {
+      "comment" : "Keyboard shortcut",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ausgewählten Beitrag favorisieren"
+          }
+        }
+      }
+    },
+    "Liked by" : {
+      "comment" : "Title of the list of who favourited",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Favorisiert von"
+          }
+        }
+      }
+    },
+    "Liked most" : {
+      "comment" : "Annual report best post",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Am meisten favorisiert"
+          }
+        }
+      }
+    },
+    "Likes" : {
+      "comment" : "Statistics tile\nWho favourited a post",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Favoriten"
+          }
+        }
+      }
+    },
+    "Lists come as the CSV files Mastodon, Pixelfed, GoToSocial and Akkoma export. Posts and photos are copied, not linked." : {
+      "comment" : "Migration import explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Listen werden als die CSV-Dateien importiert, die Mastodon, Pixelfed, GoToSocial und Akkoma exportieren. Beiträge und Bilder werden kopiert, nicht verlinkt."
+          }
+        }
+      }
+    },
+    "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered activities screen instead of your inbox." : {
+      "comment" : "Notification policy explanation"
+    },
+    "New short" : {
+      "comment" : "Story composer title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Neue Story"
+          }
+        }
+      }
+    },
+    "New short from %@" : {
+      "comment" : "Story rail tile",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Neue Story von %@"
+          }
+        }
+      }
+    },
+    "No likes yet" : {
+      "comment" : "Empty list of who favourited",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Noch keine Favoriten"
+          }
+        }
+      }
+    },
+    "No photos trending" : {
+      "comment" : "Empty Discover pictures",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Keine angesagten Bilder"
+          }
+        }
+      }
+    },
+    "Open filtered activities" : {
+      "comment" : "Policy action"
+    },
+    "Photo or video" : {
+      "comment" : "Story kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Bild oder Video"
+          }
+        }
+      }
+    },
+    "Pinch to zoom. Drag to choose the part of the photo that fills the short." : {
+      "comment" : "Story crop hint"
+    },
+    "Play %@'s shorts" : {
+      "comment" : "Profile stories ring",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Storys von %@ abspielen"
+          }
+        }
+      }
+    },
+    "Posting this deletes the original, with its likes, boosts and replies." : {
+      "comment" : "Composer note when redrafting",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Beim Veröffentlichen wird das Original gelöscht, samt Favoriten, Boosts und Antworten."
+          }
+        }
+      }
+    },
+    "Posts that say they were made with AI, by a hashtag or by their photos, are left out of every timeline." : {
+      "comment" : "AI content filter explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Beiträge, die angeben, mit KI erstellt zu sein – per Hashtag oder in ihren Bildern –, erscheinen in keiner Timeline."
+          }
+        }
+      }
+    },
+    "Posts, photos, videos and shorts from the people you follow." : {
+      "comment" : "Onboarding detail"
+    },
+    "Reactions to this short could not be loaded. Please try again." : {},
+    "Replies, boosts and likes land here." : {
+      "comment" : "Empty notifications detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Antworten, geteilte Beiträge und Favoriten landen hier."
+          }
+        }
+      }
+    },
+    "Reply to short" : {
+      "comment" : "Story reply label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Auf Story antworten"
+          }
+        }
+      }
+    },
+    "Reply, boost and like counts, follower and post counts, and view counts." : {
+      "comment" : "Settings explanation"
+    },
+    "Shoot, crop, add a sticker, share. The canvas is the short." : {
+      "comment" : "Onboarding detail"
+    },
+    "Short from %@" : {
+      "comment" : "Story rail tile",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Story von %@"
+          }
+        }
+      }
+    },
+    "Shorts stop at 30 seconds; the server keeps the start." : {
+      "comment" : "Story composer video length warning",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Storys enden nach 30 Sekunden; der Server behält den Anfang."
+          }
+        }
+      }
+    },
+    "Shorts that start in the camera." : {
+      "comment" : "Onboarding title"
+    },
+    "Shows who liked this post" : {
+      "comment" : "Hint for the favourites number"
+    },
+    "Swipe from either edge to reply, like, boost or bookmark. You choose which in Settings." : {
+      "comment" : "Tip detail: swipe actions on timeline posts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Wische von einer der Kanten, um zu antworten, zu favorisieren, zu teilen oder ein Lesezeichen zu setzen. Was dabei passiert, legst du in den Einstellungen fest."
+          }
+        }
+      }
+    },
+    "Text of the short" : {
+      "comment" : "Text story field label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Story-Text"
+          }
+        }
+      }
+    },
+    "Text short: %@" : {
+      "comment" : "Text story preview label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Text-Story: %@"
+          }
+        }
+      }
+    },
+    "That photo couldn't be read." : {
+      "comment" : "Story composer failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dieses Bild konnte nicht gelesen werden."
+          }
+        }
+      }
+    },
+    "That short couldn't be deleted." : {
+      "comment" : "Story delete failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Diese Story konnte nicht gelöscht werden."
+          }
+        }
+      }
+    },
+    "That short couldn't be shared." : {
+      "comment" : "Story composer failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Diese Story konnte nicht geteilt werden."
+          }
+        }
+      }
+    },
+    "The archive holds your profile, posts, photos and videos, and the lists below. It never holds your private key." : {
+      "comment" : "Migration export explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Das Archiv enthält dein Profil, deine Beiträge, Bilder und Videos sowie die Listen unten. Deinen privaten Schlüssel enthält es nie."
+          }
+        }
+      }
+    },
+    "This folder has no photos, video or audio your server accepts." : {
+      "comment" : "Empty Nextcloud folder detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dieser Ordner enthält keine Bilder, Videos oder Audiodateien, die dein Server akzeptiert."
+          }
+        }
+      }
+    },
+    "Unlike" : {
+      "comment" : "Accessibility action\nStatus menu item\nSwipe action on a post",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nicht mehr favorisieren"
+          }
+        }
+      }
+    },
+    "Use the shutter for a new photo, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas." : {
+      "comment" : "Story composer hint"
+    },
+    "Viewers of this short could not be loaded. Please try again." : {},
+    "When you choose to see a filtered sender's activities, they are listed here, and their activities always reach you." : {
+      "comment" : "Allowed senders explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Wenn du die Benachrichtigungen einer gefilterten Person sehen willst, steht sie hier, und ihre Benachrichtigungen erreichen dich immer."
+          }
+        }
+      }
+    },
+    "Your short" : {
+      "comment" : "Story composer placeholder title\nStory player own title\nStory rail tile",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Deine Story"
+          }
+        }
+      }
+    },
+    "^[%lld activity](inflect: true) held" : {
+      "comment" : "Notification request count",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "^[%lld Benachrichtigung](inflect: true) zurückgehalten"
+          }
+        }
+      }
+    },
+    "like" : {
+      "comment" : "Digest summary kind"
+    },
+    "short reply" : {
+      "comment" : "Digest summary kind",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Story-Antwort"
+          }
+        }
+      }
+    },
     "· hidden there; use its export file" : {
       "comment" : "Move here list not readable",
       "localizations" : {
@@ -169,17 +794,6 @@
         }
       }
     },
-    "%@ favourited your post" : {
-      "comment" : "Notification summary\nNotification title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ hat deinen Beitrag favorisiert"
-          }
-        }
-      }
-    },
     "%@ followed you" : {
       "comment" : "Notification summary\nNotification title",
       "localizations" : {
@@ -275,28 +889,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ hat etwas veröffentlicht"
-          }
-        }
-      }
-    },
-    "%@ reacted to your story" : {
-      "comment" : "Notification summary\nNotification title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ hat auf deine Story reagiert"
-          }
-        }
-      }
-    },
-    "%@ replied to your story" : {
-      "comment" : "Notification summary\nNotification title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ hat auf deine Story geantwortet"
           }
         }
       }
@@ -461,17 +1053,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@. %2$@"
-          }
-        }
-      }
-    },
-    "%@. ^[%lld favourite](inflect: true), ^[%lld boost](inflect: true), ^[%lld reply](inflect: true), ^[%lld quote](inflect: true)." : {
-      "comment" : "Statistics best post, read aloud",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@. ^[%lld Favorit](inflect: true), ^[%lld mal geteilt](inflect: true), ^[%lld Antwort](inflect: true), ^[%lld Zitat](inflect: true)."
           }
         }
       }
@@ -723,17 +1304,6 @@
         }
       }
     },
-    "^[%lld favourite](inflect: true)" : {
-      "comment" : "Video byline count\nWatch page count",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "^[%lld Favorit](inflect: true)"
-          }
-        }
-      }
-    },
     "^[%lld follower](inflect: true)" : {
       "comment" : "Watch page channel line",
       "localizations" : {
@@ -771,7 +1341,7 @@
       "comment" : "Alt text batch count"
     },
     "^[%lld like](inflect: true)" : {
-      "comment" : "Watch page fact",
+      "comment" : "Video byline count\nWatch page count\nWatch page fact",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -799,17 +1369,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neu: ^[%lld Beitrag](inflect: true)"
-          }
-        }
-      }
-    },
-    "^[%lld notification](inflect: true) held" : {
-      "comment" : "Notification request count",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "^[%lld Benachrichtigung](inflect: true) zurückgehalten"
           }
         }
       }
@@ -1244,17 +1803,6 @@
         }
       }
     },
-    "A grid of pictures" : {
-      "comment" : "Mode detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Raster aus Bildern"
-          }
-        }
-      }
-    },
     "A grid that opens into full posts. Double-tap a photo to like it." : {
       "comment" : "Onboarding detail"
     },
@@ -1406,17 +1954,6 @@
     },
     "A server is where your account lives. It can be a Nextcloud with Social, a Mastodon instance, or any server that speaks the Mastodon API." : {
       "comment" : "Onboarding server explanation"
-    },
-    "A soft tick when you favourite something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting." : {
-      "comment" : "Senses explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein sanftes Ticken, wenn dir etwas gefällt, ein Lufthauch, wenn ein Beitrag rausgeht, und ein Zweiklang bei einer Direktnachricht. Aus, bis du es einschaltest. Das Tippen in der Hand richtet sich nach deiner Einstellung „Bewegung reduzieren“."
-          }
-        }
-      }
     },
     "A thread can't be scheduled. Post it now, or schedule its first post on its own." : {
       "comment" : "Composer refusal: scheduled post with thread segments",
@@ -1608,7 +2145,7 @@
       }
     },
     "Activities" : {
-      "comment" : "Menu item\nScreen title\nSidebar item\nTab title",
+      "comment" : "Filter context\nMenu item\nScreen title\nSidebar item\nTab title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1753,17 +2290,6 @@
         }
       }
     },
-    "Add a picture from the library" : {
-      "comment" : "Composer action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bild aus der Mediathek hinzufügen"
-          }
-        }
-      }
-    },
     "Add a place" : {
       "comment" : "Composer action\nScreen title",
       "localizations" : {
@@ -1804,17 +2330,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reaktion hinzufügen"
-          }
-        }
-      }
-    },
-    "Add a story" : {
-      "comment" : "Story rail action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Story hinzufügen"
           }
         }
       }
@@ -2046,9 +2561,6 @@
         }
       }
     },
-    "Adjust picture" : {
-      "comment" : "Story crop title"
-    },
     "Advanced" : {
       "comment" : "Onboarding advanced section\nSign-in advanced section",
       "localizations" : {
@@ -2180,9 +2692,6 @@
           }
         }
       }
-    },
-    "Allow photo access in Settings to see your last pictures here. You can still choose one from the library." : {
-      "comment" : "Story composer recent photos unavailable"
     },
     "Aloha Social" : {
       "comment" : "App name",
@@ -3341,17 +3850,6 @@
         }
       }
     },
-    "Choose a picture or video" : {
-      "comment" : "Story composer picker",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bild oder Video auswählen"
-          }
-        }
-      }
-    },
     "Choose another filter to see more activities." : {
       "comment" : "Notification filter empty state guidance"
     },
@@ -4078,9 +4576,6 @@
     "Crop" : {
       "comment" : "Onboarding story tool"
     },
-    "Crop and zoom the picture" : {
-      "comment" : "Story adjust hint"
-    },
     "Current version" : {
       "comment" : "Edit history label",
       "localizations" : {
@@ -4268,17 +4763,6 @@
         }
       }
     },
-    "Delete story" : {
-      "comment" : "Story action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Story löschen"
-          }
-        }
-      }
-    },
     "Delete this post?" : {
       "comment" : "Delete confirmation title",
       "localizations" : {
@@ -4297,17 +4781,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Social-Konto löschen"
-          }
-        }
-      }
-    },
-    "Delete this story?" : {
-      "comment" : "Story delete confirmation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Story löschen?"
           }
         }
       }
@@ -4647,47 +5120,19 @@
         }
       }
     },
-    "Double-tap a photo to favourite it." : {
-      "comment" : "Tip detail: double-tap a photo",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tippe doppelt auf ein Foto, um es zu favorisieren."
-          }
-        }
-      }
-    },
-    "Double-tap a picture to like or unlike it. Tap it once to open it full size." : {
-      "comment" : "Photos hint"
-    },
-    "Double-tap anywhere on a short to favourite it without looking for the button." : {
-      "comment" : "Tip detail: double-tap a short",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tippe irgendwo doppelt auf ein Short, um es zu favorisieren, ohne nach der Taste zu suchen."
-          }
-        }
-      }
-    },
     "Double-tap the photo" : {
       "comment" : "Onboarding mock hint"
     },
-    "Double-tap to favourite" : {
-      "comment" : "Tip title: double-tap a photo\nTip title: double-tap a short",
+    "Double-tap to like" : {
+      "comment" : "Photos hint title\nTip title: double-tap a photo\nTip title: double-tap a short",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Zum Favorisieren doppeltippen"
           }
         }
       }
-    },
-    "Double-tap to like" : {
-      "comment" : "Photos hint title"
     },
     "Down from ^[%lld post](inflect: true) last week." : {
       "comment" : "Weekly recap comparison",
@@ -4722,9 +5167,6 @@
           }
         }
       }
-    },
-    "Drag a sticker to place it. Use Adjust to crop and zoom the picture. Both are drawn into the picture when you share." : {
-      "comment" : "Story sticker hint"
     },
     "Drag the crosshair onto what matters. Cropped previews keep that part in frame." : {
       "comment" : "Focal point hint",
@@ -5206,64 +5648,6 @@
         }
       }
     },
-    "favourite" : {
-      "comment" : "Digest summary kind"
-    },
-    "Favourite" : {
-      "comment" : "Accessibility action\nMenu item: the post in focus\nNotification action\nShorts action\nStatus action\nStatus menu item\nSwipe action on a post\nSwipe action setting",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favorisieren"
-          }
-        }
-      }
-    },
-    "Favourite the post in focus" : {
-      "comment" : "Keyboard shortcut",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausgewählten Beitrag favorisieren"
-          }
-        }
-      }
-    },
-    "Favourited by" : {
-      "comment" : "Title of the list of who favourited",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favorisiert von"
-          }
-        }
-      }
-    },
-    "Favourited most" : {
-      "comment" : "Annual report best post",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Am meisten favorisiert"
-          }
-        }
-      }
-    },
-    "Favourites" : {
-      "comment" : "Notification filter\nStatistics tile\nWho favourited a post",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favoriten"
-          }
-        }
-      }
-    },
     "Feature on my profile" : {
       "comment" : "Profile action",
       "localizations" : {
@@ -5420,17 +5804,6 @@
         }
       }
     },
-    "Fetch the pictures and videos too" : {
-      "comment" : "Migration switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auch Bilder und Videos abrufen"
-          }
-        }
-      }
-    },
     "Fields" : {
       "comment" : "Profile editing section",
       "localizations" : {
@@ -5496,20 +5869,6 @@
           }
         }
       }
-    },
-    "Filtered notifications" : {
-      "comment" : "Filtered notifications section\nScreen title\nSettings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gefilterte Benachrichtigungen"
-          }
-        }
-      }
-    },
-    "Filtered notifications: %lld waiting" : {
-      "comment" : "Filtered count"
     },
     "Filtered words" : {
       "comment" : "Screen title",
@@ -5721,17 +6080,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Follower-Anfragen"
-          }
-        }
-      }
-    },
-    "Follow some people who post pictures." : {
-      "comment" : "Empty Photos detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Folge ein paar Leuten, die Bilder veröffentlichen."
           }
         }
       }
@@ -7011,9 +7359,6 @@
     "Like, repost, reply and save keep their order. Tap to try." : {
       "comment" : "Onboarding detail"
     },
-    "Liked posts" : {
-      "comment" : "Screen title"
-    },
     "Limited accounts" : {
       "comment" : "Policy row"
     },
@@ -7103,17 +7448,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Listen"
-          }
-        }
-      }
-    },
-    "Lists come as the CSV files Mastodon, Pixelfed, GoToSocial and Akkoma export. Posts and pictures are copied, not linked." : {
-      "comment" : "Migration import explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Listen werden als die CSV-Dateien importiert, die Mastodon, Pixelfed, GoToSocial und Akkoma exportieren. Beiträge und Bilder werden kopiert, nicht verlinkt."
           }
         }
       }
@@ -7465,9 +7799,6 @@
           }
         }
       }
-    },
-    "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered notifications screen instead of your inbox." : {
-      "comment" : "Notification policy explanation"
     },
     "Mentions only" : {
       "comment" : "Focus filter summary",
@@ -8054,28 +8385,6 @@
     "New posts pill" : {
       "comment" : "Settings item"
     },
-    "New story" : {
-      "comment" : "Story composer title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Story"
-          }
-        }
-      }
-    },
-    "New story from %@" : {
-      "comment" : "Story rail tile",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Story von %@"
-          }
-        }
-      }
-    },
     "New Window" : {
       "comment" : "Menu item",
       "localizations" : {
@@ -8324,17 +8633,6 @@
         }
       }
     },
-    "No favourites yet" : {
-      "comment" : "Empty list of who favourited",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Favoriten"
-          }
-        }
-      }
-    },
     "No follow requests" : {
       "comment" : "Empty follow requests",
       "localizations" : {
@@ -8423,17 +8721,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch keine Fotos"
-          }
-        }
-      }
-    },
-    "No pictures trending" : {
-      "comment" : "Empty Discover pictures",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine angesagten Bilder"
           }
         }
       }
@@ -9115,11 +9402,8 @@
         }
       }
     },
-    "Notification policy" : {
-      "comment" : "Notifications header\nScreen title\nSettings item"
-    },
     "Notifications" : {
-      "comment" : "Filter context\nSettings section",
+      "comment" : "Settings section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9143,17 +9427,6 @@
         }
       }
     },
-    "Notifications from people you don't know can wait in Filtered notifications instead of your inbox. New accounts start this way; yours can too." : {
-      "comment" : "Notification policy notice detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen von Leuten, die du nicht kennst, können in den gefilterten Benachrichtigungen warten statt in deinem Posteingang. Neue Konten starten so; deins kann das auch."
-          }
-        }
-      }
-    },
     "notifications push digest quiet hours delivery sounds" : {
       "comment" : "Settings search keywords for the Notifications section, separated by spaces. Translate into the words people in your language would type.",
       "localizations" : {
@@ -9161,28 +9434,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "benachrichtigungen mitteilungen push zusammenfassung ruhezeiten zustellung töne"
-          }
-        }
-      }
-    },
-    "Notifications your policy holds back appear here, one row per sender." : {
-      "comment" : "Notification requests explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen, die deine Regeln zurückhalten, erscheinen hier – eine Zeile pro Absender."
-          }
-        }
-      }
-    },
-    "Notifications, Discover, Messages" : {
-      "comment" : "Keyboard shortcut",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen, Entdecken, Nachrichten"
           }
         }
       }
@@ -9520,9 +9771,6 @@
           }
         }
       }
-    },
-    "Open filtered notifications" : {
-      "comment" : "Policy action"
     },
     "Open in browser" : {
       "comment" : "Account setup action",
@@ -9966,7 +10214,7 @@
       }
     },
     "Photos" : {
-      "comment" : "Feed mode\nMode title\nProfile tab",
+      "comment" : "Discover section\nFeed mode\nMode title\nProfile tab",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10034,19 +10282,8 @@
         }
       }
     },
-    "Picture or video" : {
-      "comment" : "Story kind",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bild oder Video"
-          }
-        }
-      }
-    },
     "Pictures" : {
-      "comment" : "Discover section\nGIF picker title\nProfile editing section\nStatistics section",
+      "comment" : "GIF picker title\nProfile editing section\nStatistics section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10077,9 +10314,6 @@
           }
         }
       }
-    },
-    "Pinch to zoom. Drag to choose the part of the picture that fills the story." : {
-      "comment" : "Story crop hint"
     },
     "Pinned" : {
       "comment" : "Interest pinned state\nPinned posts section\nTimeline context line",
@@ -10154,17 +10388,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ abspielen"
-          }
-        }
-      }
-    },
-    "Play %@'s stories" : {
-      "comment" : "Profile stories ring",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Storys von %@ abspielen"
           }
         }
       }
@@ -10385,17 +10608,6 @@
         }
       }
     },
-    "Posting this deletes the original, with its favourites, boosts and replies." : {
-      "comment" : "Composer note when redrafting",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beim Veröffentlichen wird das Original gelöscht, samt Favoriten, Boosts und Antworten."
-          }
-        }
-      }
-    },
     "Posts" : {
       "comment" : "Annual report figure\nChart axis\nProfile stat\nProfile tab\nSearch results section\nStatistics series\nStatistics stat\nTrends filter\nVoiceOver rotor name",
       "localizations" : {
@@ -10497,17 +10709,6 @@
         }
       }
     },
-    "Posts that say they were made with AI, by a hashtag or by their pictures, are left out of every timeline." : {
-      "comment" : "AI content filter explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beiträge, die angeben, mit KI erstellt zu sein – per Hashtag oder in ihren Bildern –, erscheinen in keiner Timeline."
-          }
-        }
-      }
-    },
     "Posts with audio attachments will show up here." : {
       "comment" : "Empty Audio detail",
       "localizations" : {
@@ -10551,9 +10752,6 @@
           }
         }
       }
-    },
-    "Posts, photos, videos and stories from the people you follow." : {
-      "comment" : "Onboarding detail"
     },
     "Posts, replies and boosts" : {
       "comment" : "Statistics section",
@@ -11379,17 +11577,6 @@
         }
       }
     },
-    "Replies, boosts and favourites land here." : {
-      "comment" : "Empty notifications detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Antworten, geteilte Beiträge und Favoriten landen hier."
-          }
-        }
-      }
-    },
     "reply" : {
       "comment" : "Digest summary kind"
     },
@@ -11415,17 +11602,6 @@
         }
       }
     },
-    "Reply to story" : {
-      "comment" : "Story reply label",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf Story antworten"
-          }
-        }
-      }
-    },
     "Reply to the post in focus" : {
       "comment" : "Keyboard shortcut",
       "localizations" : {
@@ -11436,9 +11612,6 @@
           }
         }
       }
-    },
-    "Reply, boost and favourite counts, follower and post counts, and view counts." : {
-      "comment" : "Settings explanation"
     },
     "Reply…" : {
       "comment" : "Onboarding mock reply\nStory reply prompt",
@@ -12301,9 +12474,6 @@
         }
       }
     },
-    "Shoot, crop, add a sticker, share. The canvas is the story." : {
-      "comment" : "Onboarding detail"
-    },
     "Short vertical clips, full screen" : {
       "comment" : "Mode detail",
       "localizations" : {
@@ -12525,9 +12695,6 @@
     },
     "Shows who boosted this post" : {
       "comment" : "Hint for the boosts number"
-    },
-    "Shows who favourited this post" : {
-      "comment" : "Hint for the favourites number"
     },
     "Sign %@ out?" : {
       "comment" : "Revoke app confirmation title",
@@ -13039,66 +13206,6 @@
         }
       }
     },
-    "Stories stop at 30 seconds; the server keeps the start." : {
-      "comment" : "Story composer video length warning",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Storys enden nach 30 Sekunden; der Server behält den Anfang."
-          }
-        }
-      }
-    },
-    "Stories that start in the camera." : {
-      "comment" : "Onboarding title"
-    },
-    "Story from %@" : {
-      "comment" : "Story rail tile",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Story von %@"
-          }
-        }
-      }
-    },
-    "Story kind" : {
-      "comment" : "Story composer picker",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Art der Story"
-          }
-        }
-      }
-    },
-    "Story reactions could not be loaded. Please try again." : {},
-    "story reply" : {
-      "comment" : "Digest summary kind",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Story-Antwort"
-          }
-        }
-      }
-    },
-    "Story text" : {
-      "comment" : "Text story field label",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Story-Text"
-          }
-        }
-      }
-    },
-    "Story viewers could not be loaded. Please try again." : {},
     "Subscribe" : {
       "comment" : "Shared list action",
       "localizations" : {
@@ -13250,17 +13357,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beitrag wischen"
-          }
-        }
-      }
-    },
-    "Swipe from either edge to reply, favourite, boost or bookmark. You choose which in Settings." : {
-      "comment" : "Tip detail: swipe actions on timeline posts",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wische von einer der Kanten, um zu antworten, zu favorisieren, zu teilen oder ein Lesezeichen zu setzen. Was dabei passiert, legst du in den Einstellungen fest."
           }
         }
       }
@@ -13466,17 +13562,6 @@
         }
       }
     },
-    "Text story: %@" : {
-      "comment" : "Text story preview label",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text-Story: %@"
-          }
-        }
-      }
-    },
     "That account could not be looked up." : {
       "comment" : "Move here inspect failure",
       "localizations" : {
@@ -13671,17 +13756,6 @@
     "That list could not be created. Try again." : {
       "comment" : "List create failure"
     },
-    "That picture couldn't be read." : {
-      "comment" : "Story composer failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Bild konnte nicht gelesen werden."
-          }
-        }
-      }
-    },
     "That post could not be cancelled. It will still go out." : {
       "comment" : "Scheduled post cancel failure",
       "localizations" : {
@@ -13720,28 +13794,6 @@
     },
     "That server could not be unblocked. Try again." : {
       "comment" : "Domain unblock failure"
-    },
-    "That story couldn't be deleted." : {
-      "comment" : "Story delete failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Story konnte nicht gelöscht werden."
-          }
-        }
-      }
-    },
-    "That story couldn't be shared." : {
-      "comment" : "Story composer failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Story konnte nicht geteilt werden."
-          }
-        }
-      }
     },
     "That took too long. Try again when you're ready." : {
       "comment" : "Nextcloud connect timeout",
@@ -13824,17 +13876,6 @@
     },
     "The alias could not be added. Please try again." : {},
     "The alias could not be removed. Please try again." : {},
-    "The archive holds your profile, posts, pictures and videos, and the lists below. It never holds your private key." : {
-      "comment" : "Migration export explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das Archiv enthält dein Profil, deine Beiträge, Bilder und Videos sowie die Listen unten. Deinen privaten Schlüssel enthält es nie."
-          }
-        }
-      }
-    },
     "The archive is read for the handles people wrote in their profiles. Nothing from it is kept." : {
       "comment" : "Migration Instagram explanation",
       "localizations" : {
@@ -14262,17 +14303,6 @@
         }
       }
     },
-    "This folder has no pictures, video or audio your server accepts." : {
-      "comment" : "Empty Nextcloud folder detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Ordner enthält keine Bilder, Videos oder Audiodateien, die dein Server akzeptiert."
-          }
-        }
-      }
-    },
     "This is an automated account" : {
       "comment" : "Profile editing switch",
       "localizations" : {
@@ -14666,17 +14696,6 @@
         }
       }
     },
-    "Unfavourite" : {
-      "comment" : "Accessibility action\nStatus menu item\nSwipe action on a post",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht mehr favorisieren"
-          }
-        }
-      }
-    },
     "Unfollow #%@" : {
       "comment" : "Hashtag follow button",
       "localizations" : {
@@ -14918,9 +14937,6 @@
           }
         }
       }
-    },
-    "Use the shutter for a new picture, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas." : {
-      "comment" : "Story composer hint"
     },
     "Use the suggested replies" : {
       "comment" : "Settings button",
@@ -15443,17 +15459,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bei einem Treffer"
-          }
-        }
-      }
-    },
-    "When you choose to see a filtered sender's notifications, they are listed here, and their notifications always reach you." : {
-      "comment" : "Allowed senders explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wenn du die Benachrichtigungen einer gefilterten Person sehen willst, steht sie hier, und ihre Benachrichtigungen erreichen dich immer."
           }
         }
       }
@@ -16538,17 +16543,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Anmeldung ist abgelaufen"
-          }
-        }
-      }
-    },
-    "Your story" : {
-      "comment" : "Story composer placeholder title\nStory player own title\nStory rail tile",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Story"
           }
         }
       }

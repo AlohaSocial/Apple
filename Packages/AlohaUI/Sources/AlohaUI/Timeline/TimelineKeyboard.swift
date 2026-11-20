@@ -58,7 +58,7 @@ public enum KeyboardShortcuts {
             .init(
                 keys: ["L", "F"],
                 label: String(
-                    localized: "Favourite the selected post", comment: "Keyboard shortcut")),
+                    localized: "Like the selected post", comment: "Keyboard shortcut")),
             .init(
                 keys: ["B"],
                 label: String(localized: "Boost the selected post", comment: "Keyboard shortcut")),

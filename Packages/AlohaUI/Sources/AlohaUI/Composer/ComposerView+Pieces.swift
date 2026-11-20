@@ -15,7 +15,7 @@ extension ComposerView {
     var redraftNote: some View {
         Label {
             Text(
-                "Posting this deletes the original, with its favourites, boosts and replies.",
+                "Posting this deletes the original, with its likes, boosts and replies.",
                 comment: "Composer note when redrafting")
         } icon: {
             Image(systemName: "arrow.uturn.backward.circle")

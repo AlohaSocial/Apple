@@ -6,7 +6,7 @@ import AlohaNetwork
 import SwiftUI
 
 /// The notifications list, with what groups collapsed to one summary row:
-/// "Alice and 3 others favourited your post" is one thing to read on a
+/// "Alice and 3 others liked your post" is one thing to read on a
 /// wrist, not four (docs/09 §4).
 struct WatchNotificationsView: View {
     @Environment(WatchLink.self) private var link
@@ -32,14 +32,14 @@ struct WatchNotificationsView: View {
                 }
             }
             if feed.items.isEmpty && !feed.isLoading && !feed.isShowingCache {
-                Text("No notifications yet", comment: "Watch, empty notifications list")
+                Text("No activities yet", comment: "Watch, empty notifications list")
                     .font(.caption2)
             }
             if feed.isShowingCache {
                 WatchUpdatedHint(updatedAt: feed.updatedAt)
             }
         }
-        .navigationTitle(Text("Notifications", comment: "Watch notifications screen title"))
+        .navigationTitle(Text("Activities", comment: "Watch notifications screen title"))
         .task(id: link.credentials?.accountID) { await load() }
         .refreshable { await load() }
     }
@@ -130,7 +130,7 @@ struct WatchNotificationGroup: Identifiable {
             return String(localized: "\(who) mentioned you", comment: "Watch notification summary")
         case .favourite:
             return String(
-                localized: "\(who) favourited your post", comment: "Watch notification summary")
+                localized: "\(who) liked your post", comment: "Watch notification summary")
         case .reblog:
             return String(
                 localized: "\(who) boosted your post", comment: "Watch notification summary")
@@ -147,10 +147,10 @@ struct WatchNotificationGroup: Identifiable {
             return String(localized: "\(who) posted", comment: "Watch notification summary")
         case .storyReaction:
             return String(
-                localized: "\(who) reacted to your story", comment: "Watch notification summary")
+                localized: "\(who) reacted to your short", comment: "Watch notification summary")
         case .storyComment:
             return String(
-                localized: "\(who) replied to your story", comment: "Watch notification summary")
+                localized: "\(who) replied to your short", comment: "Watch notification summary")
         case .tagged:
             return String(
                 localized: "\(who) tagged you in a photo", comment: "Watch notification summary")

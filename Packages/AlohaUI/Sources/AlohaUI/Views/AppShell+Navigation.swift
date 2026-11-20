@@ -268,7 +268,7 @@ extension ThemedAppShell {
                 "bookmarks", String(localized: "Bookmarks", comment: "Account menu item"),
                 AlohaSymbol.bookmark, .bookmarks)
             add(
-                "liked", String(localized: "Liked posts", comment: "Account menu item"),
+                "liked", String(localized: "Favorites", comment: "Account menu item"),
                 AlohaSymbol.favourite, .favourites)
             add(
                 "requests", String(localized: "Follow requests", comment: "Account menu item"),

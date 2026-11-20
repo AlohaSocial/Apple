@@ -34,7 +34,7 @@ struct DraftSyncSettingsRow: View {
             }
 
             Text(
-                "Keeps your drafts in the Aloha Social/Drafts folder of your Nextcloud, so a post started on one device can be finished on another. Pictures already uploaded go with them.",
+                "Keeps your drafts in the Aloha Social/Drafts folder of your Nextcloud, so a post started on one device can be finished on another. Photos already uploaded go with them.",
                 comment: "Settings explanation for syncing drafts through Nextcloud"
             )
             .font(.footnote)

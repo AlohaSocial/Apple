@@ -170,7 +170,7 @@ public struct SettingsView: View {
                     }
                     NavigationLink(value: Route.notificationRequests) {
                         Label {
-                            Text("Filtered notifications", comment: "Settings item")
+                            Text("Filtered activities", comment: "Settings item")
                         } icon: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                         }
@@ -182,7 +182,7 @@ public struct SettingsView: View {
                     {
                         NavigationLink(value: Route.notificationPolicy) {
                             Label {
-                                Text("Notification policy", comment: "Settings item")
+                                Text("Activity policy", comment: "Settings item")
                             } icon: {
                                 Image(systemName: "lock.shield")
                             }
@@ -452,7 +452,7 @@ public struct SettingsView: View {
             Text("Sound & touch", comment: "Settings section")
         } footer: {
             Text(
-                "A soft tick when you favourite something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting.",
+                "A soft tick when you like something, a breath of air when a post goes out, and a two-note chime for a direct message. Off until you turn it on. A tap in the hand follows your Reduce Motion setting.",
                 comment: "Senses explanation")
         }
     }
@@ -643,7 +643,7 @@ public struct SettingsView: View {
         switch action {
         case .none: Text("Nothing", comment: "Swipe action setting: the edge does nothing")
         case .reply: Text("Reply", comment: "Swipe action setting")
-        case .favourite: Text("Favourite", comment: "Swipe action setting")
+        case .favourite: Text("Like", comment: "Swipe action setting")
         case .boost: Text("Boost", comment: "Swipe action setting")
         case .bookmark: Text("Bookmark", comment: "Swipe action setting")
         }
@@ -839,13 +839,13 @@ public struct SettingsView: View {
                             set: { value in Task { await session.setHourlyBatching(value) } })
                     ) {
                         Text(
-                            "Bundle favourites, boosts and follows into one notification an hour",
+                            "Bundle likes, boosts and follows into one notification an hour",
                             comment: "Settings switch for the server's hourly notification bundles"
                         )
                     }
                 } footer: {
                     Text(
-                        "Your server holds back pushes for favourites, boosts, follows, poll results and quotes, and sends one summary each hour. Mentions, direct messages and follow requests still arrive at once.",
+                        "Your server holds back pushes for likes, boosts, follows, poll results and quotes, and sends one summary each hour. Mentions, direct messages and follow requests still arrive at once.",
                         comment: "Hourly notification bundles explanation")
                 }
             }
@@ -942,7 +942,7 @@ public struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Warn about missing descriptions", comment: "Settings item")
                     Text(
-                        "Before posting a picture without a description, ask once whether to add one.",
+                        "Before posting a photo without a description, ask once whether to add one.",
                         comment: "Settings explanation"
                     )
                     .font(.footnote)
@@ -1029,7 +1029,7 @@ extension SettingsView {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Show numbers", comment: "Settings item")
                         Text(
-                            "Reply, boost and favourite counts, follower and post counts, and view counts.",
+                            "Reply, boost and like counts, follower and post counts, and view counts.",
                             comment: "Settings explanation"
                         )
                         .font(.footnote)

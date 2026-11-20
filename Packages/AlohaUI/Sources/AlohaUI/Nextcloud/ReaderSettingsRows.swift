@@ -77,7 +77,7 @@ struct AIContentFilterRow: View {
                             Image(systemName: "wand.and.sparkles")
                         }
                         Text(
-                            "Posts that say they were made with AI, by a hashtag or by their pictures, are left out of every timeline.",
+                            "Posts that say they were made with AI, by a hashtag or by their photos, are left out of every timeline.",
                             comment: "AI content filter explanation"
                         )
                         .font(.footnote)

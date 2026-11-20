@@ -79,7 +79,7 @@ extension ThemedAppShell {
             TimelineView(
                 key: TimelineKey(mode: .home, source: .favourites), session: session
             ) { handle($0, session: session) }
-            .navigationTitle(Text("Liked posts", comment: "Screen title"))
+            .navigationTitle(Text("Favorites", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
                 .readerColumn

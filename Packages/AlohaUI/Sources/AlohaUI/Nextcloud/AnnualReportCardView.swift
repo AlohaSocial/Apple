@@ -252,7 +252,7 @@ struct AnnualReportCardView: View {
         switch kind {
         case .boosted: Text("Boosted most", comment: "Annual report best post")
         case .replied: Text("Most replied to", comment: "Annual report best post")
-        case .favourited: Text("Favourited most", comment: "Annual report best post")
+        case .favourited: Text("Liked most", comment: "Annual report best post")
         }
     }
 }

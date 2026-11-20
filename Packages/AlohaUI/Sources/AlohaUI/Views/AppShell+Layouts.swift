@@ -187,7 +187,7 @@ extension ThemedAppShell {
                         "Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks,
                         session: session)
                     sidebarTab(
-                        "Liked posts", symbol: AlohaSymbol.favourite, route: .favourites,
+                        "Favorites", symbol: AlohaSymbol.favourite, route: .favourites,
                         session: session)
                     sidebarTab(
                         "Your lists", symbol: "list.bullet.rectangle", route: .lists,

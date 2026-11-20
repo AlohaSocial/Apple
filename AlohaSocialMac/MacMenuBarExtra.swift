@@ -215,7 +215,7 @@ private struct MacNotificationRow: View {
         case .mention:
             return String(localized: "\(who) mentioned you", comment: "Notification title")
         case .favourite:
-            return String(localized: "\(who) favourited your post", comment: "Notification title")
+            return String(localized: "\(who) liked your post", comment: "Notification title")
         case .reblog:
             return String(localized: "\(who) boosted your post", comment: "Notification title")
         case .follow:

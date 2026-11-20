@@ -78,17 +78,6 @@
         }
       }
     },
-    "Favourite" : {
-      "comment" : "Watch post action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favorisieren"
-          }
-        }
-      }
-    },
     "Followed you" : {
       "comment" : "Watch follow back screen title",
       "localizations" : {
@@ -118,6 +107,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Du folgst"
+          }
+        }
+      }
+    },
+    "Like" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Favorisieren"
           }
         }
       }
@@ -199,17 +199,6 @@
         }
       }
     },
-    "Remove favourite" : {
-      "comment" : "Watch post action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favorit entfernen"
-          }
-        }
-      }
-    },
     "Reply" : {
       "comment" : "Watch post action",
       "localizations" : {
@@ -272,6 +261,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Teilen rückgängig machen"
+          }
+        }
+      }
+    },
+    "Unlike" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Favorit entfernen"
           }
         }
       }

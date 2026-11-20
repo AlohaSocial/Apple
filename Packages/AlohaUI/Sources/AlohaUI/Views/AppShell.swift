@@ -103,7 +103,7 @@ struct ThemedAppShell: View {
     @State var composing: ComposerPresentation?
     @State private var isComposingStory = false
     /// Whether the story composer opens on the full-screen camera: the
-    /// "Story camera" control rather than "New story".
+    /// "Short camera" control rather than "New story".
     @State private var storyStartsWithCamera = false
     @Namespace private var mediaTransition
     /// The compose button's zoom into the composer (`ComposeTransition`).

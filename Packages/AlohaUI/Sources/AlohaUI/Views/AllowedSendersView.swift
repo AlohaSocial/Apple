@@ -46,7 +46,7 @@ struct AllowedSendersView: View {
                     Text("Nobody yet", comment: "Empty allowed senders")
                 } description: {
                     Text(
-                        "When you choose to see a filtered sender's notifications, they are listed here, and their notifications always reach you.",
+                        "When you choose to see a filtered sender's activities, they are listed here, and their activities always reach you.",
                         comment: "Allowed senders explanation")
                 }
             }

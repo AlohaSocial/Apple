@@ -12,6 +12,50 @@
         }
       }
     },
+    "^[%lld unread activity](inflect: true)" : {
+      "comment" : "Watch complication accessibility label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "^[%lld ungelesene Benachrichtigung](inflect: true)"
+          }
+        }
+      }
+    },
+    "Activities" : {
+      "comment" : "Watch rectangular complication title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen"
+          }
+        }
+      }
+    },
+    "Activities not counted yet" : {
+      "comment" : "Watch complication accessibility label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen noch nicht gezählt"
+          }
+        }
+      }
+    },
+    "Activities you haven't read yet." : {
+      "comment" : "Watch complication description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen, die du noch nicht gelesen hast."
+          }
+        }
+      }
+    },
     "Aloha Social" : {
       "comment" : "Watch inline complication, nothing counted yet",
       "localizations" : {
@@ -56,39 +100,6 @@
         }
       }
     },
-    "Notifications" : {
-      "comment" : "Watch rectangular complication title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen"
-          }
-        }
-      }
-    },
-    "Notifications not counted yet" : {
-      "comment" : "Watch complication accessibility label",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen noch nicht gezählt"
-          }
-        }
-      }
-    },
-    "Notifications you haven't read yet." : {
-      "comment" : "Watch complication description",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen, die du noch nicht gelesen hast."
-          }
-        }
-      }
-    },
     "Open Aloha Social on your iPhone" : {
       "comment" : "Watch complication, not paired",
       "localizations" : {
@@ -118,17 +129,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ungelesen"
-          }
-        }
-      }
-    },
-    "^[%lld unread notification](inflect: true)" : {
-      "comment" : "Watch complication accessibility label",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "^[%lld ungelesene Benachrichtigung](inflect: true)"
           }
         }
       }

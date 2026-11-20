@@ -203,7 +203,7 @@ public struct StatisticsView: View {
             ) {
                 tile(
                     e["favourites"] ?? e["likes"] ?? 0,
-                    Text("Favourites", comment: "Statistics tile"))
+                    Text("Likes", comment: "Statistics tile"))
                 tile(e["boosts"] ?? e["reblogs"] ?? 0, Text("Boosts", comment: "Statistics tile"))
                 tile(e["replies"] ?? 0, Text("Replies", comment: "Statistics tile"))
                 // Mastodon 4.5's quote posts, counted on Aloha Social since
@@ -452,7 +452,7 @@ public struct StatisticsView: View {
             let share = coverage.share
         {
             VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
-                Text("Pictures with a description", comment: "Statistics section")
+                Text("Photos with a description", comment: "Statistics section")
                     .font(AlohaType.section)
                 HStack(alignment: .firstTextBaseline, spacing: AlohaMetrics.space2) {
                     Text(share, format: .percent.precision(.fractionLength(0)))
@@ -460,7 +460,7 @@ public struct StatisticsView: View {
                         .fontDesign(.rounded)
                         .monospacedDigit()
                     Text(
-                        "^[\(coverage.described) of \(coverage.pictures) picture](inflect: true)",
+                        "^[\(coverage.described) of \(coverage.pictures) photo](inflect: true)",
                         comment: "Statistics: described pictures out of all pictures"
                     )
                     .font(AlohaType.meta)
@@ -473,7 +473,7 @@ public struct StatisticsView: View {
                     switch coverage.source {
                     case .server:
                         Text(
-                            "Counted by your server, picture by picture, over the period above.",
+                            "Counted by your server, photo by photo, over the period above.",
                             comment: "Statistics: where the alt text figure comes from")
                     case .recentPosts(let count):
                         Text(
@@ -516,7 +516,7 @@ public struct StatisticsView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(
                         Text(
-                            "\(post.excerpt). ^[\(post.likes) favourite](inflect: true), ^[\(post.boosts) boost](inflect: true), ^[\(post.replies) reply](inflect: true), ^[\(post.quotes) quote](inflect: true).",
+                            "\(post.excerpt). ^[\(post.likes) like](inflect: true), ^[\(post.boosts) boost](inflect: true), ^[\(post.replies) reply](inflect: true), ^[\(post.quotes) quote](inflect: true).",
                             comment: "Statistics best post, read aloud"))
                 }
             }

@@ -245,7 +245,7 @@ public struct NotificationRequestsView: View {
                         account: request.account, localHost: session.snapshot.instanceHost)
 
                     Text(
-                        "^[\(request.notificationsCount) notification](inflect: true) held",
+                        "^[\(request.notificationsCount) activity](inflect: true) held",
                         comment: "Notification request count"
                     )
                     .font(.caption)
@@ -275,7 +275,7 @@ public struct NotificationRequestsView: View {
                     Text("Nothing held", comment: "Empty notification requests")
                 } description: {
                     Text(
-                        "Notifications your policy holds back appear here, one row per sender.",
+                        "Activities your policy holds back appear here, one row per sender.",
                         comment: "Notification requests explanation")
                 }
             }
@@ -286,7 +286,7 @@ public struct NotificationRequestsView: View {
                 SkeletonListRow(person: 4)
             }
         }
-        .navigationTitle(Text("Filtered notifications", comment: "Screen title"))
+        .navigationTitle(Text("Filtered activities", comment: "Screen title"))
         .toolbar {
             // A screenful decided at once: the server takes `id[]` and skips
             // an id that has gone stale, so one old row never loses the rest

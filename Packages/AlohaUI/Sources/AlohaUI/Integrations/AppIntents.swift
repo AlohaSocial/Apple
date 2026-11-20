@@ -302,7 +302,7 @@ public struct SearchIntent: AppIntent {
 /// post handed on from Latest mentions.
 public struct FavouriteStatusIntent: AppIntent {
     public static let title = LocalizedStringResource(
-        "Favourite a post in Aloha Social", comment: "App Intent title")
+        "Like a post in Aloha Social", comment: "App Intent title")
     public static let openAppWhenRun = false
     /// Acting in the account's name from a locked phone is what the Lock
     /// Screen's own notification actions refuse too (`LocalNotifier`). No
@@ -315,7 +315,7 @@ public struct FavouriteStatusIntent: AppIntent {
 
     /// Off takes the favourite back.
     @Parameter(
-        title: LocalizedStringResource("Favourite", comment: "App Intent parameter"),
+        title: LocalizedStringResource("Like", comment: "App Intent parameter"),
         default: true)
     public var favourite: Bool
 
@@ -341,7 +341,7 @@ public struct FavouriteStatusIntent: AppIntent {
         await IntentContext.noteUpdated(updated, accountID: context.accountID)
         return .result(
             value: PostEntity(updated),
-            dialog: favourite ? "Favourited." : "Removed from favourites.")
+            dialog: favourite ? "Liked." : "Removed from favorites.")
     }
 }
 

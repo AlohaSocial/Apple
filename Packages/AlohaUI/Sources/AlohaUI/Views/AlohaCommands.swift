@@ -240,7 +240,7 @@ import SwiftUI
                     Divider()
 
                     postAction(.favourite, key: "l", modifiers: []) {
-                        Text("Favourite", comment: "Menu item: the post in focus")
+                        Text("Like", comment: "Menu item: the post in focus")
                     }
                     postAction(.boost, key: "b", modifiers: []) {
                         Text("Boost", comment: "Menu item: the post in focus")
