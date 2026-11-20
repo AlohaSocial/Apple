@@ -117,19 +117,23 @@ public struct ThreadView: View {
             .onChange(of: tintInputs, initial: true) { tint = makeTint() }
             .environment(\.filterVerdicts, verdicts)
             .navigationTitle(Text("Post", comment: "Thread screen title"))
-            #if os(macOS)
-                // A reply where the thread ends, on the Mac: one line to
-                // write in, sent with Return, without a window opening over
-                // what is being answered.
+            #if os(macOS) || os(iOS)
+                // A reply where the thread ends: one line to write in,
+                // pinned above the keyboard, sent without a sheet or a
+                // window opening over what is being answered. It answers the
+                // opened post. The button beside it opens the full composer
+                // with what was written, for anything more than words.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if let focused {
-                        QuickPostField(session: session, replyTo: focused) { _ in
-                            onAction(.reply(focused))
+                        QuickPostField(session: session, replyTo: focused) { draft in
+                            onAction(.reply(focused, draft: draft))
                         } onPosted: { _ in
                             Task { _ = await load() }
                         }
                         .padding(.horizontal, AlohaMetrics.space3)
                         .padding(.vertical, AlohaMetrics.space2)
+                        .frame(maxWidth: ReadingMeasure.width)
+                        .frame(maxWidth: .infinity)
                         .background(.bar)
                     }
                 }

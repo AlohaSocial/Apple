@@ -29,8 +29,8 @@ extension ThemedAppShell {
         case .openMedia(let status, let index):
             mediaPresentation = MediaPresentation(
                 statusID: status.id, attachments: status.mediaAttachments, index: index)
-        case .reply(let status):
-            composing = ComposerPresentation(replyTo: status.displayed)
+        case .reply(let status, let draft):
+            composing = ComposerPresentation(replyTo: status.displayed, draftText: draft)
         case .followLink(let link):
             switch link {
             case .mention(let accountID, let acct, _):

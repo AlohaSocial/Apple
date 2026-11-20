@@ -48,8 +48,8 @@ selected dark palette, leaving bright gutters around a dark scrolling surface.
 Reader columns also paint their surrounding canvas from the inherited palette.
 
 The iPad home feed fills the detail column, with adaptive row insets limiting
-reading width to 820 points. Other reading surfaces use an 820-point column on
-iPad and retain the 680-point Mac column. The split detail uses a compact native
+reading width (680 points since 2026-11-18, see below). Other reading surfaces
+use the same column on iPad, Mac and Vision. The split detail uses a compact native
 navigation title and the existing system sidebar, search and toolbar controls.
 
 Validation: iPad Pro 13-inch simulator build and deep-content tour; a screenshot
@@ -73,7 +73,7 @@ detail screens as well as in the sidebar bottom bar.
 
 Each iPad tab owns its navigation path. Platform and tab boundaries erase their
 concrete view types so the root does not embed every navigation tree. Home rows
-use up to 960 points; Discover media grids use the full detail pane. People and
+use the 680-point reading column; Discover media grids use the full detail pane. People and
 tag lists use native grouped lists, a system section picker and native search.
 Settings, lists and safety screens retain a bounded reading canvas.
 
@@ -143,3 +143,45 @@ The rule this settles, and the rest of the app now follows it:
   boost celebrations (spring, sparks, symbol effects), the Large Content Viewer
   on fixed-size glyphs, and the thread's inline reply indentation. Everything
   else is a system control.
+
+## Smooth reading, iPad and iPhone Duo (2026-11-18)
+
+- **Rows keep their height.** Rich text is parsed per page, off the main
+  actor, before the rows are committed; a row looks its parse up
+  synchronously and draws its final text on its first layout. The one-frame
+  regex fallback (paragraphs run together) that made rows grow as they
+  appeared, and a list scrolled upwards jump, is gone for everything under
+  8 KB of HTML. The VoiceOver label no longer needs a task and an actor hop
+  per row. Translating a post redraws only that post, and a timeline refresh
+  re-evaluates only the rows whose post changed (`StatusRow: Equatable`).
+- **Reading column: 680 points.** Timeline rows, threads, profiles and every
+  `readerColumn` surface are at most 680 points wide (avatar included), centred,
+  on iPad, Mac and Vision — about seventy characters of body text a line. It
+  was 820 on iPad, 960 for the iPad's home rows and 760 on Vision. Media sits
+  in the same column. Phones and compact windows are unchanged.
+- **Detail column from 1000 points.** A post or profile opens beside the list
+  in windows from 1000 points wide (was 1100), so a 13-inch iPad upright
+  (1032) gets the column: 420 for the post, about 610 for the list with the
+  sidebar folded away. An 11-inch upright (834) and an unfolded iPhone Duo stay
+  below it and push.
+- **Sidebar.** The feeds, Activities, Direct messages, Discover and Search stay
+  in view; the ten account and library places are one collapsed **More**
+  section. Nothing was removed and each can still be pinned to the tab bar.
+- **Reply bar in threads** on iPhone and iPad, as the Mac had: see
+  docs/05 §4.
+- **Folding an iPhone Duo keeps the feeds.** The shell swap no longer goes
+  through `AnyView`, and the feeds' models live in the window's shell
+  (`FeedModels`), so a feed rebuilt by the swap has its pages and returns to
+  the post that was at the top; Shorts keeps its scope and current short, and
+  a short or video player resumes from where it was (`PlaybackHandover`).
+
+Validated: AlohaUI and AlohaHTML package tests (`SmoothReadingTests`,
+`ShellLayoutTests`, the rich-text cache suite); iOS Simulator, visionOS and
+macOS builds; on an iPad Pro 13-inch (M5) simulator `ReadingTourTests` (reply
+bar sends and expands, detail column upright, the folded sidebar),
+`DetailColumnTests` and `SidebarTourTests.testEverySidebarRowOpensItsScreen`.
+The iPhone Duo simulator's displays (outer 1398 × 2034, inner 2007 × 2853
+pixels, both 3x) can be captured from the command line, but the app cannot be
+moved between them there — powering a display on or off does not fold the
+device — so the fold itself is covered by the model-level tests, not by a
+recorded fold.

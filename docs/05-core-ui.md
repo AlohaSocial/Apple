@@ -27,13 +27,23 @@ tab bar; unfolded, its inner screen is regular in both size classes and it
 gets the iPad's shell. The shell is chosen by size class rather than by device
 (`ShellLayout`), and folding or unfolding carries the selected place and its
 pushed screens across — a place with no tab of its own is pushed onto the feed.
-A large iPhone on its side is regular wide but compact tall, and keeps the tab
-bar.
+What the feeds hold survives the swap too: their models are kept by the
+window's shell, per timeline, for the account on show (`FeedModels`, the eight
+most recently used), not by the feed screens, so a feed built again over its
+model has its pages loaded and scrolls back to the post that was at the top of
+the screen (`TimelineModel.readingAnchorID`, kept for every feed, not only
+Home). Shorts keeps its scope and the short on screen; a short or a video
+player rebuilt within thirty seconds starts where the last one was, playing
+only if it was playing (`PlaybackHandover`). A large iPhone on its side is
+regular wide but compact tall, and keeps the tab bar.
 
-- *Sidebar*: the feeds, Activities, Direct messages and Discover; then the
-  Library — Lists and Collections. The search field is at the top, as it is on the
-  web, and the account menu is at the bottom. (Feed subscriptions were removed:
-  the server dropped them in 0.26.95.)
+- *Sidebar*: the feeds, Activities, Direct messages and Discover, always in
+  view. The rest — My profile, Bookmarks, Liked posts, Lists, Collections, Follow
+  requests, Blocking, Archived posts, Statistics, Settings — is folded into one
+  **More** section on iPad, closed until opened; every row in it can still be
+  pinned to the tab bar. The search field is at the top, as it is on the web,
+  and the account menu is at the bottom. (Feed subscriptions were removed: the
+  server dropped them in 0.26.95.)
 - *Account menu*: My profile, Follow requests, Liked posts, Bookmarks, Archived
   posts, Statistics, Blocking, Settings, and the other accounts to switch to.
   For you's own settings — what the server has learned, and the learning
@@ -200,9 +210,19 @@ Rules:
 ### Performance requirements
 
 - `List` with `.id`-stable rows, no `ForEach` over recomputed arrays.
-- Rich text parsed off the main actor and cached by content hash; a row that
-  scrolls into view with an uncached parse renders plain text for one frame
-  and upgrades — never blocks.
+- Rich text parsed off the main actor and cached by content; a row draws its
+  final text on its first layout and never changes height afterwards. Each
+  page is parsed as it arrives, in the model, before its rows are handed to
+  the list (`RichTextCache.warm`, in parallel slices for a cached launch page);
+  the row looks its parse up synchronously (`RichTextCache.immediateEntry`, a
+  lock rather than an actor). A post that arrived some other way is parsed in
+  place if its HTML is under 8 KB — well under a millisecond — and only a
+  larger one shows plain text until its parse lands. The VoiceOver label
+  reads the same entry, with no task per row.
+- A row redraws only when its own post changes: `StatusRow` compares as
+  equal when it would draw the same thing, ignoring its action closure, and
+  the timeline uses `.equatable()`. A translation is observed per post, so
+  translating one post redraws that post alone.
 - Images requested at the exact target size; blurhash placeholder painted
   immediately; no layout shift when the real image arrives (aspect ratio comes
   from `meta.original.aspect`, or from the blurhash's own dimensions, or a
@@ -259,6 +279,16 @@ exist undocumented.
 - Fetches `/api/v1/statuses/{id}/context` and renders ancestors above, the
   focused status enlarged in the middle, and descendants below as an indented
   tree.
+- **Reply bar.** On iPhone, iPad and Mac a field is pinned to the foot of the
+  thread (above the keyboard), answering the opened post. Short replies are
+  sent from it directly, by the composer's rules (`QuickReply`): everyone the
+  post mentions is addressed, the reply is never less private than the post or
+  the reader's default, a content warning is carried over, and the count —
+  shown in the last fifty characters — includes the mentions and the warning,
+  so nothing over the server's limit is sent. The expand button opens the full
+  composer with the words as they would have been sent; empty, the composer
+  prefills the mentions itself. A retry of the same words reuses its
+  idempotency key.
 - The focused status scrolls to a stable position on open, with ancestors
   already laid out above it — no jump.
 - Indentation is capped at 5 levels with a thread line; deeper replies collapse

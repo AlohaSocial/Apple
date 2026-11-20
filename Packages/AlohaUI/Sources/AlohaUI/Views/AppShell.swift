@@ -50,6 +50,10 @@ struct ThemedAppShell: View {
     /// Whether the window is wide enough for a detail column beside the
     /// primary one (`ShellLayout.detailColumnMinimumWidth`).
     @State var isDetailColumnAvailable = false
+    /// The feeds' models, kept here rather than in each feed's screen, so a
+    /// shell built again — an iPhone Duo folding or unfolding — finds its
+    /// feeds loaded and where they were (`FeedModels`).
+    @State var feedModels = FeedModels()
     /// Which column this copy of the shell builds screens for. The detail
     /// column's screens are built by a copy marked `.detail`, so the actions
     /// they send push onto the detail column's own stack.

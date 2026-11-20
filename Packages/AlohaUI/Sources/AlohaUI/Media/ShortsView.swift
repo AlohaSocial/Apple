@@ -24,6 +24,9 @@ public struct ShortsView: View {
     @Environment(\.shellUsesTabBar) private var shellUsesTabBar
 
     private let session: AccountSession
+    /// The shell's models, kept across a shell swap with the feed chosen and
+    /// the short on screen (`FeedModels`).
+    private let models: FeedModels?
     private let onAction: (StatusRowAction) -> Void
 
     /// Whose shorts: the same scopes as every other feed, in the order the
@@ -77,14 +80,28 @@ public struct ShortsView: View {
     @State private var expandedCaption: String?
 
     public init(session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
+        self.init(session: session, models: nil, onAction: onAction)
+    }
+
+    init(
+        session: AccountSession, models: FeedModels?,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.session = session
+        self.models = models
         self.onAction = onAction
-        let initial = Feed.initial(offersForYou: session.capabilities.isNextcloudSocial)
+        let offersForYou = session.capabilities.isNextcloudSocial
+        let kept = models?.shortsSource.flatMap { source in
+            Feed.options(offersForYou: offersForYou).first { $0.source == source }
+        }
+        let initial = kept ?? Feed.initial(offersForYou: offersForYou)
         _feed = State(initialValue: initial)
         _isPaused = State(initialValue: !session.settings.autoplayVideo)
-        _model = State(
-            initialValue: TimelineModel(
-                key: TimelineKey(mode: .shorts, source: initial.source), session: session))
+        let model = TimelineModel.kept(
+            for: TimelineKey(mode: .shorts, source: initial.source), session: session, in: models)
+        _model = State(initialValue: model)
+        // The short that was on screen when the shell was last built.
+        _currentID = State(initialValue: model.rows.isEmpty ? nil : model.readingAnchorID)
     }
 
     private var shorts: [Status] {
@@ -202,13 +219,17 @@ public struct ShortsView: View {
         #endif
         .task { await start() }
         .onChange(of: feed) { _, newFeed in
-            model = TimelineModel(
-                key: TimelineKey(mode: .shorts, source: newFeed.source), session: session)
-            currentID = nil
+            models?.shortsSource = newFeed.source
+            model = TimelineModel.kept(
+                for: TimelineKey(mode: .shorts, source: newFeed.source), session: session,
+                in: models)
+            // A feed visited before opens on the short it was left on.
+            currentID = model.rows.isEmpty ? nil : model.readingAnchorID
             progress = 0
             Task { await start() }
         }
         .onChange(of: currentID) { oldValue, newValue in
+            if let newValue { model.readingAnchorID = newValue }
             progress = 0
             isPaused = !session.settings.autoplayVideo
             pausedBeforeHold = nil
@@ -981,6 +1002,14 @@ struct ShortPlayer: View {
             MainActor.assumeIsolated { progress = time.seconds / duration }
         }
 
+        // Where this short was a moment ago, if its player was just rebuilt.
+        if let handed = PlaybackHandover.shared.position(for: attachment.id) {
+            _ = await newPlayer.seek(
+                to: CMTime(seconds: handed.seconds, preferredTimescale: 600),
+                toleranceBefore: .zero, toleranceAfter: .zero)
+            guard !Task.isCancelled, isCurrent, player === newPlayer else { return }
+        }
+
         // Paused already reflects Autoplay video, and any tap made while
         // this was loading.
         if !isPaused { newPlayer.play() }
@@ -999,6 +1028,12 @@ struct ShortPlayer: View {
     private func teardown() {
         watcher?.cancel()
         watcher = nil
+        if let player {
+            // For the player built in this one's place when the shell is
+            // rebuilt — an iPhone Duo folding (`PlaybackHandover`).
+            PlaybackHandover.shared.record(
+                player.currentTime().seconds, wasPlaying: player.rate > 0, for: attachment.id)
+        }
         if let ticker { player?.removeTimeObserver(ticker) }
         ticker = nil
         player?.pause()

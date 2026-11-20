@@ -113,11 +113,11 @@ extension ThemedAppShell {
         ///
         /// Activities is a tab of its own with its unread count — it used to
         /// be a collapsed row in "Account", which vanished entirely whenever
-        /// the iPad showed the tab bar instead of the sidebar. The Library and
-        /// Account places are no longer sidebar-only: they sit in the sidebar
-        /// and stay out of the tab bar by default, and the tab bar's own edit
-        /// mode lets a person pin the ones they use (`TabViewCustomization`,
-        /// kept per device).
+        /// the iPad showed the tab bar instead of the sidebar. The library and
+        /// account places are no longer sidebar-only: they sit in the
+        /// sidebar's "More" section, closed until opened, and stay out of the
+        /// tab bar by default; the tab bar's own edit mode lets a person pin
+        /// the ones they use (`TabViewCustomization`, kept per device).
         ///
         /// In a wide window a thread or a profile opens in a detail column
         /// beside the list it came from, rather than pushed over it, with a
@@ -171,21 +171,14 @@ extension ThemedAppShell {
                     }
                 }
                 .customizationID("aloha.tab.explore")
-                TabSection("Library") {
-                    sidebarTab(
-                        "Your lists", symbol: "list.bullet.rectangle", route: .lists,
-                        session: session)
-                    if session.capabilities.collections {
-                        sidebarTab(
-                            "Collections", symbol: "rectangle.stack",
-                            route: .collections(accountID: nil), session: session)
-                    }
-                }
-                .customizationID("aloha.section.library")
-                TabSection("Account") {
-                    // Your own profile was only in the account menu at the
-                    // sidebar's foot, the one place a sidebar person never
-                    // looks for a destination.
+                // The long tail, folded. Up to eighteen rows used to stand
+                // in the sidebar, the places visited weekly among the ones
+                // visited every few minutes; the feeds and what comes to you
+                // stay in view and the rest are one tap further, in one
+                // section that starts closed and stays as it is left. Nothing
+                // is gone: each row can still be pinned to the tab bar, and
+                // the account menu at the sidebar's foot keeps its own way in.
+                TabSection {
                     sidebarTab(
                         "My profile", symbol: "person.crop.circle",
                         route: .profile(accountID: session.snapshot.serverAccountID),
@@ -196,6 +189,14 @@ extension ThemedAppShell {
                     sidebarTab(
                         "Liked posts", symbol: AlohaSymbol.favourite, route: .favourites,
                         session: session)
+                    sidebarTab(
+                        "Your lists", symbol: "list.bullet.rectangle", route: .lists,
+                        session: session)
+                    if session.capabilities.collections {
+                        sidebarTab(
+                            "Collections", symbol: "rectangle.stack",
+                            route: .collections(accountID: nil), session: session)
+                    }
                     sidebarTab(
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests,
                         session: session)
@@ -212,8 +213,10 @@ extension ThemedAppShell {
                     sidebarTab(
                         "Settings", symbol: AlohaSymbol.settings, route: .settings,
                         session: session)
+                } header: {
+                    Text("More", comment: "iPad sidebar section holding the less used places")
                 }
-                .customizationID("aloha.section.account")
+                .customizationID("aloha.section.more")
                 .defaultSectionExpansion(.collapsed)
                 Tab(
                     "Search", systemImage: "magnifyingglass",
@@ -233,7 +236,7 @@ extension ThemedAppShell {
             // showing should not make an open thread jump between a column
             // and a push.
             .onGeometryChange(for: Bool.self) {
-                $0.size.width >= ShellLayout.detailColumnMinimumWidth
+                ShellLayout.showsDetailColumn(forWindowWidth: $0.size.width)
             } action: { isAvailable in
                 isDetailColumnAvailable = isAvailable
             }
@@ -640,7 +643,7 @@ extension ThemedAppShell {
         switch mode {
         case .shorts:
             // Full screen, and there is no source to choose in it.
-            ShortsView(session: session) { handle($0, session: session) }
+            ShortsView(session: session, models: feedModels) { handle($0, session: session) }
                 .navigationTitle(modeTitle(mode))
                 #if os(iOS)
                     .toolbar(.hidden, for: .navigationBar)
@@ -648,7 +651,7 @@ extension ThemedAppShell {
 
         case .photos:
             timelineChrome(
-                PhotosModeView(session: session, source: selectedSource) {
+                PhotosModeView(session: session, source: selectedSource, models: feedModels) {
                     handle($0, session: session)
                 }
                 .navigationTitle(modeTitle(mode)),
@@ -656,7 +659,7 @@ extension ThemedAppShell {
 
         case .video:
             timelineChrome(
-                VideoModeView(session: session, source: selectedSource) {
+                VideoModeView(session: session, source: selectedSource, models: feedModels) {
                     handle($0, session: session)
                 }
                 .navigationTitle(modeTitle(mode)),
@@ -664,7 +667,7 @@ extension ThemedAppShell {
 
         case .audio:
             timelineChrome(
-                AudioModeView(session: session, source: selectedSource) {
+                AudioModeView(session: session, source: selectedSource, models: feedModels) {
                     handle($0, session: session)
                 }
                 .navigationTitle(modeTitle(mode))
@@ -676,7 +679,7 @@ extension ThemedAppShell {
 
         case .news:
             timelineChrome(
-                NewsModeView(session: session, source: selectedSource) {
+                NewsModeView(session: session, source: selectedSource, models: feedModels) {
                     handle($0, session: session)
                 }
                 .navigationTitle(modeTitle(mode))
@@ -705,7 +708,7 @@ extension ThemedAppShell {
             timelineChrome(
                 TimelineView(
                     key: TimelineKey(mode: mode, source: selectedSource),
-                    session: session
+                    session: session, models: feedModels
                 ) { handle($0, session: session) }
                 // The home mode is whichever of the three you are reading, so
                 // the title says which rather than always "My Feed".

@@ -816,8 +816,16 @@ public struct VideoAttachmentPlayer: View {
                 newPlayer.isMuted = startsMuted
                 player = newPlayer
                 isRevealed = isReady
-                if autoplay { newPlayer.play() }
-                if let pending = seekRequest { seek(to: pending) }
+                if let pending = seekRequest {
+                    if autoplay { newPlayer.play() }
+                    seek(to: pending)
+                } else if let handed = PlaybackHandover.shared.position(for: attachment.id) {
+                    // The same video, a moment ago, in a player the shell
+                    // has just rebuilt — an iPhone Duo folding.
+                    resume(newPlayer, at: handed)
+                } else if autoplay {
+                    newPlayer.play()
+                }
                 scheduleControlsHide()
                 startTicking(newPlayer, item: item)
                 watch(item, at: index)
@@ -926,9 +934,23 @@ public struct VideoAttachmentPlayer: View {
         watcher = nil
     }
 
+    /// Picks up where the player this one replaces left off, playing only if
+    /// that one was.
+    private func resume(_ player: AVPlayer, at position: PlaybackHandover.Position) {
+        Task { @MainActor in
+            _ = await player.seek(
+                to: CMTime(seconds: position.seconds, preferredTimescale: 600),
+                toleranceBefore: .zero, toleranceAfter: .zero)
+            guard !Task.isCancelled, self.player === player else { return }
+            if position.wasPlaying { player.play() }
+        }
+    }
+
     private func releasePlayer() {
         stopTicking()
         guard let player else { return }
+        PlaybackHandover.shared.record(
+            player.currentTime().seconds, wasPlaying: player.rate > 0, for: attachment.id)
         self.player = nil
         // A video floating in Picture in Picture outlives the viewer that
         // started it; it is released when the floating window closes.

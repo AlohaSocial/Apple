@@ -27,27 +27,52 @@ public final class Translator {
         public var isHTML: Bool = false
     }
 
-    public private(set) var translations: [String: Result] = [:]
-    public private(set) var inFlight: Set<String> = []
+    /// One post's translation state, observed on its own.
+    ///
+    /// The translations and the set of posts being translated used to be two
+    /// dictionaries on this object, and every post on screen read both in
+    /// its body — so translating one post, which writes to them twice,
+    /// redrew every visible post. A post now reads only its own slot.
+    @MainActor
+    @Observable
+    final class Slot {
+        var result: Result?
+        var isInFlight = false
+    }
+
+    /// Created on first read and kept: a slot is two fields, and a post read
+    /// once is likely to be read again while it is on screen.
+    @ObservationIgnored private var slots: [String: Slot] = [:]
 
     public init() {}
 
-    public func translation(for statusID: String) -> Result? { translations[statusID] }
+    func slot(_ statusID: String) -> Slot {
+        if let existing = slots[statusID] { return existing }
+        let created = Slot()
+        slots[statusID] = created
+        return created
+    }
 
-    public func clear(_ statusID: String) { translations.removeValue(forKey: statusID) }
+    public func translation(for statusID: String) -> Result? { slot(statusID).result }
+
+    /// Whether this post is being translated now.
+    public func isTranslating(_ statusID: String) -> Bool { slot(statusID).isInFlight }
+
+    public func clear(_ statusID: String) { slots[statusID]?.result = nil }
 
     public func translate(_ status: Status, session: AccountSession) async {
         let target = status.displayed
-        guard !inFlight.contains(target.id), translations[target.id] == nil else { return }
-        inFlight.insert(target.id)
-        defer { inFlight.remove(target.id) }
+        let slot = slot(target.id)
+        guard !slot.isInFlight, slot.result == nil else { return }
+        slot.isInFlight = true
+        defer { slot.isInFlight = false }
 
         if session.capabilities.translation {
             do {
                 let translated = try await session.client.decode(
                     Translation.self,
                     from: Endpoint.statuses.translate(target.id, to: preferredLanguage))
-                translations[target.id] = Result(
+                slot.result = Result(
                     content: translated.content,
                     attribution: String(
                         localized: "Translated by your server",
@@ -94,7 +119,7 @@ public final class Translator {
     }
 
     public func completeOnDevice(statusID: String, content: String) {
-        translations[statusID] = Result(
+        slot(statusID).result = Result(
             content: content,
             attribution: String(
                 localized: "Translated on this device", comment: "Translation attribution"),

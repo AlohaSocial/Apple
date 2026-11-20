@@ -118,4 +118,34 @@ struct ShellLayoutTests {
         #expect(ShellLayout.detailColumnWidth(forWindowWidth: 800) == 420)
         #expect(ShellLayout.detailColumnWidth(forWindowWidth: 2000) == 600)
     }
+
+    @Test("The 13-inch iPad upright gets the detail column, with a list wider than a phone")
+    func detailColumnOnLargeIPadPortrait() {
+        // iPad Pro 13-inch, portrait and landscape, in points.
+        #expect(ShellLayout.showsDetailColumn(forWindowWidth: 1032))
+        #expect(ShellLayout.listWidth(forWindowWidth: 1032) >= ShellLayout.minimumListWidth)
+        #expect(ShellLayout.showsDetailColumn(forWindowWidth: 1376))
+        // At the threshold itself the list still has its room.
+        let threshold = ShellLayout.detailColumnMinimumWidth
+        #expect(ShellLayout.listWidth(forWindowWidth: threshold) >= ShellLayout.minimumListWidth)
+    }
+
+    @Test("Narrower windows push: 11-inch upright, an unfolded iPhone Duo, half a 13-inch")
+    func noDetailColumnWhenNarrow() {
+        #expect(!ShellLayout.showsDetailColumn(forWindowWidth: 834))
+        // iPhone Duo's inner screen: 2007 × 2853 pixels at 3x, so 669 points
+        // upright and 951 on its side.
+        #expect(!ShellLayout.showsDetailColumn(forWindowWidth: 669))
+        #expect(!ShellLayout.showsDetailColumn(forWindowWidth: 951))
+        #expect(!ShellLayout.showsDetailColumn(forWindowWidth: 688))
+    }
+
+    @Test("The reading column is a readable measure, centred, on any wide list")
+    func readingMeasure() {
+        #expect(ReadingMeasure.width == 680)
+        // 13-inch landscape: (1376 - 680) / 2 either side.
+        #expect(ReadingMeasure.inset(forListWidth: 1376) == CGFloat(348))
+        // Narrower than the column: the minimum gutter, not a negative one.
+        #expect(ReadingMeasure.inset(forListWidth: 600) == 24)
+    }
 }
