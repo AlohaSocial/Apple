@@ -13,7 +13,6 @@ import OSLog
 public struct OAuthService: Sendable {
     public static let clientName = "Aloha Social"
     public static let redirectURI = "alohasocial://oauth-callback"
-    public static let outOfBandRedirectURI = "urn:ietf:wg:oauth:2.0:oob"
     public static let website = "https://github.com/AlohaSocial/Apple"
     /// Coarse grants covering every granular scope Nextcloud Social checks
     /// (`read:lists`, `read:notifications`, `write:notifications`,

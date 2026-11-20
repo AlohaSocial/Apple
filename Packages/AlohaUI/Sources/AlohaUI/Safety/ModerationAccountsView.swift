@@ -95,7 +95,7 @@ public struct ModerationAccountsView: View {
             text: $query,
             prompt: Text("Username", comment: "Moderation account search prompt")
         )
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task(id: filterKey) { await load() }
         .sheet(item: $acting) { entry in
             ModerationAccountSheet(entry: entry, session: session, onAction: onAction) {
@@ -430,7 +430,7 @@ public struct ModerationTrendsView: View {
         }
         .alohaGround(palette)
         .navigationTitle(Text("What may trend", comment: "Screen title"))
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task(id: kind) { await load() }
     }
 

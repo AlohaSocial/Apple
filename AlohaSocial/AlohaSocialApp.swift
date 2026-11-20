@@ -82,9 +82,17 @@ struct AlohaSocialApp: App {
             WindowGroup(for: MediaWindowRequest.self) { $request in
                 MediaWindow(request: request)
                     .environment(environment)
+                    .mediaWindowFrame(for: request)
             }
             .modelContainer(environment.container)
-            .defaultSize(width: 1280, height: 800)
+            // Beside the main window rather than on top of the feed it was
+            // opened from, at the media's own shape (`mediaWindowFrame`).
+            .defaultWindowPlacement { content, context in
+                let main = context.windows.first { $0.id == AlohaWindow.main }
+                return WindowPlacement(
+                    main.map { .trailing($0) }, size: content.sizeThatFits(.unspecified))
+            }
+            .windowResizability(.contentSize)
         #endif
     }
 }

@@ -215,7 +215,7 @@ public struct ListsView: View {
         }
         .alohaGround(palette)
         .navigationTitle(Text("Your lists", comment: "Screen title"))
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task { await load() }
         .task {
             if session.bluesky == .unknown { await session.refreshBlueskyAvailability() }

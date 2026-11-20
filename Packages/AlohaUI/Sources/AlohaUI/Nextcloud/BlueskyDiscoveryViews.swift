@@ -332,7 +332,7 @@ struct BlueskyStarterPackView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private var followAllButton: some View {

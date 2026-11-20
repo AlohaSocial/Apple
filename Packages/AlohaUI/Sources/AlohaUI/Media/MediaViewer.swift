@@ -13,6 +13,9 @@ import SwiftUI
 /// nothing about which mode opened it (docs/06 §8).
 public struct MediaViewer: View {
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+        @FocusState private var hasKeyboardFocus: Bool
+    #endif
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(\.mediaTransition) private var mediaTransition
@@ -159,6 +162,15 @@ public struct MediaViewer: View {
             else { return }
             spatialFiles[attachment.id] = file
         }
+        #if os(macOS)
+            // The keys below fire only for a focused view, and nothing in the
+            // viewer took the focus, so ← → and Esc did nothing in it. The
+            // viewer takes it itself, without a ring around the picture.
+            .focusable()
+            .focusEffectDisabled()
+            .focused($hasKeyboardFocus)
+            .onAppear { hasKeyboardFocus = true }
+        #endif
         .accessibilityAction(.escape) { dismiss() }
         .onKeyPress(.escape) {
             dismiss()

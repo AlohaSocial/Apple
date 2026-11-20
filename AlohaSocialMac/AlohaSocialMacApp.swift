@@ -94,14 +94,28 @@ struct AlohaSocialMacApp: App {
         .defaultPosition(.center)
 
         // A thread or a profile in a window of its own, from "Open in New
-        // Window": narrower than the main window, because it holds one column.
-        WindowGroup(for: Route.self) { $route in
-            RouteWindow(route: route)
+        // Window": the screen alone, without a sidebar, narrower than the main
+        // window because it holds one column. The value carries the account
+        // the post belongs to (`RouteWindowRequest`).
+        WindowGroup(for: RouteWindowRequest.self) { $request in
+            RouteWindow(request: request)
                 .environment(environment)
                 .environment(\.alohaTranslucentWindow, isWindowTranslucent)
         }
         .modelContainer(environment.container)
         .defaultSize(width: 760, height: 820)
+
+        // A post's pictures and videos in a window of their own: resizable,
+        // full screen with the green button or ⌃⌘F, ← and → between them, Esc
+        // to close. Not restored: a viewer is looked at, not kept.
+        WindowGroup(for: MediaWindowRequest.self) { $request in
+            MediaWindow(request: request)
+                .environment(environment)
+        }
+        .modelContainer(environment.container)
+        .defaultSize(width: 1000, height: 760)
+        .windowResizability(.contentMinSize)
+        .restorationBehavior(.disabled)
 
         // The composer in a window of its own, so the timeline stays usable
         // while a post is written (docs/09 §2). Not restored at relaunch: a
@@ -138,6 +152,16 @@ struct AlohaSocialMacApp: App {
                                 "Settings search keywords for the Mac's Window pane, separated by spaces. Translate into the words people in your language would type."
                         )
                     ) { MacWindowSettings() },
+                    SettingsWindowView.Pane(
+                        id: "startup",
+                        title: String(localized: "Login", comment: "Mac Settings pane"),
+                        symbolName: "power",
+                        keywords: String(
+                            localized: "login startup open launch background notifications quit",
+                            comment:
+                                "Settings search keywords for the Mac's Login pane, separated by spaces. Translate into the words people in your language would type."
+                        )
+                    ) { MacStartupSettings() },
                     SettingsWindowView.Pane(
                         id: "menu-bar",
                         title: String(localized: "Menu Bar", comment: "Mac Settings pane"),
@@ -217,6 +241,14 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationC
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
         NSApplication.shared.servicesProvider = services
+    }
+
+    /// Closing the last window leaves the app running, in the Dock and — if
+    /// it is switched on — in the menu bar, so the sync engine keeps polling
+    /// and notifications keep coming: the Mac has no push from the server
+    /// (docs/09 §2). Clicking the Dock icon opens a window again.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 
     // MARK: - Dock menu

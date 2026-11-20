@@ -37,7 +37,6 @@ Xcode project `AlohaSocial.xcodeproj`, one workspace, local Swift packages.
 |---|---|---|
 | `AlohaSocial` | App | iOS, iPadOS, macOS, visionOS |
 | `AlohaSocialWatch` | App | watchOS |
-| `AlohaSocialTV` | App | tvOS |
 | `AlohaShareExtension` | Share extension | iOS, iPadOS, macOS |
 | `AlohaWidgets` | Widget extension | iOS, iPadOS, macOS |
 | `AlohaIntents` | App Intents extension | iOS, iPadOS, macOS |
@@ -60,7 +59,6 @@ IPHONEOS_DEPLOYMENT_TARGET = 27.0
 MACOSX_DEPLOYMENT_TARGET = 27.0
 XROS_DEPLOYMENT_TARGET = 27.0
 WATCHOS_DEPLOYMENT_TARGET = 27.0          // watch target
-TVOS_DEPLOYMENT_TARGET = 27.0             // tv target
 PRODUCT_BUNDLE_IDENTIFIER = social.aloha.app
 ENABLE_USER_SCRIPT_SANDBOXING = YES
 ```

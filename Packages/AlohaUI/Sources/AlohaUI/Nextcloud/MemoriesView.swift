@@ -77,7 +77,7 @@ public struct MemoriesView: View {
         }
         .navigationTitle(Text("Looking back", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorRow(_ message: String) -> some View {

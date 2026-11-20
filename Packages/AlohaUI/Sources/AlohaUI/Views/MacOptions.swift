@@ -17,6 +17,11 @@ public enum MacOptions {
     /// Whether a link card without a picture fetches one from the page it
     /// links to. Off unless asked for: it tells that site somebody looked.
     public static let linkPreviewsKey = "aloha.mac.linkPreviews"
+    /// View ▸ Bigger / Smaller / Actual Size, in steps from the default
+    /// (`MacTextSize`).
+    public static let textSizeKey = "aloha.mac.textSize"
+    /// The Settings window's pane, so it opens where it was left.
+    public static let settingsPaneKey = "aloha.mac.settingsPane"
 
     public static let narrowColumn: Double = 560
     public static let mediumColumn: Double = 680

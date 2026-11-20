@@ -86,7 +86,7 @@ public struct PhotosModeView: View {
             await model.appear()
             await loadStories()
         }
-        .refreshable {
+        .alohaRefreshable {
             await model.refresh()
             await loadStories()
         }
@@ -270,6 +270,8 @@ public struct PhotosModeView: View {
                     ForEach(statuses) { status in
                         cell(status)
                             .aspectRatio(1, contentMode: .fit)
+                            // Square tiles, so a square lift (visionOS).
+                            .alohaHoverLift(scale: 1.015, cornerRadius: 0)
                             .onAppear {
                                 Task { await model.prefetchOlder(near: status.id) }
                                 model.prefetchMedia(around: status.id)

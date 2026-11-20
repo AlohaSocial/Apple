@@ -94,7 +94,13 @@ private struct ReaderColumn: ViewModifier {
                         .overlay(
                             panel.strokeBorder(palette.separator.opacity(0.35), lineWidth: 0.5)
                         )
-                        .shadow(color: .black.opacity(0.32), radius: 22, y: 8)
+                        // Under the panel, from its shape, rather than on the
+                        // column: a shadow on scrolling content is computed
+                        // again from its alpha on every frame of a scroll.
+                        .background {
+                            panel.fill(palette.background)
+                                .shadow(color: .black.opacity(0.32), radius: 22, y: 8)
+                        }
                         .padding(.top, AlohaMetrics.space1)
                         .padding(.bottom, AlohaMetrics.space3)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

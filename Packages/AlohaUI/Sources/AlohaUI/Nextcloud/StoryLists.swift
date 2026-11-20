@@ -46,7 +46,7 @@ struct StoryViewersSheet: View {
             .overlay {
                 if isLoading && viewers.isEmpty { ProgressView() }
             }
-            .refreshable { await load() }
+            .alohaRefreshable { await load() }
             .navigationTitle(Text("Seen by", comment: "Story viewers title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
@@ -149,7 +149,7 @@ struct StoryReactionsSheet: View {
             .overlay {
                 if isLoading && reactions.isEmpty { ProgressView() }
             }
-            .refreshable { await load() }
+            .alohaRefreshable { await load() }
             .navigationTitle(Text("Reactions", comment: "Story reactions title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)

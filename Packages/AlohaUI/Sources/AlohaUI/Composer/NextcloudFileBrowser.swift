@@ -92,7 +92,7 @@ public struct NextcloudFileBrowser: View {
                 }
             }
             .task(id: path) { await load() }
-            .refreshable { await load() }
+            .alohaRefreshable { await load() }
         }
     }
 

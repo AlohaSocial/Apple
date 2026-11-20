@@ -38,7 +38,7 @@ an empty but correct architecture.
 
 **Acceptance**
 
-- `xcodebuild` succeeds for iOS, iPadOS, macOS, visionOS, watchOS and tvOS in
+- `xcodebuild` succeeds for iOS, iPadOS, macOS, visionOS and watchOS in
   Release with warnings as errors.
 - CI is green on a clean clone with only a signing team configured.
 - The design-system contrast test passes for all colour roles.
@@ -250,7 +250,8 @@ rewrite, and to mastodon.social, from the same build.
 - P7.3 visionOS: window model, hover effects, separate media windows.
 - P7.4 watchOS app and complications, with `WatchConnectivity` credential
   transfer.
-- P7.5 tvOS app with the out-of-band sign-in, shelves, player and Shorts.
+- P7.5 ~~tvOS app with the out-of-band sign-in, shelves, player and Shorts.~~
+  Dropped: Apple TV is no longer a supported platform.
 - P7.6 Share extension.
 - P7.7 App Intents, Shortcuts phrases, Control Center controls.
 - P7.8 Widgets for every family and platform.

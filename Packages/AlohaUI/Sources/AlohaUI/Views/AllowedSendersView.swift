@@ -57,7 +57,7 @@ struct AllowedSendersView: View {
         }
         .navigationTitle(Text("Always let through", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func load() async {

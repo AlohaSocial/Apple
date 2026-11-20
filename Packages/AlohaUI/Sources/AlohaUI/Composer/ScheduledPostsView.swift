@@ -53,7 +53,7 @@ public struct ScheduledPostsView: View {
         }
         .navigationTitle(Text("Scheduled", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .sheet(item: $rescheduling) { post in
             RescheduleSheet(current: post.scheduledAt) { date in
                 Task { await reschedule(post, to: date) }

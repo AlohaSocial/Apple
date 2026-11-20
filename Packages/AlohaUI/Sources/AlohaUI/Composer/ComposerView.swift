@@ -9,7 +9,7 @@ import AlohaStore
 import PhotosUI
 import SwiftUI
 
-#if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+#if canImport(ImagePlayground) && !os(watchOS)
     import ImagePlayground
 #endif
 
@@ -41,6 +41,10 @@ public struct ComposerView: View {
     @State var focusingAttachment: MediaAttachment?
     @State var filteringAttachment: MediaAttachment?
     @State var trimmingVideoAt: URL?
+    #if os(macOS)
+        /// The Mac's "Attach Files…" open panel.
+        @State var isImportingFiles = false
+    #endif
     @State var rewritingStyle: RewriteStyle?
     @State var isShowingCamera = false
     @State var isShowingDrafts = false
@@ -53,7 +57,7 @@ public struct ComposerView: View {
     @State var isShowingImagePlayground = false
     /// Why "Share what's playing" inserted nothing, until it is tried again.
     @State var nowPlayingMessage: String?
-    #if canImport(ImagePlayground) && !os(tvOS) && !os(watchOS)
+    #if canImport(ImagePlayground) && !os(watchOS)
         @Environment(\.supportsImagePlayground) var supportsImagePlayground
     #endif
     /// An edit's text as it arrived, so closing an unchanged edit needs no
@@ -205,7 +209,7 @@ public struct ComposerView: View {
                 .background(palette.background)
             #endif
             .sensoryFeedback(.success, trigger: didSend)
-            #if !os(tvOS) && !os(watchOS)
+            #if !os(watchOS)
                 // A picture or a video dragged in from Photos, Files or
                 // another app is an attachment, the same as one picked.
                 .dropDestination(for: DroppedMedia.self) { items, _ in
@@ -213,6 +217,17 @@ public struct ComposerView: View {
                     Task { await attach(items) }
                     return true
                 }
+            #endif
+            #if os(macOS)
+                .modifier(
+                    MacMediaPaste(isImporting: $isImportingFiles, canAttach: model.canAddMedia) {
+                        pasted in
+                        switch pasted {
+                        case .files(let urls): Task { await attachFiles(urls) }
+                        case .image(let data):
+                            Task { await attach([.image(DroppedImage(data: data))]) }
+                        }
+                    })
             #endif
             .navigationTitle(model.title)
             #if os(iOS)

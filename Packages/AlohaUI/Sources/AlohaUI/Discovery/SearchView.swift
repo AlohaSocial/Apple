@@ -43,6 +43,15 @@ public struct SearchView: View {
     @State private var didLoadTrends = false
 
     private var shownStatuses: [Status] { verdicts.kept(results.statuses) }
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
+
+    /// The posts on screen, in order: the results, or the trending ones
+    /// while the field is empty.
+    private var navigableStatuses: [Status] {
+        guard query.isEmpty else { return scope.shows(.statuses) ? shownStatuses : [] }
+        return trendingStatuses
+    }
 
     /// A query carried in from somewhere else — the sidebar's field, a deep
     /// link, a shared URL. `Route.search(query:)` has always carried one; this
@@ -195,9 +204,17 @@ public struct SearchView: View {
             isFieldPresented = false
             schedule(query, immediately: true, resolving: true)
         }
+        // Not a selecting `List`: its rows are people and hashtags as well,
+        // which open on a click. The field keeps the focus it was given.
+        .statusListNavigation(
+            selection: $selectedID, ids: navigableStatuses.map(\.id),
+            status: { id in navigableStatuses.first { $0.id == id } }, onAction: onAction,
+            isNativeList: false
+        )
+        .environment(\.statusListTakesFocus, false)
         // A pull is somebody asking the same question again, so the search on
         // screen re-runs — every other list in the app refreshes on a pull.
-        .refreshable {
+        .alohaRefreshable {
             await schedule(query, immediately: true, resolving: true)?.value
         }
         .task {
@@ -354,7 +371,7 @@ public struct SearchView: View {
             onAction: onAction
         )
         .statusRowInteractions(status, session: session, onAction: onAction)
-        .listRowBackground(palette.background)
+        .statusListRow(status.id, ground: palette.background)
     }
 
     /// The end of one scope's results: the next page loading as it comes

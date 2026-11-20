@@ -5,7 +5,7 @@ import SwiftUI
 /// Liquid Glass, spelled so that it also compiles on visionOS.
 ///
 /// `glassEffect`, `GlassEffectContainer`, `glassEffectID` and the `.glass`
-/// button styles exist on iOS, iPadOS, macOS, tvOS and watchOS, and are
+/// button styles exist on iOS, iPadOS, macOS and watchOS, and are
 /// unavailable on visionOS — where every window already *is* glass, and the
 /// platform's own material is `glassBackgroundEffect`. Calling the system API
 /// directly from a view therefore broke the visionOS build of the whole

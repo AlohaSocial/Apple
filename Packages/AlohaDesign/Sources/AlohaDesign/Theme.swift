@@ -238,7 +238,7 @@ public nonisolated enum AlohaTheme: String, CaseIterable, Sendable, Codable, Ide
     /// holds to 4.5:1. They are neutral greys in the system's grey family,
     /// moved just far enough.
     ///
-    /// tvOS and watchOS have no semantic ground colours, so there System is
+    /// watchOS has no semantic ground colours, so there System is
     /// what it always was: the warm palettes.
     static func systemPalette(for scheme: ColorScheme, increaseContrast: Bool) -> AlohaPalette {
         let isDark = scheme == .dark
@@ -467,7 +467,7 @@ public struct AlohaThemeModifier: ViewModifier {
 nonisolated extension AlohaThemeModifier.ServerTheme {
     /// The server's colour made legible against `ground`, or `nil` where it
     /// cannot be — the one rule every process applies, so the widgets, the
-    /// watch and the TV wear the same colour the app does.
+    /// and the watch wear the same colour the app does.
     public func legibleComponents(on ground: ServerAccent.RGB) -> ServerAccent.RGB? {
         let isDark = ground.red < 0.5
         let wantedHex = isDark ? (darkHex ?? brightHex) : (brightHex ?? darkHex)
@@ -475,7 +475,7 @@ nonisolated extension AlohaThemeModifier.ServerTheme {
     }
 
     /// The accent for a surface the app does not paint itself — a widget, the
-    /// watch, the TV — measured against the app's own ground for that scheme,
+    /// watch — measured against the app's own ground for that scheme,
     /// which is close enough to the system's to keep the 4.5:1 floor.
     public func accent(for scheme: ColorScheme) -> Color? {
         let ground = AlohaTheme.system.palette(for: scheme).backgroundComponents
@@ -545,14 +545,8 @@ extension View {
         if palette.usesSystemGrounds {
             self
         } else {
-            #if os(tvOS)
-                // tvOS has no `scrollContentBackground`: its lists draw no
-                // grouped ground of their own to hide.
-                background(palette.background)
-            #else
-                scrollContentBackground(.hidden)
-                    .background(palette.background)
-            #endif
+            scrollContentBackground(.hidden)
+                .background(palette.background)
         }
     }
 }
@@ -624,7 +618,7 @@ public nonisolated enum AlohaGlass: Sendable {
     /// A hairline of separation rather than a wall.
     case subtle
 
-    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
     public var material: Material {
         switch self {
         case .regular: .regularMaterial
@@ -643,7 +637,7 @@ public nonisolated enum AlohaGlass: Sendable {
 extension View {
     /// A filled glass panel: the material, plus a hairline border that reads
     /// as the edge of a real layer of glass.
-    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
     public func alohaGlass(
         _ style: AlohaGlass = AlohaGlass.regular,
         in shape: some InsettableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
@@ -654,7 +648,7 @@ extension View {
     }
 
     /// The material alone, for when something else draws the edge.
-    @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+    @available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
 
     /// A fallback for older systems: a gradient over ultra-thin material rather
     /// than a plain colour, so a card still reads as a layer.
@@ -685,7 +679,7 @@ extension View {
         _ style: AlohaGlass = AlohaGlass.regular,
         in shape: some InsettableShape = RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium)
     ) -> some View {
-        if #available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *) {
+        if #available(iOS 17.0, macOS 14.0, watchOS 10.0, *) {
             return self.alohaGlass(style, in: shape)
         } else {
             return self.alohaGlassFallback(style, in: shape)
@@ -730,15 +724,47 @@ extension View {
     /// A tile that rises to meet the pointer: the Mac's answer to a card
     /// that can be clicked. Nothing on a platform without a pointer of this
     /// kind, and nothing under Reduce Motion but the shadow.
+    ///
+    /// On visionOS the eyes are the pointer: the tile grows by the same
+    /// `scale` as the system draws the look, in a shape with the card's own
+    /// `cornerRadius` rather than the square bounds a plain button lights up.
+    /// The highlight stays the control's (`alohaHoverTarget`, or the button's
+    /// own); this adds the rise.
     @ViewBuilder
-    public func alohaHoverLift(scale: Double = 1.02) -> some View {
+    public func alohaHoverLift(
+        scale: Double = 1.02, cornerRadius: Double = AlohaMetrics.cornerMedium
+    ) -> some View {
         #if os(macOS)
             modifier(HoverLift(scale: scale))
+        #elseif os(visionOS)
+            modifier(GazeLift(scale: scale, cornerRadius: cornerRadius))
         #else
             self
         #endif
     }
 }
+
+#if os(visionOS)
+    /// The look is drawn by the system, outside the app's process, so the
+    /// rise is a hover effect rather than state the view could read.
+    private struct GazeLift: ViewModifier {
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        let scale: Double
+        let cornerRadius: Double
+
+        func body(content: Content) -> some View {
+            let grows = !reduceMotion
+            let scale = scale
+            content
+                .contentShape(
+                    .hoverEffect, RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
+                .hoverEffect { effect, isActive, _ in
+                    effect.scaleEffect(isActive && grows ? scale : 1)
+                }
+        }
+    }
+#endif
 
 #if os(macOS)
     private struct HoverLift: ViewModifier {

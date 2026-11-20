@@ -72,7 +72,7 @@ public struct DeliverySheet: View {
                 }
             }
             .task { await load() }
-            .refreshable { await load() }
+            .alohaRefreshable { await load() }
         }
     }
 

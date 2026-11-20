@@ -198,9 +198,6 @@ jobs:
           - name: macOS
             scheme: AlohaSocialMac
             destination: platform=macOS
-          - name: tvOS
-            scheme: AlohaSocialTV
-            destination: generic/platform=tvOS
           - name: watchOS
             scheme: AlohaSocialWatch
             destination: generic/platform=watchOS

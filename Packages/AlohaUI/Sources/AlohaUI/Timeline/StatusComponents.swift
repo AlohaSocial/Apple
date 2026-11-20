@@ -11,6 +11,7 @@ public struct PollView: View {
     /// Optional: a poll can be drawn where no account is signed in, and there
     /// is nothing to read it again with.
     @Environment(AppEnvironment.self) private var environment: AppEnvironment?
+    @Environment(\.windowAccountID) private var windowAccountID
 
     private let poll: Poll
     private let onVote: ([Int]) -> Void
@@ -31,7 +32,7 @@ public struct PollView: View {
 
     public var body: some View {
         let poll = current
-        VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
+        VStack(alignment: .leading, spacing: RowTargets.chipSpacing) {
             ForEach(Array(poll.options.enumerated()), id: \.offset) { index, option in
                 optionRow(option, index: index)
             }
@@ -49,7 +50,7 @@ public struct PollView: View {
                     }
                 }
                 Spacer()
-                if !poll.expired, environment?.activeSession != nil {
+                if !poll.expired, environment?.session(for: windowAccountID) != nil {
                     refreshButton
                 }
                 if !poll.expired && !poll.voted && !selection.isEmpty {
@@ -82,7 +83,10 @@ public struct PollView: View {
         } label: {
             Image(systemName: AlohaSymbol.refresh)
                 .symbolEffect(.rotate, isActive: isRefreshing)
-                .frame(minWidth: 28, minHeight: 28)
+                .frame(
+                    minWidth: max(28, RowTargets.minimumSide),
+                    minHeight: max(28, RowTargets.minimumSide)
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -91,7 +95,9 @@ public struct PollView: View {
     }
 
     private func refresh() async {
-        guard let session = environment?.activeSession, !isRefreshing else { return }
+        guard let session = environment?.session(for: windowAccountID), !isRefreshing else {
+            return
+        }
         isRefreshing = true
         defer { isRefreshing = false }
         do {
@@ -159,9 +165,13 @@ public struct PollView: View {
                 }
                 .padding(.horizontal, AlohaMetrics.space2)
                 .padding(.vertical, AlohaMetrics.space2)
+                .frame(minHeight: RowTargets.minimumSide)
             }
         }
         .buttonStyle(.plain)
+        .alohaHoverTarget(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(poll.showsResults ? [] : .isButton)
     }
@@ -246,6 +256,9 @@ public struct LinkCardView: View {
                 RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous))
         }
         .buttonStyle(.plain)
+        .alohaHoverTarget(
+            RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium, style: .continuous)
+        )
         .alohaHoverLift(scale: 1.01)
         #if os(macOS)
             .task(id: loadsPreviews) {
@@ -263,7 +276,7 @@ private struct CardLinkDrag: ViewModifier {
     let url: URL?
 
     func body(content: Content) -> some View {
-        #if os(tvOS) || os(watchOS)
+        #if os(watchOS)
             content
         #else
             if let url {
@@ -298,7 +311,7 @@ public struct ReactionRow: View {
 
     public var body: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: AlohaMetrics.space2) {
+            HStack(spacing: RowTargets.chipSpacing) {
                 ForEach(reactions, id: \.name) { reaction in
                     ReactionChip(reaction: reaction) {
                         onToggle(reaction.name, reaction.me)
@@ -326,6 +339,7 @@ public struct ReactionRow: View {
                 .foregroundStyle(palette.secondaryLabel)
                 .padding(.horizontal, AlohaMetrics.space2)
                 .padding(.vertical, AlohaMetrics.space1 + 1)
+                .frame(minWidth: RowTargets.minimumSide, minHeight: RowTargets.minimumSide)
                 .background(palette.surfaceRaised, in: Capsule())
         }
         .menuStyle(.borderlessButton)
@@ -365,6 +379,7 @@ private struct ReactionChip: View {
             }
             .padding(.horizontal, AlohaMetrics.space2)
             .padding(.vertical, AlohaMetrics.space1)
+            .frame(minWidth: RowTargets.minimumSide, minHeight: RowTargets.minimumSide)
             .background(
                 reaction.me ? palette.accentMuted.opacity(0.3) : palette.surfaceRaised,
                 in: Capsule()
@@ -393,17 +408,26 @@ private struct ReactionChip: View {
 /// screen that shows it.
 public struct StatusMenu: View {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.windowAccountID) private var windowAccountID
 
     private let status: Status
+    private let includesActionStrip: Bool
     private let onAction: (StatusRowAction) -> Void
 
-    public init(status: Status, onAction: @escaping (StatusRowAction) -> Void) {
+    /// `includesActionStrip`: whether the four actions under every post
+    /// lead the menu. Off for the "···" button, which sits at the end of
+    /// those very four buttons.
+    public init(
+        status: Status, includesActionStrip: Bool = true,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.status = status
+        self.includesActionStrip = includesActionStrip
         self.onAction = onAction
     }
 
     private var displayed: Status { status.displayed }
-    private var session: AccountSession? { environment.activeSession }
+    private var session: AccountSession? { environment.session(for: windowAccountID) }
     private var isOwn: Bool {
         session.map { displayed.account.id == $0.snapshot.serverAccountID } ?? false
     }
@@ -417,66 +441,19 @@ public struct StatusMenu: View {
         // can perform each of them, and nothing a gesture does may exist
         // only as a gesture (docs/12 §3, Switch Control); a long press opens
         // this menu too, where these are what people reach for.
-        ControlGroup {
-            Button {
-                onAction(.favourite(status))
-            } label: {
-                Label {
-                    if displayed.favourited {
-                        Text("Unfavourite", comment: "Status menu item")
-                    } else {
-                        Text("Favourite", comment: "Status menu item")
-                    }
-                } icon: {
-                    Image(
-                        systemName: displayed.favourited
-                            ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
-                }
-            }
-            Button {
-                onAction(.boost(status))
-            } label: {
-                Label {
-                    if displayed.reblogged {
-                        Text("Undo boost", comment: "Status menu item")
-                    } else {
-                        Text("Boost", comment: "Status menu item")
-                    }
-                } icon: {
-                    Image(systemName: AlohaSymbol.boost)
-                }
-            }
-            Button {
-                onAction(.reply(status))
-            } label: {
-                Label {
-                    Text("Reply", comment: "Status menu item")
-                } icon: {
-                    Image(systemName: AlohaSymbol.reply)
-                }
-            }
-            Button {
-                onAction(.bookmark(status))
-            } label: {
-                Label {
-                    if displayed.bookmarked {
-                        Text("Remove bookmark", comment: "Status menu item")
-                    } else {
-                        Text("Bookmark", comment: "Status menu item")
-                    }
-                } icon: {
-                    Image(
-                        systemName: displayed.bookmarked
-                            ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark)
-                }
-            }
-        }
+        if includesActionStrip { actionStrip }
 
         OpenInNewWindowButton(.thread(statusID: displayed.id))
 
-        StatusShareLink(status: status) {
+        // Share, the post's address and its words in one submenu, so the
+        // menu is one row longer rather than five: Copy Link, Copy Text and
+        // Open in Browser were nowhere, and a link inside the post could not
+        // be copied at all.
+        Menu {
+            shareGroup
+        } label: {
             Label {
-                Text("Share", comment: "Status menu item")
+                Text("Share & Copy", comment: "Status menu item: a submenu")
             } icon: {
                 Image(systemName: AlohaSymbol.share)
             }
@@ -492,20 +469,6 @@ public struct StatusMenu: View {
                     Text("Reader view", comment: "Status menu item")
                 } icon: {
                     Image(systemName: "doc.plaintext")
-                }
-            }
-        }
-
-        // The post drawn as a card, for places a link does not travel well.
-        // Only for a post with a link of its own: the card's code opens it.
-        if displayed.url != nil {
-            Button {
-                onAction(.shareImage(status))
-            } label: {
-                Label {
-                    Text("Share as image", comment: "Status menu item")
-                } icon: {
-                    Image(systemName: "photo.on.rectangle")
                 }
             }
         }
@@ -682,6 +645,129 @@ public struct StatusMenu: View {
         }
     }
 
+    /// The four actions under every post, as one row at the menu's head.
+    private var actionStrip: some View {
+        ControlGroup {
+            Button {
+                onAction(.favourite(status))
+            } label: {
+                Label {
+                    if displayed.favourited {
+                        Text("Unfavourite", comment: "Status menu item")
+                    } else {
+                        Text("Favourite", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(
+                        systemName: displayed.favourited
+                            ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
+                }
+            }
+            Button {
+                onAction(.boost(status))
+            } label: {
+                Label {
+                    if displayed.reblogged {
+                        Text("Undo boost", comment: "Status menu item")
+                    } else {
+                        Text("Boost", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(systemName: AlohaSymbol.boost)
+                }
+            }
+            Button {
+                onAction(.reply(status))
+            } label: {
+                Label {
+                    Text("Reply", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: AlohaSymbol.reply)
+                }
+            }
+            Button {
+                onAction(.bookmark(status))
+            } label: {
+                Label {
+                    if displayed.bookmarked {
+                        Text("Remove bookmark", comment: "Status menu item")
+                    } else {
+                        Text("Bookmark", comment: "Status menu item")
+                    }
+                } icon: {
+                    Image(
+                        systemName: displayed.bookmarked
+                            ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark)
+                }
+            }
+        }
+    }
+
+    /// What the "Share & Copy" submenu holds.
+    @ViewBuilder
+    private var shareGroup: some View {
+        StatusShareLink(status: status) {
+            Label {
+                Text("Share…", comment: "Status menu item")
+            } icon: {
+                Image(systemName: AlohaSymbol.share)
+            }
+        }
+
+        if let address = PostLinks.address(of: status) {
+            Button {
+                PostLinks.copy(address)
+            } label: {
+                Label {
+                    Text("Copy Link", comment: "Status menu item: the post's address")
+                } icon: {
+                    Image(systemName: "link")
+                }
+            }
+        }
+
+        Button {
+            PostLinks.copy(PostLinks.text(of: status))
+        } label: {
+            Label {
+                Text("Copy Text", comment: "Status menu item: the post's words")
+            } icon: {
+                Image(systemName: "doc.on.doc")
+            }
+        }
+
+        if let address = PostLinks.address(of: status) {
+            Button {
+                PostLinks.openInBrowser(address)
+            } label: {
+                Label {
+                    Text("Open in Browser", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "safari")
+                }
+            }
+        }
+
+        // The post drawn as a card, for places a link does not travel well.
+        // Only for a post with a link of its own: the card's code opens it.
+        if displayed.url != nil {
+            Button {
+                onAction(.shareImage(status))
+            } label: {
+                Label {
+                    Text("Share as image", comment: "Status menu item")
+                } icon: {
+                    Image(systemName: "photo.on.rectangle")
+                }
+            }
+        }
+
+        // SwiftUI does not say which link inside the text a secondary click
+        // landed on, so every link the post holds is offered here, each to
+        // open or to copy.
+        PostLinksMenu(status: status)
+    }
+
     /// Everything only the author can do, in one group.
     @ViewBuilder
     private var ownSection: some View {
@@ -825,6 +911,48 @@ struct StatusShareLink<ShareLabel: View>: View {
     var body: some View {
         if let url = status.displayed.url {
             ShareLink(item: url, label: label)
+        }
+    }
+}
+
+/// "Links in This Post": each web link the post holds, to open in the
+/// browser or to copy. A view of its own so the post's HTML is parsed when
+/// the menu is built, not for every row the menu sits under.
+private struct PostLinksMenu: View {
+    let status: Status
+
+    var body: some View {
+        let links = PostLinks.webLinks(in: status)
+        if !links.isEmpty {
+            Divider()
+            Menu {
+                ForEach(links, id: \.self) { url in
+                    Menu {
+                        Button {
+                            PostLinks.openInBrowser(url)
+                        } label: {
+                            Text(
+                                "Open Link in Browser",
+                                comment: "Status menu item: a link in the post")
+                        }
+                        Button {
+                            PostLinks.copy(url)
+                        } label: {
+                            Text(
+                                "Copy Link Address", comment: "Status menu item: a link in the post"
+                            )
+                        }
+                    } label: {
+                        Text(verbatim: PostLinks.title(for: url))
+                    }
+                }
+            } label: {
+                Label {
+                    Text("Links in This Post", comment: "Status menu item: a submenu")
+                } icon: {
+                    Image(systemName: "link")
+                }
+            }
         }
     }
 }

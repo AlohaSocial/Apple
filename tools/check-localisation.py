@@ -15,7 +15,7 @@ ROOTS = [
     "Packages/AlohaStore/Sources", "Packages/AlohaMedia/Sources",
     "Packages/AlohaIntelligence/Sources", "Packages/AlohaDesign/Sources",
     "Packages/AlohaUI/Sources", "AlohaSocial", "AlohaSocialWatch",
-    "AlohaSocialTV", "AlohaWidgets", "AlohaShareExtension",
+    "AlohaWidgets", "AlohaShareExtension",
 ]
 
 CALL = re.compile(r'\bText\(\s*"')

@@ -150,13 +150,18 @@ import SwiftUI
                         key: TimelineKey(mode: .home, source: .home), session: session,
                         onAction: onAction)
                 }
+                // The first column takes the keyboard when the window
+                // appears; the others when they are clicked or tabbed to.
                 column(Text("Activities", comment: "Screen title")) {
                     NotificationsView(session: session, onAction: onAction)
+                        .environment(\.statusListTakesFocus, false)
                 }
                 column(Text("Local", comment: "Timeline source")) {
                     TimelineView(
                         key: TimelineKey(mode: .home, source: .local), session: session,
-                        onAction: onAction)
+                        onAction: onAction
+                    )
+                    .environment(\.statusListTakesFocus, false)
                 }
             }
             .padding(.horizontal, AlohaMetrics.space3)
@@ -179,7 +184,13 @@ import SwiftUI
             .background(palette.background)
             .clipShape(panel)
             .overlay(panel.strokeBorder(palette.separator.opacity(0.35), lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.25), radius: 14, y: 5)
+            // The shadow is the panel's, drawn under it: on the column itself
+            // it was worked out again from every frame of the scrolling
+            // content's alpha.
+            .background {
+                panel.fill(palette.background)
+                    .shadow(color: .black.opacity(0.25), radius: 14, y: 5)
+            }
         }
     }
 #endif

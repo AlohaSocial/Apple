@@ -230,20 +230,16 @@ struct AccountTeardownTests {
         let widgets = WidgetSnapshotStore(directory: root.appending(path: "Widgets"))
         try widgets.write(WidgetSnapshot(accountID: id, handle: "@ana"), images: [:])
         try widgets.write(WidgetSnapshot(accountID: other, handle: "@bo"), images: [:])
-        let topShelf = TopShelfSnapshotStore(directory: root.appending(path: "TopShelf"))
-        try topShelf.write(TopShelfSnapshot(accountID: id, createdAt: Date(), sections: []))
         WidgetFavourites.set(true, statusID: "1", accountID: id, in: defaults)
         WidgetFavourites.set(true, statusID: "2", accountID: other, in: defaults)
         defaults.set(
             try JSONEncoder().encode(FocusFilterState(accountID: id, mentionsOnly: true)),
             forKey: FocusFilterState.key)
 
-        AccountTeardown.removeSharedState(
-            for: id, in: defaults, topShelf: topShelf, widgets: widgets)
+        AccountTeardown.removeSharedState(for: id, in: defaults, widgets: widgets)
 
         #expect(widgets.read(accountID: id) == nil)
         #expect(widgets.read(accountID: other) != nil)
-        #expect(topShelf.read() == nil)
         #expect(WidgetFavourites.state(statusID: "1", accountID: id, in: defaults) == nil)
         // Somebody else's tap is theirs.
         #expect(WidgetFavourites.state(statusID: "2", accountID: other, in: defaults) == true)

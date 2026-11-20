@@ -12,8 +12,8 @@ import Foundation
 /// them: no actions, no grouping, no post to open, no Focus filter. Here once,
 /// so a mention behaves the same however it arrived.
 ///
-/// Values only, no `UserNotifications`, so the store stays buildable for the
-/// platforms that have no notification categories (tvOS).
+/// Values only, no `UserNotifications`, so a process that links the store
+/// without that framework can still use them.
 public enum NotificationAlert {
     /// The category whose actions — Reply, Favourite, Boost, Mute
     /// conversation — `LocalNotifier.registerCategories` registers.

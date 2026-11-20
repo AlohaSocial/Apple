@@ -402,7 +402,7 @@ public struct SafetyListsView: View {
         }
         .navigationTitle(Text("Blocking", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorStrip(_ message: String) -> some View {

@@ -30,12 +30,12 @@ the project's Debug and Release configurations are based on.
   Info.plist. Any Apple ID — a free one included — can sign any target, and
   CI builds with `CODE_SIGNING_ALLOWED=NO` need no profile. Each process keeps
   its store and tokens in its own container, so **widgets, the share sheet,
-  the notification service, complications and Top Shelf see no accounts**.
+  the notification service and complications see no accounts**.
 - **`YES` (the default for Release): every target shares**
   `group.social.aloha.app` and the keychain group
   `$(AppIdentifierPrefix)social.aloha.app`, and its Info.plist says so.
   Release is what gets archived for TestFlight and the App Store, so a
-  shipped build has working widgets, share sheet and Top Shelf without anyone
+  shipped build has working widgets and share sheet without anyone
   remembering a switch; only a team that owns the group can sign it anyway.
 
 To turn sharing on for Debug as well — on a team that owns the group —
@@ -65,8 +65,6 @@ hand. The setting drives two things, so they cannot disagree:
 | AlohaShareExtension (Mac) | `social.aloha.app.mac.share` | `AlohaShareExtensionMac` / `AlohaShareExtensionMac-Shared` | ✓ + network client |
 | AlohaNotificationService | `social.aloha.app.notificationservice` | `AlohaNotificationService` / `AlohaNotificationService-Shared` | — |
 | AlohaSocialMac | `social.aloha.app.mac` | `AlohaSocialMac` / `AlohaSocialMac-Shared` | ✓ + network client, user-selected files |
-| AlohaSocialTV | `social.aloha.app.tv` | `AlohaSocialTV` / `AlohaSocialTV-Shared` | — |
-| AlohaTopShelf (tvOS) | `social.aloha.app.tv.topshelf` | `AlohaTopShelf` / `AlohaTopShelf-Shared` | — |
 | AlohaSocialWatch | `social.aloha.app.watch` | `AlohaSocialWatch` / `AlohaSocialWatch-Shared` | — |
 | AlohaWatchWidgets (complications) | `social.aloha.app.watch.widgets` | `AlohaWatchWidgets` / `AlohaWatchWidgets-Shared` | — |
 
@@ -116,13 +114,8 @@ switch on.
 only while the switch is on. The first launch with it on moves what the app
 kept in its own container into the group (below); turning it off again does
 not move anything back, so the app starts from its own, older container. The Mac
-app and the Apple TV were shared before the switch existed; they still are in
-Release, and are standalone in a Debug build unless the switch is turned on.
-
-The Apple TV shares the same group name with its Top Shelf extension; it is a
-different device, so nothing actually crosses between it and the phone. Its
-first launch with the group moves the TV sign-in from the app's own defaults
-and Keychain item into the shared ones (`TVAccountStore`).
+app was shared before the switch existed; it still is in Release, and is
+standalone in a Debug build unless the switch is turned on.
 
 The first launch of a build with the group moves what the app kept in its own
 container — the SwiftData store and the `aloha.*` defaults — into the group

@@ -171,7 +171,7 @@ enum PlaybackReadiness {
             // With the screen mirrored to a TV, send the video itself rather
             // than a picture of the phone showing it.
             player.usesExternalPlaybackWhileExternalScreenIsActive = true
-        #elseif os(macOS) || os(tvOS)
+        #elseif os(macOS)
             player.allowsExternalPlayback = true
         #endif
 

@@ -42,8 +42,11 @@ public struct LinkTimelineView: View {
         self.onAction = onAction
     }
 
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
+
     public var body: some View {
-        List {
+        SelectableList(selection: $selectedID) {
             Section {
                 Button {
                     openURL(url)
@@ -86,7 +89,7 @@ public struct LinkTimelineView: View {
                 )
                 .statusRowInteractions(status, session: session, onAction: onAction)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .listRowBackground(palette.background)
+                .statusListRow(status.id, ground: palette.background)
                 .onAppear {
                     if status.id == shownStatuses.last?.id { Task { await loadMore() } }
                 }
@@ -105,6 +108,11 @@ public struct LinkTimelineView: View {
             }
         }
         .listStyle(.plain)
+        .statusListNavigation(
+            selection: $selectedID, ids: shownStatuses.map(\.id),
+            status: { id in shownStatuses.first { $0.id == id } }, onAction: onAction,
+            refresh: { await load() }
+        )
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
         .onStatusesRemoved(for: session) { removal in
@@ -115,7 +123,7 @@ public struct LinkTimelineView: View {
             if isLoading && statuses.isEmpty { SkeletonListRow(person: 4) }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func load() async {
