@@ -167,6 +167,24 @@ struct LinkTests {
         #expect(name == "NextCloud")
     }
 
+    /// Mastodon writes a hashtag as `class="mention hashtag"`. Read as a
+    /// mention first, `/tags/swift` became the handle `swift@host` and a tap
+    /// opened a profile that does not exist.
+    @Test("Mastodon's hashtag markup is a hashtag, not a mention")
+    func mastodonHashtag() throws {
+        let html =
+            #"<p><a href="https://mastodon.test/tags/swift" class="mention hashtag" rel="tag">#<span>swift</span></a></p>"#
+        let result = parser.parse(html)
+
+        let link = try #require(result.runs.compactMap(\.link).first)
+        guard case .hashtag(let name, _) = link else {
+            Issue.record("expected a hashtag, got \(link)")
+            return
+        }
+        #expect(name == "swift")
+        #expect(result.mentions.isEmpty)
+    }
+
     @Test("An ordinary link is a web link")
     func webLink() {
         let html = #"<p>See <a href="https://example.test/page">this</a></p>"#

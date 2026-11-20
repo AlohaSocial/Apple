@@ -95,6 +95,10 @@ public final class AccountSession: Identifiable {
     public private(set) var accountSetupURL: URL?
     /// Whether the server said so at all, with or without an address.
     public private(set) var needsAccountSetup = false
+    /// Whether For you learns from this reader's reading right now, as the
+    /// server last said. Off until it has said so: nothing is collected for a
+    /// reader the server would not learn from (`ReadingSignals`).
+    public internal(set) var learnsFromReading = false
 
     /// Whether this account's server reads Bluesky for it. Learned by asking
     /// (`BlueskyAvailability.probe`); `.unknown` until then.
@@ -213,9 +217,9 @@ public final class AccountSession: Identifiable {
     public func refreshServerState() async {
         await refreshProfile()
         do {
-            if let preferences = try? await client.decode(
+            let preferences = try? await client.decode(
                 Preferences.self, from: Endpoint.instance.preferences)
-            {
+            if let preferences {
                 await updateSettings { $0.adopt(preferences) }
                 // An answer at all means the account exists now.
                 needsAccountSetup = false
@@ -223,6 +227,7 @@ public final class AccountSession: Identifiable {
             }
             if capabilities.isNextcloudSocial {
                 await adoptServerReaderSettings()
+                await refreshReadingLearning(preferences: preferences)
             }
             if capabilities.filtersV2 {
                 let filters = try await client.decode(

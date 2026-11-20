@@ -302,14 +302,42 @@ alohasocial://search?q=…
 Universal links: the app associates with **nothing by default** — it cannot
 claim other people's domains. Instead:
 
-- Any fediverse URL opened from elsewhere (share sheet, "Open in…", pasted) is
-  resolved through `GET /api/v2/search?q={url}&resolve=true` on the **active
-  account's** server, so a remote post opens with the reading account's
-  relationship state and action buttons that work. This is the single most
-  valuable link behaviour in a fediverse client and it must be the default.
-- Where resolution fails, the URL opens in the browser with an explanation.
+- A fediverse URL tapped in a post or a link card is resolved through
+  `GET /api/v2/search?q={url}&resolve=true` on the **active account's**
+  server, so a remote post opens with the reading account's relationship
+  state and action buttons that work. This is the single most valuable link
+  behaviour in a fediverse client and it is the default
+  (`FediverseLinkResolver`).
+  - **Which links.** Only those shaped like a post or profile
+    (`RouteResolver.isFediverseCandidate`): `/@user`, `/@user/{id}`,
+    `/@user@host`, `/users/{name}[/statuses/{id}]`, Pleroma's `/notice/` and
+    `/objects/`, Misskey's `/notes/`, Pixelfed's `/p/{user}/{id}`,
+    PeerTube's `/w/` and `/videos/watch/`, with Nextcloud Social's
+    `/index.php/apps/social` or `/apps/social` prefix ignored. HTTPS only;
+    never a file (`.pdf`, `.jpg`, `.html`, …) and never the big sites that
+    borrow the shapes (YouTube, Medium, Instagram and the like). Everything
+    else goes straight to the browser, without a request.
+  - **Which answer.** A result is taken only when its `url` or `uri` is the
+    link, when it is the account a `/@user@host` path spells, or when it is
+    the single thing the server returned and does not itself contain the
+    link — a server that falls back to full-text search must not open a post
+    that merely *mentions* the address.
+  - **How long.** Four seconds, raced in the app rather than left to the
+    request's idle timeout. Meanwhile a capsule at the top says "Opening in
+    Aloha Social…" with **Open in browser** beside it; VoiceOver hears
+    "Opening link".
+  - **Fallback.** Nothing found, an error or the timeout: the link opens in
+    the browser, as any web link does (`LinkOpening`).
+  - **Cache.** Answers are kept per account for as long as the app runs, "not
+    found" included, so a second tap opens at once; failures are not kept. A
+    lookup is dropped if the account is switched while it runs.
+- A fediverse URL handed in from elsewhere (share sheet, "Open in…", pasted)
+  should take the same path; no such entry point hands web URLs to the shell
+  yet, so this is still to do.
 - In-app links to `@handle@host` and `#tag` route internally, resolved against
-  the status's `mentions`/`tags` arrays first and `/api/v2/search` second.
+  the status's `mentions`/`tags` arrays first and `/api/v2/search` second. A
+  link marked `class="hashtag"` is a hashtag even when it is also marked
+  `mention` — which is how Mastodon writes every hashtag.
 - An "Open in Aloha Social" Safari extension is out of scope for 1.0.
 
 `RouteResolver` is the one place any of this is parsed. Every entry point —

@@ -23,6 +23,7 @@ public struct InterestsView: View {
     @State private var isPagingOlder = false
     @State private var state = InterestsState()
     @State private var isStateLoaded = false
+    @State private var isAnsweringNotice = false
     @State private var errorMessage: String?
     @State private var hiddenIDs: Set<String> = []
     @State private var refreshID = UUID()
@@ -77,7 +78,9 @@ public struct InterestsView: View {
                 .listRowBackground(palette.background)
             }
 
-            if isStateLoaded && !state.settings.learning {
+            if isStateLoaded && state.settings.needsNotice {
+                learningNotice
+            } else if isStateLoaded && !state.settings.learning {
                 learningOffNotice
             }
 
@@ -155,6 +158,78 @@ public struct InterestsView: View {
         }
     }
 
+    /// What For you learns from, told once per account, the first time the
+    /// feed is opened while learning is on. The answer is kept on the server,
+    /// so the web and other devices do not ask again, and learning that comes
+    /// only from the administrator's default waits for it.
+    private var learningNotice: some View {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space3) {
+            Label {
+                Text("About For you", comment: "For you notice title")
+                    .font(.subheadline.weight(.semibold))
+            } icon: {
+                Image(systemName: "number")
+            }
+            Text(
+                "For you learns from the hashtags of posts you open, and of posts you like, boost, reply to or save. Scrolling quickly past a post counts a little against its hashtags. What it learns stays on your server and is never shown to anyone else. You can change this any time in Settings → For you.",
+                comment: "For you notice text"
+            )
+            .font(.footnote)
+            .foregroundStyle(palette.secondaryLabel)
+            .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: AlohaMetrics.space2) {
+                Spacer()
+                Button {
+                    Task { await answerNotice(learning: false) }
+                } label: {
+                    Text("Turn off", comment: "For you notice action")
+                }
+                .buttonStyle(.bordered)
+                Button {
+                    Task { await answerNotice(learning: nil) }
+                } label: {
+                    Text("Got it", comment: "For you notice action")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .disabled(isAnsweringNotice)
+        }
+        .padding(AlohaMetrics.space3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            palette.surfaceRaised,
+            in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerSmall, style: .continuous)
+        )
+        .listRowBackground(palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    /// Acknowledges the notice, and with `learning: false` turns learning
+    /// off in the same request, as the web does.
+    private func answerNotice(learning: Bool?) async {
+        isAnsweringNotice = true
+        defer { isAnsweringNotice = false }
+        do {
+            _ = try await session.client.send(
+                Endpoint.interests.settings(learning: learning, noticeAcknowledged: true))
+            state.settings.noticeAcknowledged = true
+            if let learning { state.settings.learning = learning }
+            if let fresh = try? await session.client.decode(
+                InterestsState.self, from: Endpoint.interests.state)
+            {
+                state = fresh
+            } else {
+                state.settings.active = nil
+            }
+            session.adoptReadingLearning(state.settings.isLearning)
+        } catch {
+            await session.handle(error)
+            errorMessage =
+                (error as? APIError)?.errorDescription
+                ?? String(localized: "Interest settings could not be saved. Please try again.")
+        }
+    }
+
     private var learningOffNotice: some View {
         HStack(spacing: AlohaMetrics.space2) {
             Image(systemName: "pause.circle")
@@ -207,6 +282,7 @@ public struct InterestsView: View {
         guard !Task.isCancelled, !isStateLoaded else { return }
         state = loaded
         isStateLoaded = true
+        session.adoptReadingLearning(loaded.settings.isLearning)
     }
 
     private func refresh() async {
@@ -701,6 +777,7 @@ struct InterestsSettingsView: View {
             state = response
             isLoaded = true
             errorMessage = nil
+            session.adoptReadingLearning(response.settings.isLearning)
         } catch {
             guard !Task.isCancelled else { return }
             await session.handle(error)
@@ -720,6 +797,7 @@ struct InterestsSettingsView: View {
         do {
             state = try await session.client.decode(InterestsState.self, from: endpoint)
             errorMessage = nil
+            session.adoptReadingLearning(state.settings.isLearning)
             return true
         } catch {
             await session.handle(error)
@@ -747,6 +825,17 @@ struct InterestsSettingsView: View {
             if let paused { state.settings.paused = paused }
             if let languages { state.settings.languages = languages }
             errorMessage = nil
+            // The switches decide whether reading is collected at all, and
+            // only the server knows how they combine with the notice and the
+            // administrator's own; it is asked rather than guessed.
+            if learning != nil || paused != nil {
+                if let fresh = try? await session.client.decode(
+                    InterestsState.self, from: Endpoint.interests.state)
+                {
+                    state = fresh
+                }
+                session.adoptReadingLearning(state.settings.isLearning)
+            }
             return true
         } catch {
             await session.handle(error)

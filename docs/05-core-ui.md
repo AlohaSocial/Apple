@@ -48,6 +48,17 @@ regular wide but compact tall, and keeps the tab bar.
   posts, Statistics, Blocking, Settings, and the other accounts to switch to.
   For you's own settings — what the server has learned, and the learning
   switches — are in Settings → Home feed, as the web app's Settings → Reading.
+  What For you learns from reading — how long a post stays on screen,
+  which are scrolled past, which are opened — is collected and sent
+  (`POST /api/v1/interests/signals`) only while the server says it learns
+  from this reader: `reading:learn` in `/api/v1/preferences`, or
+  `settings.active` of `/api/v1/interests` on a server without it, and off
+  when neither answers. Turning learning off or pausing it stops collection
+  at once and drops what was not sent; a 403 or 404 from the signals route
+  does the same until the account's state is next refreshed. The first time
+  For you is opened while learning is on, it shows what is learned from,
+  with Got it and Turn off, and the answer is kept on the server
+  (`noticeAcknowledged`) so the web does not ask again.
 - *Content*: the selected timeline.
 - *Detail*: the selected status's thread, or a profile, or a media viewer.
 
@@ -522,3 +533,39 @@ Every list has three non-default states and each is designed, not a spinner:
   alone. A 422's message is shown verbatim after a lead-in.
 - **Offline** — cached content plus a persistent inline strip, not a blocking
   overlay. Actions taken offline queue and say so.
+
+## 11. First launch
+
+Before any account, the app shows a short introduction (`WelcomeView`), then
+the terms (docs/11 §1.5), then sign-in on the server the introduction found
+(docs/03 §8).
+
+**Two pages, then the server.** Each page says one thing that makes the app
+different and is true on every server, with a small mockup that can be
+played with:
+
+1. **A calmer client for the social web.** The logo, and the feeds — posts,
+   photos and videos, each in a feed made for it. The mockup's tab bar is
+   `FeedMode.offered`, so it cannot show more feeds than the app offers.
+2. **Calm and private by design.** Sensitive media covered until tapped,
+   counts that can be switched off (they show by default), no ads, no
+   tracking, nothing collected (docs/11 §3). The mockup's two switches work.
+3. **The server.** The address or handle, found and shown before the terms
+   (`WelcomeServerStep`); it names Nextcloud first and says any server that
+   speaks the Mastodon API works.
+
+Rules the introduction keeps:
+
+- **Skip** is on every page before the server and reaches the server field in
+  one tap; Back and Continue are at the bottom, and a horizontal swipe does
+  the same.
+- **Nothing that depends on the server.** Stories, For you, News and any other
+  capability-gated feature are not promised before the server is known.
+- **No claim the defaults contradict.** The copy is checked against the
+  settings' defaults (`AccountSettings`) and the offered feeds.
+- **Accessible.** Titles are headings; text reflows at every Dynamic Type size
+  and the pages scroll rather than truncate; Reduce Motion turns the page
+  transition into a cut; every control in a mockup is a labelled button or
+  switch.
+- From Settings → About the same pages run as a tour without the server step,
+  with **Done** in place of Skip.

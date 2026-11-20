@@ -19,9 +19,20 @@ public struct WelcomeSignInRequest {
     }
 }
 
+/// The introduction: two pages that say what is different about the app, then
+/// the server.
+///
+/// It used to be eight pages before the server field, and some of them were
+/// not true — six feeds where four are offered, numbers "only when you ask"
+/// where they show by default, stories on servers that have none. Each page
+/// now says one true thing that holds on any server, shows it with a mockup
+/// that can be played with, and Skip reaches the server field in one tap.
+/// Anything that depends on what the server can do is left until the server
+/// is known.
 public struct WelcomeView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dismiss) private var dismiss
 
     private let onAddAccount: (WelcomeSignInRequest?) -> Void
     private let showsConnectionStep: Bool
@@ -29,8 +40,13 @@ public struct WelcomeView: View {
     @State private var page = 0
     @State private var serverAddress = ""
 
-    private var pageCount: Int { showsConnectionStep ? 8 : 7 }
+    /// The pages before the server step.
+    private static let introPageCount = 2
 
+    private var pageCount: Int { Self.introPageCount + (showsConnectionStep ? 1 : 0) }
+
+    /// `showsConnectionStep: false` is the tour Settings opens: the same
+    /// pages, without the server, closing at the end.
     public init(
         showsConnectionStep: Bool = true,
         onAddAccount: @escaping (WelcomeSignInRequest?) -> Void = { _ in }
@@ -48,13 +64,8 @@ public struct WelcomeView: View {
 
                 Group {
                     switch page {
-                    case 0: heroPage
-                    case 1: welcomePage
-                    case 2: feedsPage
-                    case 3: actionsPage
-                    case 4: photosPage
-                    case 5: storiesPage
-                    case 6: quietPage
+                    case 0: feedsPage
+                    case 1: calmPage
                     default: serverPage
                     }
                 }
@@ -71,6 +82,8 @@ public struct WelcomeView: View {
     }
 
     // MARK: - Chrome
+
+    private var isLastPage: Bool { page == pageCount - 1 }
 
     private var header: some View {
         ZStack {
@@ -89,22 +102,32 @@ public struct WelcomeView: View {
             HStack {
                 Spacer()
 
-                if page < pageCount - 1 {
-                    Button {
-                        go(to: pageCount - 1)
-                    } label: {
-                        Text("Skip", comment: "Onboarding action")
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(palette.label)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .contentShape(Rectangle())
+                if !showsConnectionStep {
+                    // The tour from Settings: nothing to skip to, only out.
+                    headerButton(String(localized: "Done", comment: "Onboarding action")) {
+                        dismiss()
                     }
-                    .buttonStyle(.plain)
+                } else if !isLastPage {
+                    // One tap to the server field from any page.
+                    headerButton(String(localized: "Skip", comment: "Onboarding action")) {
+                        go(to: pageCount - 1)
+                    }
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
+    }
+
+    private func headerButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(palette.label)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var footer: some View {
@@ -114,7 +137,7 @@ public struct WelcomeView: View {
                     Capsule()
                         .fill(index == page ? palette.accent : palette.separator.opacity(0.55))
                         .frame(width: index == page ? 18 : 5, height: 5)
-                        .animation(.easeInOut(duration: 0.2), value: page)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: page)
                 }
             }
             .accessibilityHidden(true)
@@ -142,11 +165,17 @@ public struct WelcomeView: View {
                     .buttonStyle(.plain)
                 }
 
-                if page < pageCount - 1 {
+                if !isLastPage {
                     IntroContinueButton(
                         title: String(localized: "Continue", comment: "Onboarding action")
                     ) {
                         go(to: page + 1)
+                    }
+                } else if !showsConnectionStep {
+                    IntroContinueButton(
+                        title: String(localized: "Done", comment: "Onboarding action")
+                    ) {
+                        dismiss()
                     }
                 }
             }
@@ -158,105 +187,36 @@ public struct WelcomeView: View {
 
     // MARK: - Pages
 
-    private var heroPage: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 20) {
-                    Spacer(minLength: 0)
-
-                    AlohaLogo()
-
-                    VStack(spacing: 8) {
-                        Text("A calmer client for the social web.", comment: "Onboarding title")
-                            .font(.title2.weight(.bold))
-                            .multilineTextAlignment(.center)
-                        Text("Your server. Your people. Your feed.", comment: "Onboarding detail")
-                            .font(.subheadline)
-                            .foregroundStyle(palette.secondaryLabel)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: 340)
-
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
-                .frame(minHeight: geometry.size.height, alignment: .center)
-            }
-            .scrollIndicators(.hidden)
-            .scrollBounceBehavior(.basedOnSize)
-        }
-    }
-
-    private var welcomePage: some View {
-        IntroPage(
-            title: String(
-                localized: "Your feed, without the noise.",
-                comment: "Onboarding title"),
-            detail: String(
-                localized: "Posts, photos, videos and stories from the people you follow.",
-                comment: "Onboarding detail")
-        ) {
-            WelcomeMockup()
-        }
-    }
-
+    /// What the app is, and the thing it does that others do not: posts,
+    /// photos and videos in one app, each kind in a feed made for it. The
+    /// feeds are the four `FeedMode.offered`, so the mockup cannot claim
+    /// more than the app has.
     private var feedsPage: some View {
         IntroPage(
             title: String(
-                localized: "Six feeds, each its own screen.", comment: "Onboarding title"),
+                localized: "A calmer client for the social web.", comment: "Onboarding title"),
             detail: String(
-                localized: "Tap along the tab bar to preview each one.",
+                localized:
+                    "Posts, photos and videos from the people you follow, each in a feed made for it. Tap along the bar to look.",
                 comment: "Onboarding detail")
         ) {
-            FeedsMockup()
+            VStack(spacing: 24) {
+                AlohaLogo()
+                FeedsMockup()
+            }
         }
     }
 
-    private var actionsPage: some View {
+    /// What it does not do. Every sentence holds on any server: sensitive
+    /// media is covered by default, the counts can be switched off (they
+    /// show by default, `showPopularityCounts`), and the app collects
+    /// nothing (docs/11 §3, the privacy manifest).
+    private var calmPage: some View {
         IntroPage(
-            title: String(
-                localized: "The same four actions, everywhere.",
-                comment: "Onboarding title"),
+            title: String(localized: "Calm and private by design.", comment: "Onboarding title"),
             detail: String(
-                localized: "Like, repost, reply and save keep their order. Tap to try.",
-                comment: "Onboarding detail")
-        ) {
-            ActionsMockup()
-        }
-    }
-
-    private var photosPage: some View {
-        IntroPage(
-            title: String(
-                localized: "Photos, without the noise.", comment: "Onboarding title"),
-            detail: String(
-                localized: "A grid that opens into full posts. Double-tap a photo to like it.",
-                comment: "Onboarding detail")
-        ) {
-            PhotosMockup()
-        }
-    }
-
-    private var storiesPage: some View {
-        IntroPage(
-            title: String(
-                localized: "Stories that start in the camera.", comment: "Onboarding title"),
-            detail: String(
-                localized: "Shoot, crop, add a sticker, share. The canvas is the story.",
-                comment: "Onboarding detail")
-        ) {
-            StoriesMockup()
-        }
-    }
-
-    private var quietPage: some View {
-        IntroPage(
-            title: String(localized: "Quiet by default.", comment: "Onboarding title"),
-            detail: String(
-                localized: "Sensitive media stays covered. Numbers appear only when you ask.",
+                localized:
+                    "Sensitive media stays covered until you tap it, and the counts can go. No ads, no tracking: Aloha Social collects nothing about you.",
                 comment: "Onboarding detail")
         ) {
             QuietMockup()
@@ -323,6 +283,7 @@ private struct IntroPage<Content: View>: View {
                         Text(title)
                             .font(.title2.weight(.bold))
                             .multilineTextAlignment(.center)
+                            .accessibilityAddTraits(.isHeader)
                         Text(detail)
                             .font(.subheadline)
                             .foregroundStyle(palette.secondaryLabel)
@@ -408,85 +369,6 @@ private struct IntroBackdrop: View {
 
 // MARK: - Mockups
 
-private struct WelcomeMockup: View {
-    @Environment(\.alohaPalette) private var palette
-
-    var body: some View {
-        IntroCard {
-            VStack(alignment: .leading, spacing: 9) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(palette.accent.opacity(0.25))
-                        .frame(width: 20, height: 20)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Capsule().fill(palette.label.opacity(0.25)).frame(width: 48, height: 4)
-                        Capsule().fill(palette.separator).frame(width: 32, height: 3)
-                    }
-                    Spacer()
-                    Image(systemName: AlohaSymbol.more)
-                        .font(.caption2)
-                        .foregroundStyle(palette.tertiaryLabel)
-                }
-
-                HStack(spacing: 7) {
-                    ForEach(0..<4, id: \.self) { index in
-                        Circle()
-                            .fill(index == 0 ? palette.accent.opacity(0.25) : palette.background)
-                            .frame(width: 24, height: 24)
-                            .overlay(
-                                Circle().strokeBorder(
-                                    index == 0 ? palette.accent : palette.separator,
-                                    lineWidth: index == 0 ? 2 : 0.5))
-                    }
-                    Spacer(minLength: 0)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Capsule().fill(palette.label.opacity(0.22)).frame(width: 92, height: 5)
-                    Capsule().fill(palette.separator).frame(width: 128, height: 4)
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    palette.accent.opacity(0.55), palette.favourite.opacity(0.4),
-                                ], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                        .frame(height: 82)
-                    HStack(spacing: 14) {
-                        Image(systemName: AlohaSymbol.favourite)
-                            .foregroundStyle(palette.favourite)
-                        Image(systemName: AlohaSymbol.boost)
-                            .foregroundStyle(palette.boost)
-                        Image(systemName: AlohaSymbol.reply)
-                            .foregroundStyle(palette.secondaryLabel)
-                        Spacer()
-                        Image(systemName: AlohaSymbol.bookmark)
-                            .foregroundStyle(palette.bookmark)
-                    }
-                    .font(.caption)
-                }
-                .padding(9)
-                .background(
-                    palette.background.opacity(0.65),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                HStack(spacing: 18) {
-                    Image(systemName: FeedMode.home.symbolName)
-                    Image(systemName: FeedMode.photos.symbolName)
-                    Image(systemName: FeedMode.video.symbolName)
-                    Image(systemName: FeedMode.news.symbolName)
-                    Spacer()
-                    Image(systemName: "person.crop.circle")
-                }
-                .font(.caption2)
-                .foregroundStyle(palette.tertiaryLabel)
-                .padding(.horizontal, 8)
-            }
-            .frame(width: 212)
-        }
-    }
-}
-
 private struct FeedsMockup: View {
     @Environment(\.alohaPalette) private var palette
     @State private var selected: FeedMode = .home
@@ -557,14 +439,15 @@ private struct FeedsMockup: View {
         }
     }
 
+    /// The tab bar's own names, so the mockup reads as the app will.
     private func modeTitle(_ mode: FeedMode) -> String {
         switch mode {
-        case .home: String(localized: "Home", comment: "Feed mode")
-        case .photos: String(localized: "Photos", comment: "Feed mode")
-        case .video: String(localized: "Video", comment: "Feed mode")
-        case .shorts: String(localized: "Shorts", comment: "Feed mode")
-        case .news: String(localized: "News", comment: "Feed mode")
-        case .audio: String(localized: "Audio", comment: "Feed mode")
+        case .home: String(localized: "My Feed", comment: "Mode title")
+        case .photos: String(localized: "Photos", comment: "Mode title")
+        case .video: String(localized: "Videos", comment: "Mode title")
+        case .shorts: String(localized: "Shorts", comment: "Mode title")
+        case .news: String(localized: "News", comment: "Mode title")
+        case .audio: String(localized: "Audio", comment: "Mode title")
         }
     }
 
@@ -577,275 +460,6 @@ private struct FeedsMockup: View {
         case .news: [palette.secondaryLabel.opacity(0.45), palette.accent.opacity(0.3)]
         case .audio: [palette.accentMuted, palette.favourite.opacity(0.35)]
         }
-    }
-}
-
-private struct ActionsMockup: View {
-    @Environment(\.alohaPalette) private var palette
-    @State private var liked = false
-    @State private var boosted = false
-    @State private var saved = false
-    @State private var replying = false
-
-    var body: some View {
-        IntroCard {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(palette.accent.opacity(0.22))
-                        .frame(width: 20, height: 20)
-                    Text("Mira", comment: "Onboarding mock author")
-                        .font(.caption.weight(.semibold))
-                    Text("now", comment: "Onboarding mock time")
-                        .font(.caption2)
-                        .foregroundStyle(palette.tertiaryLabel)
-                    Spacer()
-                    Image(systemName: AlohaSymbol.more)
-                        .font(.caption2)
-                        .foregroundStyle(palette.tertiaryLabel)
-                }
-
-                Text("A quieter way to keep up.", comment: "Onboarding mock post")
-                    .font(.subheadline)
-
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                palette.favourite.opacity(0.45), palette.accent.opacity(0.35),
-                            ], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .frame(height: 84)
-
-                HStack(spacing: 0) {
-                    actionButton(
-                        AlohaSymbol.favourite, count: liked ? 13 : 12, tint: palette.favourite,
-                        isOn: liked,
-                        label: String(localized: "Favourite", comment: "Status action")
-                    ) { liked.toggle() }
-                    actionButton(
-                        AlohaSymbol.boost, count: boosted ? 5 : 4, tint: palette.boost,
-                        isOn: boosted,
-                        label: String(localized: "Boost", comment: "Status action")
-                    ) { boosted.toggle() }
-                    actionButton(
-                        AlohaSymbol.reply, count: 3, tint: palette.accent, isOn: replying,
-                        label: String(localized: "Reply", comment: "Status action")
-                    ) { replying.toggle() }
-                    actionButton(
-                        saved ? AlohaSymbol.bookmarkFilled : AlohaSymbol.bookmark, count: nil,
-                        tint: palette.bookmark, isOn: saved,
-                        label: String(localized: "Bookmark", comment: "Status action")
-                    ) { saved.toggle() }
-                }
-                .animation(.easeInOut(duration: 0.2), value: liked)
-                .animation(.easeInOut(duration: 0.2), value: boosted)
-                .animation(.easeInOut(duration: 0.2), value: saved)
-
-                if replying {
-                    Text("Reply…", comment: "Onboarding mock reply")
-                        .font(.caption2)
-                        .foregroundStyle(palette.tertiaryLabel)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            palette.background.opacity(0.65),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
-            .frame(width: 280)
-            .animation(.easeInOut(duration: 0.2), value: replying)
-        }
-    }
-
-    private func actionButton(
-        _ symbol: String, count: Int?, tint: Color, isOn: Bool, label: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 3) {
-                Image(systemName: symbol)
-                if let count {
-                    Text(verbatim: "\(count)").monospacedDigit()
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(isOn ? tint : palette.secondaryLabel)
-            .frame(maxWidth: .infinity, minHeight: 30)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(label))
-        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
-    }
-}
-
-private struct PhotosMockup: View {
-    @Environment(\.alohaPalette) private var palette
-    @State private var liked = false
-
-    var body: some View {
-        IntroCard {
-            VStack(alignment: .leading, spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.18, green: 0.52, blue: 0.82),
-                                    Color(red: 0.55, green: 0.30, blue: 0.72),
-                                ], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                        .frame(height: 180)
-
-                    if liked {
-                        Image(systemName: AlohaSymbol.favouriteFilled)
-                            .font(.system(size: 50))
-                            .foregroundStyle(.white)
-                            .shadow(radius: 8)
-                            .transition(.scale(scale: 0.5).combined(with: .opacity))
-                    }
-
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Label {
-                                Text("Lake", comment: "Onboarding mock place")
-                            } icon: {
-                                Image(systemName: "mappin.and.ellipse")
-                            }
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.black.opacity(0.3), in: Capsule())
-                            Spacer()
-                        }
-                    }
-                    .padding(8)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .onTapGesture(count: 2) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
-                        liked.toggle()
-                    }
-                }
-                .accessibilityAction(
-                    named: Text("Like or unlike", comment: "Onboarding mock action")
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
-                        liked.toggle()
-                    }
-                }
-
-                HStack {
-                    Text("Double-tap the photo", comment: "Onboarding mock hint")
-                        .font(.caption2)
-                        .foregroundStyle(palette.tertiaryLabel)
-                    Spacer()
-                    HStack(spacing: 3) {
-                        Image(
-                            systemName: liked
-                                ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite)
-                        Text(verbatim: liked ? "25" : "24").monospacedDigit()
-                    }
-                    .font(.caption)
-                    .foregroundStyle(liked ? palette.favourite : palette.secondaryLabel)
-                }
-            }
-            .frame(width: 260)
-        }
-    }
-}
-
-private struct StoriesMockup: View {
-    @Environment(\.alohaPalette) private var palette
-    @State private var showsGrid = true
-    @State private var showsSticker = false
-    @State private var showsText = false
-
-    var body: some View {
-        IntroCard {
-            VStack(spacing: 8) {
-                ZStack {
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.98, green: 0.50, blue: 0.30),
-                            Color(red: 0.75, green: 0.25, blue: 0.55),
-                        ], startPoint: .top, endPoint: .bottom)
-
-                    if showsGrid {
-                        IntroCropGrid()
-                            .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
-                    }
-
-                    if showsSticker {
-                        Text("🌺", comment: "Onboarding mock story sticker")
-                            .font(.system(size: 28))
-                            .offset(x: 40, y: -60)
-                    }
-
-                    if showsText {
-                        Text("Hello", comment: "Onboarding mock story text")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.black.opacity(0.35), in: Capsule())
-                            .offset(y: 78)
-                    }
-
-                    VStack {
-                        Spacer()
-                        Circle()
-                            .strokeBorder(.white, lineWidth: 2.5)
-                            .frame(width: 30, height: 30)
-                            .padding(.bottom, 8)
-                    }
-                }
-                .frame(width: 170, height: 284)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                HStack(spacing: 6) {
-                    chip(
-                        String(localized: "Crop", comment: "Onboarding story tool"),
-                        symbol: "crop", isOn: showsGrid
-                    ) { showsGrid.toggle() }
-                    chip(
-                        String(localized: "Sticker", comment: "Onboarding story tool"),
-                        symbol: "face.smiling", isOn: showsSticker
-                    ) { showsSticker.toggle() }
-                    chip(
-                        String(localized: "Text", comment: "Onboarding story tool"),
-                        symbol: "textformat", isOn: showsText
-                    ) { showsText.toggle() }
-                }
-            }
-            .frame(width: 190)
-        }
-    }
-
-    private func chip(
-        _ title: String, symbol: String, isOn: Bool, action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label {
-                Text(title).font(.caption2.weight(.medium))
-            } icon: {
-                Image(systemName: symbol).font(.caption2)
-            }
-            .foregroundStyle(isOn ? palette.onAccent : palette.secondaryLabel)
-            .padding(.horizontal, 7)
-            .frame(height: 28)
-            .background(
-                isOn ? palette.accent : palette.background.opacity(0.65), in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -917,21 +531,6 @@ private struct QuietMockup: View {
             .frame(width: 270)
             .animation(.easeInOut(duration: 0.2), value: blurred)
         }
-    }
-}
-
-private struct IntroCropGrid: Shape {
-    nonisolated func path(in rect: CGRect) -> Path {
-        var path = Path()
-        for fraction in [1.0 / 3.0, 2.0 / 3.0] {
-            let x = rect.width * fraction
-            path.move(to: CGPoint(x: x, y: 0))
-            path.addLine(to: CGPoint(x: x, y: rect.height))
-            let y = rect.height * fraction
-            path.move(to: CGPoint(x: 0, y: y))
-            path.addLine(to: CGPoint(x: rect.width, y: y))
-        }
-        return path
     }
 }
 

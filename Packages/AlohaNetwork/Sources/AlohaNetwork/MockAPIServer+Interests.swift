@@ -33,9 +33,19 @@
                 if let paused = fields["paused"] {
                     interestsState.paused = paused == "1" || paused == "true"
                 }
+                if let notice = fields["noticeAcknowledged"] {
+                    interestsState.noticeAcknowledged = notice == "1" || notice == "true"
+                }
                 return respond(url: url, status: 200, json: interestsState.settingsJSON)
 
             case "api/v1/interests/signals":
+                // As Nextcloud Social answers: taken, or refused with the
+                // reason when nothing this reader does is learned from.
+                guard interestsState.isActive else {
+                    return respond(
+                        url: url, status: 403,
+                        json: ["error": "Not learned from", "reason": interestsState.reason])
+                }
                 return respond(url: url, status: 204)
 
             case "api/v1/timelines/interests":
@@ -139,11 +149,23 @@
     struct InterestsFixture {
         var learning = true
         var paused = false
+        var noticeAcknowledged = true
         var tags = ["nextcloud", "photography", "fediverse", "opensource"]
         var pinned: Set<String> = ["nextcloud"]
 
+        var isActive: Bool { learning && !paused && noticeAcknowledged }
+
+        var reason: String {
+            if !learning { return "learning_off" }
+            return paused ? "learning_paused" : "notice_pending"
+        }
+
         var settingsJSON: [String: Any] {
-            ["learning": learning, "paused": paused, "languages": ["en"]]
+            [
+                "learning": learning, "paused": paused, "languages": ["en"], "enabled": true,
+                "instancePaused": false, "noticeAcknowledged": noticeAcknowledged,
+                "active": isActive,
+            ]
         }
 
         var json: [String: Any] {
@@ -178,6 +200,9 @@
             get { interestsStateStorage }
             set { interestsStateStorage = newValue }
         }
+        /// `reading:learn` in the preferences, from the same state the
+        /// interests routes answer with.
+        var learnsFromReading: Bool { interestsState.isActive }
         fileprivate var recapEnabled: Bool {
             get { recapEnabledStorage }
             set { recapEnabledStorage = newValue }

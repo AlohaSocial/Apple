@@ -38,11 +38,11 @@ extension ThemedAppShell {
             case .hashtag(let name, _):
                 push(.hashtag(name))
             case .web(let url):
-                openURL(url)
+                openLink(url, session: session)
             }
         case .openCard(let card):
             if let url = card.url {
-                openURL(url)
+                openLink(url, session: session)
             }
         case .report(let status):
             reportTarget = ReportTarget(
@@ -138,11 +138,33 @@ extension ThemedAppShell {
         #endif
     }
 
-    /// Links inside posts and cards open in the browser on every platform.
-    /// Without the AppKit branch a tap on a link did nothing on the Mac:
-    /// the UIKit-only `open` compiled away and the action fell through
-    /// silently, so no web content was reachable from a timeline there.
-    private func openURL(_ url: URL) {
+    /// A link in a post or a card: a fediverse post or profile opens here,
+    /// looked up through the reading account's server; anything else, or
+    /// anything that server cannot find in time, goes to the browser
+    /// (docs/09 §10).
+    func openLink(_ url: URL, session: AccountSession) {
+        let client = session.client
+        linkResolver.open(
+            url, accountID: session.id,
+            search: { link in
+                try await client.decode(
+                    SearchResults.self,
+                    from: Endpoint.search.search(link.absoluteString, resolve: true, limit: 5))
+            },
+            onRoute: { route in
+                // Looked up for one account; switched away from meanwhile,
+                // the id names somebody else's post on the next server.
+                guard environment.activeSession?.id == session.id else { return }
+                push(route)
+            },
+            fallback: { openURL($0) })
+    }
+
+    /// Links that are not the fediverse's open in the browser on every
+    /// platform. Without the AppKit branch a tap on a link did nothing on
+    /// the Mac: the UIKit-only `open` compiled away and the action fell
+    /// through silently, so no web content was reachable from a timeline there.
+    func openURL(_ url: URL) {
         LinkOpening.open(url, with: openURLAction)
     }
 

@@ -202,6 +202,18 @@ public struct StatusHTMLParser: Sendable {
             let classes = Set((attributes["class"] ?? "").split(separator: " ").map(String.init))
             let url = URL(string: href)
 
+            // Before mentions: Mastodon marks a hashtag `class="mention hashtag"`,
+            // and read as a mention its `/tags/name` became a handle.
+            if classes.contains("hashtag") {
+                if let name = Self.tagName(fromHref: href) {
+                    let canonical =
+                        tags.first {
+                            $0.name.caseInsensitiveCompare(name) == .orderedSame
+                        }?.name ?? name
+                    return .hashtag(name: canonical, url: url)
+                }
+            }
+
             if classes.contains("mention") || classes.contains("u-url") {
                 // Match on the href against the mention's own URL first; fall
                 // back to the handle spelled in the path.
@@ -218,16 +230,6 @@ public struct StatusHTMLParser: Sendable {
                 }
                 if let handle = Self.handle(fromMentionHref: href) {
                     return .mention(accountID: nil, acct: handle, url: url)
-                }
-            }
-
-            if classes.contains("hashtag") {
-                if let name = Self.tagName(fromHref: href) {
-                    let canonical =
-                        tags.first {
-                            $0.name.caseInsensitiveCompare(name) == .orderedSame
-                        }?.name ?? name
-                    return .hashtag(name: canonical, url: url)
                 }
             }
 

@@ -29,6 +29,27 @@ struct AltTextCoachTests {
                 enabled: true, alreadyNudged: false, attachments: [picture("1", "  ")]))
     }
 
+    @Test("A suggestion waiting for review asks again, even with the reminder off")
+    func suggestionsAskAgain() {
+        let bare = [picture("1")]
+        #expect(
+            ComposerModel.shouldNudge(
+                enabled: true, alreadyNudged: true, attachments: bare, awaitingReview: ["1"]))
+        #expect(
+            ComposerModel.shouldNudge(
+                enabled: false, alreadyNudged: false, attachments: bare, awaitingReview: ["1"]))
+        // Accepted, it is a description, and nothing is left to say.
+        #expect(
+            !ComposerModel.shouldNudge(
+                enabled: true, alreadyNudged: false, attachments: [picture("1", "A wave")],
+                awaitingReview: ["1"]))
+        // A suggestion for one picture does not hide another's silence.
+        #expect(
+            !ComposerModel.shouldNudge(
+                enabled: true, alreadyNudged: true, attachments: [picture("1"), picture("2")],
+                awaitingReview: []))
+    }
+
     @Test("The server's figure is read as it is sent, under either key")
     func fromServer() {
         let current = AccountStatistics(

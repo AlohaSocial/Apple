@@ -108,6 +108,9 @@ struct ThemedAppShell: View {
     @State var reportTarget: ReportTarget?
     @State private var hasAcceptedTerms = TermsGate.hasAccepted
     @State var translator = Translator()
+    /// Looks fediverse links up on the reader's server before the browser
+    /// gets them; its cache lasts as long as the app runs.
+    @State var linkResolver = FediverseLinkResolver()
     @State var editing: EditRequest?
     @State var deleting: Status?
     @State var confirming: ModerationRequest?
@@ -155,6 +158,9 @@ struct ThemedAppShell: View {
         root
             .overlay {
                 if isCelebrating { ConfettiView(isFalling: isCelebrating) }
+            }
+            .overlay(alignment: .top) {
+                LinkResolvingIndicator(resolver: linkResolver) { openURL($0) }
             }
             #if os(iOS)
                 // The watch follows the active account and its colour; both
@@ -228,6 +234,7 @@ struct ThemedAppShell: View {
                 // a thread id from one server is a stranger's post, or none,
                 // on the next.
                 guard previous != nil, previous != current else { return }
+                linkResolver.cancel()
                 tabPaths = [:]
                 sidebarPaths = [:]
                 detailPaths = [:]

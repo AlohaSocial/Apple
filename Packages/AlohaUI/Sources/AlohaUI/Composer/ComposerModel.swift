@@ -112,30 +112,62 @@ public final class ComposerModel {
 
     // MARK: - Describing every image at once
 
-    /// How many images are still waiting for a description, out of the images
-    /// that can carry one. Four pictures is the common case, and asking for
-    /// each one separately is four round trips through the same sheet
-    /// (docs/10 §5).
+    /// Descriptions this device wrote that the person has not yet looked at,
+    /// by attachment id.
+    ///
+    /// Suggestions, not descriptions: the text comes from what Vision
+    /// recognised in the picture, phrased by a language model that is told it
+    /// cannot see the photograph (`ImageDescription`). It can be plausible
+    /// and wrong, and alt text is read *as* the picture by someone who cannot
+    /// check it. So nothing here is sent to the server until the person
+    /// accepts it in the editor, and an image holding only a suggestion still
+    /// counts as undescribed — the reminder before posting still fires
+    /// (docs/10 §4).
+    public private(set) var altTextSuggestions: [String: String] = [:]
+
+    /// How many images still need a description generated: no description
+    /// and no suggestion waiting. Four pictures is the common case, and
+    /// asking for each one separately is four round trips through the same
+    /// sheet (docs/10 §4).
     public var imagesAwaitingDescription: Int {
-        uploader.attachments.filter { $0.type == .image && !$0.hasAltText }.count
+        uploader.attachments.filter {
+            $0.type == .image && !$0.hasAltText && altTextSuggestions[$0.id] == nil
+        }.count
+    }
+
+    /// The images whose suggestion is waiting to be accepted, edited or
+    /// discarded, in strip order.
+    public var attachmentsAwaitingReview: [MediaAttachment] {
+        attachments.filter { !$0.hasAltText && altTextSuggestions[$0.id] != nil }
     }
 
     public private(set) var isDescribingAll = false
+    /// How many suggestions the current run has written so far.
     public private(set) var describedCount = 0
     public private(set) var describeAllTotal = 0
     public private(set) var describeAllError: String?
-    /// Set when the person stops the run early; the ones already done stay
-    /// done, which is the only behaviour that makes Cancel worth pressing.
+    /// Set when the person stops the run early; the suggestions already
+    /// written stay, which is the only behaviour that makes Cancel worth
+    /// pressing.
     private var describeAllCancelled = false
+    /// Set while the person steps through the suggestions one image after
+    /// another; closing the editor on one opens the next.
+    public private(set) var isReviewingSuggestions = false
+    /// The attachment whose editor was last opened, so its closing can tell
+    /// whether the person decided on it or stopped.
+    private var lastEditedAltTextID: String?
 
-    /// Describes every image that has no description, one at a time.
+    /// Suggests a description for every image that has neither a
+    /// description nor a suggestion, one at a time.
     ///
     /// Sequential rather than concurrent on purpose: the language model is the
     /// scarce resource, four at once queues behind it anyway and reports a
     /// single failure for four attempts.
     public func describeAllImages(environment: AppEnvironment) async {
         guard !isDescribingAll else { return }
-        let pending = uploader.attachments.filter { $0.type == .image && !$0.hasAltText }
+        let pending = uploader.attachments.filter {
+            $0.type == .image && !$0.hasAltText && altTextSuggestions[$0.id] == nil
+        }
         guard !pending.isEmpty else { return }
 
         isDescribingAll = true
@@ -164,7 +196,7 @@ public final class ComposerModel {
                         comment: "Alt text generation rejected")
                     continue
                 }
-                await uploader.updateDescription(generated, for: attachment.id)
+                suggest(generated, for: attachment.id)
             } catch {
                 // One picture that could not be described does not undo the
                 // ones that were: the run continues and says so at the end.
@@ -178,21 +210,85 @@ public final class ComposerModel {
         }
     }
 
-    /// Stops a run after the image it is on. Already-described images keep
-    /// their descriptions.
+    /// Stops a run after the image it is on. Suggestions already written
+    /// stay for review.
     public func cancelDescribeAll() {
         describeAllCancelled = true
     }
 
+    /// Keeps a generated description as a suggestion for review. Only an
+    /// image still without a description of its own gets one.
+    func suggest(_ text: String, for attachmentID: String) {
+        guard attachments.first(where: { $0.id == attachmentID })?.hasAltText != true else {
+            return
+        }
+        altTextSuggestions[attachmentID] = text
+    }
+
+    /// The description the person settled on — typed, edited from a
+    /// suggestion, or a suggestion accepted as it is — which is the only way
+    /// generated text reaches the server.
+    ///
+    /// The suggestion is settled at once, before the editor's closing asks
+    /// what to open next; the upload follows, and the task is returned for
+    /// whoever needs to wait for it.
+    @discardableResult
+    public func saveDescription(_ text: String, for attachmentID: String) -> Task<Void, Never> {
+        altTextSuggestions[attachmentID] = nil
+        let uploader = uploader
+        return Task { await uploader.updateDescription(text, for: attachmentID) }
+    }
+
+    /// Throws a suggestion away; the image is as undescribed as before.
+    public func discardSuggestion(for attachmentID: String) {
+        altTextSuggestions[attachmentID] = nil
+    }
+
+    /// Opens the editor on an attachment, with its suggestion if it has one.
+    public func editDescription(of attachment: MediaAttachment) {
+        lastEditedAltTextID = attachment.id
+        isShowingAltTextFor = attachment
+    }
+
+    /// Steps through the waiting suggestions, starting with the first.
+    public func reviewSuggestions() {
+        guard let first = attachmentsAwaitingReview.first else { return }
+        isReviewingSuggestions = true
+        editDescription(of: first)
+    }
+
+    /// Called when the editor closes. While reviewing, a decision on one
+    /// image opens the next; closing with the suggestion still undecided
+    /// (Cancel) is the person stopping, and the review stops with them.
+    public func altTextEditorDidClose() {
+        guard isReviewingSuggestions else { return }
+        let decided = lastEditedAltTextID.map { altTextSuggestions[$0] == nil } ?? false
+        guard decided, let next = attachmentsAwaitingReview.first else {
+            isReviewingSuggestions = false
+            return
+        }
+        editDescription(of: next)
+    }
+
     // MARK: - The alt-text coach
 
-    /// Whether Post should stop once to say something has no description:
-    /// the setting is on, it has not said so for this post yet, and there is
+    /// Whether Post should stop to say something has no description: the
+    /// setting is on, it has not said so for this post yet, and there is
     /// something undescribed.
+    ///
+    /// A suggestion still waiting for review asks again — even after the
+    /// reminder has been shown once, and with the reminder switched off:
+    /// the person asked this device for a description, and posting would
+    /// silently leave it behind. "Post anyway" is still one tap away, so it
+    /// remains a reminder rather than a gate (docs/07 §4).
     nonisolated static func shouldNudge(
-        enabled: Bool, alreadyNudged: Bool, attachments: [MediaAttachment]
+        enabled: Bool, alreadyNudged: Bool, attachments: [MediaAttachment],
+        awaitingReview: Set<String> = []
     ) -> Bool {
-        enabled && !alreadyNudged && attachments.contains { !$0.hasAltText }
+        let undescribed = attachments.filter { !$0.hasAltText }
+        guard !undescribed.isEmpty else { return false }
+        if undescribed.contains(where: { awaitingReview.contains($0.id) }) { return true }
+        return enabled && !alreadyNudged
     }
 
     /// The first attachment still without a description, for "Add a
@@ -417,6 +513,7 @@ public final class ComposerModel {
         uploader.remove(id)
         libraryAttachments.removeAll { $0.id == id }
         focalPoints[id] = nil
+        altTextSuggestions[id] = nil
     }
 
     // MARK: - Nextcloud extras
@@ -738,7 +835,8 @@ public final class ComposerModel {
         if !skippingAltTextCheck,
             Self.shouldNudge(
                 enabled: session.settings.warnAboutMissingAltText,
-                alreadyNudged: hasNudgedAboutAltText, attachments: attachments)
+                alreadyNudged: hasNudgedAboutAltText, attachments: attachments,
+                awaitingReview: Set(altTextSuggestions.keys))
         {
             hasNudgedAboutAltText = true
             isShowingAltTextWarning = true

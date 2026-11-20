@@ -186,15 +186,21 @@ media sweep to collect.
 
 ### Alt text
 
-- Every attachment shows an **ALT** badge: filled when a description exists,
-  outlined when it does not.
+- Every attachment shows an **ALT** badge: in the accent when a description
+  exists, in the destructive colour when it does not, and muted with a
+  sparkle when only a generated **suggestion** is waiting for review.
 - A setting, **on by default** ("Warn about missing descriptions"), nudges
   once before posting when any attachment lacks a description. The nudge
   offers to add one (opening the first undescribed attachment), to have this
-  device draft them where on-device description is available
+  device suggest them where on-device description is available
   ([10-ai-features.md](10-ai-features.md) §4), and "Post anyway", always one
   tap. It nudges **once per post**: Post pressed again goes out as it is. It
   warns; it never blocks.
+- The one exception to "once": while a suggestion is waiting for review, Post
+  asks again — with the setting off too — offering "Review suggestions"
+  instead of "Add a description". The person asked for those descriptions,
+  and posting would silently leave them behind. "Post anyway" is still one
+  tap, and posts without them.
 - Statistics shows the share of the account's pictures that carry a
   description, near the top of the page. It is the server's own count
   (`media.images` and `media.described` in `GET /api/v1/statistics`, per
@@ -204,9 +210,10 @@ media sweep to collect.
 - Editing an alt text after upload uses `PUT /api/v1/media/{id}`.
 - Alt text travels as the ActivityPub `name`, both directions — so what is
   written here is what a remote reader gets.
-- The AI alt-text generator ([10-ai-features.md](10-ai-features.md) §4) fills
-  the field as an editable draft, clearly marked as generated, never posted
-  unreviewed.
+- The AI alt-text generator ([10-ai-features.md](10-ai-features.md) §4)
+  writes **suggestions**, never descriptions: each waits in the editor,
+  marked as generated, for Accept, Edit or Discard, and nothing generated is
+  sent to the server until it is accepted.
 
 ### Video and short video
 
