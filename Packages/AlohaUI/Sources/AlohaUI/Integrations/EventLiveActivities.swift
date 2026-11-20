@@ -137,8 +137,7 @@ public enum EventLiveActivities {
         let fetched = await WidgetSnapshotWriter.Fetched(scheduled: scheduled, ownPosts: ownPosts)
         let snapshot = WidgetSnapshotWriter.merge(
             fetched, into: nil, accountID: session.id, handle: session.snapshot.qualifiedHandle,
-            serverAccountID: serverAccountID, aloha: session.capabilities.isNextcloudSocial,
-            now: now)
+            serverAccountID: serverAccountID, now: now)
         return EventActivityPlanner.upcoming(in: snapshot, now: now)
     }
 
@@ -156,7 +155,8 @@ public enum EventLiveActivities {
                     attributes: attributes, content: .init(state: state, staleDate: event.at))
             } catch {
                 // Refused — too many activities, or turned off a moment ago.
-                // Not worth more than a line: the widgets show the same.
+                // Not worth more than a line: the scheduled list and the post
+                // itself still say when.
                 logger.notice(
                     "countdown not started: \(String(describing: error), privacy: .public)")
             }

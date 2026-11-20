@@ -4,13 +4,13 @@ import AlohaNetwork
 import CryptoKit
 import Foundation
 
-/// Everything the snapshot-backed widgets show for one account, as the app
-/// last fetched it.
+/// Everything the snapshot-backed widgets and the countdown Live Activities
+/// show for one account, as the app last fetched it.
 ///
-/// Direct messages, requests, reports, scheduled posts, statistics, polls,
-/// trends, people and photos are server queries rather than cached
-/// timelines, and a widget never downloads (docs/09 §8). The app writes this
-/// when it becomes active and on background refresh
+/// Direct messages and photos (the widgets), and scheduled posts and the
+/// account's own poll (the countdowns, docs/09 §9) are server queries rather
+/// than cached timelines, and a widget never downloads (docs/09 §8). The app
+/// writes this when it becomes active and on background refresh
 /// (`WidgetSnapshotWriter`), and the widgets read nothing else.
 ///
 /// Every section is optional: nil means "not fetched", which a widget says
@@ -20,37 +20,25 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public var handle: String
     public var writtenAt: Date
 
+    // A snapshot written by a build that still had the requests, reports,
+    // statistics, trends and people widgets carries those sections too; the
+    // decoder skips keys it does not know, so it reads as it is.
     public var messages: Messages?
-    public var followRequests: Int?
-    public var notificationRequests: Int?
-    /// Unresolved reports; nil where the account cannot moderate.
-    public var openReports: Int?
     public var scheduled: [ScheduledPost]?
-    public var stats: Stats?
     /// The newest poll of the account's own, open or closed within a day.
     public var poll: Poll?
-    public var trends: Trends?
-    public var people: [Person]
     public var photoSets: [PhotoSet]
 
     public init(
         accountID: UUID, handle: String, writtenAt: Date = Date(), messages: Messages? = nil,
-        followRequests: Int? = nil, notificationRequests: Int? = nil, openReports: Int? = nil,
-        scheduled: [ScheduledPost]? = nil, stats: Stats? = nil, poll: Poll? = nil,
-        trends: Trends? = nil, people: [Person] = [], photoSets: [PhotoSet] = []
+        scheduled: [ScheduledPost]? = nil, poll: Poll? = nil, photoSets: [PhotoSet] = []
     ) {
         self.accountID = accountID
         self.handle = handle
         self.writtenAt = writtenAt
         self.messages = messages
-        self.followRequests = followRequests
-        self.notificationRequests = notificationRequests
-        self.openReports = openReports
         self.scheduled = scheduled
-        self.stats = stats
         self.poll = poll
-        self.trends = trends
-        self.people = people
         self.photoSets = photoSets
     }
 
@@ -60,9 +48,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         for row in messages?.conversations ?? [] {
             if let file = row.avatarFile { files.insert(file) }
         }
-        for person in people { if let file = person.avatarFile { files.insert(file) } }
         for set in photoSets { files.formUnion(set.photos.map(\.imageFile)) }
-        for link in trends?.links ?? [] { if let file = link.imageFile { files.insert(file) } }
         return files
     }
 
@@ -123,76 +109,6 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         }
     }
 
-    public struct Stats: Codable, Sendable, Equatable {
-        /// One follower count per day the app looked, oldest first.
-        public struct Sample: Codable, Sendable, Equatable {
-            public var day: String
-            public var followers: Int
-
-            public init(day: String, followers: Int) {
-                self.day = day
-                self.followers = followers
-            }
-        }
-
-        public var followers: Int
-        public var history: [Sample]
-        /// Favourites, boosts and replies over the last seven days and the
-        /// seven before; Aloha Social servers only.
-        public var engagementThisWeek: Int?
-        public var engagementLastWeek: Int?
-        public var postsThisWeek: Int?
-
-        /// How many days of follower history are kept: enough for a week's
-        /// change and a month's line.
-        public static let historyDays = 35
-
-        public init(
-            followers: Int, history: [Sample], engagementThisWeek: Int? = nil,
-            engagementLastWeek: Int? = nil, postsThisWeek: Int? = nil
-        ) {
-            self.followers = followers
-            self.history = history
-            self.engagementThisWeek = engagementThisWeek
-            self.engagementLastWeek = engagementLastWeek
-            self.postsThisWeek = postsThisWeek
-        }
-
-        /// New followers since the sample a week back, or since the oldest
-        /// one where the history is younger than a week.
-        public func followerChange(today: String) -> (change: Int, days: Int)? {
-            guard let oldest = history.first, oldest.day != today else { return nil }
-            let weekAgo = history.last { Self.days(from: $0.day, to: today) ?? 0 >= 7 } ?? oldest
-            guard let span = Self.days(from: weekAgo.day, to: today), span > 0 else { return nil }
-            return (followers - weekAgo.followers, min(span, 7))
-        }
-
-        /// Today's count added to the history, which is trimmed to its length.
-        public func recording(followers: Int, day: String) -> Stats {
-            var copy = self
-            copy.followers = followers
-            copy.history.removeAll { $0.day == day }
-            copy.history.append(Sample(day: day, followers: followers))
-            copy.history.sort { $0.day < $1.day }
-            if copy.history.count > Self.historyDays {
-                copy.history.removeFirst(copy.history.count - Self.historyDays)
-            }
-            return copy
-        }
-
-        static func days(from start: String, to end: String) -> Int? {
-            let formatter = DateFormatter()
-            formatter.calendar = Calendar(identifier: .gregorian)
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.timeZone = TimeZone(identifier: "UTC")
-            formatter.dateFormat = "yyyy-MM-dd"
-            guard let a = formatter.date(from: start), let b = formatter.date(from: end) else {
-                return nil
-            }
-            return Int((b.timeIntervalSince(a) / 86_400).rounded())
-        }
-    }
-
     public struct Poll: Codable, Sendable, Equatable {
         public struct Option: Codable, Sendable, Equatable {
             public var title: String
@@ -228,72 +144,6 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         /// Closed by its date even where the snapshot was written while open.
         public func isClosed(at now: Date) -> Bool {
             expired || (expiresAt.map { $0 <= now } ?? false)
-        }
-    }
-
-    public struct Trends: Codable, Sendable, Equatable {
-        public struct Tag: Codable, Sendable, Equatable, Identifiable {
-            public var name: String
-            /// Posts today, and the people who wrote them.
-            public var uses: Int
-            public var accounts: Int
-            public var id: String { name.lowercased() }
-
-            public init(name: String, uses: Int, accounts: Int) {
-                self.name = name
-                self.uses = uses
-                self.accounts = accounts
-            }
-        }
-
-        public struct Link: Codable, Sendable, Equatable, Identifiable {
-            public var url: URL
-            public var title: String
-            public var provider: String?
-            public var imageFile: String?
-            public var id: String { url.absoluteString }
-
-            public init(url: URL, title: String, provider: String?, imageFile: String?) {
-                self.url = url
-                self.title = title
-                self.provider = provider
-                self.imageFile = imageFile
-            }
-        }
-
-        public var tags: [Tag]
-        public var links: [Link]
-
-        public init(tags: [Tag], links: [Link]) {
-            self.tags = tags
-            self.links = links
-        }
-    }
-
-    public struct Person: Codable, Sendable, Equatable, Identifiable {
-        /// The account's id on this account's server.
-        public var id: String
-        public var name: String
-        public var handle: String
-        public var avatarFile: String?
-        public var latestText: String?
-        public var latestDate: Date?
-        public var latestStatusID: String?
-        /// A story the reader has not seen yet, where the server has stories.
-        public var hasNewStory: Bool
-
-        public init(
-            id: String, name: String, handle: String, avatarFile: String?, latestText: String?,
-            latestDate: Date?, latestStatusID: String?, hasNewStory: Bool
-        ) {
-            self.id = id
-            self.name = name
-            self.handle = handle
-            self.avatarFile = avatarFile
-            self.latestText = latestText
-            self.latestDate = latestDate
-            self.latestStatusID = latestStatusID
-            self.hasNewStory = hasNewStory
         }
     }
 
@@ -360,10 +210,12 @@ public enum WidgetPhotoSource: Hashable, Sendable {
 /// folder, one file per account.
 public struct WidgetSnapshotStore: Sendable {
     /// Every widget that reads a snapshot, reloaded after one is written.
-    public static let widgetKinds = [
-        "DirectMessages", "Conversations", "NextScheduledPost", "Requests", "OpenReports",
-        "WeeklyStats", "PhotoFrame", "People", "LivePoll", "CreatorDashboard", "ServerTrends",
-    ]
+    public static let widgetKinds = ["DirectMessages", "PhotoFrame"]
+
+    /// What the retired "On this day" widget left in the same folder: its
+    /// snapshot and its pictures, which nothing reads any more.
+    static let retiredFiles = ["memories.json"]
+    static let retiredImagePrefix = "memory-"
 
     public let directory: URL
 
@@ -441,6 +293,13 @@ public struct WidgetSnapshotStore: Sendable {
         for name in names where name.hasPrefix(Self.imagePrefix) && !kept.contains(name) {
             try? manager.removeItem(at: directory.appending(path: name))
         }
+        // An account's posts must not outlive the widget that showed them:
+        // this runs on every write and on signing out, so the leftovers go
+        // the first time either happens after an update.
+        for name in names
+        where Self.retiredFiles.contains(name) || name.hasPrefix(Self.retiredImagePrefix) {
+            try? manager.removeItem(at: directory.appending(path: name))
+        }
     }
 }
 
@@ -448,9 +307,9 @@ public struct WidgetSnapshotStore: Sendable {
 ///
 /// A widget cannot tell the app it exists, and its configuration type lives
 /// in the extension. So each provider records here what it is showing — the
-/// account, and for People and Photo frame the people and sources picked —
-/// and the app's writer reads it. A want not renewed for three days belongs
-/// to a widget that was removed, and is dropped.
+/// account, and for Photo frame the source picked — and the app's writer
+/// reads it. A want not renewed for three days belongs to a widget that was
+/// removed, and is dropped.
 public enum WidgetWants {
     public static let lifetime: TimeInterval = 3 * 86_400
 
@@ -458,14 +317,13 @@ public enum WidgetWants {
 
     struct Stored: Codable, Equatable {
         var accounts: [String: Date] = [:]
-        var people: [String: Date] = [:]
         var photoSources: [String: Date] = [:]
     }
 
     /// Records one widget's wants. Writes only when something is new or a
     /// day old, since every timeline reload calls this.
     public static func record(
-        accountID: UUID, people: [String] = [], photoSources: [WidgetPhotoSource] = [],
+        accountID: UUID, photoSources: [WidgetPhotoSource] = [],
         now: Date = Date(), in defaults: UserDefaults = AppGroup.defaults
     ) {
         var stored = read(in: defaults, now: now)
@@ -476,7 +334,6 @@ public enum WidgetWants {
         }
         let prefix = accountID.uuidString
         touch(&stored.accounts, prefix)
-        for person in people { touch(&stored.people, "\(prefix)/\(person)") }
         for source in photoSources { touch(&stored.photoSources, "\(prefix)/\(source.key)") }
         guard stored != before, let data = try? JSONEncoder().encode(stored) else { return }
         defaults.set(data, forKey: key)
@@ -487,13 +344,6 @@ public enum WidgetWants {
         now: Date = Date(), in defaults: UserDefaults = AppGroup.defaults
     ) -> Set<UUID> {
         Set(read(in: defaults, now: now).accounts.keys.compactMap(UUID.init(uuidString:)))
-    }
-
-    /// The people the People widgets picked for one account, sorted.
-    public static func people(
-        for accountID: UUID, now: Date = Date(), in defaults: UserDefaults = AppGroup.defaults
-    ) -> [String] {
-        values(read(in: defaults, now: now).people, accountID).sorted()
     }
 
     /// The sources the Photo frame widgets picked for one account.
@@ -509,7 +359,6 @@ public enum WidgetWants {
         var stored = read(in: defaults, now: Date())
         let prefix = accountID.uuidString
         stored.accounts.removeValue(forKey: prefix)
-        stored.people = stored.people.filter { !$0.key.hasPrefix("\(prefix)/") }
         stored.photoSources = stored.photoSources.filter { !$0.key.hasPrefix("\(prefix)/") }
         guard let data = try? JSONEncoder().encode(stored) else { return }
         defaults.set(data, forKey: key)
@@ -528,7 +377,6 @@ public enum WidgetWants {
         else { return Stored() }
         let fresh = { (seen: Date) in now.timeIntervalSince(seen) < lifetime }
         stored.accounts = stored.accounts.filter { fresh($0.value) }
-        stored.people = stored.people.filter { fresh($0.value) }
         stored.photoSources = stored.photoSources.filter { fresh($0.value) }
         return stored
     }

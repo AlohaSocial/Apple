@@ -5,7 +5,6 @@ import AlohaStore
 import CoreGraphics
 import Foundation
 import ImageIO
-import SwiftData
 import SwiftUI
 import WidgetKit
 
@@ -25,10 +24,10 @@ enum SnapshotData {
     /// account as wanted, so the app keeps its snapshot fresh.
     @MainActor
     static func load(
-        accountID: UUID?, people: [String] = [], photoSources: [WidgetPhotoSource] = []
+        accountID: UUID?, photoSources: [WidgetPhotoSource] = []
     ) async -> LoadedSnapshot? {
         guard let account = await WidgetData.account(id: accountID) else { return nil }
-        WidgetWants.record(accountID: account.id, people: people, photoSources: photoSources)
+        WidgetWants.record(accountID: account.id, photoSources: photoSources)
         let store = WidgetSnapshotStore.shared
         return LoadedSnapshot(
             account: account, snapshot: store?.read(accountID: account.id), store: store)
@@ -59,23 +58,6 @@ enum SnapshotData {
         return components.url
     }
 
-    static func profileURL(accountID: UUID, personID: String) -> URL? {
-        var components = URLComponents()
-        components.scheme = "alohasocial"
-        components.host = "profile"
-        components.path = "/\(accountID.uuidString)/\(personID)"
-        return components.url
-    }
-
-    /// Drafts live in the shared store already; counting them needs no
-    /// snapshot.
-    @MainActor
-    static func draftCount(accountID: UUID) -> Int {
-        let descriptor = FetchDescriptor<DraftRecord>(
-            predicate: #Predicate { $0.accountID == accountID })
-        return (try? StoreContainer.reader().mainContext.fetchCount(descriptor)) ?? 0
-    }
-
     /// The Lock Screen families for a count: circle, rectangle and line.
     /// They are the iPhone's; a Mac has none of them, and cannot even name them.
     static var lockScreenCountFamilies: [WidgetFamily] {
@@ -84,20 +66,6 @@ enum SnapshotData {
         #else
             []
         #endif
-    }
-
-    /// The Lock Screen families with room for words: rectangle and line.
-    static var lockScreenTextFamilies: [WidgetFamily] {
-        #if os(iOS)
-            [.accessoryRectangular, .accessoryInline]
-        #else
-            []
-        #endif
-    }
-
-    /// "Today" in the key the follower history uses.
-    static func today(_ now: Date = Date()) -> String {
-        MemoriesSnapshot.dayKey(for: now)
     }
 }
 

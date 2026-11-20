@@ -24,7 +24,8 @@ struct WidgetSnapshotStoreTests {
         let store = WidgetSnapshotStore(directory: try scratchDirectory())
         let account = UUID()
         let snapshot = WidgetSnapshot(
-            accountID: account, handle: "@ana@example.com", followRequests: 2, openReports: nil)
+            accountID: account, handle: "@ana@example.com",
+            messages: WidgetSnapshot.Messages(unread: 2, conversations: []))
         try store.write(snapshot, images: [:])
         #expect(store.read(accountID: account) == snapshot)
         #expect(store.read(accountID: UUID()) == nil)
@@ -38,11 +39,13 @@ struct WidgetSnapshotStoreTests {
             for: try #require(URL(string: "https://example.com/a.jpg")), pixels: 96)
         let dropped = WidgetSnapshotStore.imageName(
             for: try #require(URL(string: "https://example.com/b.jpg")), pixels: 96)
-        let person = WidgetSnapshot.Person(
-            id: "1", name: "Ana", handle: "ana", avatarFile: kept, latestText: nil,
-            latestDate: nil, latestStatusID: nil, hasNewStory: false)
+        let row = WidgetSnapshot.ConversationRow(
+            id: "1", names: "Ana", text: "Hi", date: Date(), unread: true, lastStatusID: "9",
+            avatarFile: kept)
         try store.write(
-            WidgetSnapshot(accountID: account, handle: "@ana", people: [person]),
+            WidgetSnapshot(
+                accountID: account, handle: "@ana",
+                messages: WidgetSnapshot.Messages(unread: 1, conversations: [row])),
             images: [kept: Data([1]), dropped: Data([2])])
         #expect(store.hasImage(kept))
         #expect(!store.hasImage(dropped))
@@ -60,52 +63,33 @@ struct WidgetSnapshotStoreTests {
         #expect(small != WidgetSnapshotStore.imageName(for: url, pixels: 720))
         #expect(small.hasPrefix("wimg-") && small.hasSuffix(".jpg"))
     }
-}
 
-@Suite("Widget follower history")
-struct WidgetStatsTests {
-    private func stats(_ samples: [(String, Int)]) -> WidgetSnapshot.Stats {
-        WidgetSnapshot.Stats(
-            followers: samples.last?.1 ?? 0,
-            history: samples.map { WidgetSnapshot.Stats.Sample(day: $0.0, followers: $0.1) })
+    @Test("What the retired On this day widget left is removed on the next write")
+    func removesRetiredFiles() throws {
+        let directory = try scratchDirectory()
+        let store = WidgetSnapshotStore(directory: directory)
+        try Data([1]).write(to: directory.appending(path: "memories.json"))
+        try Data([2]).write(to: directory.appending(path: "memory-109.jpg"))
+        try store.write(WidgetSnapshot(accountID: UUID(), handle: "@ana"), images: [:])
+        let left = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        #expect(!left.contains("memories.json"))
+        #expect(!left.contains { $0.hasPrefix("memory-") })
     }
 
-    @Test("The change is measured from the sample a week back")
-    func weekChange() {
-        let history = stats([
-            ("2026-11-01", 90), ("2026-11-07", 100), ("2026-11-10", 105), ("2026-11-14", 112),
-        ])
-        let change = history.followerChange(today: "2026-11-14")
-        #expect(change?.change == 12)
-        #expect(change?.days == 7)
-    }
-
-    @Test("A younger history counts from its first day")
-    func youngHistory() {
-        let history = stats([("2026-11-12", 50), ("2026-11-14", 53)])
-        let change = history.followerChange(today: "2026-11-14")
-        #expect(change?.change == 3)
-        #expect(change?.days == 2)
-    }
-
-    @Test("One day is no change yet")
-    func singleDay() {
-        #expect(stats([("2026-11-14", 50)]).followerChange(today: "2026-11-14") == nil)
-    }
-
-    @Test("Recording replaces today's sample and keeps the history bounded")
-    func recording() {
-        var history = stats([("2026-11-14", 50)])
-        history = history.recording(followers: 52, day: "2026-11-14")
-        #expect(history.history.count == 1)
-        #expect(history.history.last?.followers == 52)
-
-        for day in 0..<40 {
-            let key = String(format: "2027-%02d-%02d", 1 + day / 28, 1 + day % 28)
-            history = history.recording(followers: day, day: key)
-        }
-        #expect(history.history.count == WidgetSnapshot.Stats.historyDays)
-        #expect(history.history.last?.day == "2027-02-12")
+    @Test("A snapshot with the retired widgets' sections still reads")
+    func readsOldSnapshot() throws {
+        let directory = try scratchDirectory()
+        let account = UUID()
+        let json = """
+            {"accountID":"\(account.uuidString)","handle":"@ana","writtenAt":0,
+             "followRequests":2,"openReports":1,"people":[],"photoSets":[],
+             "stats":{"followers":3,"history":[]},
+             "messages":{"unread":1,"conversations":[]}}
+            """
+        try Data(json.utf8).write(
+            to: directory.appending(path: "snapshot-\(account.uuidString).json"))
+        let read = WidgetSnapshotStore(directory: directory).read(accountID: account)
+        #expect(read?.messages?.unread == 1)
     }
 }
 
@@ -137,18 +121,15 @@ struct WidgetPhotoSourceTests {
 struct WidgetWantsTests {
     let account = UUID()
 
-    @Test("A widget's account, people and sources are read back per account")
+    @Test("A widget's account and sources are read back per account")
     func readsBack() {
         let (defaults, name) = scratchDefaults()
         defer { UserDefaults.standard.removePersistentDomain(forName: name) }
 
-        WidgetWants.record(
-            accountID: account, people: ["2", "1"], photoSources: [.hashtag("cats")],
-            in: defaults)
+        WidgetWants.record(accountID: account, photoSources: [.hashtag("cats")], in: defaults)
         #expect(WidgetWants.accounts(in: defaults) == [account])
-        #expect(WidgetWants.people(for: account, in: defaults) == ["1", "2"])
         #expect(WidgetWants.photoSources(for: account, in: defaults) == [.hashtag("cats")])
-        #expect(WidgetWants.people(for: UUID(), in: defaults).isEmpty)
+        #expect(WidgetWants.photoSources(for: UUID(), in: defaults).isEmpty)
     }
 
     @Test("A want not renewed for three days is dropped")
@@ -157,10 +138,10 @@ struct WidgetWantsTests {
         defer { UserDefaults.standard.removePersistentDomain(forName: name) }
 
         let then = Date(timeIntervalSince1970: 1_000_000)
-        WidgetWants.record(accountID: account, people: ["1"], now: then, in: defaults)
+        WidgetWants.record(accountID: account, photoSources: [.home], now: then, in: defaults)
         let later = then.addingTimeInterval(WidgetWants.lifetime + 1)
         #expect(WidgetWants.accounts(now: later, in: defaults).isEmpty)
-        #expect(WidgetWants.people(for: account, now: later, in: defaults).isEmpty)
+        #expect(WidgetWants.photoSources(for: account, now: later, in: defaults).isEmpty)
     }
 
     @Test("Signing out forgets the account's wants and nobody else's")
@@ -169,12 +150,12 @@ struct WidgetWantsTests {
         defer { UserDefaults.standard.removePersistentDomain(forName: name) }
 
         let other = UUID()
-        WidgetWants.record(accountID: account, people: ["1"], in: defaults)
-        WidgetWants.record(accountID: other, people: ["2"], in: defaults)
+        WidgetWants.record(accountID: account, photoSources: [.list("1")], in: defaults)
+        WidgetWants.record(accountID: other, photoSources: [.list("2")], in: defaults)
         WidgetWants.removeAll(accountID: account, in: defaults)
         #expect(WidgetWants.accounts(in: defaults) == [other])
-        #expect(WidgetWants.people(for: account, in: defaults).isEmpty)
-        #expect(WidgetWants.people(for: other, in: defaults) == ["2"])
+        #expect(WidgetWants.photoSources(for: account, in: defaults).isEmpty)
+        #expect(WidgetWants.photoSources(for: other, in: defaults) == [.list("2")])
     }
 }
 

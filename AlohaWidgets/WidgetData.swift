@@ -163,15 +163,6 @@ enum WidgetData {
         }
     }
 
-    /// Today's "on this day", as the app last wrote it. A snapshot from
-    /// another day is not today's, and is not shown.
-    static func memories(now: Date = Date()) -> (MemoriesSnapshot, MemoriesSnapshotStore)? {
-        guard let store = MemoriesSnapshotStore.shared, let snapshot = store.read(),
-            snapshot.day == MemoriesSnapshot.dayKey(for: now)
-        else { return nil }
-        return (snapshot, store)
-    }
-
     /// The link a row opens: the post, under the account it was read with, so
     /// a tap with another account active does not open somebody else's post
     /// with the same id.
@@ -206,7 +197,7 @@ enum WidgetImages {
     }
 
     /// The first picture of a post, unless it is behind a warning: a Home
-    /// Screen is a more public place than the app (as `MemoriesWidgetWriter`).
+    /// Screen is a more public place than the app (as `WidgetSnapshotWriter`).
     static func thumbnailURL(of status: Status) -> URL? {
         guard !status.sensitive, status.spoilerText.isEmpty else { return nil }
         let image = status.mediaAttachments.first { $0.type == .image }

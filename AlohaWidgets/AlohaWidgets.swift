@@ -502,50 +502,23 @@ struct UnreadView: View {
     }
 }
 
+/// Six widgets, the ones a social app is looked at for: the feed, the
+/// unread count, mentions, direct messages, a picture, and a button to post.
+/// Everything else the app shows lives in the app; a widget gallery of
+/// seventeen was one nobody could find these in (docs/09 §8).
 @main
 struct AlohaWidgetBundle: WidgetBundle {
     var body: some Widget {
         LatestPostsWidget()
         UnreadWidget()
         MentionsWidget()
-        MemoriesWidget()
+        DirectMessagesWidget()
+        PhotoFrameWidget()
         QuickComposeWidget()
-        NewPostControl()
-        NewStoryControl()
+        AlohaControls().body
         #if os(iOS)
             LiveActivityWidgets().body
         #endif
-        LockScreenWidgets().body
-        HomeScreenWidgets().body
-    }
-}
-
-/// The snapshot widgets made for the Lock Screen, the Messages control, and
-/// the controls that open a screen (`MoreControls`).
-/// Bundles of their own keep each builder well inside its limit.
-struct LockScreenWidgets: WidgetBundle {
-    var body: some Widget {
-        DirectMessagesWidget()
-        NextScheduledPostWidget()
-        #if os(iOS)
-            RequestsWidget()
-            OpenReportsWidget()
-            WeeklyStatsWidget()
-        #endif
-        OpenMessagesControl()
-        MoreControls().body
-    }
-}
-
-/// The snapshot widgets made for the Home Screen.
-struct HomeScreenWidgets: WidgetBundle {
-    var body: some Widget {
-        ConversationsWidget()
-        PhotoFrameWidget()
-        PeopleWidget()
-        LivePollWidget()
-        CreatorDashboardWidget()
-        ServerTrendsWidget()
     }
 }
 
@@ -726,7 +699,7 @@ struct SimpleEntry: WidgetKit.TimelineEntry {
 
 struct QuickComposeView: View {
     var body: some View {
-        Link(destination: URL(string: "alohasocial://compose")!) {
+        Link(destination: ControlLink.url("compose")) {
             VStack(spacing: 6) {
                 Image(systemName: "square.and.pencil")
                     .font(.title2)
@@ -735,62 +708,5 @@ struct QuickComposeView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-}
-
-// MARK: - Control Center
-
-/// The app's own links, as the system intent that opens them.
-///
-/// `OpenURLIntent` hands the link to the app through the same `onOpenURL` a
-/// tapped widget uses, so a control runs nothing in this extension and needs
-/// no account, store or network — none of which an extension can reach while
-/// the app group is off.
-enum ControlLink {
-    static func intent(_ host: String) -> OpenURLIntent {
-        var components = URLComponents()
-        components.scheme = "alohasocial"
-        components.host = host
-        // A scheme and a bare host always make a URL; the fallback is never
-        // reached and opens nothing rather than crashing.
-        return OpenURLIntent(components.url ?? URL(filePath: "/"))
-    }
-}
-
-/// "New post" in Control Center, on the Lock Screen and on the Action button.
-struct NewPostControl: ControlWidget {
-    var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "social.aloha.app.control.newPost") {
-            ControlWidgetButton(action: ControlLink.intent("compose")) {
-                Label {
-                    Text("New post", comment: "Control Center control")
-                } icon: {
-                    Image(systemName: "square.and.pencil")
-                }
-            }
-        }
-        .displayName(LocalizedStringResource("New post", comment: "Control Center control"))
-        .description(
-            LocalizedStringResource(
-                "Open the composer.", comment: "Control Center control description"))
-    }
-}
-
-/// "New story": the story composer, on servers that have stories.
-struct NewStoryControl: ControlWidget {
-    var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "social.aloha.app.control.newStory") {
-            ControlWidgetButton(action: ControlLink.intent("story")) {
-                Label {
-                    Text("New story", comment: "Control Center control")
-                } icon: {
-                    Image(systemName: "camera.circle")
-                }
-            }
-        }
-        .displayName(LocalizedStringResource("New story", comment: "Control Center control"))
-        .description(
-            LocalizedStringResource(
-                "Open the story composer.", comment: "Control Center control description"))
     }
 }

@@ -12,11 +12,12 @@ import WidgetKit
     /// Dynamic Island. `Text(timerInterval:)` runs the clock by itself, so
     /// the app never pushes an update; once the moment passes the activity
     /// is stale, and says what happened rather than showing a frozen 0:00.
+    /// On a paired Apple Watch the countdown is in the Smart Stack too, in
+    /// the small family (`EventSmallView`).
     struct EventLiveActivity: Widget {
         var body: some WidgetConfiguration {
             ActivityConfiguration(for: EventActivityAttributes.self) { context in
-                EventLockScreenView(context: context)
-                    .padding()
+                EventActivityContent(context: context)
                     .activityBackgroundTint(.black.opacity(0.6))
                     .widgetURL(Self.url(context.attributes))
             } dynamicIsland: { context in
@@ -57,6 +58,7 @@ import WidgetKit
                 }
                 .widgetURL(Self.url(context.attributes))
             }
+            .supplementalActivityFamilies([.small])
         }
 
         static func symbol(_ kind: EventActivityAttributes.Kind) -> String {
@@ -102,6 +104,9 @@ import WidgetKit
     /// The clock: minutes and seconds to the moment, counted by the system.
     struct EventCountdown: View {
         let context: ActivityViewContext<EventActivityAttributes>
+        /// A timer's text is as wide as its longest reading; the phone sets
+        /// it against the trailing edge, the watch reads it from the leading.
+        var alignment: TextAlignment = .trailing
 
         var body: some View {
             if context.isStale || context.state.at <= Date() {
@@ -113,7 +118,65 @@ import WidgetKit
                     timerInterval: min(context.attributes.startedAt, Date())...context.state.at,
                     countsDown: true
                 )
-                .multilineTextAlignment(.trailing)
+                .multilineTextAlignment(alignment)
+            }
+        }
+    }
+
+    /// The Lock Screen's layout, or the watch's where the system asks for the
+    /// small family.
+    struct EventActivityContent: View {
+        @Environment(\.activityFamily) private var family
+        let context: ActivityViewContext<EventActivityAttributes>
+
+        var body: some View {
+            if family == .small {
+                EventSmallView(context: context)
+                    .padding(8)
+            } else {
+                EventLockScreenView(context: context)
+                    .padding()
+            }
+        }
+    }
+
+    /// The watch's Smart Stack: what is counting down in two words, the clock
+    /// large enough to read at a glance, and one line of the post. The
+    /// phone's title is a sentence with a time in it, too long for the space.
+    struct EventSmallView: View {
+        let context: ActivityViewContext<EventActivityAttributes>
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 2) {
+                Label {
+                    title
+                        .lineLimit(1)
+                } icon: {
+                    Image(systemName: EventLiveActivity.symbol(context.attributes.kind))
+                }
+                .font(.caption.weight(.semibold))
+                EventCountdown(context: context, alignment: .leading)
+                    .font(.title2.monospacedDigit().weight(.semibold))
+                if !context.state.text.isEmpty {
+                    Text(context.state.text)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        private var title: Text {
+            switch (context.attributes.kind, context.isStale) {
+            case (.pollCloses, false):
+                Text("Poll closes", comment: "Watch Live Activity title, short")
+            case (.pollCloses, true):
+                Text("Poll closed", comment: "Watch Live Activity title, short")
+            case (.scheduledPost, false):
+                Text("Post goes out", comment: "Watch Live Activity title, short")
+            case (.scheduledPost, true):
+                Text("Post went out", comment: "Watch Live Activity title, short")
             }
         }
     }

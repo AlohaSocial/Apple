@@ -546,12 +546,8 @@ public final class AppEnvironment {
         // Then a post waiting for the network, in what is left.
         sendQueue.attach(to: self)
         await sendQueue.drainAll()
-        // A new day can begin while the app sleeps; the Memories widget
-        // should not wait for the app to be opened to turn it over. One
-        // request a day — every other wake finds it current and returns.
-        if let activeSession { await MemoriesWidgetWriter.refreshIfStale(activeSession) }
-        // Direct messages, requests and the rest of the snapshot widgets,
-        // briefly: a snapshot that is still fresh is not fetched again.
+        // Direct messages, photos and the countdowns' scheduled posts and
+        // poll, briefly: a snapshot that is still fresh is not fetched again.
         await WidgetSnapshotWriter.refreshAll(self, budget: .seconds(4))
         // A countdown whose poll closed or post went out ends (docs/09 §9).
         await EventLiveActivities.endFinished()

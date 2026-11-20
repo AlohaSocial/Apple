@@ -91,17 +91,6 @@
         }
       }
     },
-    "Nothing from this day yet." : {
-      "comment" : "Empty memories widget",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Von diesem Tag gibt es noch nichts."
-          }
-        }
-      }
-    },
     "Nothing said lately" : {
       "comment" : "Empty mentions widget"
     },
@@ -112,17 +101,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch nichts"
-          }
-        }
-      }
-    },
-    "On this day" : {
-      "comment" : "Memories widget heading\nWidget name",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "An diesem Tag"
           }
         }
       }
@@ -149,6 +127,12 @@
         }
       }
     },
+    "Poll closed" : {
+      "comment" : "Watch Live Activity title, short"
+    },
+    "Poll closes" : {
+      "comment" : "Watch Live Activity title, short"
+    },
     "Post" : {
       "comment" : "Widget intent parameter",
       "localizations" : {
@@ -159,6 +143,12 @@
           }
         }
       }
+    },
+    "Post goes out" : {
+      "comment" : "Watch Live Activity title, short"
+    },
+    "Post went out" : {
+      "comment" : "Watch Live Activity title, short"
     },
     "Posted" : {
       "comment" : "Live Activity title",
@@ -181,6 +171,9 @@
           }
         }
       }
+    },
+    "Processing" : {
+      "comment" : "Watch Live Activity title, short: the server transcodes a video"
     },
     "Quick compose" : {
       "comment" : "Widget name"
@@ -243,6 +236,9 @@
         }
       }
     },
+    "Uploading" : {
+      "comment" : "Watch Live Activity title, short"
+    },
     "Uploading media" : {
       "comment" : "Live Activity title",
       "localizations" : {
@@ -250,17 +246,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Medien werden hochgeladen"
-          }
-        }
-      }
-    },
-    "What you posted on this day in earlier years." : {
-      "comment" : "Widget description",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Was du an diesem Tag in früheren Jahren gepostet hast."
           }
         }
       }

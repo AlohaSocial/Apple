@@ -16,16 +16,19 @@ struct AlohaWidgetsAppIntents: AppIntentsPackage {
     import ActivityKit
 
     /// The upload's Live Activity. Work in progress, not content (docs/09 §9).
+    ///
+    /// On a paired Apple Watch it shows in the Smart Stack too, in the small
+    /// family: what is happening and how far along, with no Cancel — a tap
+    /// there opens the activity on the watch, not the intent.
     struct UploadLiveActivity: Widget {
         var body: some WidgetConfiguration {
             ActivityConfiguration(for: UploadActivityAttributes.self) { context in
-                lockScreen(context.state)
-                    .padding()
+                UploadActivityContent(state: context.state) { lockScreen($0) }
                     .activityBackgroundTint(.black.opacity(0.6))
             } dynamicIsland: { context in
                 DynamicIsland {
                     DynamicIslandExpandedRegion(.leading) {
-                        Image(systemName: symbol(context.state))
+                        Image(systemName: Self.symbol(context.state))
                             .font(.title2)
                             .contentTransition(.symbolEffect(.replace))
                     }
@@ -48,7 +51,7 @@ struct AlohaWidgetsAppIntents: AppIntentsPackage {
                         }
                     }
                 } compactLeading: {
-                    Image(systemName: symbol(context.state))
+                    Image(systemName: Self.symbol(context.state))
                 } compactTrailing: {
                     if context.state.phase == .uploading {
                         Text(
@@ -58,9 +61,10 @@ struct AlohaWidgetsAppIntents: AppIntentsPackage {
                         .font(.caption2.monospacedDigit())
                     }
                 } minimal: {
-                    Image(systemName: symbol(context.state))
+                    Image(systemName: Self.symbol(context.state))
                 }
             }
+            .supplementalActivityFamilies([.small])
         }
 
         private func lockScreen(
@@ -71,7 +75,7 @@ struct AlohaWidgetsAppIntents: AppIntentsPackage {
                     Label {
                         Text(title(state))
                     } icon: {
-                        Image(systemName: symbol(state))
+                        Image(systemName: Self.symbol(state))
                     }
                     .font(.caption.weight(.medium))
 
@@ -140,13 +144,80 @@ struct AlohaWidgetsAppIntents: AppIntentsPackage {
             }
         }
 
-        private func symbol(_ state: UploadActivityAttributes.ContentState) -> String {
+        static func symbol(_ state: UploadActivityAttributes.ContentState) -> String {
             switch state.phase {
             case .uploading, .posting: "arrow.up.circle"
             case .processing: "gearshape.arrow.triangle.2.circlepath"
             case .ready: "checkmark.circle"
             case .posted: "checkmark.circle.fill"
             case .failed: "exclamationmark.triangle"
+            }
+        }
+    }
+
+    /// The Lock Screen's layout, or the watch's where the system asks for the
+    /// small family.
+    struct UploadActivityContent<LockScreen: View>: View {
+        @Environment(\.activityFamily) private var family
+        let state: UploadActivityAttributes.ContentState
+        @ViewBuilder let lockScreen: (UploadActivityAttributes.ContentState) -> LockScreen
+
+        var body: some View {
+            if family == .small {
+                UploadSmallView(state: state)
+                    .padding(8)
+            } else {
+                lockScreen(state)
+                    .padding()
+            }
+        }
+    }
+
+    /// The watch's Smart Stack: a few words and a bar, at a glance from the
+    /// wrist. The phone's titles are sentences, too long for the space.
+    struct UploadSmallView: View {
+        let state: UploadActivityAttributes.ContentState
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Label {
+                    Text(title)
+                        .lineLimit(1)
+                } icon: {
+                    Image(systemName: UploadLiveActivity.symbol(state))
+                }
+                .font(.headline)
+                switch state.phase {
+                case .uploading:
+                    ProgressView(value: state.fraction)
+                        .progressViewStyle(.linear)
+                    Text(verbatim: "\(state.completed)/\(state.total)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                case .processing, .posting:
+                    ProgressView().progressViewStyle(.linear)
+                case .ready, .posted, .failed:
+                    EmptyView()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        private var title: String {
+            switch state.phase {
+            case .uploading:
+                String(localized: "Uploading", comment: "Watch Live Activity title, short")
+            case .processing:
+                String(
+                    localized: "Processing",
+                    comment: "Watch Live Activity title, short: the server transcodes a video")
+            case .ready:
+                String(
+                    localized: "Ready to post",
+                    comment: "Live Activity title, uploads done and waiting for Post")
+            case .posting: String(localized: "Posting…", comment: "Live Activity title")
+            case .posted: String(localized: "Posted", comment: "Live Activity title")
+            case .failed: String(localized: "Upload failed", comment: "Live Activity title")
             }
         }
     }
