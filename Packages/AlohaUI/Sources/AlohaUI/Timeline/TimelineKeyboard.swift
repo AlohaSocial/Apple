@@ -169,7 +169,7 @@ public enum KeyboardShortcuts {
                     keys: ["⇧⌘B"], label: String(localized: "Boost", comment: "Keyboard shortcut")),
                 .init(
                     keys: ["⇧⌘L"],
-                    label: String(localized: "Favourite", comment: "Keyboard shortcut")),
+                    label: String(localized: "Like", comment: "Keyboard shortcut")),
                 .init(
                     keys: ["⌘D"], label: String(localized: "Bookmark", comment: "Keyboard shortcut")
                 ),
