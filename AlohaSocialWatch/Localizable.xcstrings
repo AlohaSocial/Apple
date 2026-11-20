@@ -12,6 +12,17 @@
         }
       }
     },
+    "Bookmark" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesezeichen setzen"
+          }
+        }
+      }
+    },
     "Boost" : {
       "comment" : "Watch post action",
       "localizations" : {
@@ -19,6 +30,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Teilen"
+          }
+        }
+      }
+    },
+    "Couldn't follow. Try again." : {
+      "comment" : "Watch follow back failed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen fehlgeschlagen. Versuche es noch einmal."
           }
         }
       }
@@ -34,13 +56,24 @@
         }
       }
     },
-    "Couldn't send the reply" : {
+    "Couldn't send. Your words are still here." : {
       "comment" : "Watch reply status",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Antwort konnte nicht gesendet werden"
+            "value" : "Senden fehlgeschlagen. Dein Text ist noch da."
+          }
+        }
+      }
+    },
+    "Discard" : {
+      "comment" : "Watch reply action: throw the unsent reply away",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwerfen"
           }
         }
       }
@@ -52,6 +85,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Favorisieren"
+          }
+        }
+      }
+    },
+    "Followed you" : {
+      "comment" : "Watch follow back screen title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgt dir"
+          }
+        }
+      }
+    },
+    "Follow back" : {
+      "comment" : "Watch action on a follow notification",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurückfolgen"
+          }
+        }
+      }
+    },
+    "Following" : {
+      "comment" : "Watch, you already follow this account",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du folgst"
           }
         }
       }
@@ -111,6 +177,28 @@
         }
       }
     },
+    "Quick replies" : {
+      "comment" : "Watch, the row of canned replies",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnellantworten"
+          }
+        }
+      }
+    },
+    "Remove bookmark" : {
+      "comment" : "Watch post action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesezeichen entfernen"
+          }
+        }
+      }
+    },
     "Remove favourite" : {
       "comment" : "Watch post action",
       "localizations" : {
@@ -133,13 +221,46 @@
         }
       }
     },
-    "Reply sent" : {
+    "Send" : {
+      "comment" : "Watch reply action: send the reply shown above",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senden"
+          }
+        }
+      }
+    },
+    "Requested" : {
+      "comment" : "Watch, a follow request is waiting for approval",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angefragt"
+          }
+        }
+      }
+    },
+    "Sent" : {
       "comment" : "Watch reply status",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antwort gesendet"
+            "value" : "Gesendet"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "comment" : "Watch reply action: send again after a failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch einmal versuchen"
           }
         }
       }

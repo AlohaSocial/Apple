@@ -6,8 +6,9 @@ import Foundation
 #if os(iOS)
     import WatchConnectivity
 
-    /// The phone's half of the watch link: it sends the active account, and
-    /// its server's colour, as the application context (docs/09 §4).
+    /// The phone's half of the watch link: it sends the active account, its
+    /// server's colour and the watch's quick replies, as the application
+    /// context (docs/09 §4).
     ///
     /// Application context rather than a message, because it is state, not an
     /// event: the system keeps only the latest and delivers it when the watch
@@ -71,6 +72,13 @@ import Foundation
             lastSentUnread = (accountID, count, stored)
         }
 
+        /// The quick replies were edited in Settings. They ride in the same
+        /// context as the pairing — a context is replaced whole, so each
+        /// send carries both.
+        public func quickRepliesChanged() {
+            push()
+        }
+
         /// The unread conversation count changed — the messages list or the
         /// widget snapshot wrote a new one — so the direct-messages
         /// complication follows, with the notification count it last had.
@@ -89,6 +97,8 @@ import Foundation
             if let latest, let data = try? JSONEncoder().encode(latest) {
                 context[WatchPairing.contextKey] = data
             }
+            // Nil, never edited, sends nothing: the watch keeps its built-in set.
+            context = WatchQuickReplies.adding(WatchQuickReplies.stored(), to: context)
             do {
                 try session.updateApplicationContext(context)
                 hasSent = true

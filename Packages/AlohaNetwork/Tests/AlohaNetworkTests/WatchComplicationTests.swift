@@ -91,12 +91,15 @@ struct WatchComplicationTests {
 
     @Test("Links round-trip, and foreign links are not ours")
     func links() throws {
-        for link in [WatchComplicationLink.mentions, .status("123"), .messages] {
+        for link in [WatchComplicationLink.mentions, .status("123"), .messages, .notifications] {
             #expect(WatchComplicationLink(url: link.url) == link)
         }
         #expect(
             WatchComplicationLink.status("123").url.absoluteString
                 == "alohasocial://watch/status/123")
+        #expect(
+            WatchComplicationLink.notifications.url.absoluteString
+                == "alohasocial://watch/notifications")
         #expect(
             WatchComplicationLink(url: try #require(URL(string: "alohasocial://compose"))) == nil)
         #expect(
@@ -155,6 +158,172 @@ struct WatchComplicationTests {
         #expect(store.load() == nil)
     }
 
+    @Test("The app refreshes when the snapshot is missing, old or from the future only")
+    func appThrottle() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let interval = WatchComplicationSnapshot.appRefreshInterval
+        #expect(WatchComplicationSnapshot.appShouldRefresh(nil, at: now))
+        #expect(
+            !WatchComplicationSnapshot.appShouldRefresh(
+                snapshot(updatedAt: now.addingTimeInterval(-30)), at: now))
+        #expect(
+            WatchComplicationSnapshot.appShouldRefresh(
+                snapshot(updatedAt: now.addingTimeInterval(-interval)), at: now))
+        #expect(
+            WatchComplicationSnapshot.appShouldRefresh(
+                snapshot(updatedAt: now.addingTimeInterval(60)), at: now))
+        // A pushed count leaves the age alone, so it does not hold a refresh off.
+        let pushed = snapshot(updatedAt: now.addingTimeInterval(-interval)).applying(unreadCount: 1)
+        #expect(WatchComplicationSnapshot.appShouldRefresh(pushed, at: now))
+    }
+
+    @Test("Something unread raises a complication, and nothing unread sinks it")
+    func relevance() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        var quiet = snapshot(updatedAt: now)
+        quiet.unreadCount = 0
+        quiet.unreadConversations = 0
+        for kind in WatchComplicationKind.allCases {
+            #expect(quiet.relevance(for: kind, at: now) == .none)
+        }
+
+        var busy = quiet
+        busy.unreadCount = 4
+        busy.unreadConversations = 2
+        busy.mentions = [
+            .init(
+                id: "1", author: "Bob", text: "Hi", statusID: "2",
+                createdAt: now.addingTimeInterval(-600))
+        ]
+        let messages = busy.relevance(for: .directMessages, at: now)
+        let unread = busy.relevance(for: .unread, at: now)
+        let mentions = busy.relevance(for: .mentions, at: now)
+        #expect(messages.score > unread.score)
+        #expect(mentions.score > unread.score)
+        #expect(mentions.duration == WatchComplicationSnapshot.mentionRelevanceWindow - 600)
+
+        // An hour on, the mention has had its turn.
+        let later = now.addingTimeInterval(WatchComplicationSnapshot.mentionRelevanceWindow)
+        #expect(busy.relevance(for: .mentions, at: later) == .none)
+        // Read on another device: the count is zero, so the mention is old news.
+        busy.unreadCount = 0
+        #expect(busy.relevance(for: .mentions, at: now) == .none)
+        // A count of nil is no claim either way: no rise.
+        busy.unreadConversations = nil
+        #expect(busy.relevance(for: .directMessages, at: now) == .none)
+    }
+
+    @Test("The marker moves to the newest id, and never backwards")
+    func markerTarget() {
+        #expect(WatchNotificationMarker.target(newestOf: [], current: nil) == nil)
+        #expect(WatchNotificationMarker.target(newestOf: ["9", "10", "8"], current: nil) == "10")
+        #expect(WatchNotificationMarker.target(newestOf: ["9", "10"], current: "10") == nil)
+        #expect(WatchNotificationMarker.target(newestOf: ["9", "10"], current: "11") == nil)
+        #expect(WatchNotificationMarker.target(newestOf: ["9", "100"], current: "99") == "100")
+    }
+
+    @Test("Marking read writes the marker once, and not behind the server's")
+    func markerAgainstMock() async throws {
+        let server = MockAPIServer(configuration: .mastodon43)
+        let client = APIClient(
+            accountID: accountID,
+            apiBase: try #require(URL(string: "https://cloud.example.test/")),
+            accessToken: "token", transport: server)
+
+        let written = try await WatchNotificationMarker.markRead(["500", "501"], client: client)
+        #expect(written == "501")
+        #expect(try await WatchNotificationMarker.markRead(["501"], client: client) == nil)
+        #expect(try await WatchNotificationMarker.markRead(["499"], client: client) == nil)
+        let posts = await server.requestLog.filter {
+            $0.method == "POST" && $0.path.hasSuffix("api/v1/markers")
+        }
+        #expect(posts.count == 1)
+        let markers = try await client.decode(MarkerSet.self, from: Endpoint.markers.read)
+        #expect(markers.notifications?.lastReadID == "501")
+    }
+
+    @Test("Three complications asking at once cost one refresh")
+    func refreshGate() async {
+        let gate = WatchComplicationRefreshGate()
+        let counter = FetchCounter()
+        let now = Date(timeIntervalSince1970: 10_000)
+        let fresh = snapshot(updatedAt: now)
+        let fetch: @Sendable () async -> WatchComplicationSnapshot? = {
+            await counter.increment()
+            try? await Task.sleep(for: .milliseconds(50))
+            return fresh
+        }
+
+        async let first = gate.refresh(accountID: accountID, now: now, fetch: fetch)
+        async let second = gate.refresh(accountID: accountID, now: now, fetch: fetch)
+        async let third = gate.refresh(accountID: accountID, now: now, fetch: fetch)
+        let answers = await [first, second, third]
+        #expect(answers.allSatisfy { $0 == fresh })
+        #expect(await counter.count == 1)
+
+        // Just after: the answer is reused. A minute on, or for another
+        // account, it is asked again.
+        _ = await gate.refresh(accountID: accountID, now: now.addingTimeInterval(30), fetch: fetch)
+        #expect(await counter.count == 1)
+        _ = await gate.refresh(
+            accountID: accountID,
+            now: now.addingTimeInterval(WatchComplicationRefreshGate.reuseInterval), fetch: fetch)
+        #expect(await counter.count == 2)
+        _ = await gate.refresh(accountID: UUID(), now: now, fetch: fetch)
+        #expect(await counter.count == 3)
+    }
+
+    @Test("A failed refresh is reused too, so three timelines do not retry at once")
+    func refreshGateFailure() async {
+        let gate = WatchComplicationRefreshGate()
+        let counter = FetchCounter()
+        let now = Date(timeIntervalSince1970: 10_000)
+        let failing: @Sendable () async -> WatchComplicationSnapshot? = {
+            await counter.increment()
+            return nil
+        }
+        #expect(await gate.refresh(accountID: accountID, now: now, fetch: failing) == nil)
+        #expect(
+            await gate.refresh(
+                accountID: accountID, now: now.addingTimeInterval(5), fetch: failing) == nil)
+        #expect(await counter.count == 1)
+    }
+
+    @Test("Quick replies are trimmed, unique, short and at most eight")
+    func quickRepliesSanitized() {
+        let long = String(repeating: "a", count: WatchQuickReplies.maxLength + 20)
+        let phrases = ["  Thanks ", "", "thanks", "Yes", long] + (1...10).map { "Phrase \($0)" }
+        let clean = WatchQuickReplies.sanitized(phrases)
+        #expect(clean.count == WatchQuickReplies.limit)
+        #expect(clean[0] == "Thanks")
+        #expect(clean[1] == "Yes")
+        #expect(clean[2].count == WatchQuickReplies.maxLength)
+        #expect(!WatchQuickReplies.builtIn.isEmpty)
+        #expect(WatchQuickReplies.builtIn.count <= WatchQuickReplies.limit)
+    }
+
+    @Test("Quick replies: absent means built in, empty means none, both ways")
+    func quickRepliesStorageAndContext() {
+        let (store, name) = defaults()
+        defer { UserDefaults.standard.removePersistentDomain(forName: name) }
+
+        #expect(WatchQuickReplies.stored(in: store) == nil)
+        #expect(WatchQuickReplies.current(in: store) == WatchQuickReplies.builtIn)
+        WatchQuickReplies.store(["On my way", "On my way"], in: store)
+        #expect(WatchQuickReplies.current(in: store) == ["On my way"])
+        WatchQuickReplies.store([], in: store)
+        #expect(WatchQuickReplies.current(in: store) == [])
+        WatchQuickReplies.store(nil, in: store)
+        #expect(WatchQuickReplies.stored(in: store) == nil)
+
+        let base: [String: Any] = [WatchPairing.contextKey: Data()]
+        #expect(WatchQuickReplies.phrases(in: WatchQuickReplies.adding(nil, to: base)) == nil)
+        let context = WatchQuickReplies.adding(["Hi", " "], to: base)
+        #expect(WatchQuickReplies.phrases(in: context) == ["Hi"])
+        #expect(context[WatchPairing.contextKey] != nil)
+        #expect(WatchQuickReplies.phrases(in: WatchQuickReplies.adding([], to: base)) == [])
+    }
+
     private static let account = """
         {"id":"2","username":"bob","acct":"bob","display_name":"Bob","url":"https://x/@bob",
          "avatar":"","header":"","note":"","followers_count":0,"following_count":0,
@@ -168,4 +337,9 @@ struct WatchComplicationTests {
          "account":\(account),"media_attachments":[],"mentions":[],"tags":[],"emojis":[]}
         """
     }
+}
+
+private actor FetchCounter {
+    private(set) var count = 0
+    func increment() { count += 1 }
 }

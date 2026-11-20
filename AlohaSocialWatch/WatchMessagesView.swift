@@ -110,18 +110,14 @@ enum WatchMessages {
 }
 
 /// One conversation: its messages oldest first, yours on the trailing side,
-/// and a reply by dictation, Scribble or the keyboard.
+/// and a reply by dictation, Scribble, the keyboard or a quick reply — read
+/// back before it is sent (`WatchReplyComposer`).
 struct WatchConversationView: View {
     @Environment(WatchLink.self) private var link
     let conversation: Conversation
 
     @State private var messages: [Status] = []
     @State private var isLoading = true
-    @State private var sending: SendState = .idle
-
-    private enum SendState: Equatable {
-        case idle, sending, failed
-    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -135,27 +131,9 @@ struct WatchConversationView: View {
                         ProgressView().frame(maxWidth: .infinity)
                     }
 
-                    // The system's own text entry, as for a reply to a post.
-                    TextFieldLink {
-                        Label {
-                            Text("Reply", comment: "Watch post action")
-                        } icon: {
-                            Image(systemName: AlohaSymbol.reply)
-                        }
-                    } onSubmit: { typed in
-                        Task { await send(typed) }
-                    }
-                    .disabled(sending == .sending)
-                    .id("reply")
-
-                    switch sending {
-                    case .idle: EmptyView()
-                    case .sending: ProgressView()
-                    case .failed:
-                        Text("Couldn't send the message", comment: "Watch message status")
-                            .font(.caption2)
-                            .foregroundStyle(.red)
-                    }
+                    // The same composer as a reply to a post.
+                    WatchReplyComposer { typed, key in try await send(typed, key: key) }
+                        .id("reply")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -226,21 +204,14 @@ struct WatchConversationView: View {
         }
     }
 
-    private func send(_ typed: String) async {
-        let words = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !words.isEmpty, let client = link.client else { return }
-        sending = .sending
+    private func send(_ words: String, key: String) async throws {
+        guard let client = link.client else { throw APIError.invalidResponse }
         let post = StatusPost(
             text: WatchMessages.addressed(
                 words, to: conversation, after: messages.last, viewer: link.credentials?.handle),
-            visibility: .direct, inReplyToID: messages.last?.id)
-        do {
-            let sent = try await client.decode(Status.self, from: Endpoint.composing.post(post))
-            merge([sent])
-            sending = .idle
-        } catch {
-            sending = .failed
-        }
+            visibility: .direct, inReplyToID: messages.last?.id, idempotencyKey: key)
+        let sent = try await client.decode(Status.self, from: Endpoint.composing.post(post))
+        merge([sent])
     }
 }
 
@@ -256,6 +227,9 @@ struct WatchComposeView: View {
     @State private var text = ""
     @State private var visibility: AlohaModels.Visibility = .public
     @State private var state: PostState = .writing
+    /// Kept while the words are, so posting again after a timeout cannot
+    /// post twice (docs/12 §2, idempotency).
+    @State private var idempotencyKey = UUID().uuidString
 
     private enum PostState: Equatable {
         case writing, sending, sent, failed
@@ -287,6 +261,7 @@ struct WatchComposeView: View {
                     }
                 } onSubmit: { typed in
                     text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+                    idempotencyKey = UUID().uuidString
                     state = .writing
                 }
 
@@ -298,6 +273,7 @@ struct WatchComposeView: View {
                 } label: {
                     Text("Visibility", comment: "Composer picker")
                 }
+                .onChange(of: visibility) { idempotencyKey = UUID().uuidString }
 
                 Button {
                     Task { await post() }
@@ -311,6 +287,7 @@ struct WatchComposeView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(text.isEmpty || state == .sending || state == .sent)
+                .handGestureShortcut(.primaryAction)
 
                 switch state {
                 case .writing: EmptyView()
@@ -334,12 +311,15 @@ struct WatchComposeView: View {
         state = .sending
         do {
             _ = try await client.send(
-                Endpoint.composing.post(StatusPost(text: text, visibility: visibility)))
+                Endpoint.composing.post(
+                    StatusPost(text: text, visibility: visibility, idempotencyKey: idempotencyKey)))
             state = .sent
+            WatchHaptics.succeeded()
             try? await Task.sleep(for: .seconds(1))
             dismiss()
         } catch {
             state = .failed
+            WatchHaptics.failed()
         }
     }
 }

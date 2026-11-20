@@ -24,6 +24,10 @@ struct ComplicationEntry: TimelineEntry {
     /// `nil` when the watch is not paired yet.
     let snapshot: WatchComplicationSnapshot?
     let isPaired: Bool
+    /// Where this complication belongs in the Smart Stack right now
+    /// (`WatchComplicationSnapshot.relevance`): up while something is
+    /// unread, down when nothing is.
+    var relevance: TimelineEntryRelevance?
 
     static let placeholder = ComplicationEntry(
         date: Date(),
@@ -42,22 +46,32 @@ struct ComplicationEntry: TimelineEntry {
 /// pairing's token is readable from the shared Keychain group, it asks the
 /// server itself — the watch app may not run for hours, and the phone only
 /// pushes the count.
+///
+/// One provider per complication, for the relevance each reports; one
+/// server refresh between them (`WatchComplicationRefreshGate`), since the
+/// three fall due together and would otherwise each ask the same questions.
 struct ComplicationProvider: TimelineProvider {
+    let kind: WatchComplicationKind
+
     func placeholder(in context: Context) -> ComplicationEntry { .placeholder }
 
-    func getSnapshot(in context: Context, completion: @escaping (ComplicationEntry) -> Void) {
+    func getSnapshot(
+        in context: Context, completion: @escaping @Sendable (ComplicationEntry) -> Void
+    ) {
         if context.isPreview {
             completion(.placeholder)
             return
         }
-        Task { completion(await Self.entry(refreshing: false)) }
+        let kind = kind
+        Task { completion(await Self.entry(for: kind, refreshing: false)) }
     }
 
     func getTimeline(
-        in context: Context, completion: @escaping (Timeline<ComplicationEntry>) -> Void
+        in context: Context, completion: @escaping @Sendable (Timeline<ComplicationEntry>) -> Void
     ) {
+        let kind = kind
         Task {
-            let entry = await Self.entry(refreshing: true)
+            let entry = await Self.entry(for: kind, refreshing: true)
             completion(
                 Timeline(
                     entries: [entry],
@@ -66,28 +80,46 @@ struct ComplicationProvider: TimelineProvider {
         }
     }
 
-    private static func entry(refreshing: Bool) async -> ComplicationEntry {
+    private static func entry(
+        for kind: WatchComplicationKind, refreshing: Bool
+    ) async -> ComplicationEntry {
         guard let pairing = WatchPairingStore().load() else {
             return ComplicationEntry(date: Date(), snapshot: nil, isPaired: false)
         }
         let stored = WatchComplicationSnapshot.load(for: pairing.accountID)
         guard refreshing, stored?.isStale() ?? true else {
-            return ComplicationEntry(date: Date(), snapshot: stored, isPaired: true)
+            return entry(for: kind, snapshot: stored)
         }
-        let client = APIClient(
-            accountID: pairing.accountID, apiBase: pairing.apiBase, accessToken: pairing.token)
-        let parser = StatusHTMLParser()
         // A failed refresh keeps what the face already showed: an old count
         // is better than a blank, and the next timeline tries again.
-        guard
-            let fresh = try? await WatchComplicationRefresher.fetch(
-                client: client, accountID: pairing.accountID,
-                plainText: { parser.plainText($0) })
-        else {
-            return ComplicationEntry(date: Date(), snapshot: stored, isPaired: true)
+        let fresh = await WatchComplicationRefreshGate.shared.refresh(
+            accountID: pairing.accountID
+        ) {
+            let client = APIClient(
+                accountID: pairing.accountID, apiBase: pairing.apiBase,
+                accessToken: pairing.token)
+            let parser = StatusHTMLParser()
+            guard
+                let fresh = try? await WatchComplicationRefresher.fetch(
+                    client: client, accountID: pairing.accountID,
+                    plainText: { parser.plainText($0) })
+            else { return nil }
+            fresh.save()
+            return fresh
         }
-        fresh.save()
-        return ComplicationEntry(date: Date(), snapshot: fresh, isPaired: true)
+        return entry(for: kind, snapshot: fresh ?? stored)
+    }
+
+    private static func entry(
+        for kind: WatchComplicationKind, snapshot: WatchComplicationSnapshot?
+    ) -> ComplicationEntry {
+        let now = Date()
+        let relevance = snapshot.map { $0.relevance(for: kind, at: now) }
+        return ComplicationEntry(
+            date: now, snapshot: snapshot, isPaired: true,
+            relevance: relevance.map {
+                TimelineEntryRelevance(score: $0.score, duration: $0.duration)
+            })
     }
 }
 
@@ -95,10 +127,15 @@ struct ComplicationProvider: TimelineProvider {
 
 struct UnreadComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "WatchUnread", provider: ComplicationProvider()) { entry in
+        StaticConfiguration(
+            kind: WatchComplicationKind.unread.rawValue,
+            provider: ComplicationProvider(kind: .unread)
+        ) { entry in
             UnreadComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(WatchComplicationLink.mentions.url)
+                // It counts every kind of notification, so it opens them
+                // all — not the mentions, which are only some of them.
+                .widgetURL(WatchComplicationLink.notifications.url)
         }
         .configurationDisplayName(Text("Unread", comment: "Watch complication name"))
         .description(
@@ -203,7 +240,10 @@ struct UnreadComplicationView: View {
 
 struct MentionsComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "WatchMentions", provider: ComplicationProvider()) { entry in
+        StaticConfiguration(
+            kind: WatchComplicationKind.mentions.rawValue,
+            provider: ComplicationProvider(kind: .mentions)
+        ) { entry in
             MentionsComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
                 // The newest mention opens as itself; without one, the list.

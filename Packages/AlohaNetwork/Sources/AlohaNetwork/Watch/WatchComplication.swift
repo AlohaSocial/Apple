@@ -67,6 +67,23 @@ public struct WatchComplicationSnapshot: Codable, Sendable, Hashable {
         now.timeIntervalSince(updatedAt) >= Self.refreshInterval
     }
 
+    /// How often the watch app itself refreshes the snapshot on coming to
+    /// the front. A glance at the app is often several in a minute — wrist
+    /// up, wrist down, up again — and each used to cost a round of requests
+    /// and three complication reloads for numbers seconds old.
+    public static let appRefreshInterval: TimeInterval = 5 * 60
+
+    /// Whether the watch app should ask the server again. The phone's
+    /// pushed counts do not count as asking: they leave `updatedAt` alone.
+    public static func appShouldRefresh(
+        _ snapshot: WatchComplicationSnapshot?, at now: Date = Date()
+    ) -> Bool {
+        guard let snapshot else { return true }
+        let age = now.timeIntervalSince(snapshot.updatedAt)
+        // A clock that went backwards makes every snapshot look new.
+        return age < 0 || age >= appRefreshInterval
+    }
+
     // MARK: - Storage
 
     /// The snapshot for `accountID`, or nil: a record left by an account the
@@ -174,7 +191,7 @@ public enum WatchComplicationRefresher {
     /// Every type is named: Aloha Social leaves its own kinds (story
     /// reactions, tags, Bluesky) out of the count unless `types[]` asks for
     /// them, and Mastodon intersects the list with the kinds it knows.
-    static func unreadCount(client: APIClient) async throws -> Int {
+    public static func unreadCount(client: APIClient) async throws -> Int {
         let types = Endpoint.notifications.everyType(onAlohaSocial: true)
         do {
             return try await client.decode(
@@ -222,6 +239,9 @@ public enum WatchComplicationLink: Hashable, Sendable {
     case status(String)
     /// The direct messages list, which the unread-messages complication opens.
     case messages
+    /// The notifications list, which the unread complication opens: it
+    /// counts every kind, so it opens the list of every kind, not mentions.
+    case notifications
 
     private static let scheme = "alohasocial"
     private static let host = "watch"
@@ -234,6 +254,7 @@ public enum WatchComplicationLink: Hashable, Sendable {
         case .mentions: components.path = "/mentions"
         case .status(let id): components.path = "/status/\(id)"
         case .messages: components.path = "/messages"
+        case .notifications: components.path = "/notifications"
         }
         // Every part is a fixed word or a server id; the fallback is only
         // there to keep the type non-optional.
@@ -246,8 +267,62 @@ public enum WatchComplicationLink: Hashable, Sendable {
         switch parts.first {
         case "mentions" where parts.count == 1: self = .mentions
         case "messages" where parts.count == 1: self = .messages
+        case "notifications" where parts.count == 1: self = .notifications
         case "status" where parts.count == 2 && !parts[1].isEmpty: self = .status(parts[1])
         default: return nil
+        }
+    }
+}
+
+// MARK: - Smart Stack relevance
+
+/// The watch's complications, by their WidgetKit kind.
+public enum WatchComplicationKind: String, Sendable, CaseIterable {
+    case unread = "WatchUnread"
+    case mentions = "WatchMentions"
+    case directMessages = "WatchDirectMessages"
+}
+
+extension WatchComplicationSnapshot {
+    /// How much a complication deserves the top of the Smart Stack, in
+    /// WidgetKit's terms (`TimelineEntryRelevance`) without its import: this
+    /// package is built for platforms that have no WidgetKit.
+    public struct Relevance: Hashable, Sendable {
+        public var score: Float
+        /// Seconds the score holds; zero is "until the next entry".
+        public var duration: TimeInterval
+
+        public init(score: Float, duration: TimeInterval = 0) {
+            self.score = score
+            self.duration = duration
+        }
+
+        public static let none = Relevance(score: 0)
+    }
+
+    /// How long a new mention keeps the mentions complication up.
+    public static let mentionRelevanceWindow: TimeInterval = 60 * 60
+
+    /// Something waiting raises a complication; nothing waiting lets it
+    /// sink. Messages rank above notifications, as on the phone's widgets:
+    /// a message is written to one person, a favourite to nobody in
+    /// particular. A mention ranks between them while it is new and the
+    /// count says something is unread, and sinks after an hour.
+    public func relevance(
+        for kind: WatchComplicationKind, at now: Date = Date()
+    ) -> Relevance {
+        switch kind {
+        case .directMessages:
+            let unread = unreadConversations ?? 0
+            return unread > 0 ? Relevance(score: 10 + Float(min(unread, 20))) : .none
+        case .unread:
+            let unread = unreadCount ?? 0
+            return unread > 0 ? Relevance(score: 5 + Float(min(unread, 20))) : .none
+        case .mentions:
+            guard (unreadCount ?? 0) > 0, let newest = mentions.first else { return .none }
+            let age = now.timeIntervalSince(newest.createdAt)
+            guard (0..<Self.mentionRelevanceWindow).contains(age) else { return .none }
+            return Relevance(score: 15, duration: Self.mentionRelevanceWindow - age)
         }
     }
 }

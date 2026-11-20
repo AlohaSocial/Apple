@@ -72,14 +72,46 @@ Companion, not a client. It never authenticates on its own; the phone hands it
 the active account's token and API base over `WatchConnectivity`, and it stores
 that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
 
+The `WCSession` is activated when the app is made, not by a view, and the
+app handles `.backgroundTask(.watchConnectivity)`: the phone's pushes wake
+it in the background, and the task returns only once nothing is pending
+(bounded at fifteen seconds), so a pushed count or a new pairing lands
+without the app being opened.
+
 - Home timeline (text and image thumbnails only; no video).
 - Notifications list with grouped notifications collapsed to their summary.
-- Actions: favourite, boost, bookmark, follow-back.
-- Reply composer: dictation, Scribble, emoji, and up to 8 user-defined canned
-  responses edited on the phone.
+  Seeing the list reads it: once the server's page has loaded, the
+  notifications marker (`POST /api/v1/markers`) moves to its newest id —
+  after reading the marker first, never backwards — and the face's unread
+  count is asked again and the complications reloaded
+  (`WatchNotificationMarker`). A cached list moves nothing.
+- Actions: favourite, boost and bookmark on a post; follow back from a
+  follow notification (the server's relationship decides whether it says
+  "Follow back", "Following" or "Requested"). Each tells the wrist how it
+  went: a success or failure haptic once the server has answered.
+- Reply composer, the same for a reply to a post and in a conversation
+  (`WatchReplyComposer`): dictation, Scribble, emoji, and quick replies — a
+  row of up to 8 canned responses above the field. The words are shown, in a
+  field that opens them for correcting, with **Send** and **Discard**;
+  nothing goes out until Send. A failure keeps the words, with **Try
+  again** under the same idempotency key, so a retry after a timeout cannot
+  post twice. A quick reply fills the draft rather than sending: a stray tap
+  on a moving wrist should not answer anybody. (Review rather than an
+  "Undo" countdown, because a countdown sends whatever dictation heard
+  unless the reader keeps watching, which a lowered arm does not.)
+- Quick replies: a built-in set (`WatchQuickReplies.builtIn`) until edited
+  on the phone in Settings → Posting → Apple Watch quick replies (iPhone
+  only, shown where a watch may be paired). The phone sends its list in the
+  application context under `quickReplies`, beside the pairing; absent means
+  the built-in set, an empty list means none. The watch keeps the last list
+  it received. "Use the suggested replies" on the phone goes back to the
+  built-in set.
+- Double Tap (`handGestureShortcut(.primaryAction)`): on a post or in a
+  conversation it opens the reply field, and once there is a draft it
+  sends it; on New post it posts; on a single follower it follows back.
 - Direct messages: the conversations newest first, with an unread dot and
   the last message's first lines; a conversation's messages oldest first; a
-  reply by the same text entry, addressed to everybody in the conversation.
+  reply by the same composer, addressed to everybody in the conversation.
   Starting a conversation with somebody new is the phone's.
 - New post: words only, shown before they are sent because dictation
   mishears, with a choice of Public, Unlisted or Followers only.
@@ -87,8 +119,10 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
   watch app): unread notification count (`.accessoryCircular`,
   `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`) and the
   latest mention (`.accessoryRectangular`, showing the content warning rather
-  than the post where there is one). A tap opens the mention, or the
-  mentions list. Unread direct messages (`.accessoryCircular`,
+  than the post where there is one). A tap on the latest mention opens it,
+  or the mentions list; a tap on the unread count opens the notifications
+  list (`WatchComplicationLink.notifications`), since it counts every kind.
+  Unread direct messages (`.accessoryCircular`,
   `.accessoryCorner`, `.accessoryInline`, `.accessoryRectangular`): a paper
   plane and the number of conversations with something unread. A tap opens
   the direct messages list.
@@ -101,7 +135,20 @@ that in the watch Keychain (`…AfterFirstUnlockThisDeviceOnly`).
   (`AppGroup.unreadConversationsKey`) riding along, sent again when only
   that count changes; and the complication's own timeline asks the server
   directly when the snapshot is older than fifteen minutes, with the token
-  the watch app keeps in the shared Keychain group.
+  the watch app keeps in the shared Keychain group. The three complications
+  fall due together, so their refreshes go through one
+  `WatchComplicationRefreshGate`: one asking while another's refresh runs
+  waits for it, and a refresh's answer — a failure included — serves for a
+  minute. The app's own refresh on coming to the front is skipped while the
+  snapshot is under five minutes old
+  (`WatchComplicationSnapshot.appRefreshInterval`); the phone's pushed counts
+  do not reset that age.
+- Smart Stack: each complication's entries carry a `TimelineEntryRelevance`
+  (`WatchComplicationSnapshot.relevance(for:)`), on the scale the phone's
+  widgets use: unread conversations score 10 + their count, a mention under
+  an hour old while something is unread 15 for the rest of that hour, and
+  unread notifications 5 + their count (counts capped at 20). Nothing
+  unread scores zero and lets them sink.
 - No modes, no media viewer, no settings beyond notification toggles.
 
 ## 5. tvOS

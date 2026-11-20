@@ -1,9 +1,7 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-
-    },
+    "" : {},
     "· hidden there; use its export file" : {
       "comment" : "Move here list not readable",
       "localizations" : {
@@ -1552,9 +1550,7 @@
         }
       }
     },
-    "Access could not be revoked. Please try again." : {
-
-    },
+    "Access could not be revoked. Please try again." : {},
     "Account" : {
       "comment" : "Account menu section\nApp Intents type name\nFocus filter parameter",
       "localizations" : {
@@ -1588,9 +1584,7 @@
         }
       }
     },
-    "Accounts could not be loaded. Please try again." : {
-
-    },
+    "Accounts could not be loaded. Please try again." : {},
     "Accounts that abuse other people are removed from your view as soon as you block them." : {
       "comment" : "Terms rule",
       "localizations" : {
@@ -1788,6 +1782,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Umfrage hinzufügen"
+          }
+        }
+      }
+    },
+    "Add a quick reply" : {
+      "comment" : "Settings button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnellantwort hinzufügen"
           }
         }
       }
@@ -2449,6 +2454,17 @@
         }
       }
     },
+    "Apple Watch quick replies" : {
+      "comment" : "Settings section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnellantworten auf der Apple Watch"
+          }
+        }
+      }
+    },
     "Approve the connection in your browser, then come back here." : {
       "comment" : "Nextcloud connect instruction",
       "localizations" : {
@@ -2515,9 +2531,7 @@
         }
       }
     },
-    "Archived posts could not be loaded. Please try again." : {
-
-    },
+    "Archived posts could not be loaded. Please try again." : {},
     "Archiving takes a post off your profile without deleting it. Find it here to bring it back." : {
       "comment" : "Archived posts explanation",
       "localizations" : {
@@ -2609,9 +2623,7 @@
         }
       }
     },
-    "Authorized apps could not be loaded. Please try again." : {
-
-    },
+    "Authorized apps could not be loaded. Please try again." : {},
     "Automated account" : {
       "comment" : "Bot badge",
       "localizations" : {
@@ -5329,9 +5341,7 @@
         }
       }
     },
-    "Featured hashtags could not be loaded. Please try again." : {
-
-    },
+    "Featured hashtags could not be loaded. Please try again." : {},
     "Featured on your profile" : {
       "comment" : "Relationship badge",
       "localizations" : {
@@ -6507,9 +6517,7 @@
         }
       }
     },
-    "Image could not be loaded" : {
-
-    },
+    "Image could not be loaded" : {},
     "Image without a description" : {
       "comment" : "Accessibility label for undescribed media",
       "localizations" : {
@@ -6580,9 +6588,7 @@
         }
       }
     },
-    "Interest settings could not be saved. Please try again." : {
-
-    },
+    "Interest settings could not be saved. Please try again." : {},
     "Interests" : {
       "comment" : "Interests section",
       "localizations" : {
@@ -6594,9 +6600,7 @@
         }
       }
     },
-    "Interests could not be loaded. Please try again." : {
-
-    },
+    "Interests could not be loaded. Please try again." : {},
     "It cannot be undone." : {
       "comment" : "Delete account warning",
       "localizations" : {
@@ -7068,12 +7072,8 @@
         }
       }
     },
-    "List members could not be loaded. Please try again." : {
-
-    },
-    "List membership could not be updated. Please try again." : {
-
-    },
+    "List members could not be loaded. Please try again." : {},
+    "List membership could not be updated. Please try again." : {},
     "List name" : {
       "comment" : "New list label\nNew list placeholder",
       "localizations" : {
@@ -7384,9 +7384,7 @@
         }
       }
     },
-    "Media could not be loaded. Please try again." : {
-
-    },
+    "Media could not be loaded. Please try again." : {},
     "Media hidden by your settings" : {
       "comment" : "hide_all policy notice",
       "localizations" : {
@@ -7442,9 +7440,7 @@
         }
       }
     },
-    "Memories could not be loaded. Please try again." : {
-
-    },
+    "Memories could not be loaded. Please try again." : {},
     "Mental health" : {
       "comment" : "Content warning preset",
       "localizations" : {
@@ -7507,9 +7503,7 @@
         }
       }
     },
-    "Messages could not be loaded. Pull down to try again." : {
-
-    },
+    "Messages could not be loaded. Pull down to try again." : {},
     "Migration" : {
       "comment" : "Screen title\nSettings item",
       "localizations" : {
@@ -7615,21 +7609,13 @@
         }
       }
     },
-    "More archived posts could not be loaded. Please try again." : {
-
-    },
+    "More archived posts could not be loaded. Please try again." : {},
     "More options" : {
       "comment" : "Composer additional actions"
     },
-    "More posts could not be loaded. Please try again." : {
-
-    },
-    "More quotes could not be loaded. Please try again." : {
-
-    },
-    "More tagged posts could not be loaded. Please try again." : {
-
-    },
+    "More posts could not be loaded. Please try again." : {},
+    "More quotes could not be loaded. Please try again." : {},
+    "More tagged posts could not be loaded. Please try again." : {},
     "Most replied to" : {
       "comment" : "Annual report best post",
       "localizations" : {
@@ -9781,9 +9767,7 @@
         }
       }
     },
-    "Pending posts could not be loaded. Please try again." : {
-
-    },
+    "Pending posts could not be loaded. Please try again." : {},
     "People" : {
       "comment" : "Discover section\nSearch results section",
       "localizations" : {
@@ -9798,9 +9782,7 @@
     "People could not be loaded. Pull down to try again." : {
       "comment" : "Discover people load failure"
     },
-    "People could not be looked up. Please try again." : {
-
-    },
+    "People could not be looked up. Please try again." : {},
     "People following you" : {
       "comment" : "Migration list",
       "localizations" : {
@@ -10198,9 +10180,7 @@
         }
       }
     },
-    "Please choose another image or try downloading it from your photo library first." : {
-
-    },
+    "Please choose another image or try downloading it from your photo library first." : {},
     "Politics" : {
       "comment" : "Content warning preset",
       "localizations" : {
@@ -10483,9 +10463,7 @@
         }
       }
     },
-    "Posts from this place could not be loaded. Please try again." : {
-
-    },
+    "Posts from this place could not be loaded. Please try again." : {},
     "Posts quoting this" : {
       "comment" : "Status menu item",
       "localizations" : {
@@ -10841,6 +10819,17 @@
         }
       }
     },
+    "Quick reply" : {
+      "comment" : "Placeholder for a watch quick reply",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnellantwort"
+          }
+        }
+      }
+    },
     "Quiet by default." : {
       "comment" : "Onboarding title"
     },
@@ -10908,9 +10897,7 @@
         }
       }
     },
-    "Quotes could not be loaded. Please try again." : {
-
-    },
+    "Quotes could not be loaded. Please try again." : {},
     "Quotes so far" : {
       "comment" : "Quote controls section",
       "localizations" : {
@@ -12937,12 +12924,8 @@
         }
       }
     },
-    "Statistics could not be exported. Please try again." : {
-
-    },
-    "Statistics could not be loaded. Please try again." : {
-
-    },
+    "Statistics could not be exported. Please try again." : {},
+    "Statistics could not be loaded. Please try again." : {},
     "Sticker" : {
       "comment" : "Onboarding story tool"
     },
@@ -13092,9 +13075,7 @@
         }
       }
     },
-    "Story reactions could not be loaded. Please try again." : {
-
-    },
+    "Story reactions could not be loaded. Please try again." : {},
     "story reply" : {
       "comment" : "Digest summary kind",
       "localizations" : {
@@ -13117,9 +13098,7 @@
         }
       }
     },
-    "Story viewers could not be loaded. Please try again." : {
-
-    },
+    "Story viewers could not be loaded. Please try again." : {},
     "Subscribe" : {
       "comment" : "Shared list action",
       "localizations" : {
@@ -13355,12 +13334,8 @@
         }
       }
     },
-    "Tagged people could not be loaded. Please try again." : {
-
-    },
-    "Tagged posts could not be loaded. Please try again." : {
-
-    },
+    "Tagged people could not be loaded. Please try again." : {},
+    "Tagged posts could not be loaded. Please try again." : {},
     "Tags" : {
       "comment" : "Discover section",
       "localizations" : {
@@ -13823,12 +13798,8 @@
         }
       }
     },
-    "The account action could not be completed. Please try again." : {
-
-    },
-    "The account could not be followed. Please try again." : {
-
-    },
+    "The account action could not be completed. Please try again." : {},
+    "The account could not be followed. Please try again." : {},
     "The account could not be moved." : {
       "comment" : "Move away failure",
       "localizations" : {
@@ -13851,12 +13822,8 @@
         }
       }
     },
-    "The alias could not be added. Please try again." : {
-
-    },
-    "The alias could not be removed. Please try again." : {
-
-    },
+    "The alias could not be added. Please try again." : {},
+    "The alias could not be removed. Please try again." : {},
     "The archive holds your profile, posts, pictures and videos, and the lists below. It never holds your private key." : {
       "comment" : "Migration export explanation",
       "localizations" : {
@@ -13923,15 +13890,9 @@
         }
       }
     },
-    "The draft could not be deleted. Please try again." : {
-
-    },
-    "The export could not be prepared. Please try again." : {
-
-    },
-    "The featured hashtag could not be removed. Please try again." : {
-
-    },
+    "The draft could not be deleted. Please try again." : {},
+    "The export could not be prepared. Please try again." : {},
+    "The featured hashtag could not be removed. Please try again." : {},
     "The filter could not be changed. Please try again." : {
       "comment" : "Filter this post failure",
       "localizations" : {
@@ -13943,9 +13904,7 @@
         }
       }
     },
-    "The filter could not be deleted. Please try again." : {
-
-    },
+    "The filter could not be deleted. Please try again." : {},
     "The filter could not be made. Please try again." : {
       "comment" : "Filter this post create failure",
       "localizations" : {
@@ -13979,18 +13938,10 @@
         }
       }
     },
-    "The hashtag could not be featured. Please try again." : {
-
-    },
-    "The import could not be completed. Please try again." : {
-
-    },
-    "The list could not be created. Your text has been kept; please try again." : {
-
-    },
-    "The list could not be deleted. Please try again." : {
-
-    },
+    "The hashtag could not be featured. Please try again." : {},
+    "The import could not be completed. Please try again." : {},
+    "The list could not be created. Your text has been kept; please try again." : {},
+    "The list could not be deleted. Please try again." : {},
     "The move could not be started." : {
       "comment" : "Move here failure",
       "localizations" : {
@@ -14079,12 +14030,8 @@
         }
       }
     },
-    "The post could not be restored. Please try again." : {
-
-    },
-    "The post could not be withdrawn. Please try again." : {
-
-    },
+    "The post could not be restored. Please try again." : {},
+    "The post could not be withdrawn. Please try again." : {},
     "The posts" : {
       "comment" : "Report section",
       "localizations" : {
@@ -14096,12 +14043,8 @@
         }
       }
     },
-    "The quote could not be detached. Please try again." : {
-
-    },
-    "The quote setting could not be saved. Please try again." : {
-
-    },
+    "The quote could not be detached. Please try again." : {},
+    "The quote setting could not be saved. Please try again." : {},
     "The quoted post was withdrawn." : {
       "comment" : "Quote state",
       "localizations" : {
@@ -14136,9 +14079,7 @@
     "The search could not be run." : {
       "comment" : "Search failure"
     },
-    "The server address is invalid." : {
-
-    },
+    "The server address is invalid." : {},
     "The server keeps track of which hashtags you spend time on, and nothing else. It stays on your server." : {
       "comment" : "Interests learning explanation",
       "localizations" : {
@@ -14183,12 +14124,8 @@
         }
       }
     },
-    "The video could not be imported. Please try again." : {
-
-    },
-    "The weekly recap setting could not be saved. Please try again." : {
-
-    },
+    "The video could not be imported. Please try again." : {},
+    "The weekly recap setting could not be saved. Please try again." : {},
     "Their servers didn't answer this time." : {
       "comment" : "Starter pack unresolved footer",
       "extractionState" : "stale",
@@ -14787,9 +14724,7 @@
         }
       }
     },
-    "Unmute conversation" : {
-
-    },
+    "Unmute conversation" : {},
     "Unnamed app" : {
       "comment" : "App without a name",
       "localizations" : {
@@ -14923,6 +14858,17 @@
         }
       }
     },
+    "Up to %lld short replies, shown above the reply field on your Apple Watch. Tapping one puts it in the reply; it is sent when you tap Send." : {
+      "comment" : "Explanation of the watch quick replies setting",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu %lld kurze Antworten, die auf deiner Apple Watch über dem Antwortfeld erscheinen. Ein Tippen setzt eine davon in die Antwort; gesendet wird sie erst, wenn du auf „Senden“ tippst."
+          }
+        }
+      }
+    },
     "Up to %lld." : {
       "comment" : "Featured tags limit",
       "localizations" : {
@@ -14975,6 +14921,17 @@
     },
     "Use the shutter for a new picture, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas." : {
       "comment" : "Story composer hint"
+    },
+    "Use the suggested replies" : {
+      "comment" : "Settings button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorgeschlagene Antworten verwenden"
+          }
+        }
+      }
     },
     "Use this address" : {
       "comment" : "Advanced sign-in action\nOnboarding advanced action",
@@ -15108,9 +15065,7 @@
         }
       }
     },
-    "Video channels could not be loaded. Please try again." : {
-
-    },
+    "Video channels could not be loaded. Please try again." : {},
     "Video title" : {
       "comment" : "Composer video field label\nComposer video field placeholder",
       "localizations" : {
@@ -16165,9 +16120,7 @@
         }
       }
     },
-    "Your annual report could not be loaded. Please try again." : {
-
-    },
+    "Your annual report could not be loaded. Please try again." : {},
     "Your Bluesky account" : {
       "comment" : "Bluesky after a move picker",
       "localizations" : {
@@ -16313,12 +16266,8 @@
         }
       }
     },
-    "Your interests could not be updated. Please try again." : {
-
-    },
-    "Your interests feed could not be loaded. Please try again." : {
-
-    },
+    "Your interests could not be updated. Please try again." : {},
+    "Your interests feed could not be loaded. Please try again." : {},
     "Your lists" : {
       "comment" : "Migration list\nScreen title",
       "localizations" : {
@@ -16333,9 +16282,7 @@
     "Your lists could not be loaded. Pull down to try again." : {
       "comment" : "Lists load failure"
     },
-    "Your message could not be sent. Your text has been kept; please try again." : {
-
-    },
+    "Your message could not be sent. Your text has been kept; please try again." : {},
     "Your Nextcloud" : {
       "comment" : "Settings item",
       "localizations" : {
@@ -16606,9 +16553,7 @@
         }
       }
     },
-    "Your tag could not be removed. Please try again." : {
-
-    },
+    "Your tag could not be removed. Please try again." : {},
     "Your words here" : {
       "comment" : "Text story placeholder",
       "localizations" : {
