@@ -61,7 +61,7 @@ public struct HeldPostsView: View {
         }
         .navigationTitle(Text("Waiting to be looked at", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .alert(
             Text("Withdraw this post?", comment: "Withdraw confirmation title"),
             isPresented: Binding(get: { withdrawing != nil }, set: { if !$0 { withdrawing = nil } })

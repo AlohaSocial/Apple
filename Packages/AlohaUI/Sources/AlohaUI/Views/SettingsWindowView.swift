@@ -36,9 +36,37 @@ import SwiftUI
             }
         }
 
-        private enum Selection: Hashable {
+        enum Selection: Hashable {
             case section(SettingsSection)
             case pane(String)
+
+            /// How the pane is remembered between openings of the window.
+            var stored: String {
+                switch self {
+                case .section(let section): "section:\(section)"
+                case .pane(let id): "pane:\(id)"
+                }
+            }
+
+            /// The pane stored, if it is still one there is: a pane the app
+            /// no longer has opens Accounts instead.
+            init?(stored: String, paneIDs: [String]) {
+                if stored.hasPrefix("pane:") {
+                    let id = String(stored.dropFirst("pane:".count))
+                    guard paneIDs.contains(id) else { return nil }
+                    self = .pane(id)
+                } else if stored.hasPrefix("section:") {
+                    let name = stored.dropFirst("section:".count)
+                    guard
+                        let section = SettingsSection.allCases.first(where: {
+                            "\($0)" == name
+                        })
+                    else { return nil }
+                    self = .section(section)
+                } else {
+                    return nil
+                }
+            }
         }
 
         @Environment(AppEnvironment.self) private var environment
@@ -49,6 +77,9 @@ import SwiftUI
         private let onAddAccount: () -> Void
 
         @State private var selection: Selection = .section(.accounts)
+        /// The pane last shown: the window opens where it was left rather
+        /// than on Accounts every time.
+        @AppStorage(MacOptions.settingsPaneKey) private var storedSelection = ""
         @State private var query = ""
         /// What a row in a pane asked to open. Never shown here: see `open`.
         @State private var path: [Route] = []
@@ -99,6 +130,12 @@ import SwiftUI
                 if let route = path.last { open(route) }
             }
             .onChange(of: query) { _, _ in selectFirstMatchIfNeeded() }
+            .onAppear {
+                if let restored = Selection(stored: storedSelection, paneIDs: panes.map(\.id)) {
+                    selection = restored
+                }
+            }
+            .onChange(of: selection) { _, selection in storedSelection = selection.stored }
             .frame(
                 minWidth: 660, idealWidth: 760, maxWidth: .infinity,
                 minHeight: 420, idealHeight: 620, maxHeight: .infinity)

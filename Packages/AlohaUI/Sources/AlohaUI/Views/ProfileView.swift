@@ -91,7 +91,7 @@ public struct ProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
         #endif
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .alert(
             Text("Note about this account", comment: "Account note alert title"),
             isPresented: $isEditingNote
@@ -1253,6 +1253,8 @@ struct ProfileStatusList: View {
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
     @State private var model: TimelineModel
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
 
     init(key: TimelineKey, session: AccountSession, onAction: @escaping (StatusRowAction) -> Void) {
         self.session = session
@@ -1282,6 +1284,7 @@ struct ProfileStatusList: View {
                     showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
+                .statusListRow(status.id, ground: nil)
                 .padding(.horizontal, AlohaMetrics.space4)
                 // A stack, not a list, so there is nothing to swipe; the long
                 // press and the drag still work as they do on a timeline.
@@ -1316,6 +1319,13 @@ struct ProfileStatusList: View {
             }
         }
         .environment(\.filterVerdicts, model.verdicts)
+        // A stack in the profile's scroll view rather than a `List`, so it
+        // draws its own selection and takes its own clicks.
+        .statusListNavigation(
+            selection: $selectedID, ids: statuses.map(\.id),
+            status: { [index = model.index] id in index.status(id: id) }, onAction: onAction,
+            refresh: { await model.refresh() }, isNativeList: false
+        )
         .task { await model.appear() }
         .onChange(of: session.lastPosted?.id) { _, _ in
             guard let posted = session.lastPosted else { return }

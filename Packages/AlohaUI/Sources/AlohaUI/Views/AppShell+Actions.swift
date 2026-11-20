@@ -132,9 +132,16 @@ extension ThemedAppShell {
             presenter.present(activity, animated: true)
         #elseif canImport(AppKit)
             let picker = NSSharingServicePicker(items: [url])
-            if let view = NSApplication.shared.keyWindow?.contentView {
-                picker.show(relativeTo: .zero, of: view, preferredEdge: .minY)
-            }
+            guard let window = NSApplication.shared.keyWindow, let view = window.contentView
+            else { return }
+            // Where the pointer is — over the menu item or button that asked —
+            // rather than the content view's corner, where `.zero` put it.
+            let pointer = view.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            let anchor =
+                view.bounds.contains(pointer)
+                ? NSRect(origin: pointer, size: NSSize(width: 1, height: 1))
+                : NSRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+            picker.show(relativeTo: anchor, of: view, preferredEdge: .minY)
         #endif
     }
 
@@ -184,7 +191,7 @@ extension ThemedAppShell {
         guard let destination = RouteResolver.destination(for: url) else { return }
         // A Spotlight result or a widget row names its account; the post id
         // in it means nothing under another one.
-        if let accountID = destination.accountID { environment.setActiveAccount(accountID) }
+        if let accountID = destination.accountID { switchAccount(to: accountID) }
         // The same decisions a route from anywhere else gets: a timeline
         // selects its tab, a root destination its tab or row.
         open(destination.route)

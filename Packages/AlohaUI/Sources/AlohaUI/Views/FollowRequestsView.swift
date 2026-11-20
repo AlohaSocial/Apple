@@ -100,7 +100,7 @@ public struct FollowRequestsView: View {
             if isLoading && accounts.isEmpty { ProgressView() }
         }
         .navigationTitle(Text("Follow requests", comment: "Screen title"))
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task { await load() }
     }
 

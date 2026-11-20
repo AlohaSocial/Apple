@@ -137,7 +137,7 @@ public struct BlueskyFeedsView: View {
             if isLoading && feeds.isEmpty { SkeletonListRow(text: 4) }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func feedLabel(_ feed: BlueskyFeed) -> some View {

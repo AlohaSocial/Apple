@@ -123,7 +123,7 @@ struct BackupSettingsView: View {
         .alohaGround(palette)
         .navigationTitle(Text("Backup to Nextcloud", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         // While a backup is being written, the state is checked now and then
         // so the screen says when it is done.
         .task(id: backup?.running == true) {

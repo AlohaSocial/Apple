@@ -18,7 +18,7 @@ extension ThemedAppShell {
         // Mid-switch, the route is for the account arriving, not the one
         // still on screen; it is opened once the shell has reset for it.
         guard
-            accountSwitch.shouldOpenNow(route, activeAccountID: environment.activeSession?.id)
+            accountSwitch.shouldOpenNow(route, activeAccountID: wantedAccountID)
         else { return }
         if case .timeline(let key) = route {
             selectedMode = key.mode
@@ -91,7 +91,7 @@ extension ThemedAppShell {
     /// Folding or unfolding swaps the shell; the place a person was in
     /// moves across with it, so the screen they were reading stays.
     func handOver(toSidebar: Bool) {
-        guard let session = environment.activeSession else { return }
+        guard let session = windowSession else { return }
         if !toSidebar {
             // A phone has no detail column: what it had open is pushed on
             // its row's stack first, as a narrow window shows it.
@@ -133,7 +133,14 @@ extension ThemedAppShell {
         #elseif os(visionOS)
             visionShell(session)
         #else
-            splitShell(session)
+            // A thread or a profile in a window of its own is that screen
+            // alone, the way Mail's message window is the message: no sidebar,
+            // no feed, no account switcher (`RouteWindow`).
+            if initialRoute != nil {
+                routeWindowShell(session)
+            } else {
+                splitShell(session)
+            }
         #endif
     }
 
@@ -193,15 +200,47 @@ extension ThemedAppShell {
     }
 
     var shellCommands: ShellCommands? {
-        guard let session = environment.activeSession else { return nil }
-        return ShellCommands(
+        guard let session = windowSession else { return nil }
+        var commands = ShellCommands(
             compose: { composing = ComposerPresentation() },
             open: { open($0) },
             back: { goBack() },
             canGoBack: canGoBack,
             jump: { withAnimation(.easeOut(duration: 0.15)) { isJumping = true } },
             places: ShellPlace.sidebarOrder(modes: session.visibleModes, modeTitle: modeTitle))
+        #if os(macOS)
+            commands.search = { focusSearch() }
+            commands.openLink = { isOpeningLink = true }
+            commands.showShortcuts = { isShowingShortcuts = true }
+            commands.accounts = environment.sessions.map {
+                ShellCommands.AccountChoice(
+                    id: $0.id, name: $0.snapshot.bestDisplayName,
+                    handle: $0.snapshot.qualifiedHandle)
+            }
+            commands.accountID = session.id
+            // A window opened for one post stays that post's account.
+            if initialRoute == nil {
+                commands.switchAccount = { switchAccount(to: $0) }
+            }
+            commands.addAccount = { presentSignIn() }
+            commands.signOut = { signingOut = session }
+        #else
+            commands.search = { open(.search(query: nil)) }
+        #endif
+        return commands
     }
+
+    #if os(macOS)
+        /// ⌘F: the toolbar's search field, where the screen in front has
+        /// it; a screen that searches itself is opened on Search instead.
+        func focusSearch() {
+            if initialRoute == nil, !hasOwnSearchField(sidebarItem) {
+                isSearchFocused = true
+            } else {
+                open(.search(query: nil))
+            }
+        }
+    #endif
 }
 
 #if os(macOS)

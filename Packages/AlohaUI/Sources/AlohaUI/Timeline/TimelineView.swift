@@ -21,10 +21,9 @@ public struct TimelineView: View {
 
     @State private var model: TimelineModel
     @State private var listWidth: CGFloat = 0
-    /// The post the keyboard is on. `nil` until somebody presses `j`, so a
-    /// timeline opened with a mouse shows no ring it did not earn.
-    @State private var focusedStatusID: String?
-    @State private var isShowingShortcuts = false
+    /// The selected post (`statusListNavigation`). `nil` until somebody
+    /// clicks or presses `j`, so a timeline opens with nothing highlighted.
+    @State private var selectedStatusID: String?
     private let session: AccountSession
     private let onAction: (StatusRowAction) -> Void
     /// Set once the first page has been scrolled to, so reopening a timeline
@@ -95,15 +94,6 @@ public struct TimelineView: View {
         #endif
         .actionFeedbackToast()
         .background(palette.background.ignoresSafeArea())
-        .timelineKeyboard(
-            focusedID: $focusedStatusID,
-            isShowingShortcuts: $isShowingShortcuts,
-            ids: model.index.statusIDs,
-            status: { [index = model.index] id in index.status(id: id) },
-            onAction: onAction,
-            onRefresh: { await model.refresh() }
-        )
-        .sheet(isPresented: $isShowingShortcuts) { ShortcutHelpView() }
         .task { await model.appear() }
         .refreshable { await model.refresh(revealingArrivals: true) }
         .onChange(of: session.lastPosted?.id) { _, _ in
@@ -231,12 +221,6 @@ public struct TimelineView: View {
                     guard let request else { return }
                     proxy.scrollTo(request.statusID, anchor: .top)
                 }
-                .onChange(of: focusedStatusID) { _, id in
-                    guard let id else { return }
-                    withAnimation(scrollAnimation(0.18)) {
-                        proxy.scrollTo(id, anchor: .center)
-                    }
-                }
         }
     }
 
@@ -295,7 +279,7 @@ public struct TimelineView: View {
     }
 
     private func rows(horizontalInset: CGFloat) -> some View {
-        List {
+        SelectableList(selection: $selectedStatusID) {
             if session.needsReauthentication { reauthenticationBanner }
             if model.isOffline { offlineStrip }
             if let errorMessage = model.errorMessage { errorStrip(errorMessage) }
@@ -349,7 +333,7 @@ public struct TimelineView: View {
                             bottom: AlohaMetrics.space1,
                             trailing: horizontalInset)
                     )
-                    .listRowBackground(palette.background)
+                    .statusListRow(status.id, ground: palette.background)
                     .listRowSeparator(.hidden)
                     .id(status.id)
                     .statusRowInteractions(status, session: session, onAction: onAction)
@@ -359,15 +343,6 @@ public struct TimelineView: View {
                         context: InterestSignal.Context(key: model.key),
                         session: session
                     )
-                    .overlay(alignment: .leading) {
-                        if focusedStatusID == status.id {
-                            Capsule()
-                                .fill(palette.accent)
-                                .frame(width: 3)
-                                .padding(.vertical, AlohaMetrics.space2)
-                                .padding(.leading, -8)
-                        }
-                    }
                     .onAppear {
                         Task { await model.prefetchOlder(near: status.id) }
                         model.prefetchMedia(around: row.id)
@@ -416,6 +391,12 @@ public struct TimelineView: View {
                     Text(verbatim: entry.label), id: entry.statusID, in: rotorNamespace)
             }
         }
+        .statusListNavigation(
+            selection: $selectedStatusID,
+            ids: model.index.statusIDs,
+            status: { [index = model.index] id in index.status(id: id) },
+            onAction: onAction,
+            refresh: { await model.refresh(revealingArrivals: true) })
     }
 
     private var hasSwipeActions: Bool {

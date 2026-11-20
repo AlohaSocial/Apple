@@ -9,17 +9,39 @@ import SwiftUI
 public struct AppShell: View {
     @Environment(AppEnvironment.self) private var environment
     private let initialRoute: Route?
+    private let pinnedAccountID: UUID?
+    /// The account this window shows (`WindowAccount`), kept with the
+    /// window so that a relaunch puts each window back on its own account.
+    @SceneStorage("aloha.shell.account") private var storedAccountID: String?
 
     /// `initialRoute` opens the shell already showing a destination — a
-    /// window of its own for a thread or a profile (see `RouteWindow`).
-    public init(initialRoute: Route? = nil) {
+    /// window of its own for a thread or a profile (see `RouteWindow`) — and
+    /// `accountID` is the account that destination belongs to.
+    public init(initialRoute: Route? = nil, accountID: UUID? = nil) {
         self.initialRoute = initialRoute
+        self.pinnedAccountID = accountID
     }
 
     public var body: some View {
-        ThemedAppShell(initialRoute: initialRoute)
-            .alohaTheme(
-                environment.theme, metrics: environment.metrics, accent: environment.serverAccent)
+        let session = environment.session(for: windowAccountID)
+        ThemedAppShell(
+            initialRoute: initialRoute, pinnedAccountID: pinnedAccountID,
+            storedAccountID: $storedAccountID
+        )
+        .environment(\.windowAccountID, session?.id)
+        .alohaTheme(
+            environment.theme, metrics: environment.metrics,
+            accent: environment.serverAccent(for: session)
+        )
+        #if os(macOS)
+            .modifier(MacTextSize())
+        #endif
+    }
+
+    private var windowAccountID: UUID? {
+        WindowAccount.resolve(
+            pinned: pinnedAccountID, stored: storedAccountID,
+            signedIn: environment.sessions.map(\.id), fallback: environment.activeSession?.id)
     }
 }
 
@@ -103,6 +125,17 @@ struct ThemedAppShell: View {
     #endif
     /// Whether the Mac's "Go to…" field is up (⌘K).
     @State var isJumping = false
+    #if os(macOS)
+        /// File ▸ Open Link… (⌘L).
+        @State var isOpeningLink = false
+        /// Help ▸ Keyboard Shortcuts (⌘/).
+        @State var isShowingShortcuts = false
+        /// Account ▸ Sign Out, waiting to be confirmed.
+        @State var signingOut: AccountSession?
+        /// The toolbar's search field (`GlobalSearchField`).
+        @State var searchText = ""
+        @FocusState var isSearchFocused: Bool
+    #endif
     /// The window's width on the Mac, for the detail column beside a list.
     @State var windowWidth: CGFloat = 0
     @State var reportTarget: ReportTarget?
@@ -142,17 +175,121 @@ struct ThemedAppShell: View {
     /// route, add an account — are for the main window, or every open thread
     /// window would answer them too.
     let initialRoute: Route?
+    /// The account a window opened for one destination belongs to.
+    let pinnedAccountID: UUID?
+    /// The account a main window remembers (`AppShell`).
+    @Binding var storedAccountID: String?
+    /// This window's account, as `AppShell` resolved it.
+    @Environment(\.windowAccountID) var windowAccountID
+    /// The last account request this window has answered, so a request is
+    /// taken up once (`WindowAccount.adopts`).
+    @State private var answeredAccountRequest = 0
+    #if os(macOS)
+        /// Whether this window is the key window: the one a request from
+        /// outside — the Dock, a notification — is for.
+        @Environment(\.appearsActive) private var appearsActive
+    #endif
 
     /// The account load and the sync engine are the process's, not a
     /// window's: loading again from a second window would replace the
     /// sessions the first one is showing.
     private static var hasStarted = false
 
-    init(initialRoute: Route? = nil) {
+    init(
+        initialRoute: Route? = nil, pinnedAccountID: UUID? = nil,
+        storedAccountID: Binding<String?> = .constant(nil)
+    ) {
         self.initialRoute = initialRoute
+        self.pinnedAccountID = pinnedAccountID
+        self._storedAccountID = storedAccountID
     }
 
-    var body: some View { content }
+    /// The session this window shows, which is not the active account's
+    /// once two windows show two accounts (`WindowAccount`).
+    var windowSession: AccountSession? {
+        environment.session(for: windowAccountID)
+    }
+
+    /// The account a route opened now is meant for: a request this window is
+    /// about to take up counts already, so a notification's post is not
+    /// opened under the account it is leaving.
+    var wantedAccountID: UUID? {
+        if adoptsAccountRequest, let requested = environment.accountRequest.accountID {
+            return requested
+        }
+        // The stored value rather than the environment's, which catches up
+        // a view update after a switch this window made itself.
+        return WindowAccount.resolve(
+            pinned: pinnedAccountID, stored: storedAccountID,
+            signedIn: environment.sessions.map(\.id), fallback: environment.activeSession?.id)
+    }
+
+    /// Shows `accountID` in this window, and makes it the default for the
+    /// windows opened after it.
+    func switchAccount(to accountID: UUID) {
+        if initialRoute == nil { storedAccountID = accountID.uuidString }
+        environment.setActiveAccount(accountID)
+    }
+
+    private var adoptsAccountRequest: Bool {
+        WindowAccount.adopts(
+            environment.accountRequest, answered: answeredAccountRequest,
+            isFront: environment.frontWindowID == nil || environment.frontWindowID == syncSceneID,
+            isPinned: initialRoute != nil)
+    }
+
+    /// Takes up a request to show another account, if it is this window's.
+    private func answerAccountRequest() {
+        let request = environment.accountRequest
+        if adoptsAccountRequest, let id = request.accountID {
+            storedAccountID = id.uuidString
+        }
+        answeredAccountRequest = max(answeredAccountRequest, request.serial)
+    }
+
+    /// Settles the account of a main window that has none yet on the one
+    /// active now, so a later switch elsewhere leaves it where it is.
+    private func pinWindowAccount() {
+        guard initialRoute == nil, storedAccountID == nil,
+            let id = environment.activeSession?.id
+        else { return }
+        storedAccountID = id.uuidString
+        // Whatever was asked for before this window existed is what it opened on.
+        answeredAccountRequest = environment.accountRequest.serial
+    }
+
+    /// Notes this window as the one in front when it becomes so.
+    private func noteFront(_ isFront: Bool) {
+        // Before any window has been in front — the first one appearing at
+        // launch — the first to appear is the one in front.
+        guard isFront || environment.frontWindowID == nil, initialRoute == nil else { return }
+        environment.frontWindowID = syncSceneID
+    }
+
+    var body: some View { windowChrome(content) }
+
+    /// What this window adds around the shell: the account it keeps, and on
+    /// the Mac the menu bar's own sheets. Apart from `content`, whose chain is
+    /// already as long as the type checker will take.
+    private func windowChrome(_ shell: some View) -> some View {
+        shell
+            // A request to show another account is the front window's to
+            // take up; every other window stays on its own (`WindowAccount`).
+            .onChange(of: environment.accountRequest) { _, _ in answerAccountRequest() }
+            #if os(macOS)
+                .onChange(of: appearsActive, initial: true) { _, isKey in noteFront(isKey) }
+                .modifier(
+                    MacShellPresentations(
+                        isOpeningLink: $isOpeningLink, isShowingShortcuts: $isShowingShortcuts,
+                        signingOut: $signingOut, session: windowSession
+                    ) { open($0) }
+                )
+            #else
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    noteFront(phase == .active)
+                }
+            #endif
+    }
 
     private var content: some View {
         root
@@ -174,7 +311,7 @@ struct ThemedAppShell: View {
                     WatchBridge.shared.send(environment.watchPairing())
                 }
             #endif
-            .onChange(of: environment.activeSession?.lastPosted?.id) { _, id in
+            .onChange(of: windowSession?.lastPosted?.id) { _, id in
                 guard id != nil, FirstPost.isStillToCome else { return }
                 FirstPost.recordPosted()
                 isCelebrating = true
@@ -194,12 +331,13 @@ struct ThemedAppShell: View {
                     reportTarget: $reportTarget,
                     editing: $editing,
                     mediaPresentation: $mediaPresentation,
-                    sheet: $sheet)
+                    sheet: $sheet,
+                    followLink: { link, session in handle(.followLink(link), session: session) })
             )
             .modifier(ShellAlerts(deleting: $deleting, confirming: $confirming))
             #if os(macOS)
                 .overlay {
-                    if isJumping, let session = environment.activeSession {
+                    if isJumping, let session = windowSession {
                         CommandPalette(items: jumpItems(session)) {
                             open($0)
                         } onClose: {
@@ -209,7 +347,7 @@ struct ThemedAppShell: View {
                 }
             #endif
             .sheet(item: $peeked) { peeked in
-                if let session = environment.activeSession {
+                if let session = windowSession {
                     PeekSheet {
                         destination(peeked.route, session: session)
                     } onClose: {
@@ -225,7 +363,7 @@ struct ThemedAppShell: View {
             .onChange(of: restoration) { _, restoration in
                 storedRestoration = restoration?.encoded()
             }
-            .onChange(of: environment.activeSession?.id, initial: true) { previous, current in
+            .onChange(of: windowSession?.id, initial: true) { previous, current in
                 // A link, a notification or a Spotlight result for this
                 // account, opened as the switch was made, waits for the reset
                 // below rather than being cleared by it.
@@ -240,7 +378,7 @@ struct ThemedAppShell: View {
                 detailPaths = [:]
                 // For you is Nextcloud Social's; another server has no such feed.
                 if selectedSource == .interests,
-                    environment.activeSession?.capabilities.isNextcloudSocial != true
+                    windowSession?.capabilities.isNextcloudSocial != true
                 {
                     selectedSource = .home
                 }
@@ -279,7 +417,7 @@ struct ThemedAppShell: View {
                 // Shortcut, or a draft handed off from another device —
                 // reached here because the composer is a sheet the shell owns,
                 // not a navigation destination.
-                guard initialRoute == nil, environment.activeSession != nil else { return }
+                guard initialRoute == nil, windowSession != nil else { return }
                 composing = ComposerPresentation(
                     draftText: note.userInfo?["draft"] as? String ?? "")
             }
@@ -289,7 +427,7 @@ struct ThemedAppShell: View {
                 // Stories are a Nextcloud Social extension; on any other
                 // server the control opens the app and nothing more.
                 guard initialRoute == nil,
-                    environment.activeSession?.capabilities.stories == true
+                    windowSession?.capabilities.stories == true
                 else { return }
                 storyStartsWithCamera = false
                 isComposingStory = true
@@ -300,13 +438,13 @@ struct ThemedAppShell: View {
                 // The same rule as "New story"; the composer itself falls back
                 // to its canvas where there is no camera.
                 guard initialRoute == nil,
-                    environment.activeSession?.capabilities.stories == true
+                    windowSession?.capabilities.stories == true
                 else { return }
                 storyStartsWithCamera = true
                 isComposingStory = true
             }
             .sheet(isPresented: $isComposingStory) {
-                if let session = environment.activeSession {
+                if let session = windowSession {
                     StoryComposerSheet(
                         session: session, startsWithCamera: storyStartsWithCamera,
                         onPosted: {})
@@ -389,7 +527,7 @@ struct ThemedAppShell: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(palette.background)
-        } else if let session = environment.activeSession {
+        } else if let session = windowSession {
             shell(session)
                 // Switching accounts has to change view identity: every
                 // timeline holds its model in `@State`, and without this the
@@ -528,7 +666,9 @@ struct ThemedAppShell: View {
         guard !Self.hasStarted else {
             // Another window of a running app: the environment is loaded,
             // but this scene still has its own place to come back to.
-            if let initialRoute { open(initialRoute) } else { restoreShell() }
+            await environment.loadIfNeeded()
+            pinWindowAccount()
+            if initialRoute != nil { openInitialRoute() } else { restoreShell() }
             return
         }
         Self.hasStarted = true
@@ -555,11 +695,21 @@ struct ThemedAppShell: View {
         // Whether they said yes is the notifier's to remember; the shell only
         // has to have asked once.
         if shouldAsk { _ = await environment.notifier.requestAuthorisation() }
+        pinWindowAccount()
         restoreShell()
         // An intent that opened the app left its destination behind, and it
         // outranks wherever the scene was.
         if let pending = IntentNavigation.take() { open(pending) }
-        if let initialRoute { open(initialRoute) }
+        openInitialRoute()
+    }
+
+    /// A window opened for one destination shows it. On the Mac that window
+    /// is the destination alone, as its root (`routeWindowShell`), so there
+    /// is nothing to push.
+    private func openInitialRoute() {
+        #if !os(macOS)
+            if let initialRoute { open(initialRoute) }
+        #endif
     }
 
     /// Puts back the tab, the sidebar row and what was pushed on each.
@@ -570,7 +720,7 @@ struct ThemedAppShell: View {
             // wherever the last one left the simulator.
             if MockMode.isEnabled { return }
         #endif
-        guard let session = environment.activeSession,
+        guard let session = windowSession,
             let restored = ShellRestoration.decode(storedRestoration, for: session.id)
         else { return }
         tabPaths = restored.tabPaths
@@ -589,7 +739,7 @@ struct ThemedAppShell: View {
     /// What the scene would restore to now; nil until the stored state has
     /// been read back, so that read cannot be overwritten before it happens.
     private var restoration: ShellRestoration? {
-        guard hasRestored, let id = environment.activeSession?.id else { return nil }
+        guard hasRestored, let id = windowSession?.id else { return nil }
         return ShellRestoration(
             accountID: id, tab: selectedTab, tabPaths: tabPaths,
             sidebarItem: sidebarItem, sidebarPaths: sidebarPaths, detailPaths: detailPaths)
@@ -657,7 +807,7 @@ struct ThemedAppShell: View {
         if let accountID = focus.accountID { environment.setActiveAccount(accountID) }
         // Only a feed this account actually shows: a Focus set up for a mode
         // the server has no surface for would leave a tab that is not there.
-        if let mode = focus.mode, environment.activeSession?.visibleModes.contains(mode) == true {
+        if let mode = focus.mode, windowSession?.visibleModes.contains(mode) == true {
             open(.timeline(TimelineKey(mode: mode, source: .home)))
         }
     }

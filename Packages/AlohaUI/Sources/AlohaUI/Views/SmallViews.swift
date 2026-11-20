@@ -84,7 +84,7 @@ public struct DraftsView: View {
         // Read again whenever sync brought a draft in from another device
         // or took one away (docs/14 §7).
         .task(id: DraftSync.shared.state(for: session.id).revision) { await load() }
-        .refreshable {
+        .alohaRefreshable {
             if DraftSync.shared.isEnabled(for: session) {
                 await DraftSync.shared.sync(session)
             }
@@ -325,7 +325,7 @@ public struct NotificationRequestsView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorStrip(_ message: String) -> some View {

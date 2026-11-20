@@ -198,7 +198,7 @@ public struct ConversationsView: View {
                 startConversation(with: account)
             }
         }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task { await load() }
     }
 

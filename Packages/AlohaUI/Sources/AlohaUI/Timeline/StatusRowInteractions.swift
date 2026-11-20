@@ -16,6 +16,9 @@ struct StatusRowInteractions: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
+    /// In a Mac `List` that selects, the list gives the menu for the row it
+    /// is on (`statusListNavigation`); a second one here would compete.
+    @Environment(\.statusListOwnsMenu) private var listOwnsMenu
 
     let status: Status
     let settings: AccountSettings
@@ -28,13 +31,27 @@ struct StatusRowInteractions: ViewModifier {
     private var displayed: Status { status.displayed }
 
     func body(content: Content) -> some View {
-        swiping(content)
-            .contextMenu {
+        menu(swiping(content))
+            .modifier(StatusLinkDrag(url: displayed.url))
+    }
+
+    @ViewBuilder
+    private func menu(_ row: some View) -> some View {
+        #if os(macOS)
+            if listOwnsMenu {
+                row
+            } else {
+                row.contextMenu {
+                    StatusMenu(status: status, onAction: onAction)
+                }
+            }
+        #else
+            row.contextMenu {
                 StatusMenu(status: status, onAction: onAction)
             } preview: {
                 preview
             }
-            .modifier(StatusLinkDrag(url: displayed.url))
+        #endif
     }
 
     // MARK: - Swipes

@@ -134,7 +134,7 @@ public struct StatisticsView: View {
             ExportShareSheet(url: file.url)
         }
         .task(id: days) { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     // MARK: - Sections

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import AlohaDesign
+import AlohaHTML
 import AlohaModels
 import AlohaNetwork
 import SwiftUI
@@ -100,12 +101,20 @@ struct ShellSheets: ViewModifier {
         @Environment(\.openWindow) private var openWindow
     #endif
 
+    /// The window's account: what its sheets act as (`WindowAccount`).
+    @Environment(\.windowAccountID) private var windowAccountID
+    private var session: AccountSession? { environment.session(for: windowAccountID) }
+
     @Binding var signIn: SignInPresentation?
     @Binding var composing: ComposerPresentation?
     @Binding var reportTarget: ReportTarget?
     @Binding var editing: EditRequest?
     @Binding var mediaPresentation: MediaPresentation?
     @Binding var sheet: ShellSheet?
+    /// A link tapped in a sheet that shows a post's text: handed to the shell
+    /// as a tap in the timeline is, so a mention, a hashtag or a fediverse
+    /// post opens in the app (docs/09 §10).
+    var followLink: (RichText.Link, AccountSession) -> Void = { _, _ in }
 
     func body(content: Content) -> some View {
         content
@@ -127,12 +136,12 @@ struct ShellSheets: ViewModifier {
                 .onChange(of: composing?.id, initial: true) { _, _ in
                     guard let request = composing else { return }
                     composing = nil
-                    guard let session = environment.activeSession else { return }
+                    guard let session else { return }
                     openWindow(value: ComposeWindowRequest(request, accountID: session.id))
                 }
             #else
                 .sheet(item: whenSignedIn($composing)) { request in
-                    if let session = environment.activeSession {
+                    if let session {
                         Group {
                             if let redraft = request.redraft {
                                 ComposerView(
@@ -152,7 +161,7 @@ struct ShellSheets: ViewModifier {
                 }
             #endif
             .sheet(item: whenSignedIn($sheet)) { sheet in
-                if let session = environment.activeSession {
+                if let session {
                     Group {
                         switch sheet {
                         case .delivery(let status):
@@ -170,7 +179,10 @@ struct ShellSheets: ViewModifier {
                         case .shareImage(let status):
                             ShareImageSheet(status: status, session: session)
                         case .reader(let status):
-                            ReaderView(status: status, session: session)
+                            ReaderView(status: status, session: session) { link in
+                                self.sheet = nil
+                                followLink(link, session)
+                            }
                         }
                     }
                     .presentationDetents(sheet.detents)
@@ -178,7 +190,7 @@ struct ShellSheets: ViewModifier {
                 }
             }
             .sheet(item: whenSignedIn($reportTarget)) { target in
-                if let session = environment.activeSession {
+                if let session {
                     ReportView(session: session, account: target.account, status: target.status)
                         // A report is a form with a typed explanation; it opens
                         // tall enough to write in.
@@ -186,7 +198,7 @@ struct ShellSheets: ViewModifier {
                 }
             }
             .sheet(item: whenSignedIn($editing)) { request in
-                if let session = environment.activeSession {
+                if let session {
                     ComposerView(
                         session: session, editing: request.status, source: request.source
                     )
@@ -198,7 +210,16 @@ struct ShellSheets: ViewModifier {
                     #endif
                 }
             }
-            #if os(visionOS)
+            #if os(macOS)
+                // A window of its own on the Mac, which can be sized, put full
+                // screen and kept open beside the timeline; a sheet held the
+                // whole main window at one size until it was closed.
+                .onChange(of: mediaPresentation?.id, initial: true) { _, _ in
+                    guard let presentation = mediaPresentation else { return }
+                    mediaPresentation = nil
+                    openWindow(value: MediaWindowRequest(presentation, accountID: session?.id))
+                }
+            #elseif os(visionOS)
                 // A window of its own on visionOS, so a video can be parked in
                 // space while reading continues here (docs/09 §3).
                 .onChange(of: mediaPresentation?.id, initial: true) { _, _ in
@@ -206,7 +227,7 @@ struct ShellSheets: ViewModifier {
                     mediaPresentation = nil
                     openWindow(
                         value: MediaWindowRequest(
-                            presentation, accountID: environment.activeSession?.id))
+                            presentation, accountID: session?.id))
                 }
             #else
                 .fullScreenCoverIfAvailable(item: $mediaPresentation) { presentation in
@@ -214,13 +235,13 @@ struct ShellSheets: ViewModifier {
                         attachments: presentation.attachments,
                         startIndex: presentation.index,
                         statusID: presentation.statusID,
-                        apiBase: environment.activeSession?.capabilities.apiBase
+                        apiBase: session?.capabilities.apiBase
                             ?? URL(string: "https://invalid.invalid/")!,
                         // The "Autoplay video" setting is the person's choice,
                         // not the tap's: an explicitly opened viewer must not
                         // override it either.
-                        autoplay: environment.activeSession?.settings.autoplayVideo ?? true,
-                        session: environment.activeSession
+                        autoplay: session?.settings.autoplayVideo ?? true,
+                        session: session
                     )
                     // The photograph grows out of the cell that was tapped and
                     // shrinks back into it, rather than cutting.
@@ -239,7 +260,7 @@ struct ShellSheets: ViewModifier {
         // Read while the modifier's body is being evaluated, not when the
         // binding fires: an environment read from a stored closure can be a
         // view update behind.
-        let hasSession = environment.activeSession != nil
+        let hasSession = session != nil
         return Binding(
             get: { hasSession ? binding.wrappedValue : nil },
             set: { newValue in binding.wrappedValue = hasSession ? newValue : nil })
@@ -263,6 +284,8 @@ struct ShellSheets: ViewModifier {
 /// each is confirmed rather than fired straight from a menu tap.
 struct ShellAlerts: ViewModifier {
     @Environment(AppEnvironment.self) private var environment
+    @Environment(\.windowAccountID) private var windowAccountID
+    private var session: AccountSession? { environment.session(for: windowAccountID) }
 
     @Binding var deleting: Status?
     @Binding var confirming: ModerationRequest?
@@ -280,7 +303,7 @@ struct ShellAlerts: ViewModifier {
                     get: { deleting != nil }, set: { if !$0 { deleting = nil } })
             ) {
                 Button(role: .destructive) {
-                    if let status = deleting, let session = environment.activeSession {
+                    if let status = deleting, let session {
                         Task {
                             failure = await StatusActions.delete(status, session: session)
                         }
@@ -303,7 +326,7 @@ struct ShellAlerts: ViewModifier {
                     get: { confirming != nil }, set: { if !$0 { confirming = nil } })
             ) {
                 Button(role: .destructive) {
-                    if let request = confirming, let session = environment.activeSession {
+                    if let request = confirming, let session {
                         Task {
                             failure = await StatusActions.moderate(request, session: session)
                         }

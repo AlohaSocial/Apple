@@ -116,7 +116,7 @@ public struct VideoModeView: View {
                 }
             }
         }
-        .refreshable {
+        .alohaRefreshable {
             await model.refresh()
             await loadContinueWatching()
         }

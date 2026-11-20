@@ -159,7 +159,7 @@ public struct FeaturedTagsView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     /// Lowercase, no `#`, at most 127 characters, nothing that normalises to

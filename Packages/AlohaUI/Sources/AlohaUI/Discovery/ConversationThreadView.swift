@@ -121,7 +121,7 @@ public struct ConversationThreadView: View {
                 ToolbarItem(placement: .primaryAction) { callButton }
             }
         }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task(id: session.hasNextcloudConnection) {
             talk = await TalkCall.capabilities(for: session, environment: environment)
         }

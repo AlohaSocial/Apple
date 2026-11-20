@@ -79,7 +79,7 @@ public struct VideoWatchView: View {
             .navigationBarTitleDisplayMode(.inline)
         #endif
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     /// The shape of the watch screen arriving: a black 16:9 box, then the

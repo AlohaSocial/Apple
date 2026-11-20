@@ -4,6 +4,7 @@ import AlohaDesign
 import AlohaNetwork
 import AlohaUI
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 /// The way into the app from outside any window: the Dock menu, the
@@ -204,5 +205,69 @@ enum MacDockIcon {
             source.draw(in: rect)
             return true
         }
+    }
+}
+
+/// Login: whether the app opens when the person logs in, and what closing
+/// the last window does, as their own pane in the Settings window.
+///
+/// The Mac gets no push from the server, so notifications arrive only while
+/// the app runs (docs/09 §2). Closing the last window leaves it running for
+/// that reason; opening at login is the other half.
+struct MacStartupSettings: View {
+    @State private var status = SMAppService.mainApp.status
+    @State private var failure: String?
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: Binding(get: { status == .enabled }, set: { setOpensAtLogin($0) })) {
+                    Text("Open at login", comment: "Mac setting")
+                    Text(
+                        "Aloha Social starts when you log in, so notifications arrive without opening it first.",
+                        comment: "Mac setting detail")
+                }
+                if status == .requiresApproval {
+                    HStack {
+                        Text(
+                            "Allow Aloha Social in Login Items to finish.",
+                            comment: "Mac setting: login item waiting for approval")
+                        Spacer()
+                        Button {
+                            SMAppService.openSystemSettingsLoginItems()
+                        } label: {
+                            Text("Open Login Items…", comment: "Mac setting action")
+                        }
+                    }
+                }
+                if let failure {
+                    Text(failure)
+                        .foregroundStyle(.red)
+                }
+            } footer: {
+                Text(
+                    "Closing the last window keeps Aloha Social running, so notifications keep coming. Quit it with ⌘Q.",
+                    comment: "Mac setting footer")
+            }
+        }
+        .formStyle(.grouped)
+        // The person can change it in System Settings while this is open.
+        .onAppear { status = SMAppService.mainApp.status }
+    }
+
+    private func setOpensAtLogin(_ isOn: Bool) {
+        failure = nil
+        do {
+            if isOn {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            failure = String(
+                localized: "That did not work: \(error.localizedDescription)",
+                comment: "Mac setting: open at login failed")
+        }
+        status = SMAppService.mainApp.status
     }
 }

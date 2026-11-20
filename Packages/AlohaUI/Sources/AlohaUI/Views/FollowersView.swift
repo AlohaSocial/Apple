@@ -87,7 +87,7 @@ public struct FollowersView: View {
         .alohaGround(palette)
         .navigationTitle(title)
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private var title: Text {

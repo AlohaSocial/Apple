@@ -76,7 +76,7 @@ struct MacMenuBarPanel: View {
                         Image(systemName: "square.and.pencil")
                     }
                 }
-                .keyboardShortcut("n", modifiers: [.command, .option])
+                .keyboardShortcut("n", modifiers: .command)
             }
 
             Divider()
@@ -287,10 +287,36 @@ struct MacLatestPosts: View {
                 .buttonStyle(.plain)
             }
         }
-        .task(id: session.id) {
-            let page = try? await session.client.decode(
-                LossyArray<Status>.self, from: Endpoint.timelines.timeline(.home, limit: 4))
-            statuses = page?.elements ?? []
+        .task(id: session.id) { await load() }
+    }
+
+    /// The cached home timeline first, so the panel opens with posts in it
+    /// and without a request; the server only when there is no cache yet or
+    /// the last ask is more than a few minutes old. It used to fetch every
+    /// time the panel opened.
+    private func load() async {
+        let key = TimelineKey(mode: .home, source: .home).storageKey
+        let cached =
+            (try? await session.timelineStore.latestStatuses(
+                accountID: session.id, timelineKey: key, limit: 4)) ?? []
+        if !cached.isEmpty { statuses = cached }
+        let now = Date.now
+        if !cached.isEmpty, let last = Self.lastFetch[session.id],
+            now.timeIntervalSince(last) < Self.refetchInterval
+        {
+            return
+        }
+        Self.lastFetch[session.id] = now
+        if let page = try? await session.client.decode(
+            LossyArray<Status>.self, from: Endpoint.timelines.timeline(.home, limit: 4)),
+            !page.elements.isEmpty
+        {
+            statuses = page.elements
         }
     }
+
+    private static let refetchInterval: TimeInterval = 5 * 60
+    /// When each account's newest posts were last asked for, for the life of
+    /// the process.
+    private static var lastFetch: [UUID: Date] = [:]
 }

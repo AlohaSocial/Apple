@@ -10,6 +10,8 @@ public struct StatusRow: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.alohaMetrics) private var metrics
     @Environment(AppEnvironment.self) private var environment
+    /// The window's account, which a fetched quote is asked for under.
+    @Environment(\.windowAccountID) private var windowAccountID
     /// The list's filters, for the post this one quotes.
     @Environment(\.filterVerdicts) private var filterVerdicts
     /// The scale `AvatarView` draws at, so the context line stays aligned
@@ -40,6 +42,10 @@ public struct StatusRow: View {
     @State private var isFilterRevealed = false
     /// A quoted post fetched by id, when the server sent only `quote_id`.
     @State private var fetchedQuote: Status?
+    /// Whether the row is in a list that selects on a click (the Mac's
+    /// `statusListNavigation`): the click is then the list's, and the post
+    /// opens on a double click or Return instead.
+    @Environment(\.statusListSelects) private var listSelects
     #if os(macOS)
         /// Whether the pointer is over this row. A Mac row that does not
         /// answer the pointer reads as a picture of a row.
@@ -253,7 +259,12 @@ public struct StatusRow: View {
         // button around them swallows every tap on a mention or hashtag. A
         // tap opens the post; so does the row's default action, which is
         // what VoiceOver, Switch Control and Full Keyboard Access activate.
-        .onTapGesture { onAction(.open(status)) }
+        // In a list that selects, the tap is the list's and only the row's
+        // buttons and links keep theirs (`.subviews`).
+        .gesture(
+            TapGesture().onEnded { onAction(.open(status)) },
+            including: listSelects ? .subviews : .all
+        )
         // The whole row reads as one element; the actions are custom actions
         // rather than six separate stops (docs/12 §3).
         .accessibilityElement(children: .combine)
@@ -649,7 +660,8 @@ public struct StatusRow: View {
 
     private var moreMenu: some View {
         Menu {
-            StatusMenu(status: status, onAction: onAction)
+            // The four actions are the buttons just before this one.
+            StatusMenu(status: status, includesActionStrip: false, onAction: onAction)
         } label: {
             Image(systemName: AlohaSymbol.more)
                 .font(.footnote)
@@ -699,7 +711,7 @@ public struct StatusRow: View {
     /// failure leaves the row as it was rather than showing an error.
     private func fetchQuote() async {
         guard fetchedQuote == nil, let id = displayed.quoteID,
-            let session = environment.activeSession
+            let session = environment.session(for: windowAccountID)
         else { return }
         guard
             let quote = try? await session.client.decode(

@@ -82,7 +82,7 @@ public struct ThreadReaderView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     // MARK: - Pieces

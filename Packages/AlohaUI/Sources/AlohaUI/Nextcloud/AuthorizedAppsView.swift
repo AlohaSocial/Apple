@@ -50,7 +50,7 @@ public struct AuthorizedAppsView: View {
             }
         }
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .confirmationDialog(
             revoking.map { Text("Sign \($0.name) out?", comment: "Revoke app confirmation title") }
                 ?? Text(verbatim: ""),

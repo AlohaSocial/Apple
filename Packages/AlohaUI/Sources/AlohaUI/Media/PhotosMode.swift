@@ -86,7 +86,7 @@ public struct PhotosModeView: View {
             await model.appear()
             await loadStories()
         }
-        .refreshable {
+        .alohaRefreshable {
             await model.refresh()
             await loadStories()
         }

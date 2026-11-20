@@ -15,6 +15,8 @@ public struct ThreadView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    /// Set where this thread is the whole of a window of its own.
+    @Environment(\.titlesWindowByAuthor) private var titlesWindowByAuthor
     @State private var isShowingSummary = false
     /// The opened photo post's own colours, found in what the app already
     /// holds (`PhotoTintSource`), for the page's wash.
@@ -28,6 +30,8 @@ public struct ThreadView: View {
     private let onAction: (StatusRowAction) -> Void
 
     @State private var focused: Status?
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
     /// Whether the screen is showing, rather than under one pushed over it.
     @State private var isOnScreen = false
     /// The post being read went while another screen covered this one.
@@ -63,7 +67,7 @@ public struct ThreadView: View {
 
     public var body: some View {
         ScrollViewReader { proxy in
-            List {
+            SelectableList(selection: $selectedID) {
                 if !ancestors.isEmpty {
                     Section {
                         ForEach(ancestors) { status in
@@ -112,11 +116,24 @@ public struct ThreadView: View {
                 }
             }
             .listStyle(.plain)
+            .statusListNavigation(
+                selection: $selectedID, ids: navigableIDs,
+                status: { id in navigableStatus(id) }, onAction: onAction,
+                open: { id in
+                    // The post being read is already open.
+                    guard id != focused?.id, let status = navigableStatus(id) else { return }
+                    onAction(.open(status))
+                },
+                refresh: { _ = await load() }
+            )
             .photoTintGround(tint, palette: palette)
             .loadsPhotoColours(of: tintAttachment, into: $photoColours)
             .onChange(of: tintInputs, initial: true) { tint = makeTint() }
             .environment(\.filterVerdicts, verdicts)
-            .navigationTitle(Text("Post", comment: "Thread screen title"))
+            .navigationTitle(windowTitle)
+            #if os(macOS)
+                .navigationSubtitle(windowSubtitle)
+            #endif
             #if os(macOS) || os(iOS)
                 // A reply where the thread ends: one line to write in,
                 // pinned above the keyboard, sent without a sheet or a
@@ -148,7 +165,7 @@ public struct ThreadView: View {
                 if !ancestors.isEmpty { proxy.scrollTo("focused", anchor: .top) }
                 await refill(after: filling)
             }
-            .refreshable { await load() }
+            .alohaRefreshable { await load() }
             .toolbar {
                 // The bar is the system's own material and draws its own
                 // controls; asking for a second layer of glass inside it is
@@ -379,15 +396,37 @@ public struct ThreadView: View {
         // The post being read keeps its long press for selecting its words;
         // every other post in the thread answers it as a timeline row does.
         if isFocused {
-            styled(row, isFocused: true)
+            styled(row, id: status.id, isFocused: true)
         } else {
             styled(
                 row.statusRowInteractions(status, session: session, onAction: onAction),
-                isFocused: false)
+                id: status.id, isFocused: false)
         }
     }
 
-    private func styled(_ row: some View, isFocused: Bool) -> some View {
+    /// The posts j and k walk, in the order they are drawn: the ones above,
+    /// the one being read, and the replies that are showing.
+    private var navigableIDs: [String] {
+        var ids = ancestors.map(\.id)
+        if let focused { ids.append(focused.id) }
+        guard layout.count == descendants.count else { return ids }
+        for entry in layout.rows(expanded: expandedFolds) {
+            guard case .reply(let index, _, _) = entry, descendants.indices.contains(index)
+            else { continue }
+            let reply = descendants[index]
+            if !reply.isHiddenByAuthor || revealedHidden.contains(reply.id) {
+                ids.append(reply.id)
+            }
+        }
+        return ids
+    }
+
+    private func navigableStatus(_ id: String) -> Status? {
+        if focused?.id == id { return focused }
+        return ancestors.first { $0.id == id } ?? descendants.first { $0.id == id }
+    }
+
+    private func styled(_ row: some View, id: String, isFocused: Bool) -> some View {
         row
             .listRowInsets(
                 EdgeInsets(
@@ -399,7 +438,23 @@ public struct ThreadView: View {
             // block with a painted rail down its edge read as a selected row
             // that never got selected. What marks it out is its size and the
             // chrome underneath it.
-            .listRowBackground(rowGround)
+            .statusListRow(id, ground: rowGround)
+    }
+
+    /// "Post" in a column; the author in a window of its own, where the
+    /// title is what tells one open window from the next.
+    private var windowTitle: Text {
+        if titlesWindowByAuthor, let focused {
+            return Text(verbatim: focused.displayed.account.bestDisplayName)
+        }
+        return Text("Post", comment: "Thread screen title")
+    }
+
+    private var windowSubtitle: Text {
+        if titlesWindowByAuthor, let focused {
+            return Text(verbatim: "@" + focused.displayed.account.acct)
+        }
+        return Text(verbatim: "")
     }
 
     private func errorStrip(_ message: String) -> some View {

@@ -63,7 +63,7 @@ struct DiscoverMediaGrid: View {
         }
         .background(palette.background)
         .task(id: media) { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorStrip(_ message: String) -> some View {

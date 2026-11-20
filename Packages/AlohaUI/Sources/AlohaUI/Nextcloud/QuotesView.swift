@@ -37,8 +37,11 @@ public struct QuotesView: View {
         self.onAction = onAction
     }
 
+    /// The selected post (`statusListNavigation`).
+    @State private var selectedID: String?
+
     public var body: some View {
-        List {
+        SelectableList(selection: $selectedID) {
             if let errorMessage {
                 errorRow(errorMessage)
             }
@@ -56,7 +59,7 @@ public struct QuotesView: View {
                 )
                 .statusRowInteractions(quote, session: session, onAction: onAction)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .listRowBackground(palette.background)
+                .statusListRow(quote.id, ground: palette.background)
                 .listRowSeparator(.hidden)
                 .onAppear {
                     if quote.id == shownQuotes.last?.id { Task { await loadMore() } }
@@ -81,6 +84,11 @@ public struct QuotesView: View {
             }
         }
         .listStyle(.plain)
+        .statusListNavigation(
+            selection: $selectedID, ids: shownQuotes.map(\.id),
+            status: { id in shownQuotes.first { $0.id == id } }, onAction: onAction,
+            refresh: { await load() }
+        )
         .alohaGround(palette)
         .environment(\.filterVerdicts, verdicts)
         .onStatusesRemoved(for: session) { removal in
@@ -97,7 +105,7 @@ public struct QuotesView: View {
         }
         .navigationTitle(Text("Quotes", comment: "Screen title"))
         .task { await load() }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
     }
 
     private func errorRow(_ message: String) -> some View {

@@ -173,7 +173,7 @@ public struct ModerationReportsView: View {
         }
         .alohaGround(palette)
         .navigationTitle(Text("Reports", comment: "Screen title"))
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task(id: showsResolved) { await load() }
     }
 

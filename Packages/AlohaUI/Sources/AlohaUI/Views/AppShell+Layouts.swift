@@ -394,7 +394,7 @@ extension ThemedAppShell {
                 selection: $sidebarItem,
                 selectedSource: $selectedSource,
                 onAddAccount: { presentSignIn() },
-                onSwitchAccount: { environment.setActiveAccount($0) }
+                onSwitchAccount: { switchAccount(to: $0) }
             )
             .navigationSplitViewColumnWidth(min: 230, ideal: 260, max: 320)
         } detail: {
@@ -412,13 +412,20 @@ extension ThemedAppShell {
                     // Declared once each, rather than on the stack *and* on every
                     // screen, which drew two "New post" buttons side by side.
                     .toolbar { composeToolbar }
+                    .navigationDestination(for: Route.self) { destination($0, session: session) }
+                }
+                #if os(macOS)
+                    // On the stack rather than its root, so the field stays in
+                    // the toolbar while a post or a profile is pushed.
                     .modifier(
-                        GlobalSearchField(isShown: !hasOwnSearchField(sidebarItem)) { query in
+                        GlobalSearchField(
+                            isShown: !hasOwnSearchField(sidebarItem), text: $searchText,
+                            isFocused: $isSearchFocused
+                        ) { query in
                             sidebarItem = .route(.search(query: query.isEmpty ? nil : query))
                         }
                     )
-                    .navigationDestination(for: Route.self) { destination($0, session: session) }
-                }
+                #endif
                 // A stack per sidebar row, as on iPad: each row keeps what was
                 // pushed on it. A fresh stack for each row rather than one stack
                 // whose path is swapped, which would animate as a pop and a push.
@@ -534,9 +541,32 @@ extension ThemedAppShell {
                 detail.destination(route, session: session)
                     // A different post is a different screen, as on iPad.
                     .id(route)
+                    // Opening a post beside the list leaves the keyboard on
+                    // the list, as Mail's reading pane does.
+                    .environment(\.statusListTakesFocus, false)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(palette.background)
+        }
+    #endif
+
+    #if os(macOS)
+        /// A window opened for one destination: that screen as the root of
+        /// a stack of its own, and what is opened from it pushed on top.
+        func routeWindowShell(_ session: AccountSession) -> some View {
+            NavigationStack(path: sidebarPath(sidebarItem)) {
+                Group {
+                    if let initialRoute {
+                        destination(initialRoute, session: session, isRoot: true)
+                    }
+                }
+                .navigationDestination(for: Route.self) { destination($0, session: session) }
+            }
+            .alohaWindowGround(palette)
+            // Titled by whose post it is, like a message window is titled by
+            // its subject, rather than every window reading "Post".
+            .environment(\.titlesWindowByAuthor, true)
+            .frame(minWidth: 420, minHeight: 360)
         }
     #endif
 
@@ -559,7 +589,7 @@ extension ThemedAppShell {
 
     /// The screens that search themselves — conversations, people, search —
     /// and so show their own field where the app-wide one would be.
-    private func hasOwnSearchField(_ item: SidebarItem) -> Bool {
+    func hasOwnSearchField(_ item: SidebarItem) -> Bool {
         switch item {
         case .route(.conversations), .route(.explore), .route(.search): true
         default: false
@@ -626,7 +656,11 @@ extension ThemedAppShell {
                 #endif
             }
         }
-        .keyboardShortcut("n", modifiers: .command)
+        #if !os(macOS)
+            .keyboardShortcut("n", modifiers: .command)
+        #endif
+        // On the Mac ⌘N is File ▸ New Post's, which composes for the window
+        // in front; the button claiming it too made the two fight over it.
         .help(Text("New post", comment: "Toolbar action"))
     }
 
@@ -830,41 +864,39 @@ enum SearchTabScope: Hashable {
     case discover
 }
 
-/// The Mac's way to search from any screen that does not search itself: a
-/// magnifying glass at the trailing end of the toolbar, which opens Search.
-///
-/// It was a field in the sidebar, which put two fields on screen wherever a
-/// screen searched itself, and then a field in the toolbar, whose width
-/// pushed the filter in the toolbar's centre off to one side. The system's
-/// own "minimised" search field is not offered on the Mac, so this is a
-/// button: the field is the Search screen's, one click away, and ⌘F opens it
-/// from the keyboard as before.
-private struct GlobalSearchField: ViewModifier {
-    let isShown: Bool
-    let onSubmit: (String) -> Void
+#if os(macOS)
+    /// The Mac's search field in the toolbar, on every screen that does not
+    /// search itself (docs/09 §2): type, press Return, and Search opens with
+    /// the results. ⌘F puts the cursor in it (`focusSearch`).
+    ///
+    /// It was a button that jumped to the Search screen, because an earlier
+    /// field pushed the notification filter in the toolbar's centre aside;
+    /// the screens with a filter of their own search themselves and so show
+    /// no field here.
+    private struct GlobalSearchField: ViewModifier {
+        let isShown: Bool
+        @Binding var text: String
+        var isFocused: FocusState<Bool>.Binding
+        let onSubmit: (String) -> Void
 
-    func body(content: Content) -> some View {
-        #if os(macOS)
+        func body(content: Content) -> some View {
             if isShown {
-                content.toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            onSubmit("")
-                        } label: {
-                            Label {
-                                Text("Search", comment: "Menu item")
-                            } icon: {
-                                Image(systemName: AlohaSymbol.search)
-                            }
-                        }
-                        .help(Text("Search", comment: "Menu item"))
+                content
+                    .searchable(
+                        text: $text, placement: .toolbar,
+                        prompt: Text("Search", comment: "Toolbar search field")
+                    )
+                    .searchFocused(isFocused)
+                    .onSubmit(of: .search) {
+                        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        // The query moves to the Search screen's own field;
+                        // this one is left empty for the next search.
+                        text = ""
+                        onSubmit(query)
                     }
-                }
             } else {
                 content
             }
-        #else
-            content
-        #endif
+        }
     }
-}
+#endif

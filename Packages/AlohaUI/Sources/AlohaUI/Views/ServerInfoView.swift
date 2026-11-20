@@ -166,7 +166,7 @@ public struct ServerInfoView: View {
                 ProgressView()
             }
         }
-        .refreshable { await load() }
+        .alohaRefreshable { await load() }
         .task { await load() }
     }
 
