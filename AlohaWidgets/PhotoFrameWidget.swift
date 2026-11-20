@@ -116,7 +116,7 @@ struct PhotoFrameWidget: Widget {
         .configurationDisplayName(Text("Photo frame", comment: "Widget name"))
         .description(
             Text(
-                "Pictures from your timeline, a hashtag, a person or a list.",
+                "Photos from your timeline, a hashtag, a person or a list.",
                 comment: "Widget description")
         )
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
@@ -173,7 +173,7 @@ struct PhotoFrameView: View {
                 "Choose a hashtag, person or list in the widget's settings.",
                 comment: "Photo frame without a complete source")
         case .noPhotos:
-            Text("No pictures here lately.", comment: "Photo frame whose source has none")
+            Text("No photos here lately.", comment: "Photo frame whose source has none")
         case .openApp, .ready:
             SnapshotPlaceholder.openApp
         }

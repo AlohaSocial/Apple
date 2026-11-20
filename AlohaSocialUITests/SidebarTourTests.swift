@@ -113,7 +113,7 @@ import XCTest
                 let accountItems = ["My profile", "Settings"]
             #else
                 let accountItems = [
-                    "My profile", "Follow requests", "Liked posts", "Bookmarks", "Blocking",
+                    "My profile", "Follow requests", "Favorites", "Bookmarks", "Blocking",
                     "Settings",
                 ]
             #endif
@@ -158,7 +158,7 @@ import XCTest
             shoot("20-mac-home")
 
             let expectations: [(row: String, marker: String)] = [
-                ("Activities", "Bob favourited your post"),
+                ("Activities", "Bob liked your post"),
                 ("Direct messages", "Bob"),
                 ("Discover", "Discover"),
                 ("Your lists", "Colleagues"),

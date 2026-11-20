@@ -50,7 +50,7 @@ struct DiscoverMediaGrid: View {
             } else if statuses.isEmpty && errorMessage == nil {
                 ContentUnavailableView {
                     switch media {
-                    case .image: Text("No pictures trending", comment: "Empty Discover pictures")
+                    case .image: Text("No photos trending", comment: "Empty Discover pictures")
                     case .video: Text("No videos trending", comment: "Empty Discover videos")
                     }
                 } description: {

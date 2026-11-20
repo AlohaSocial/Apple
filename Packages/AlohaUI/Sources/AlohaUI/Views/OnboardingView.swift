@@ -291,7 +291,7 @@ public struct ModeSelectionView: View {
     private func detail(_ mode: FeedMode) -> String {
         switch mode {
         case .home: String(localized: "Everything, in order", comment: "Mode detail")
-        case .photos: String(localized: "A grid of pictures", comment: "Mode detail")
+        case .photos: String(localized: "A grid of photos", comment: "Mode detail")
         case .video:
             String(localized: "Long-form video, with where you got to", comment: "Mode detail")
         case .shorts: String(localized: "Short vertical clips, full screen", comment: "Mode detail")

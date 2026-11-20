@@ -104,7 +104,7 @@
                     .strokeBorder(.white.opacity(0.18), lineWidth: 1)
             )
             .accessibilityElement(children: .contain)
-            .accessibilityLabel(Text("Live camera preview", comment: "Story camera"))
+            .accessibilityLabel(Text("Live camera preview", comment: "Short camera"))
             .accessibilityIdentifier("story.camera")
             .task { await camera.start() }
             .onDisappear { camera.stop() }

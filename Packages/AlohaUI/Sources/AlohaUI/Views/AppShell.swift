@@ -103,7 +103,7 @@ struct ThemedAppShell: View {
     @State var composing: ComposerPresentation?
     @State private var isComposingStory = false
     /// Whether the story composer opens on the full-screen camera: the
-    /// "Story camera" control rather than "New story".
+    /// "Short camera" control rather than "New short".
     @State private var storyStartsWithCamera = false
     @Namespace private var mediaTransition
     /// The compose button's zoom into the composer (`ComposeTransition`).
@@ -435,7 +435,7 @@ struct ThemedAppShell: View {
             .onReceive(
                 NotificationCenter.default.publisher(for: RouteResolver.storyCameraRequested)
             ) { _ in
-                // The same rule as "New story"; the composer itself falls back
+                // The same rule as "New short"; the composer itself falls back
                 // to its canvas where there is no camera.
                 guard initialRoute == nil,
                     windowSession?.capabilities.stories == true

@@ -122,10 +122,10 @@ public enum RouteResolver {
     public static let composeRequested = Notification.Name("alohasocial.compose.requested")
 
     /// Posted when `alohasocial://story` is opened — the Control Center
-    /// "New story" control. The story composer is a sheet too.
+    /// "New short" control. The story composer is a sheet too.
     public static let storyComposerRequested = Notification.Name("alohasocial.story.requested")
 
-    /// Posted when `alohasocial://story?camera=1` is opened — the "Story
+    /// Posted when `alohasocial://story?camera=1` is opened — the "Short
     /// camera" control: the story composer with the full-screen camera
     /// already up, for a picture or a video taken now.
     public static let storyCameraRequested = Notification.Name("alohasocial.story.camera.requested")

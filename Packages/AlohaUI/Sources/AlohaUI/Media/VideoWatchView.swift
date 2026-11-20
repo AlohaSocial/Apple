@@ -325,7 +325,7 @@ public struct VideoWatchView: View {
         // crowd's size (docs/05 §4).
         let showsCounts = session.settings.showPopularityCounts
         let favourites = Text(
-            "^[\(target.favouritesCount) favourite](inflect: true)", comment: "Watch page count")
+            "^[\(target.favouritesCount) like](inflect: true)", comment: "Watch page count")
         let boosts = Text(
             "^[\(target.reblogsCount) boost](inflect: true)", comment: "Watch page count")
         switch (showsCounts && target.favouritesCount > 0, showsCounts && target.reblogsCount > 0) {
@@ -413,7 +413,7 @@ public struct VideoWatchView: View {
                 pill(
                     symbol: target.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
                     title: Text(target.favouritesCount, format: .number.notation(.compactName)),
-                    label: Text("Favourite", comment: "Status action"),
+                    label: Text("Like", comment: "Status action"),
                     isOn: target.favourited, tint: palette.favourite
                 ) { onAction(.favourite(status)) }
 

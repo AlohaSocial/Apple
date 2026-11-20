@@ -139,7 +139,7 @@ struct UnreadComplication: Widget {
         }
         .configurationDisplayName(Text("Unread", comment: "Watch complication name"))
         .description(
-            Text("Notifications you haven't read yet.", comment: "Watch complication description")
+            Text("Activities you haven't read yet.", comment: "Watch complication description")
         )
         .supportedFamilies([
             .accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular,
@@ -200,7 +200,7 @@ struct UnreadComplicationView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Label {
-                        Text("Notifications", comment: "Watch rectangular complication title")
+                        Text("Activities", comment: "Watch rectangular complication title")
                     } icon: {
                         Image(systemName: "bell.fill")
                     }
@@ -228,10 +228,10 @@ struct UnreadComplicationView: View {
     private var accessibilityText: Text {
         if let count {
             Text(
-                "^[\(count) unread notification](inflect: true)",
+                "^[\(count) unread activity](inflect: true)",
                 comment: "Watch complication accessibility label")
         } else {
-            Text("Notifications not counted yet", comment: "Watch complication accessibility label")
+            Text("Activities not counted yet", comment: "Watch complication accessibility label")
         }
     }
 }

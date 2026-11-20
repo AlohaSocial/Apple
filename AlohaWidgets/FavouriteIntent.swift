@@ -13,7 +13,7 @@ import Foundation
 /// the server refuses.
 struct FavouriteFromWidgetIntent: AppIntent {
     static let title = LocalizedStringResource(
-        "Favourite a post", comment: "Widget intent title, not shown in the widget itself")
+        "Like a post", comment: "Widget intent title, not shown in the widget itself")
     /// Only the widget offers it: in Shortcuts a post id typed by hand is not
     /// something anybody can use.
     static let isDiscoverable = false
@@ -24,7 +24,7 @@ struct FavouriteFromWidgetIntent: AppIntent {
     @Parameter(title: LocalizedStringResource("Post", comment: "Widget intent parameter"))
     var statusID: String
 
-    @Parameter(title: LocalizedStringResource("Favourite", comment: "Widget intent parameter"))
+    @Parameter(title: LocalizedStringResource("Like", comment: "Widget intent parameter"))
     var favourite: Bool
 
     init() {}

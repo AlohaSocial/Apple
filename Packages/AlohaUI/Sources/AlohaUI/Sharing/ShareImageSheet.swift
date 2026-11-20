@@ -116,7 +116,7 @@ struct ShareImageSheet: View {
     private var revealControl: some View {
         VStack(alignment: .leading, spacing: AlohaMetrics.space2) {
             Text(
-                "Content behind a warning or a sensitive picture stays hidden in the image.",
+                "Content behind a warning or a sensitive photo stays hidden in the image.",
                 comment: "Share as image: explanation of hidden content"
             )
             .font(.footnote)
@@ -170,7 +170,7 @@ struct ShareImageSheet: View {
                     comment: "Share as image: stands in for text behind a content warning")
             } else if picture == nil, post.mediaAttachments.contains(where: { $0.type == .image }) {
                 String(
-                    localized: "Sensitive picture not shown",
+                    localized: "Sensitive photo not shown",
                     comment: "Share as image: stands in for a covered sensitive picture")
             } else {
                 nil

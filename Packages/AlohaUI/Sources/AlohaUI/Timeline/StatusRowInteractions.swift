@@ -92,9 +92,9 @@ struct StatusRowInteractions: ViewModifier {
             swipe(.favourite(status), tint: palette.favourite) {
                 Label {
                     if displayed.favourited {
-                        Text("Unfavourite", comment: "Swipe action on a post")
+                        Text("Unlike", comment: "Swipe action on a post")
                     } else {
-                        Text("Favourite", comment: "Swipe action on a post")
+                        Text("Like", comment: "Swipe action on a post")
                     }
                 } icon: {
                     Image(

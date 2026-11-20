@@ -253,7 +253,7 @@ public struct ComposerView: View {
                         comment: "Alt text warning detail")
                 } else {
                     Text(
-                        "Suggested descriptions are added only once you accept them. Check each one says what matters in the picture.",
+                        "Suggested descriptions are added only once you accept them. Check each one says what matters in the photo.",
                         comment: "Alt text warning detail when suggestions wait for review")
                 }
             }

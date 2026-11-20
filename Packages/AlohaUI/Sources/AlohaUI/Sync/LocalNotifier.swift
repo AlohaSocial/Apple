@@ -36,7 +36,7 @@ public struct LocalNotifier: Sendable {
         // messaging does.
         let favourite = UNNotificationAction(
             identifier: "favourite",
-            title: String(localized: "Favourite", comment: "Notification action"),
+            title: String(localized: "Like", comment: "Notification action"),
             options: [.authenticationRequired])
         let boost = UNNotificationAction(
             identifier: "boost",
@@ -262,7 +262,7 @@ public struct LocalNotifier: Sendable {
         switch kind {
         case .mention: String(localized: "mention", comment: "Digest summary kind")
         case .reblog: String(localized: "boost", comment: "Digest summary kind")
-        case .favourite: String(localized: "favourite", comment: "Digest summary kind")
+        case .favourite: String(localized: "like", comment: "Digest summary kind")
         case .follow: String(localized: "follow", comment: "Digest summary kind")
         case .followRequest: String(localized: "request", comment: "Digest summary kind")
         case .poll: String(localized: "poll", comment: "Digest summary kind")
@@ -274,7 +274,7 @@ public struct LocalNotifier: Sendable {
         case .severedRelationships: String(localized: "separation", comment: "Digest summary kind")
         case .annualReport: String(localized: "report", comment: "Digest summary kind")
         case .storyReaction: String(localized: "reaction", comment: "Digest summary kind")
-        case .storyComment: String(localized: "story reply", comment: "Digest summary kind")
+        case .storyComment: String(localized: "short reply", comment: "Digest summary kind")
         case .tagged: String(localized: "photo tag", comment: "Digest summary kind")
         case .blueskyRepostLiked, .blueskyRepostReposted, .blueskyVerified,
             .blueskyUnverified, .blueskyStarterPackJoined:
@@ -406,7 +406,7 @@ public struct LocalNotifier: Sendable {
             return String(localized: "\(subject) mentioned you", comment: "Notification title")
         case .favourite:
             return String(
-                localized: "\(subject) favourited your post", comment: "Notification title")
+                localized: "\(subject) liked your post", comment: "Notification title")
         case .reblog:
             return String(localized: "\(subject) boosted your post", comment: "Notification title")
         case .follow:
@@ -425,10 +425,10 @@ public struct LocalNotifier: Sendable {
             return String(localized: "Some of your follows were cut", comment: "Notification title")
         case .storyReaction:
             return String(
-                localized: "\(subject) reacted to your story", comment: "Notification title")
+                localized: "\(subject) reacted to your short", comment: "Notification title")
         case .storyComment:
             return String(
-                localized: "\(subject) replied to your story", comment: "Notification title")
+                localized: "\(subject) replied to your short", comment: "Notification title")
         case .tagged:
             return String(
                 localized: "\(subject) tagged you in a photo", comment: "Notification title")

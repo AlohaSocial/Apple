@@ -398,7 +398,7 @@ public struct VideoCard: View {
         let age = Text(PostAge.short(target.createdAt))
         if showsCounts, target.favouritesCount > 0 {
             let count = Text(
-                "^[\(target.favouritesCount) favourite](inflect: true)",
+                "^[\(target.favouritesCount) like](inflect: true)",
                 comment: "Video byline count")
             return Text("\(name) · \(count) · \(age)", comment: "Video byline with a count")
         }

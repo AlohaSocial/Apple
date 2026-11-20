@@ -143,7 +143,7 @@ struct PhotoFrameConfiguration: WidgetConfigurationIntent {
     static let title = LocalizedStringResource("Photo frame", comment: "Widget configuration")
     static let description = IntentDescription(
         LocalizedStringResource(
-            "Where the pictures come from.", comment: "Widget configuration description"))
+            "Where the photos come from.", comment: "Widget configuration description"))
 
     @Parameter(title: LocalizedStringResource("Account", comment: "Widget configuration parameter"))
     var account: WidgetAccountEntity?

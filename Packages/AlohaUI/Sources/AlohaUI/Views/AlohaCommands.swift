@@ -240,7 +240,7 @@ import SwiftUI
                     Divider()
 
                     postAction(.favourite, key: "l", modifiers: []) {
-                        Text("Favourite", comment: "Menu item: the post in focus")
+                        Text("Like", comment: "Menu item: the post in focus")
                     }
                     postAction(.boost, key: "b", modifiers: []) {
                         Text("Boost", comment: "Menu item: the post in focus")
@@ -335,7 +335,7 @@ import SwiftUI
                         Text("Boost", comment: "Menu item: the selected post")
                     }
                     postAction(.favourite, key: "l", modifiers: [.command, .shift]) {
-                        Text("Favourite", comment: "Menu item: the selected post")
+                        Text("Like", comment: "Menu item: the selected post")
                     }
                     postAction(.bookmark, key: "d", modifiers: .command) {
                         Text("Bookmark", comment: "Menu item: the selected post")

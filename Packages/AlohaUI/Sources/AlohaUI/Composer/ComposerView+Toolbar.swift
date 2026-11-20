@@ -229,14 +229,14 @@ extension ComposerView {
                     isShowingGIFPicker = true
                 } label: {
                     Label {
-                        Text("Add a picture from the library", comment: "Composer action")
+                        Text("Add a photo from the library", comment: "Composer action")
                     } icon: {
                         Image(systemName: "photo.stack")
                     }
                 }
                 .disabled(!model.canAddMedia)
                 .accessibilityLabel(
-                    Text("Add a picture from the library", comment: "Composer action"))
+                    Text("Add a photo from the library", comment: "Composer action"))
 
                 Button {
                     isShowingPlacePicker = true

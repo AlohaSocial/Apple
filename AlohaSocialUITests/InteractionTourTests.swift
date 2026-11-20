@@ -34,7 +34,7 @@ import XCTest
         func testFavouriteAndBoostChangeState() {
             launch()
             // Bob's content-warned post is first and starts at zero of each.
-            let favourite = app.buttons.matching(identifier: "Favourite").element(boundBy: 0)
+            let favourite = app.buttons.matching(identifier: "Like").element(boundBy: 0)
             XCTAssertTrue(favourite.waitForExistence(timeout: 5))
             favourite.tap()
             sleep(1)
@@ -93,7 +93,7 @@ import XCTest
             let feed = app.scrollViews["photos.feed"].firstMatch
             XCTAssertTrue(
                 feed.waitForExistence(timeout: 10), "Photos did not default to the post feed")
-            XCTAssertTrue(app.buttons["Favourite"].firstMatch.exists, "Photo post actions missing")
+            XCTAssertTrue(app.buttons["Like"].firstMatch.exists, "Photo post actions missing")
             XCTAssertTrue(
                 app.buttons["More actions"].firstMatch.exists, "Photo post header missing")
             shoot("56-photos-feed")

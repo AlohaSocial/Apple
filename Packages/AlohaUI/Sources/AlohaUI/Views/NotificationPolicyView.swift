@@ -57,7 +57,7 @@ public struct NotificationPolicyView: View {
                         policy: policy)
                 } footer: {
                     Text(
-                        "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered notifications screen instead of your inbox.",
+                        "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered activities screen instead of your inbox.",
                         comment: "Notification policy explanation")
 
                     // docs/05 §6: on Nextcloud Social `drop` behaves as
@@ -80,7 +80,7 @@ public struct NotificationPolicyView: View {
                             HStack {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
                                 Text(
-                                    "Filtered notifications",
+                                    "Filtered activities",
                                     comment: "Filtered notifications section")
                                 Spacer()
                                 Text(verbatim: "\(summary.pendingRequestsCount)")
@@ -90,7 +90,7 @@ public struct NotificationPolicyView: View {
                         }
                         .accessibilityLabel(
                             Text(
-                                "Filtered notifications: \(summary.pendingRequestsCount) waiting",
+                                "Filtered activities: \(summary.pendingRequestsCount) waiting",
                                 comment: "Filtered count"))
                     }
                 }
@@ -98,7 +98,7 @@ public struct NotificationPolicyView: View {
                 Section {
                     NavigationLink(value: Route.notificationRequests) {
                         Label {
-                            Text("Open filtered notifications", comment: "Policy action")
+                            Text("Open filtered activities", comment: "Policy action")
                         } icon: {
                             Image(systemName: "line.3.horizontal.decrease.circle")
                         }
@@ -120,7 +120,7 @@ public struct NotificationPolicyView: View {
             }
         }
         .alohaGround(palette)
-        .navigationTitle(Text("Notification policy", comment: "Screen title"))
+        .navigationTitle(Text("Activity policy", comment: "Screen title"))
         .task { await load() }
     }
 
@@ -132,7 +132,7 @@ public struct NotificationPolicyView: View {
                 Text("You decide who reaches you", comment: "Notification policy notice title")
                     .font(.headline)
                 Text(
-                    "Notifications from people you don't know can wait in Filtered notifications instead of your inbox. New accounts start this way; yours can too.",
+                    "Activities from people you don't know can wait in Filtered activities instead of your inbox. New accounts start this way; yours can too.",
                     comment: "Notification policy notice detail"
                 )
                 .font(.footnote)

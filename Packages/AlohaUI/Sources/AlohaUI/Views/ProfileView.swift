@@ -545,7 +545,7 @@ public struct ProfileView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(
-                Text("Play \(account.bestDisplayName)'s stories", comment: "Profile stories ring"))
+                Text("Play \(account.bestDisplayName)'s shorts", comment: "Profile stories ring"))
         }
     }
 

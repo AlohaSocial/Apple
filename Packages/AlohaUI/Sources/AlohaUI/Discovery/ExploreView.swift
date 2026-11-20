@@ -148,7 +148,7 @@ public struct ExploreView: View {
         switch section {
         case .people: Text("People", comment: "Discover section")
         case .packs: Text("Packs", comment: "Discover section")
-        case .pictures: Text("Pictures", comment: "Discover section")
+        case .pictures: Text("Photos", comment: "Discover section")
         case .videos: Text("Videos", comment: "Discover section")
         case .hashtags: Text("Tags", comment: "Discover section")
         }

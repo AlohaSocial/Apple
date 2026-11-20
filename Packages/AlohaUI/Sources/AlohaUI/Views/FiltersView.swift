@@ -211,7 +211,7 @@ enum FilterContextName {
     static func of(_ context: FilterContext) -> String {
         switch context {
         case .home: String(localized: "Home", comment: "Filter context")
-        case .notifications: String(localized: "Notifications", comment: "Filter context")
+        case .notifications: String(localized: "Activities", comment: "Filter context")
         case .public: String(localized: "Public timelines", comment: "Filter context")
         case .thread: String(localized: "Conversations", comment: "Filter context")
         case .account: String(localized: "Profiles", comment: "Filter context")
