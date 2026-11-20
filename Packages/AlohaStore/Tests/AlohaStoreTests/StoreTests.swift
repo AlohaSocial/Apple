@@ -106,6 +106,32 @@ struct TimelineStorePersistenceTests {
         #expect(cached.compactMap(\.status).map(\.id) == (1...240).reversed().map { "\($0)" })
     }
 
+    /// The cap is on what is kept for next launch. A page below it is the
+    /// timeline model's to show from memory; written here it would be
+    /// trimmed off at once, leaving its statuses behind as orphans.
+    @Test("Paging past the cap keeps the cache at the cap and writes no orphans")
+    func pagingPastTheCap() async throws {
+        let container = StoreContainer.make(inMemory: true)
+        let timelines = TimelineStore(modelContainer: container)
+        let accountID = UUID()
+        let key = "home:local"
+        let cap = CachePolicy.limit(forTimelineKey: key)
+        func page(_ ids: ClosedRange<Int>) -> [Status] { ids.reversed().map { status("\($0)") } }
+
+        _ = try await timelines.apply(
+            page: page(1001...(1000 + cap)), accountID: accountID, timelineKey: key,
+            direction: .cold, pageWasFull: true)
+        let rows = try await timelines.apply(
+            page: page(961...1000), accountID: accountID, timelineKey: key,
+            direction: .older, pageWasFull: true)
+
+        #expect(rows.count == cap)
+        let cached = try await timelines.cachedTimeline(accountID: accountID, timelineKey: key)
+        #expect(cached.count == cap)
+        #expect(try await timelines.statuses(accountID: accountID, ids: ["961", "1000"]).isEmpty)
+        #expect(try ModelContext(container).fetchCount(FetchDescriptor<StatusRecord>()) == cap)
+    }
+
     /// A favourite tapped while a refresh is on the wire: the page carries
     /// the post as it was before, and must not put that back.
     @Test("A preserved status keeps its cached copy against a stale page")

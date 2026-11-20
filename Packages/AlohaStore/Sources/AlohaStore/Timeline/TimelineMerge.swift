@@ -53,6 +53,11 @@ public enum TimelineMerge {
         /// Filling a specific gap, which is closed only when the page proves
         /// the two ranges now touch.
         case fillingGap(id: String)
+        /// Filling a gap from its lower edge: `min_id` of the row just below
+        /// it, so what arrives joins the range the reader is in rather than
+        /// the one above. The gap stays above the page, under the same row,
+        /// until a page reaches the range above it.
+        case fillingGapFromBelow(id: String)
     }
 
     /// - Parameters:
@@ -70,10 +75,13 @@ public enum TimelineMerge {
         guard !page.isEmpty else {
             // An empty page while filling a gap proves there is nothing between
             // the two ranges, so the gap closes.
-            if case .fillingGap(let id) = direction {
+            switch direction {
+            case .fillingGap(let id), .fillingGapFromBelow(let id):
                 return Plan(
                     slots: existing.filter { $0.statusID != id },
                     insertedStatusIDs: [], closedGapIDs: [id], openedGapIDs: [])
+            case .newer, .older, .cold:
+                break
             }
             return Plan(slots: existing, insertedStatusIDs: [], closedGapIDs: [], openedGapIDs: [])
         }
@@ -95,6 +103,10 @@ public enum TimelineMerge {
 
         case .fillingGap(let id):
             plan = planGapFill(existing: existing, page: page, gapID: id, pageWasFull: pageWasFull)
+
+        case .fillingGapFromBelow(let id):
+            plan = planGapFillFromBelow(
+                existing: existing, page: page, gapID: id, pageWasFull: pageWasFull)
         }
 
         // The store reads a timeline back sorted by position, so an order the
@@ -271,6 +283,55 @@ public enum TimelineMerge {
             insertedStatusIDs: fresh,
             closedGapIDs: [gapID],
             openedGapIDs: opened
+        )
+    }
+
+    /// The page is the run of posts immediately newer than the row under
+    /// the gap, so it goes directly on top of that row, and the gap stays
+    /// above it. It closes when the page reaches a row of the range above —
+    /// the two now touch — or is short, which says nothing newer is left
+    /// between them.
+    private static func planGapFillFromBelow(
+        existing: [Slot], page: [String], gapID: String, pageWasFull: Bool
+    ) -> Plan {
+        guard let gapIndex = existing.firstIndex(where: { $0.statusID == gapID }) else {
+            return Plan(slots: existing, insertedStatusIDs: [], closedGapIDs: [], openedGapIDs: [])
+        }
+
+        let known = Set(existing.map(\.statusID))
+        let fresh = page.filter { !known.contains($0) }
+        let above = Array(existing[..<gapIndex])
+        let below = Array(existing[(gapIndex + 1)...])
+        let aboveIDs = Set(above.map(\.statusID))
+        let reachesAbove = page.contains(where: aboveIDs.contains)
+        // A full page of nothing new cannot move the gap, and keeping it
+        // would ask for the same page forever: it closes.
+        let gapSurvives = pageWasFull && !reachesAbove && !fresh.isEmpty
+
+        // The page packs down onto the row under it and the gap sits just
+        // under the row above, so the room between them — what the next
+        // page from below needs — stays as large as it was.
+        let needed = Int64(fresh.count + (gapSurvives ? 1 : 0))
+        let lower = below.first?.position ?? 0
+        let upper = above.last?.position ?? (lower + gapReserve + needed)
+        let fits = upper - lower - 1 >= needed
+
+        var filled: [Slot] = []
+        if gapSurvives {
+            var gap = existing[gapIndex]
+            gap.position = upper - 1
+            filled.append(gap)
+        }
+        for (offset, id) in fresh.enumerated() {
+            filled.append(Slot(statusID: id, position: lower + Int64(fresh.count - offset)))
+        }
+
+        let slots = above + filled + below
+        return Plan(
+            slots: fits ? slots : renumbered(slots),
+            insertedStatusIDs: fresh,
+            closedGapIDs: gapSurvives ? [] : [gapID],
+            openedGapIDs: []
         )
     }
 

@@ -129,6 +129,11 @@ public struct TimelineView: View {
                     if isNewVisit {
                         await model.beginNewVisit()
                         await model.refresh()
+                        // After a while away the refresh opens a gap above
+                        // where the reader left off; the posts just above
+                        // it are fetched now, so scrolling up from there is
+                        // continuous (docs/05 §3).
+                        await model.catchUpAboveReader()
                     } else {
                         await model.refreshIfStale(olderThan: 30)
                     }
@@ -203,6 +208,13 @@ public struct TimelineView: View {
                         }
                     }
                 }
+                // Rows landed above the one the reader was on — a gap filled
+                // from below — and it goes back to where it was, without
+                // a glide that would read as the list moving by itself.
+                .onChange(of: model.keepInPlace) { _, request in
+                    guard let request else { return }
+                    proxy.scrollTo(request.statusID, anchor: .top)
+                }
                 .onChange(of: focusedStatusID) { _, id in
                     guard let id else { return }
                     withAnimation(scrollAnimation(0.18)) {
@@ -262,8 +274,12 @@ public struct TimelineView: View {
                 if !model.rows.isEmpty, hasSwipeActions { swipeTip }
             }
 
+            // Skeleton rows until the first fetch is back, and the empty
+            // state only once one has come back with nothing: before, the
+            // moment between the view appearing and the refresh starting
+            // said "Nothing here yet" to everybody.
             if model.rows.isEmpty {
-                if model.isRefreshing {
+                if model.isLoadingFirstPage {
                     ForEach(0..<3, id: \.self) { index in
                         SkeletonRow(hasMedia: index == 1)
                             .listRowInsets(
@@ -274,7 +290,7 @@ public struct TimelineView: View {
                             .listRowBackground(palette.background)
                             .listRowSeparator(.hidden)
                     }
-                } else {
+                } else if model.showsEmptyState {
                     emptyState
                 }
             }
@@ -334,13 +350,12 @@ public struct TimelineView: View {
                 }
             }
 
-            if model.isPagingOlder {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
+            if model.canLoadOlder || model.isPagingOlder {
+                OlderPostsFooter(isLoading: model.isPagingOlder) {
+                    Task { await model.loadOlder() }
                 }
                 .listRowBackground(palette.background)
+                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)

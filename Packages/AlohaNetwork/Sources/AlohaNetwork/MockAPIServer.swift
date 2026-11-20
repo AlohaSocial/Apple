@@ -67,6 +67,24 @@
 
         public var loggedPaths: [String] { requestLog.map(\.path) }
 
+        /// Posts that arrived while the reader was away: `count` new ones
+        /// above the newest, numbered upwards as a server numbers them.
+        public func publishPosts(_ count: Int) {
+            guard count > 0 else { return }
+            let newest = statusFixtures.compactMap { Int($0["id"] as? String ?? "") }.max() ?? 0
+            let posts = (1...count).reversed().map { offset -> [String: Any] in
+                // A plain post by Alice: no media, poll, card or boost.
+                var post = Fixtures.status(index: 11, host: host)
+                let id = String(newest + offset)
+                post["id"] = id
+                post["uri"] = "https://\(host)/statuses/\(id)"
+                post["url"] = "https://\(host)/@alice/\(id)"
+                post["content"] = "<p>New post \(id).</p>"
+                return post
+            }
+            statusFixtures.insert(contentsOf: posts, at: 0)
+        }
+
         /// Where this configuration actually serves the Mastodon API.
         public var apiPrefix: String {
             switch configuration {
@@ -769,6 +787,7 @@
             let limit = Int(query.first { $0.name == "limit" }?.value ?? "") ?? 20
             let maxID = query.first { $0.name == "max_id" }?.value
             let minID = query.first { $0.name == "min_id" }?.value
+            let sinceID = query.first { $0.name == "since_id" }?.value
 
             // Each of the three timelines says which one it is. Without this the
             // fixtures are identical and a switch is indistinguishable from a
@@ -791,8 +810,17 @@
             if let maxID, let cutoff = Int(maxID) {
                 rows = rows.filter { Int($0["id"] as? String ?? "") ?? 0 < cutoff }
             }
+            if let sinceID, let cutoff = Int(sinceID) {
+                rows = rows.filter { Int($0["id"] as? String ?? "") ?? 0 > cutoff }
+            }
+            // `min_id` is the page *immediately* newer than the id — the
+            // oldest of what is newer, still sent newest first — where
+            // `since_id` is the newest. Filling a gap from below depends on
+            // the difference.
+            var adjacentToMinID = false
             if let minID, let cutoff = Int(minID) {
                 rows = rows.filter { Int($0["id"] as? String ?? "") ?? 0 > cutoff }
+                adjacentToMinID = true
             }
             let onlyMedia = query.first { $0.name == "only_media" }?.value == "true"
             if onlyMedia {
@@ -806,7 +834,7 @@
                     return media.contains { ($0["type"] as? String) == "video" }
                 }
             }
-            let page = Array(rows.prefix(limit))
+            let page = adjacentToMinID ? Array(rows.suffix(limit)) : Array(rows.prefix(limit))
 
             var payload: [Any] = page
             if configuration == .malformedEntities, payload.count > 2 {

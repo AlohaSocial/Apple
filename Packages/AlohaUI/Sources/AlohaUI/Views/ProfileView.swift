@@ -1294,25 +1294,25 @@ struct ProfileStatusList: View {
                 }
             }
 
-            if model.isRefreshing && statuses.isEmpty {
+            // Skeletons until the first fetch is back, and "Nothing here
+            // yet" only once one has come back empty — not in the moment
+            // before it starts.
+            if statuses.isEmpty && (!model.hasCompletedFirstLoad || model.isRefreshing) {
                 ForEach(0..<3, id: \.self) { index in
                     SkeletonRow(hasMedia: index == 1)
                         .padding(.horizontal, AlohaMetrics.space4)
                 }
-            } else if statuses.isEmpty {
+            } else if statuses.isEmpty && model.hasSettledLoading {
                 ContentUnavailableView {
                     Text("Nothing here yet", comment: "Empty profile tab")
                 }
                 .padding(.top, AlohaMetrics.space6)
             }
 
-            if model.isPagingOlder {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
+            if model.canLoadOlder || model.isPagingOlder {
+                OlderPostsFooter(isLoading: model.isPagingOlder) {
+                    Task { await model.loadOlder() }
                 }
-                .padding(AlohaMetrics.space3)
             }
         }
         .environment(\.filterVerdicts, model.verdicts)

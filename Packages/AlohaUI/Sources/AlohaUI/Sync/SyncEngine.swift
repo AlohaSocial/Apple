@@ -73,6 +73,33 @@ public final class SyncEngine {
     /// would write are the ones the removal is deleting.
     @ObservationIgnored private var removedAccounts: Set<UUID> = []
 
+    /// Whether polling goes on, for notifications only, once no scene is in
+    /// the foreground. On macOS the process outlives its windows and there
+    /// is no `BGAppRefreshTask` to take over, so stopping there meant no
+    /// alert until a window was opened again. Elsewhere the system suspends
+    /// the app and background refresh polls instead (docs/08 §4).
+    @ObservationIgnored var pollsWithoutScenes: Bool = SyncEngine.processOutlivesScenes
+    /// Running with no scene in the foreground (see `pollsWithoutScenes`):
+    /// notifications only, at the longest foreground interval.
+    private(set) var isUnattended = false
+
+    #if os(macOS)
+        static let processOutlivesScenes = true
+    #else
+        static let processOutlivesScenes = false
+    #endif
+
+    /// What raises local alerts for what a poll found, returning the ids it
+    /// dealt with. `nil` where there is nothing to raise them on — a
+    /// package's test runner, which has no notification centre — so a test
+    /// can put its own here and see what would have been raised.
+    typealias Announcer =
+        @MainActor (
+            _ fresh: [StoredNotification], _ session: AccountSession, _ isQuiet: Bool,
+            _ showAccountName: Bool
+        ) async -> [String]
+    @ObservationIgnored var announcer: Announcer?
+
     @ObservationIgnored private weak var environment: AppEnvironment?
     private let notifier: LocalNotifier
     private let logger = Logger(subsystem: "social.aloha.app", category: "sync")
@@ -87,6 +114,12 @@ public final class SyncEngine {
     public init(notifier: LocalNotifier = LocalNotifier(), network: NetworkConditions? = nil) {
         self.notifier = notifier
         self.network = network ?? NetworkConditions()
+        if Self.isAppProcess {
+            announcer = { fresh, session, isQuiet, showAccountName in
+                await notifier.announce(
+                    fresh, session: session, isQuiet: isQuiet, showAccountName: showAccountName)
+            }
+        }
     }
 
     public func attach(to environment: AppEnvironment) {
@@ -102,6 +135,7 @@ public final class SyncEngine {
     public func start() {
         guard let environment else { return }
         isRunning = true
+        isUnattended = false
         network.startMonitoring()
         // An account being removed is still in the list while its token is
         // revoked, and a scene activation in that time must not restart it.
@@ -112,6 +146,7 @@ public final class SyncEngine {
 
     public func stop() {
         isRunning = false
+        isUnattended = false
         for task in tickTasks.values { task.cancel() }
         tickTasks.removeAll()
         tickSessions.removeAll()
@@ -136,7 +171,8 @@ public final class SyncEngine {
     /// waited a full interval. With several windows, sync runs while any one
     /// of them is in the foreground and stops when the last one leaves; a
     /// socket closes then, immediately, and `BGAppRefreshTask` takes over
-    /// (docs/08 §6).
+    /// (docs/08 §6). On macOS it narrows to notifications instead of
+    /// stopping (`pollsWithoutScenes`).
     public func scene(_ scene: UUID, didEnter phase: ScenePhase) {
         switch phase {
         case .background:
@@ -158,7 +194,14 @@ public final class SyncEngine {
 
     private func applySceneState() {
         if foregroundScenes.isEmpty {
-            if isRunning { stop() }
+            guard isRunning else { return }
+            if pollsWithoutScenes {
+                // The loops keep running; each tick reads this and narrows
+                // itself to notifications.
+                isUnattended = true
+            } else {
+                stop()
+            }
         } else {
             start()
         }
@@ -189,7 +232,7 @@ public final class SyncEngine {
     /// badge and a notification centre to tell. A package's test runner is
     /// neither: asking it for a notification centre raises an exception
     /// rather than failing, and its widget reloads go nowhere.
-    private static let isAppProcess = ["app", "appex"].contains(
+    static let isAppProcess = ["app", "appex"].contains(
         Bundle.main.bundleURL.pathExtension)
 
     public func noteTimelineVisible(for accountID: UUID) {
@@ -314,7 +357,11 @@ public final class SyncEngine {
             // rather than spend a failure, and a backoff, on a poll that
             // could not have worked.
             guard network.isSatisfied else { continue }
-            await poll(session, scope: currentScheduler(for: session).scope)
+            // With no window to show a timeline in, only what raises an
+            // alert or moves the badge is worth asking for.
+            await poll(
+                session,
+                scope: isUnattended ? .notificationsOnly : currentScheduler(for: session).scope)
         }
     }
 
@@ -376,8 +423,11 @@ public final class SyncEngine {
 
     func currentScheduler(for session: AccountSession) -> PollScheduler {
         let idle = Date().timeIntervalSince(lastInteraction)
+        // Nobody is looking with no scene in the foreground, however
+        // recently they were.
         let activity: PollScheduler.Activity =
-            idle < 120 ? .interacting : (idle < 600 ? .idleShort : .idleLong)
+            isUnattended
+            ? .idleLong : (idle < 120 ? .interacting : (idle < 600 ? .idleShort : .idleLong))
 
         var isLowPower = false
         #if canImport(UIKit)
@@ -543,9 +593,13 @@ public final class SyncEngine {
                 since: Date().addingTimeInterval(-12 * 3600))
             guard !fresh.isEmpty, isLive(session.id) else { return }
 
-            // Web Push, where a server has it, delivers the alert itself —
-            // raising a local one too would show everything twice.
-            guard session.capabilities.syncTier != .webPush else {
+            // A push subscription that is confirmed delivering — Nextcloud's
+            // proxy, or Web Push once subscribed — raises the alert itself,
+            // and a local one too would show everything twice. A server
+            // merely *offering* Web Push is not that: every Mastodon
+            // advertises a VAPID key, and suppressing on it left those
+            // accounts with no alerts at all while nothing was subscribed.
+            guard !session.isPushActive else {
                 try await session.supportStore.markAnnounced(
                     accountID: session.id, serverIDs: fresh.map(\.serverID))
                 return
@@ -555,12 +609,10 @@ public final class SyncEngine {
                 startHour: session.settings.quietHoursStart,
                 endHour: session.settings.quietHoursEnd)
 
-            guard Self.isAppProcess else { return }
-            let announced = await notifier.announce(
-                fresh,
-                session: session,
-                isQuiet: quiet.isQuiet(at: Date()),
-                showAccountName: (environment?.sessions.count ?? 1) > 1)
+            guard let announcer else { return }
+            let announced = await announcer(
+                fresh, session, quiet.isQuiet(at: Date()),
+                (environment?.sessions.count ?? 1) > 1)
 
             guard isLive(session.id) else { return }
             try await session.supportStore.markAnnounced(

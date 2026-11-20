@@ -26,12 +26,40 @@ private func makeEnvironment(_ transport: any HTTPTransport) -> AppEnvironment {
 
 @MainActor
 private func signIn(
-    _ environment: AppEnvironment, token: String = "token", accountID: String = "1"
+    _ environment: AppEnvironment, token: String = "token", accountID: String = "1",
+    capabilities: ServerCapabilities = .minimal(apiBase: base)
 ) async throws -> AccountSession {
     try await environment.addAccount(
         instanceHost: "cloud.example.test", apiBase: base,
         account: Account(id: accountID, username: "user\(accountID)", acct: "user\(accountID)"),
-        capabilities: .minimal(apiBase: base), token: token)
+        capabilities: capabilities, token: token)
+}
+
+/// Stores one notification from before the account was added, as the first
+/// poll after a sign-in does, so what the next poll fetches counts as news
+/// rather than as history to file away unannounced.
+@MainActor
+private func seedHistory(_ session: AccountSession) async throws {
+    let earlier = StoredNotification(
+        serverID: "seed", isGroup: false, kind: .mention, createdAt: .distantPast,
+        groupCount: 1, payload: Data(), statusServerID: nil)
+    _ = try await session.supportStore.storeNotifications([earlier], accountID: session.id)
+}
+
+/// Stands in for the notification centre a test runner does not have, and
+/// notes what would have been raised.
+@MainActor
+private final class AlertRecorder {
+    private(set) var raised: [String] = []
+
+    func announce(
+        _ fresh: [StoredNotification], _ session: AccountSession, _ isQuiet: Bool,
+        _ showAccountName: Bool
+    ) async -> [String] {
+        let ids = fresh.map(\.serverID)
+        raised += ids
+        return ids
+    }
 }
 
 /// Waits, a little at a time, for something the engine does on its own.
@@ -106,6 +134,68 @@ struct SyncEngineTests {
         _ = await environment.sync.poll(session)
         let failingFast = await transport.failingFastPaths
         #expect(failingFast.contains { $0.hasSuffix("notifications/unread_count") })
+    }
+
+    // MARK: - Alerts
+
+    /// Every Mastodon advertises a VAPID key, and the engine used to take
+    /// that for a push already delivering: it marked what it found as
+    /// announced and raised nothing, while no subscription had ever been
+    /// made. Only a push confirmed active stands local alerts down.
+    @Test("A server offering Web Push with nothing subscribed still gets local alerts")
+    func vapidKeyWithoutSubscriptionAlerts() async throws {
+        let environment = makeEnvironment(MockAPIServer(configuration: .mastodon43))
+        var capabilities = ServerCapabilities.minimal(apiBase: base)
+        capabilities.webPushVAPIDKey = "BNcTestVapidKey"
+        let session = try await signIn(environment, capabilities: capabilities)
+        try await seedHistory(session)
+        #expect(session.capabilities.syncTier == .webPush)
+        #expect(!session.isPushActive)
+        let alerts = AlertRecorder()
+        environment.sync.announcer = alerts.announce
+
+        _ = await environment.sync.poll(session)
+
+        #expect(alerts.raised.count == 3)
+        // Marked, so the next poll does not say it again.
+        let pending = try await session.supportStore.pendingAnnouncements(
+            arrived: [], accountID: session.id, since: .distantPast)
+        #expect(pending.isEmpty)
+    }
+
+    @Test("A push subscription confirmed active stands local alerts down")
+    func confirmedPushSuppressesAlerts() async throws {
+        let environment = makeEnvironment(MockAPIServer(configuration: .mastodon43))
+        var capabilities = ServerCapabilities.minimal(apiBase: base)
+        capabilities.webPushVAPIDKey = "BNcTestVapidKey"
+        let session = try await signIn(environment, capabilities: capabilities)
+        try await seedHistory(session)
+        await session.setPushActive(true)
+        let alerts = AlertRecorder()
+        environment.sync.announcer = alerts.announce
+
+        _ = await environment.sync.poll(session)
+
+        #expect(alerts.raised.isEmpty)
+        // Still marked: had the push failed later, polling must not raise
+        // what the push already showed.
+        let pending = try await session.supportStore.pendingAnnouncements(
+            arrived: [], accountID: session.id, since: .distantPast)
+        #expect(pending.isEmpty)
+    }
+
+    @Test("Background refresh reaches the alerts for an account without push")
+    func backgroundRefreshAlerts() async throws {
+        let environment = makeEnvironment(MockAPIServer(configuration: .mastodon43))
+        var capabilities = ServerCapabilities.minimal(apiBase: base)
+        capabilities.webPushVAPIDKey = "BNcTestVapidKey"
+        let session = try await signIn(environment, capabilities: capabilities)
+        try await seedHistory(session)
+        let alerts = AlertRecorder()
+        environment.sync.announcer = alerts.announce
+
+        #expect(await environment.sync.performBackgroundRefresh() == 3)
+        #expect(alerts.raised.count == 3)
     }
 
     // MARK: - The timeline
@@ -195,6 +285,8 @@ struct SyncEngineTests {
         let environment = makeEnvironment(MockAPIServer(configuration: .mastodon43))
         let session = try await signIn(environment)
         let sync = environment.sync
+        // Where the process ends with its windows; macOS has its own test.
+        sync.pollsWithoutScenes = false
         let first = UUID()
         let second = UUID()
 
@@ -219,6 +311,27 @@ struct SyncEngineTests {
         // A window closed without passing through the background.
         sync.sceneDidDisappear(first)
         #expect(!sync.isPolling(session))
+    }
+
+    @Test("With no window left on the Mac, polling narrows to notifications rather than stopping")
+    func macKeepsPollingWithoutWindows() async throws {
+        let environment = makeEnvironment(MockAPIServer(configuration: .mastodon43))
+        let session = try await signIn(environment)
+        let sync = environment.sync
+        sync.pollsWithoutScenes = true
+        let window = UUID()
+
+        sync.scene(window, didEnter: .active)
+        #expect(sync.currentScheduler(for: session).activity == .interacting)
+        sync.sceneDidDisappear(window)
+
+        #expect(sync.isRunning)
+        #expect(sync.isUnattended)
+        #expect(sync.isPolling(session))
+        #expect(sync.currentScheduler(for: session).activity == .idleLong)
+
+        sync.scene(window, didEnter: .active)
+        #expect(!sync.isUnattended)
     }
 
     @Test("Manual frequency waits without a timer, and switching back polls again")

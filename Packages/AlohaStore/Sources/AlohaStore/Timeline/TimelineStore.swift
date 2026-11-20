@@ -138,19 +138,28 @@ public actor TimelineStore {
             return boost
         }
 
-        // Statuses are stored once and shared; a timeline only points at them.
-        for status in pageCopies where plan.insertedStatusIDs.contains(status.id) {
-            try upsert(status: status, accountID: accountID)
-        }
-        // A status already cached may have been edited or had its counts move.
-        for status in pageCopies where !plan.insertedStatusIDs.contains(status.id) {
-            try upsert(status: status, accountID: accountID)
-        }
-
         // Capped before the write rather than trimmed after it: a second
         // fetch with a `fetchOffset` does not see pending inserts the way the
         // offset implies, and would delete the rows just added.
+        //
+        // The cap is on what is kept for next time, not on how far anybody
+        // may scroll: the timeline on screen merges its own rows in memory
+        // (`TimelineModel`), so a page below the cap still reaches the
+        // reader. Here it is simply not written.
         let slots = Array(plan.slots.prefix(CachePolicy.limit(forTimelineKey: timelineKey)))
+        let keptIDs = Set(slots.map(\.statusID))
+        let inserted = Set(plan.insertedStatusIDs)
+
+        // Statuses are stored once and shared; a timeline only points at them.
+        // A new one below the cap would be an orphan the moment it was saved.
+        for status in pageCopies where inserted.contains(status.id) && keptIDs.contains(status.id) {
+            try upsert(status: status, accountID: accountID)
+        }
+        // A status already cached may have been edited or had its counts move.
+        for status in pageCopies where !inserted.contains(status.id) {
+            try upsert(status: status, accountID: accountID)
+        }
+
         try replaceEntries(accountID: accountID, timelineKey: timelineKey, slots: slots)
         try modelContext.save()
 

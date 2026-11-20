@@ -217,9 +217,23 @@ Rules:
 - New content arriving above the current scroll position **never moves it**.
   Instead a floating "N new posts" pill appears; tapping it scrolls to top and
   inserts. This is a hard requirement.
-- "Load more" gap rows as described in [04-data-model.md](04-data-model.md) §3.
+- "Load more" gap rows as described in [04-data-model.md](04-data-model.md) §3,
+  filled from whichever side the reader is on.
+- **Coming back after an absence:** a Home refresh asks for 40 posts. When more
+  than that arrived, a gap opens above the post the reader last saw; on launch
+  and on every return from the background the timeline fills it from below,
+  up to 3 pages, so scrolling up from where they left off is continuous. What
+  this adds waits behind the "N new posts" pill like the rest.
 - Infinite scroll pages on `next` from the `Link` header, triggered 10 rows from
-  the end, one request in flight at a time.
+  the end, one request in flight at a time. Every paged feed (timeline, Photos,
+  Video, Shorts, Audio, profile tabs) also ends in a footer that asks for the
+  next page when it scrolls into view and shows a "Load more posts" button while
+  there may be more. Without it, a page that client-side filtering emptied added
+  no row, and nothing ever asked for the page after it.
+- **Loading vs. empty:** skeleton rows show until the first fetch has come back;
+  the empty state ("Nothing here yet", "No photos yet", …) shows only after a
+  fetch has finished with nothing in it, never while the first one is still
+  under way, and not over an error or the offline strip.
 - **Remember position across launches** per timeline, restored only if the
   cached entry is still present.
 
@@ -471,7 +485,9 @@ Grouped, searchable (on platforms with settings search).
 Every list has three non-default states and each is designed, not a spinner:
 
 - **Empty** — an illustration-free, one-line explanation and, where possible, a
-  primary action ("Follow some people", "Find your first server").
+  primary action ("Follow some people", "Find your first server"). Shown only
+  once a load has *finished* with nothing. Before the first fetch is back the
+  list shows skeleton rows (`TimelineModel.hasCompletedFirstLoad`).
 - **Error** — what failed, in plain language, with Retry. Never a status code
   alone. A 422's message is shown verbatim after a lead-in.
 - **Offline** — cached content plus a persistent inline strip, not a blocking
