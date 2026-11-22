@@ -58,13 +58,13 @@ enum WidgetFeed: String, AppEnum {
         name: LocalizedStringResource("Feed", comment: "Widget configuration type name"))
     static let caseDisplayRepresentations: [WidgetFeed: DisplayRepresentation] = [
         .home: DisplayRepresentation(
-            title: LocalizedStringResource("Home", comment: "Widget feed choice")),
+            title: LocalizedStringResource("My Feed", comment: "Widget feed choice")),
         .interests: DisplayRepresentation(
             title: LocalizedStringResource("For you", comment: "Widget feed choice")),
         .local: DisplayRepresentation(
             title: LocalizedStringResource("Local", comment: "Widget feed choice")),
         .federated: DisplayRepresentation(
-            title: LocalizedStringResource("Federated", comment: "Widget feed choice")),
+            title: LocalizedStringResource("Global", comment: "Widget feed choice")),
         .list: DisplayRepresentation(
             title: LocalizedStringResource("List", comment: "Widget feed choice")),
     ]

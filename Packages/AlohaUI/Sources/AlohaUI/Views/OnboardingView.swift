@@ -43,7 +43,7 @@ public struct TermsGate: View {
                         symbol: "hand.raised.slash",
                         title: Text("No abuse, ever", comment: "Terms rule title"),
                         text: Text(
-                            "There is zero tolerance for objectionable content and abusive behaviour.",
+                            "There is zero tolerance for objectionable content and abusive behavior.",
                             comment: "Terms rule"))
                     rule(
                         symbol: AlohaSymbol.report,
@@ -279,9 +279,9 @@ public struct ModeSelectionView: View {
 
     private func title(_ mode: FeedMode) -> String {
         switch mode {
-        case .home: String(localized: "Home", comment: "Mode title")
+        case .home: String(localized: "My Feed", comment: "Mode title")
         case .photos: String(localized: "Photos", comment: "Mode title")
-        case .video: String(localized: "Video", comment: "Mode title")
+        case .video: String(localized: "Videos", comment: "Mode title")
         case .shorts: String(localized: "Shorts", comment: "Mode title")
         case .news: String(localized: "News", comment: "Mode title")
         case .audio: String(localized: "Audio", comment: "Mode title")

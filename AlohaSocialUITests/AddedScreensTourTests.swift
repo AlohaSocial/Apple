@@ -36,7 +36,8 @@ import XCTest
         // MARK: - Settings surfaces
 
         func testFiltersOpenAndEdit() {
-            XCTAssertTrue(app.openSettingsRow("Filters"), "Filters not reachable from Settings")
+            XCTAssertTrue(
+                app.openSettingsRow("Filtered words"), "Filters not reachable from Settings")
             XCTAssertTrue(
                 app.navigationBars["Filtered words"].waitForExistence(timeout: 8),
                 "Filters screen did not open")

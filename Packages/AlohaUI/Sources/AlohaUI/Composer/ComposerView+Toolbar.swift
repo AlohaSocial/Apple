@@ -133,12 +133,12 @@ extension ComposerView {
                     Image(systemName: "eye.slash")
                 }.tag(Visibility.unlisted)
                 Label {
-                    Text("Followers only", comment: "Visibility")
+                    Text("Followers", comment: "Visibility")
                 } icon: {
                     Image(systemName: AlohaSymbol.lock)
                 }.tag(Visibility.private)
                 Label {
-                    Text("Direct", comment: "Visibility")
+                    Text("Direct message", comment: "Visibility")
                 } icon: {
                     Image(systemName: AlohaSymbol.directVisibility)
                 }.tag(Visibility.direct)
@@ -173,13 +173,13 @@ extension ComposerView {
                 model.showsContentWarningField.toggle()
             } label: {
                 Label {
-                    Text("Add a content warning", comment: "Composer action")
+                    Text("Add content warning", comment: "Composer action")
                 } icon: {
                     Image(systemName: AlohaSymbol.warning)
                 }
             }
-            .accessibilityLabel(Text("Add a content warning", comment: "Composer action"))
-            .help(Text("Add a content warning", comment: "Composer action"))
+            .accessibilityLabel(Text("Add content warning", comment: "Composer action"))
+            .help(Text("Add content warning", comment: "Composer action"))
 
             Button {
                 model.addThreadSegment()

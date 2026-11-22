@@ -144,7 +144,7 @@ public struct PhotosModeView: View {
 
             Toggle(isOn: showsNumbers) {
                 Label {
-                    Text("Show numbers", comment: "Photos menu setting")
+                    Text("Show the numbers", comment: "Photos menu setting")
                 } icon: {
                     Image(systemName: "number")
                 }

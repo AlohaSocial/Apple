@@ -195,7 +195,7 @@ public struct ThreadView: View {
                             isShowingSummary = true
                         } label: {
                             Label {
-                                Text("Summarise thread", comment: "Thread action")
+                                Text("Summarize thread", comment: "Thread action")
                             } icon: {
                                 Image(systemName: AlohaSymbol.sparkles)
                             }

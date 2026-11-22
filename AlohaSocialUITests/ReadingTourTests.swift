@@ -69,7 +69,8 @@ import XCTest
             XCUIDevice.shared.orientation = .landscapeLeft
             XCTAssertTrue(app.sidebarRow("My Feed").waitForExistence(timeout: 20))
             XCTAssertTrue(app.sidebarRow("Discover").exists)
-            XCTAssertFalse(app.sidebarRow("Blocking").exists, "The long tail is not folded")
+            XCTAssertFalse(
+                app.sidebarRow("Blocked and muted").exists, "The long tail is not folded")
             shoot("reading-sidebar-folded")
             app.expandSidebarMore()
             XCTAssertTrue(app.sidebarRow("Your lists").waitForExistence(timeout: 5))

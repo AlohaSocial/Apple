@@ -268,7 +268,7 @@ struct WatchComposeView: View {
                 Picker(selection: $visibility) {
                     Text("Public", comment: "Visibility").tag(AlohaModels.Visibility.public)
                     Text("Unlisted", comment: "Visibility").tag(AlohaModels.Visibility.unlisted)
-                    Text("Followers only", comment: "Visibility").tag(
+                    Text("Followers", comment: "Visibility").tag(
                         AlohaModels.Visibility.private)
                 } label: {
                     Text("Visibility", comment: "Composer picker")

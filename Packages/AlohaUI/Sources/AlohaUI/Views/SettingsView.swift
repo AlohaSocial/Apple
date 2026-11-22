@@ -156,14 +156,14 @@ public struct SettingsView: View {
                 Section {
                     NavigationLink(value: Route.filters) {
                         Label {
-                            Text("Filters", comment: "Settings item")
+                            Text("Filtered words", comment: "Settings item")
                         } icon: {
                             Image(systemName: "line.3.horizontal.decrease")
                         }
                     }
                     NavigationLink(value: Route.safety) {
                         Label {
-                            Text("Privacy & Safety", comment: "Settings item")
+                            Text("Blocked and muted", comment: "Settings item")
                         } icon: {
                             Image(systemName: AlohaSymbol.block)
                         }
@@ -214,7 +214,7 @@ public struct SettingsView: View {
                         // word; this is where it waits.
                         NavigationLink(value: Route.heldPosts) {
                             Label {
-                                Text("Waiting to be looked at", comment: "Settings item")
+                                Text("Waiting for review", comment: "Settings item")
                             } icon: {
                                 Image(systemName: "clock.badge.questionmark")
                             }
@@ -321,7 +321,7 @@ public struct SettingsView: View {
                     Text("About", comment: "Settings section")
                 } footer: {
                     Text(
-                        "Aloha Social is open source under the MIT licence.",
+                        "Aloha Social is open source under the MIT license.",
                         comment: "Settings footer")
                 }
             }
@@ -387,7 +387,7 @@ public struct SettingsView: View {
                 }
                 NavigationLink(value: Route.migration) {
                     Label {
-                        Text("Migration", comment: "Settings item")
+                        Text("Moving your account", comment: "Settings item")
                     } icon: {
                         Image(systemName: "shippingbox")
                     }
@@ -615,7 +615,7 @@ public struct SettingsView: View {
                 Task { await session.updateSettings { $0.trailingSwipeAction = value } }
             }
         } header: {
-            Text("Home feed", comment: "Settings section")
+            Text("My Feed", comment: "Settings section")
         } footer: {
             Text(
                 "Off, the new-posts pill disappears and every refresh scrolls to the top instead of holding your place.",
@@ -854,7 +854,7 @@ public struct SettingsView: View {
                 LiveActivitySettingsSection()
             #endif
         } header: {
-            Text("Notifications", comment: "Settings section")
+            Text("When to tell you", comment: "Settings section")
         } footer: {
             Text(
                 "\"As they arrive\" is the default. \"In a digest\" batches notifications at your chosen hours; DMs and mentions from people you follow always break through.",
@@ -927,9 +927,9 @@ public struct SettingsView: View {
             ) {
                 Text("Public", comment: "Visibility").tag(Visibility.public)
                 Text("Unlisted", comment: "Visibility").tag(Visibility.unlisted)
-                Text("Followers only", comment: "Visibility").tag(Visibility.private)
+                Text("Followers", comment: "Visibility").tag(Visibility.private)
             } label: {
-                Text("Default visibility", comment: "Settings item")
+                Text("Who sees new posts", comment: "Settings item")
             }
 
             Toggle(
@@ -1027,7 +1027,7 @@ extension SettingsView {
                         })
                 ) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Show numbers", comment: "Settings item")
+                        Text("Show the numbers", comment: "Settings item")
                         Text(
                             "Reply, boost and like counts, follower and post counts, and view counts.",
                             comment: "Settings explanation"
@@ -1050,7 +1050,7 @@ extension SettingsView {
         } footer: {
             if environment.serverAccent != nil {
                 Text(
-                    "The accent colour comes from your Nextcloud, so the app looks like the server it is signed in to.",
+                    "The accent color comes from your Nextcloud, so the app looks like the server it is signed in to.",
                     comment: "Where the accent colour comes from")
             }
         }
@@ -1109,9 +1109,9 @@ extension SettingsView {
 
     private func feedTitle(_ mode: FeedMode) -> String {
         switch mode {
-        case .home: String(localized: "Home", comment: "Feed mode")
+        case .home: String(localized: "My Feed", comment: "Feed mode")
         case .photos: String(localized: "Photos", comment: "Feed mode")
-        case .video: String(localized: "Video", comment: "Feed mode")
+        case .video: String(localized: "Videos", comment: "Feed mode")
         case .shorts: String(localized: "Shorts", comment: "Feed mode")
         case .news: String(localized: "News", comment: "Feed mode")
         case .audio: String(localized: "Audio", comment: "Feed mode")

@@ -116,9 +116,9 @@ extension ComposerView {
                 }
                 TextField(
                     text: $model.videoLicence,
-                    prompt: Text("Licence", comment: "Composer video field placeholder")
+                    prompt: Text("License", comment: "Composer video field placeholder")
                 ) {
-                    Text("Licence", comment: "Composer video field label")
+                    Text("License", comment: "Composer video field label")
                 }
             }
         }
