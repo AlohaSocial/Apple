@@ -79,7 +79,7 @@ public struct NotificationsView: View {
                 Section {
                     NavigationLink(value: Route.notificationPolicy) {
                         Label {
-                            Text("Notification policy", comment: "Notifications header")
+                            Text("Activity policy", comment: "Notifications header")
                         } icon: {
                             Image(systemName: "lock.shield")
                         }
@@ -91,7 +91,7 @@ public struct NotificationsView: View {
                             HStack {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
                                 Text(
-                                    "Filtered notifications",
+                                    "Filtered activities",
                                     comment: "Filtered notifications section")
                                 Spacer()
                                 Text(verbatim: "\(summary.pendingRequestsCount)")
@@ -360,7 +360,7 @@ public struct NotificationsView: View {
             [
                 (nil, String(localized: "All", comment: "Notification filter")),
                 (.mention, String(localized: "Mentions", comment: "Notification filter")),
-                (.favourite, String(localized: "Favourites", comment: "Notification filter")),
+                (.favourite, String(localized: "Favorites", comment: "Notification filter")),
                 (.reblog, String(localized: "Boosts", comment: "Notification filter")),
                 (.follow, String(localized: "Follows", comment: "Notification filter")),
                 (.poll, String(localized: "Polls", comment: "Notification filter")),
@@ -380,7 +380,7 @@ public struct NotificationsView: View {
                     // Nextcloud Social's own filters, in its order.
                     chip(
                         .favourite,
-                        label: String(localized: "Favourites", comment: "Notification filter"))
+                        label: String(localized: "Favorites", comment: "Notification filter"))
                     chip(
                         .reblog,
                         label: String(localized: "Boosts", comment: "Notification filter"))
@@ -613,7 +613,7 @@ public struct NotificationsView: View {
             symbol: AlohaSymbol.notifications,
             title: Text("Nothing yet", comment: "Empty notifications"),
             message: Text(
-                "Replies, boosts and favourites land here.",
+                "Replies, boosts and likes land here.",
                 comment: "Empty notifications detail")
         )
         .listRowBackground(palette.background)
@@ -1001,7 +1001,7 @@ public struct NotificationsView: View {
 
         switch group.type {
         case .favourite:
-            return String(localized: "\(who) favourited your post", comment: "Notification summary")
+            return String(localized: "\(who) liked your post", comment: "Notification summary")
         case .reblog:
             return String(localized: "\(who) boosted your post", comment: "Notification summary")
         case .follow:
@@ -1016,10 +1016,10 @@ public struct NotificationsView: View {
             return String(localized: "\(who) posted", comment: "Notification summary")
         case .storyReaction:
             return String(
-                localized: "\(who) reacted to your story", comment: "Notification summary")
+                localized: "\(who) reacted to your short", comment: "Notification summary")
         case .storyComment:
             return String(
-                localized: "\(who) replied to your story", comment: "Notification summary")
+                localized: "\(who) replied to your short", comment: "Notification summary")
         case .tagged:
             return String(
                 localized: "\(who) tagged you in a photo", comment: "Notification summary")

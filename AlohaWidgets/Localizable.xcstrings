@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "^[%lld activity](inflect: true)" : {
+      "comment" : "Widget text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "^[%lld Benachrichtigung](inflect: true)"
+          }
+        }
+      }
+    },
     "Account" : {
       "comment" : "Widget intent parameter",
       "localizations" : {
@@ -8,28 +19,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Konto"
-          }
-        }
-      }
-    },
-    "Favourite" : {
-      "comment" : "Widget button\nWidget intent parameter",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favorisieren"
-          }
-        }
-      }
-    },
-    "Favourite a post" : {
-      "comment" : "Widget intent title, not shown in the widget itself",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einen Beitrag favorisieren"
           }
         }
       }
@@ -66,6 +55,28 @@
         }
       }
     },
+    "Like" : {
+      "comment" : "Widget button\nWidget intent parameter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Favorisieren"
+          }
+        }
+      }
+    },
+    "Like a post" : {
+      "comment" : "Widget intent title, not shown in the widget itself",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Einen Beitrag favorisieren"
+          }
+        }
+      }
+    },
     "Mentions" : {
       "comment" : "Widget name"
     },
@@ -80,12 +91,12 @@
         }
       }
     },
-    "New story" : {
+    "New short" : {
       "comment" : "Control Center control",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Neue Story"
           }
         }
@@ -116,12 +127,12 @@
         }
       }
     },
-    "Open the story composer." : {
+    "Open the short composer." : {
       "comment" : "Control Center control description",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Öffnet den Editor für eine neue Story."
           }
         }
@@ -203,23 +214,23 @@
     "The newest things said to you." : {
       "comment" : "Widget description"
     },
-    "Unfavourite" : {
+    "Unlike" : {
       "comment" : "Widget button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Nicht mehr favorisieren"
           }
         }
       }
     },
-    "Unread notifications" : {
+    "Unread activities" : {
       "comment" : "Widget name",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Ungelesene Benachrichtigungen"
           }
         }
@@ -267,17 +278,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Server verarbeitet das Video"
-          }
-        }
-      }
-    },
-    "^[%lld notification](inflect: true)" : {
-      "comment" : "Widget text",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "^[%lld Benachrichtigung](inflect: true)"
           }
         }
       }

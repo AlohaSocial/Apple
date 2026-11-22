@@ -35,11 +35,11 @@ struct StatusActionStrip: View {
                     ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
                 count: showsCounts ? displayed.favouritesCount : nil,
                 tint: palette.favourite, isOn: displayed.favourited, style: .heart,
-                label: Text("Favourite", comment: "Status action"),
+                label: Text("Like", comment: "Status action"),
                 prominence: prominence,
                 onCountTap: interactions(.favourites, count: displayed.favouritesCount),
                 countHint: Text(
-                    "Shows who favourited this post", comment: "Hint for the favourites number"),
+                    "Shows who liked this post", comment: "Hint for the favourites number"),
                 contentAlignment: .center
             ) { onAction(.favourite(status)) }
             .frame(maxWidth: .infinity)

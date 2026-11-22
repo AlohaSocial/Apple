@@ -103,7 +103,7 @@ struct StoryViewersSheet: View {
             guard !Task.isCancelled, loadID == request else { return }
             errorMessage =
                 (error as? APIError)?.errorDescription
-                ?? String(localized: "Story viewers could not be loaded. Please try again.")
+                ?? String(localized: "Viewers of this short could not be loaded. Please try again.")
         }
     }
 }
@@ -219,7 +219,8 @@ struct StoryReactionsSheet: View {
             guard !Task.isCancelled, loadID == request else { return }
             errorMessage =
                 (error as? APIError)?.errorDescription
-                ?? String(localized: "Story reactions could not be loaded. Please try again.")
+                ?? String(
+                    localized: "Reactions to this short could not be loaded. Please try again.")
         }
     }
 }

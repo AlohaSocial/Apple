@@ -792,7 +792,7 @@ public struct StatusRow: View {
         Button {
             onAction(.favourite(status))
         } label: {
-            Text("Favourite", comment: "Accessibility action")
+            Text("Like", comment: "Accessibility action")
         }
         Button {
             onAction(.bookmark(status))

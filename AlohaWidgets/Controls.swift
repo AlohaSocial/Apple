@@ -61,28 +61,28 @@ struct NewPostControl: ControlWidget {
     }
 }
 
-/// "New story": the story composer, on servers that have stories.
+/// "New short": the story composer, on servers that have stories.
 struct NewStoryControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "social.aloha.app.control.newStory") {
             ControlWidgetButton(action: ControlLink.intent("story")) {
                 Label {
-                    Text("New story", comment: "Control Center control")
+                    Text("New short", comment: "Control Center control")
                 } icon: {
                     Image(systemName: "camera.circle")
                 }
             }
         }
-        .displayName(LocalizedStringResource("New story", comment: "Control Center control"))
+        .displayName(LocalizedStringResource("New short", comment: "Control Center control"))
         .description(
             LocalizedStringResource(
-                "Open the story composer.", comment: "Control Center control description"))
+                "Open the short composer.", comment: "Control Center control description"))
     }
 }
 
-/// "Story camera": the story composer with the full-screen camera already
+/// "Short camera": the story composer with the full-screen camera already
 /// up, for a picture or a video taken now. On a server without stories the
-/// app opens and nothing more, as "New story" does; on a device without a
+/// app opens and nothing more, as "New short" does; on a device without a
 /// camera the composer opens on its library canvas.
 struct StoryCameraControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
@@ -92,16 +92,16 @@ struct StoryCameraControl: ControlWidget {
                     "story", query: [URLQueryItem(name: "camera", value: "1")])
             ) {
                 Label {
-                    Text("Story camera", comment: "Control Center control")
+                    Text("Short camera", comment: "Control Center control")
                 } icon: {
                     Image(systemName: "camera.aperture")
                 }
             }
         }
-        .displayName(LocalizedStringResource("Story camera", comment: "Control Center control"))
+        .displayName(LocalizedStringResource("Short camera", comment: "Control Center control"))
         .description(
             LocalizedStringResource(
-                "Take a picture or a video for your story.",
+                "Take a photo or a video for your short.",
                 comment: "Control Center control description"))
     }
 }

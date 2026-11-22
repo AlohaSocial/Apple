@@ -64,7 +64,7 @@ struct WatchRootView: View {
                                 }
                                 .accessibilityLabel(
                                     Text(
-                                        "Notifications", comment: "Watch notifications screen title"
+                                        "Activities", comment: "Watch notifications screen title"
                                     ))
                             }
                             // Reading is at the top; what a person does —
@@ -275,8 +275,8 @@ struct WatchStatusView: View {
                     }
                     .accessibilityLabel(
                         isFavourited
-                            ? Text("Remove favourite", comment: "Watch post action")
-                            : Text("Favourite", comment: "Watch post action"))
+                            ? Text("Unlike", comment: "Watch post action")
+                            : Text("Like", comment: "Watch post action"))
                     Button {
                         toggle($isBoosted, on: .reblog, off: .unreblog)
                     } label: {

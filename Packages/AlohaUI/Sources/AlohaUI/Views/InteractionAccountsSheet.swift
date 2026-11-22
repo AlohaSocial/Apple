@@ -76,7 +76,7 @@ struct InteractionAccountsSheet: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Picker(selection: $kind) {
-                        Text("Favourites", comment: "Who favourited a post").tag(Kind.favourites)
+                        Text("Likes", comment: "Who favourited a post").tag(Kind.favourites)
                         Text("Boosts", comment: "Who boosted a post").tag(Kind.boosts)
                     } label: {
                         title
@@ -101,14 +101,14 @@ struct InteractionAccountsSheet: View {
 
     private var title: Text {
         switch kind {
-        case .favourites: Text("Favourited by", comment: "Title of the list of who favourited")
+        case .favourites: Text("Liked by", comment: "Title of the list of who favourited")
         case .boosts: Text("Boosted by", comment: "Title of the list of who boosted")
         }
     }
 
     private var emptyTitle: Text {
         switch kind {
-        case .favourites: Text("No favourites yet", comment: "Empty list of who favourited")
+        case .favourites: Text("No likes yet", comment: "Empty list of who favourited")
         case .boosts: Text("No boosts yet", comment: "Empty list of who boosted")
         }
     }

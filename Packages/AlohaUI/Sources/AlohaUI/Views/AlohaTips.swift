@@ -29,7 +29,7 @@ struct SwipeActionsTip: Tip {
 
     var message: Text? {
         Text(
-            "Swipe from either edge to reply, favourite, boost or bookmark. You choose which in Settings.",
+            "Swipe from either edge to reply, like, boost or bookmark. You choose which in Settings.",
             comment: "Tip detail: swipe actions on timeline posts")
     }
 
@@ -38,12 +38,12 @@ struct SwipeActionsTip: Tip {
 
 struct ShortsDoubleTapTip: Tip {
     var title: Text {
-        Text("Double-tap to favourite", comment: "Tip title: double-tap a short")
+        Text("Double-tap to like", comment: "Tip title: double-tap a short")
     }
 
     var message: Text? {
         Text(
-            "Double-tap anywhere on a short to favourite it without looking for the button.",
+            "Double-tap anywhere on a short to like it without looking for the button.",
             comment: "Tip detail: double-tap a short")
     }
 
@@ -52,12 +52,12 @@ struct ShortsDoubleTapTip: Tip {
 
 struct PhotosDoubleTapTip: Tip {
     var title: Text {
-        Text("Double-tap to favourite", comment: "Tip title: double-tap a photo")
+        Text("Double-tap to like", comment: "Tip title: double-tap a photo")
     }
 
     var message: Text? {
         Text(
-            "Double-tap a photo to favourite it.",
+            "Double-tap a photo to like it.",
             comment: "Tip detail: double-tap a photo")
     }
 

@@ -161,7 +161,7 @@ public struct MigrationView: View {
             Text("Take a copy", comment: "Migration section")
         } footer: {
             Text(
-                "The archive holds your profile, posts, pictures and videos, and the lists below. It never holds your private key.",
+                "The archive holds your profile, posts, photos and videos, and the lists below. It never holds your private key.",
                 comment: "Migration export explanation")
         }
     }
@@ -254,7 +254,7 @@ public struct MigrationView: View {
                 .posts, title: Text("Posts from an archive", comment: "Migration import"),
                 symbol: "doc.text")
             Toggle(isOn: $fetchMedia) {
-                Text("Fetch the pictures and videos too", comment: "Migration switch")
+                Text("Fetch the photos and videos too", comment: "Migration switch")
             }
 
             HStack(spacing: AlohaMetrics.space2) {
@@ -287,7 +287,7 @@ public struct MigrationView: View {
             Text("Bring something here", comment: "Migration section")
         } footer: {
             Text(
-                "Lists come as the CSV files Mastodon, Pixelfed, GoToSocial and Akkoma export. Posts and pictures are copied, not linked.",
+                "Lists come as the CSV files Mastodon, Pixelfed, GoToSocial and Akkoma export. Posts and photos are copied, not linked.",
                 comment: "Migration import explanation")
         }
     }

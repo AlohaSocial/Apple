@@ -23,7 +23,7 @@ public struct StoryComposerSheet: View {
     private let session: AccountSession
     private let onPosted: () -> Void
     private let preparer = MediaPreparer()
-    /// Opened from the "Story camera" control: the full-screen camera is up
+    /// Opened from the "Short camera" control: the full-screen camera is up
     /// before anything else, for a picture or a video. The canvas's own
     /// viewfinder takes stills only.
     private let startsWithCamera: Bool
@@ -98,7 +98,7 @@ public struct StoryComposerSheet: View {
                 .padding(AlohaMetrics.space4)
             }
             .background(palette.background)
-            .navigationTitle(Text("New story", comment: "Story composer title"))
+            .navigationTitle(Text("New short", comment: "Story composer title"))
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -157,10 +157,10 @@ public struct StoryComposerSheet: View {
 
     private var kindPicker: some View {
         Picker(selection: $kind) {
-            Text("Picture or video", comment: "Story kind").tag(Kind.media)
+            Text("Photo or video", comment: "Story kind").tag(Kind.media)
             Text("Text", comment: "Story kind").tag(Kind.text)
         } label: {
-            Text("Story kind", comment: "Story composer picker")
+            Text("Kind of short", comment: "Story composer picker")
         }
         .pickerStyle(.segmented)
     }
@@ -188,7 +188,7 @@ public struct StoryComposerSheet: View {
             .onChange(of: text) { _, new in
                 if new.count > Self.textLimit { text = String(new.prefix(Self.textLimit)) }
             }
-            .accessibilityLabel(Text("Story text", comment: "Text story field label"))
+            .accessibilityLabel(Text("Text of the short", comment: "Text story field label"))
 
             HStack {
                 Text("\(text.count)/\(Self.textLimit)", comment: "Text story counter")
@@ -273,7 +273,7 @@ public struct StoryComposerSheet: View {
                 symbol: "wand.and.stars",
                 title: Text("Make it yours", comment: "Story composer hint title"),
                 message: Text(
-                    "Use the shutter for a new picture, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas.",
+                    "Use the shutter for a new photo, or tap the library button to pick one you already have. Drag stickers anywhere on the canvas.",
                     comment: "Story composer hint")
             )
         }
@@ -321,7 +321,7 @@ public struct StoryComposerSheet: View {
             isPresented: $isPickingLibrary, selection: $pickedItem,
             matching: .any(of: [.images, .videos])
         )
-        .accessibilityLabel(Text("Choose a picture or video", comment: "Story composer picker"))
+        .accessibilityLabel(Text("Choose a photo or video", comment: "Story composer picker"))
     }
 
     /// A story-shaped canvas rather than a grey box: what is chosen lands in
@@ -341,7 +341,7 @@ public struct StoryComposerSheet: View {
                     Image(systemName: "photo.stack.fill")
                         .font(.system(size: 42, weight: .light))
                         .foregroundStyle(palette.accent)
-                    Text("Your story", comment: "Story composer placeholder title")
+                    Text("Your short", comment: "Story composer placeholder title")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(palette.label)
                     Text("Tap to pick a photo or video", comment: "Story composer placeholder")
@@ -392,7 +392,7 @@ public struct StoryComposerSheet: View {
 
             if recentAccessDenied {
                 Text(
-                    "Allow photo access in Settings to see your last pictures here. You can still choose one from the library.",
+                    "Allow photo access in Settings to see your last photos here. You can still choose one from the library.",
                     comment: "Story composer recent photos unavailable"
                 )
                 .font(.caption)
@@ -432,7 +432,7 @@ public struct StoryComposerSheet: View {
             case .photo(let data, _):
                 guard let image = Self.decodeImage(data) else {
                     errorMessage = String(
-                        localized: "That picture couldn't be read.",
+                        localized: "That photo couldn't be read.",
                         comment: "Story composer failure")
                     return
                 }
@@ -475,7 +475,7 @@ public struct StoryComposerSheet: View {
                 }
                 .buttonStyle(.bordered)
                 .accessibilityHint(
-                    Text("Crop and zoom the picture", comment: "Story adjust hint"))
+                    Text("Crop and zoom the photo", comment: "Story adjust hint"))
                 Button {
                     self.picture = nil
                     pickedItem = nil
@@ -547,7 +547,7 @@ public struct StoryComposerSheet: View {
             }
 
             Text(
-                "Drag a sticker to place it. Use Adjust to crop and zoom the picture. Both are drawn into the picture when you share.",
+                "Drag a sticker to place it. Use Adjust to crop and zoom the photo. Both are drawn into the photo when you share.",
                 comment: "Story sticker hint"
             )
             .font(.caption)
@@ -570,7 +570,7 @@ public struct StoryComposerSheet: View {
                 .foregroundStyle(palette.tertiaryLabel)
                 if movieDuration > 30 {
                     Text(
-                        "Stories stop at 30 seconds; the server keeps the start.",
+                        "Shorts stop at 30 seconds; the server keeps the start.",
                         comment: "Story composer video length warning"
                     )
                     .font(.caption)
@@ -664,7 +664,7 @@ public struct StoryComposerSheet: View {
             let image = Self.decodeImage(data)
         else {
             errorMessage = String(
-                localized: "That picture couldn't be read.", comment: "Story composer failure")
+                localized: "That photo couldn't be read.", comment: "Story composer failure")
             return
         }
         show(image)
@@ -703,7 +703,7 @@ public struct StoryComposerSheet: View {
             let image = Self.decodeImage(data)
         else {
             errorMessage = String(
-                localized: "That picture couldn't be read.", comment: "Story composer failure")
+                localized: "That photo couldn't be read.", comment: "Story composer failure")
             return
         }
         show(image)
@@ -776,7 +776,7 @@ public struct StoryComposerSheet: View {
                 (error as? StoryComposerError)?.errorDescription
                 ?? (error as? APIError)?.errorDescription
                 ?? String(
-                    localized: "That story couldn't be shared.", comment: "Story composer failure")
+                    localized: "That short couldn't be shared.", comment: "Story composer failure")
         }
     }
 
@@ -821,14 +821,14 @@ public struct StoryComposerSheet: View {
                     for: .tooLarge(
                         size: size, limit: limit, isVideo: true))
                     ?? String(
-                        localized: "That story couldn't be shared.",
+                        localized: "That short couldn't be shared.",
                         comment: "Story composer failure"))
 
         case .unsupported(let mimeType):
             throw StoryComposerError.message(
                 UploadPreflight.explanation(for: .unsupported(mimeType: mimeType))
                     ?? String(
-                        localized: "That story couldn't be shared.",
+                        localized: "That short couldn't be shared.",
                         comment: "Story composer failure"))
         }
     }
@@ -1025,7 +1025,7 @@ struct TextStoryCard: View {
             .padding(96 * scale)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Text story: \(text)", comment: "Text story preview label"))
+        .accessibilityLabel(Text("Text short: \(text)", comment: "Text story preview label"))
     }
 }
 
@@ -1143,7 +1143,7 @@ private struct StoryCropSheet: View {
 
                 Spacer()
 
-                Text("Adjust picture", comment: "Story crop title")
+                Text("Adjust photo", comment: "Story crop title")
                     .font(.headline)
 
                 Spacer()
@@ -1192,7 +1192,7 @@ private struct StoryCropSheet: View {
 
             VStack(spacing: 2) {
                 Text(
-                    "Pinch to zoom. Drag to choose the part of the picture that fills the story.",
+                    "Pinch to zoom. Drag to choose the part of the photo that fills the short.",
                     comment: "Story crop hint"
                 )
                 .font(.caption)
@@ -1319,8 +1319,8 @@ struct StoryComposerTile: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(
                     ownStories.isEmpty
-                        ? Text("Add a story", comment: "Story rail action")
-                        : Text("Your story", comment: "Story rail tile"))
+                        ? Text("Add a short", comment: "Story rail action")
+                        : Text("Your short", comment: "Story rail tile"))
 
                 Button {
                     isComposing = true
@@ -1336,7 +1336,7 @@ struct StoryComposerTile: View {
                 }
                 .buttonStyle(.plain)
                 .offset(x: 6, y: 6)
-                .accessibilityLabel(Text("Add a story", comment: "Story rail action"))
+                .accessibilityLabel(Text("Add a short", comment: "Story rail action"))
             }
 
             if let views = ownStories.compactMap(\.viewCount).max(), !ownStories.isEmpty {
@@ -1351,7 +1351,7 @@ struct StoryComposerTile: View {
                 .accessibilityLabel(
                     Text("^[\(views) view](inflect: true)", comment: "Story view count"))
             } else {
-                Text("Your story", comment: "Story rail tile")
+                Text("Your short", comment: "Story rail tile")
                     .font(.caption2)
                     .lineLimit(1)
                     .frame(maxWidth: 66)

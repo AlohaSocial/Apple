@@ -649,7 +649,7 @@ public struct ShortsView: View {
                 symbol: displayed.favourited ? AlohaSymbol.favouriteFilled : AlohaSymbol.favourite,
                 tint: displayed.favourited ? palette.favourite : .white,
                 count: session.settings.showPopularityCounts ? displayed.favouritesCount : nil,
-                label: Text("Favourite", comment: "Shorts action")
+                label: Text("Like", comment: "Shorts action")
             ) { onAction(.favourite(status)) }
 
             railButton(

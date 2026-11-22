@@ -170,8 +170,8 @@ struct FavouriteButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel(
             favourited
-                ? Text("Unfavourite", comment: "Widget button")
-                : Text("Favourite", comment: "Widget button"))
+                ? Text("Unlike", comment: "Widget button")
+                : Text("Like", comment: "Widget button"))
     }
 }
 
@@ -420,7 +420,7 @@ struct UnreadWidget: Widget {
                 // A count is a door to the list it counts.
                 .widgetURL(URL(string: "alohasocial://notifications"))
         }
-        .configurationDisplayName(Text("Unread notifications", comment: "Widget name"))
+        .configurationDisplayName(Text("Unread activities", comment: "Widget name"))
         .description(Text("How many things happened.", comment: "Widget description"))
         .supportedFamilies(Self.families)
     }
@@ -445,7 +445,7 @@ struct UnreadView: View {
         #if os(iOS)
             case .accessoryInline:
                 Label {
-                    Text("^[\(entry.count) notification](inflect: true)", comment: "Widget text")
+                    Text("^[\(entry.count) activity](inflect: true)", comment: "Widget text")
                 } icon: {
                     Image(systemName: "bell.fill")
                 }
@@ -461,7 +461,7 @@ struct UnreadView: View {
                 // what it is, how many, and whose.
                 VStack(alignment: .leading, spacing: 0) {
                     Label {
-                        Text("Notifications", comment: "Lock Screen widget heading")
+                        Text("Activities", comment: "Lock Screen widget heading")
                     } icon: {
                         Image(systemName: "bell.fill")
                     }

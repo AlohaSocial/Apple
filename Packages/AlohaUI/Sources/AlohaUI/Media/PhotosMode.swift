@@ -446,10 +446,10 @@ public struct PhotosModeView: View {
                     .accessibilityLabel(
                         story.seen
                             ? Text(
-                                "Story from \(story.account.bestDisplayName)",
+                                "Short from \(story.account.bestDisplayName)",
                                 comment: "Story rail tile")
                             : Text(
-                                "New story from \(story.account.bestDisplayName)",
+                                "New short from \(story.account.bestDisplayName)",
                                 comment: "Story rail tile"))
                 }
             }
@@ -512,7 +512,7 @@ public struct PhotosModeView: View {
                     "This server can't filter by media type, so results may be sparse.",
                     comment: "Empty mode explanation")
             } else {
-                Text("Follow some people who post pictures.", comment: "Empty Photos detail")
+                Text("Follow some people who post photos.", comment: "Empty Photos detail")
             }
         }
         .padding(.top, AlohaMetrics.space6)
@@ -771,8 +771,8 @@ public struct PhotoPostCard: View {
         .accessibilityAction(
             named: Text(
                 displayed.favourited
-                    ? String(localized: "Unfavourite", comment: "Accessibility action")
-                    : String(localized: "Favourite", comment: "Accessibility action"))
+                    ? String(localized: "Unlike", comment: "Accessibility action")
+                    : String(localized: "Like", comment: "Accessibility action"))
         ) { heart() }
         .mediaTransitionSource(
             id: attachments.indices.contains(page) ? attachments[page].id : displayed.id,
@@ -1028,7 +1028,7 @@ public struct StoryPlayer: View {
             }
         }
         .alert(
-            Text("Delete this story?", comment: "Story delete confirmation"),
+            Text("Delete this short?", comment: "Story delete confirmation"),
             isPresented: $isConfirmingDelete
         ) {
             Button(role: .destructive) {
@@ -1092,7 +1092,7 @@ public struct StoryPlayer: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(
                     isOwn(story)
-                        ? String(localized: "Your story", comment: "Story player own title")
+                        ? String(localized: "Your short", comment: "Story player own title")
                         : story.account.bestDisplayName
                 )
                 .font(.footnote.weight(.semibold))
@@ -1156,7 +1156,7 @@ public struct StoryPlayer: View {
                 .background(.white.opacity(0.18), in: Capsule())
                 .overlay(Capsule().strokeBorder(.white.opacity(0.5), lineWidth: 1))
                 .onSubmit { Task { await sendReply(to: story) } }
-                .accessibilityLabel(Text("Reply to story", comment: "Story reply label"))
+                .accessibilityLabel(Text("Reply to short", comment: "Story reply label"))
 
                 Button {
                     Task { await sendReply(to: story) }
@@ -1254,7 +1254,7 @@ public struct StoryPlayer: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("Delete story", comment: "Story action"))
+            .accessibilityLabel(Text("Delete short", comment: "Story action"))
         }
         .font(.footnote.weight(.semibold))
         .foregroundStyle(.white)
@@ -1285,7 +1285,7 @@ public struct StoryPlayer: View {
             await session.handle(error)
             await show(
                 String(
-                    localized: "That story couldn't be deleted.", comment: "Story delete failure"))
+                    localized: "That short couldn't be deleted.", comment: "Story delete failure"))
         }
     }
 
@@ -1395,11 +1395,11 @@ private enum PhotosHintText {
     static var message: Text {
         #if os(macOS)
             Text(
-                "Double-click a picture to like or unlike it. Click it once to open it full size.",
+                "Double-click a photo to like or unlike it. Click it once to open it full size.",
                 comment: "Photos hint on the Mac")
         #else
             Text(
-                "Double-tap a picture to like or unlike it. Tap it once to open it full size.",
+                "Double-tap a photo to like or unlike it. Tap it once to open it full size.",
                 comment: "Photos hint")
         #endif
     }

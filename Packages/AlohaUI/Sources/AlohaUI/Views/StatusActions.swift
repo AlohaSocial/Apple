@@ -393,10 +393,10 @@ public enum StatusActions {
     nonisolated static func toggleFailure(_ action: Endpoint.StatusAction) -> String {
         switch action {
         case .favourite:
-            String(localized: "The favourite did not go through.", comment: "Favourite failure")
+            String(localized: "The like did not go through.", comment: "Favourite failure")
         case .unfavourite:
             String(
-                localized: "The favourite could not be removed.", comment: "Unfavourite failure")
+                localized: "The like could not be removed.", comment: "Unfavourite failure")
         case .reblog:
             String(localized: "The boost did not go through.", comment: "Boost failure")
         case .unreblog:

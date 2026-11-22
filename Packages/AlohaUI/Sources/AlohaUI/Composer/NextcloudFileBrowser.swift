@@ -65,7 +65,7 @@ public struct NextcloudFileBrowser: View {
                         Text("Nothing to attach here", comment: "Empty Nextcloud folder")
                     } description: {
                         Text(
-                            "This folder has no pictures, video or audio your server accepts.",
+                            "This folder has no photos, video or audio your server accepts.",
                             comment: "Empty Nextcloud folder detail")
                     }
                 }
