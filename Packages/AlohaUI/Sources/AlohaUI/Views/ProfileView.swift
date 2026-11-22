@@ -9,8 +9,9 @@ import SwiftUI
 
 /// A profile the way Nextcloud Social lays one out: banner, avatar with a
 /// stories ring, name and handle, the note, the fields, featured hashtags, a
-/// twelve-week rhythm strip, pinned posts, then the tabs — Posts, Replies,
-/// Media, Videos, Collections and Tagged — all on one scrolling page (docs/05 §5).
+/// twelve-week rhythm strip, pinned posts, then the tabs — Posts, Photos,
+/// Videos, Tagged and Collections, and on your own profile Saved, Drafts and
+/// Statistics — all on one scrolling page (docs/05 §5).
 public struct ProfileView: View {
     @Environment(\.alohaPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -27,7 +28,9 @@ public struct ProfileView: View {
     @State private var familiar: [Account] = []
     @State private var stories: [Story] = []
     @State private var collections: [Collection] = []
-    @State private var tab: Tab = .posts
+    @State private var tab: Tab
+    /// Which half of Saved is showing: Favorites or Bookmarks.
+    @State private var savedKind: SavedKind
     @State private var errorMessage: String?
     @State private var noteDraft = ""
     @State private var isEditingNote = false
@@ -49,6 +52,14 @@ public struct ProfileView: View {
     enum Tab: String, CaseIterable, Identifiable {
         // Nextcloud Social's own profile tabs, in its order (`useProfileKinds`).
         case posts, photos, videos, tagged, collections
+        /// Only on the reader's own profile, after the public tabs.
+        case saved, drafts, statistics
+        var id: String { rawValue }
+    }
+
+    /// The two lists behind Saved, as the web's sub-switch has them.
+    enum SavedKind: String, CaseIterable, Identifiable, Sendable {
+        case favorites, bookmarks
         var id: String { rawValue }
     }
 
@@ -56,18 +67,30 @@ public struct ProfileView: View {
         accountID: String, session: AccountSession,
         onAction: @escaping (StatusRowAction) -> Void
     ) {
+        self.init(accountID: accountID, session: session, start: .posts, onAction: onAction)
+    }
+
+    /// A profile opened on one of its tabs — the reader's own Saved, Drafts
+    /// or Statistics, for the routes that used to open screens of their own.
+    init(
+        accountID: String, session: AccountSession, start: ProfileStart,
+        onAction: @escaping (StatusRowAction) -> Void
+    ) {
         self.accountID = accountID
         self.session = session
         self.onAction = onAction
+        let isOwn = accountID == session.snapshot.serverAccountID
+        // A tab this profile does not have — somebody else's Drafts, or
+        // Statistics on a server that keeps none — opens on Posts.
+        let tabs = Self.tabs(isOwn: isOwn, capabilities: session.capabilities)
+        _tab = State(initialValue: tabs.contains(start.tab) ? start.tab : .posts)
+        _savedKind = State(initialValue: start.saved)
     }
 
     private var isOwn: Bool { accountID == session.snapshot.serverAccountID }
 
     private var availableTabs: [Tab] {
-        var tabs: [Tab] = [.posts, .photos, .videos]
-        if session.capabilities.isNextcloudSocial { tabs.append(.tagged) }
-        if session.capabilities.collections { tabs.append(.collections) }
-        return tabs
+        Self.tabs(isOwn: isOwn, capabilities: session.capabilities)
     }
 
     public var body: some View {
@@ -234,6 +257,9 @@ public struct ProfileView: View {
         case .videos: Text("Videos", comment: "Profile tab")
         case .collections: Text("Collections", comment: "Profile tab")
         case .tagged: Text("Tagged", comment: "Profile tab")
+        case .saved: Text("Saved", comment: "Profile tab, own profile only")
+        case .drafts: Text("Drafts", comment: "Profile tab, own profile only")
+        case .statistics: Text("Statistics", comment: "Profile tab, own profile only")
         }
     }
 
@@ -256,7 +282,37 @@ public struct ProfileView: View {
         case .tagged:
             TaggedGrid(accountID: accountID, session: session, onAction: onAction)
                 .padding(.top, AlohaMetrics.space2)
+        case .saved:
+            savedSwitch
+            savedList
+        case .drafts:
+            ProfileDraftsTab(session: session, onAction: onAction)
+        case .statistics:
+            StatisticsView(session: session)
         }
+    }
+
+    /// Favorites or Bookmarks, the switch the web's Saved tab has.
+    private var savedSwitch: some View {
+        Picker(selection: $savedKind) {
+            Text("Favorites", comment: "Profile Saved tab switch").tag(SavedKind.favorites)
+            Text("Bookmarks", comment: "Profile Saved tab switch").tag(SavedKind.bookmarks)
+        } label: {
+            Text("Which saved posts to show", comment: "Profile Saved tab switch label")
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .padding(.horizontal, AlohaMetrics.space4)
+        .padding(.vertical, AlohaMetrics.space2)
+    }
+
+    /// The posts you liked or bookmarked, as their own timelines had them.
+    private var savedList: some View {
+        let source: TimelineSource = savedKind == .favorites ? .favourites : .bookmarks
+        let key = TimelineKey(mode: .home, source: source)
+        return ProfileStatusList(key: key, session: session, onAction: onAction)
+            .id(key.storageKey)
     }
 
     /// One tab's posts. Keyed on the narrowing, so changing it starts a fresh

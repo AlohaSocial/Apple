@@ -198,6 +198,17 @@
         }
       }
     },
+    "content filter filters language translate translation mute block memories recap looking back on this day" : {
+      "comment" : "Settings search keywords for the Content section, separated by spaces. Translate into the words people in your language would type.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "inhalt filter filtern sprache übersetzen übersetzung stummschalten blockieren entwürfe geplant zurückgehalten prüfung wartend moderation erinnerungen rückblick an diesem tag"
+          }
+        }
+      }
+    },
     "Couldn't summarize that." : {
       "comment" : "Summary failed",
       "localizations" : {
@@ -274,7 +285,7 @@
       "comment" : "Story sticker hint"
     },
     "Favorites" : {
-      "comment" : "Notification filter\nScreen title",
+      "comment" : "Notification filter\nProfile Saved tab switch",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -771,7 +782,7 @@
     },
     "Viewers of this short could not be loaded. Please try again." : {},
     "Waiting for review" : {
-      "comment" : "Held for review title\nScreen title\nSettings item",
+      "comment" : "Held for review title\nProfile drafts tab section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -810,6 +821,28 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Deine Farbe"
+          }
+        }
+      }
+    },
+    "Your post is with a moderator and will appear once it has been looked at. Until then it is on your profile, under Drafts." : {
+      "comment" : "Held for review detail",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dein Beitrag liegt bei der Moderation und erscheint, sobald er geprüft wurde. Bis dahin findest du ihn in den Einstellungen."
+          }
+        }
+      }
+    },
+    "Your post will go out on %@. You can change or cancel it on your profile, under Drafts." : {
+      "comment" : "Scheduled post confirmation. The argument is a date and time.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dein Beitrag erscheint am %@. In den Einstellungen unter „Geplante Beiträge“ kannst du ihn ändern oder absagen."
           }
         }
       }
@@ -3231,7 +3264,7 @@
       }
     },
     "Archived posts" : {
-      "comment" : "Screen title",
+      "comment" : "Profile drafts tab section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3704,7 +3737,7 @@
       }
     },
     "Bookmarks" : {
-      "comment" : "Migration list\nScreen title",
+      "comment" : "Migration list\nProfile Saved tab switch",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4332,17 +4365,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inhalt"
-          }
-        }
-      }
-    },
-    "content filter filters language translate translation mute block drafts scheduled held review waiting moderator memories recap looking back on this day" : {
-      "comment" : "Settings search keywords for the Content section, separated by spaces. Translate into the words people in your language would type.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "inhalt filter filtern sprache übersetzen übersetzung stummschalten blockieren entwürfe geplant zurückgehalten prüfung wartend moderation erinnerungen rückblick an diesem tag"
           }
         }
       }
@@ -5281,7 +5303,7 @@
       }
     },
     "Drafts" : {
-      "comment" : "Screen title\nSettings item",
+      "comment" : "Composer action\nComposer action: open the saved drafts\nProfile drafts tab section\nProfile tab, own profile only\nScreen title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9258,17 +9280,6 @@
         }
       }
     },
-    "Nothing archived" : {
-      "comment" : "Empty archived posts",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nichts archiviert"
-          }
-        }
-      }
-    },
     "Nothing filtered yet." : {
       "comment" : "Empty filters",
       "localizations" : {
@@ -9379,17 +9390,6 @@
         }
       }
     },
-    "Nothing of yours is waiting." : {
-      "comment" : "Empty held posts",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Von dir wartet nichts."
-          }
-        }
-      }
-    },
     "Nothing posted this week yet." : {
       "comment" : "Weekly recap headline",
       "localizations" : {
@@ -9397,17 +9397,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Woche noch nichts gepostet."
-          }
-        }
-      }
-    },
-    "Nothing scheduled" : {
-      "comment" : "Empty scheduled posts",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nichts geplant"
           }
         }
       }
@@ -12000,7 +11989,7 @@
       }
     },
     "Scheduled" : {
-      "comment" : "Scheduled post confirmation title\nScreen title",
+      "comment" : "Scheduled post confirmation title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12022,7 +12011,7 @@
       }
     },
     "Scheduled posts" : {
-      "comment" : "Settings item",
+      "comment" : "Profile drafts tab section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13111,7 +13100,7 @@
       "comment" : "Story camera state"
     },
     "Statistics" : {
-      "comment" : "Screen title",
+      "comment" : "Profile tab, own profile only",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16340,28 +16329,6 @@
         }
       }
     },
-    "Your post is with a moderator and will appear once it has been looked at. You can find it under Settings until then." : {
-      "comment" : "Held for review detail",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Beitrag liegt bei der Moderation und erscheint, sobald er geprüft wurde. Bis dahin findest du ihn in den Einstellungen."
-          }
-        }
-      }
-    },
-    "Your post will go out on %@. You can change or cancel it under Scheduled posts in Settings." : {
-      "comment" : "Scheduled post confirmation. The argument is a date and time.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Beitrag erscheint am %@. In den Einstellungen unter „Geplante Beiträge“ kannst du ihn ändern oder absagen."
-          }
-        }
-      }
-    },
     "Your posts and follows go, and every server that knew you is told. This cannot be undone." : {
       "comment" : "Delete account confirmation detail",
       "localizations" : {
@@ -16533,6 +16500,21 @@
           }
         }
       }
+    },
+    "Saved" : {
+      "comment" : "Profile tab, own profile only"
+    },
+    "Which saved posts to show" : {
+      "comment" : "Profile Saved tab switch label"
+    },
+    "Delete draft" : {
+      "comment" : "Drafts row action"
+    },
+    "Change time" : {
+      "comment" : "Scheduled post action"
+    },
+    "Cancel this scheduled post" : {
+      "comment" : "Scheduled post action"
     }
   },
   "version" : "1.1"

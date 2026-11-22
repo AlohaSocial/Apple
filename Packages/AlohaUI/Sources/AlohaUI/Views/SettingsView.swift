@@ -188,20 +188,8 @@ public struct SettingsView: View {
                             }
                         }
                     }
-                    NavigationLink(value: Route.drafts) {
-                        Label {
-                            Text("Drafts", comment: "Settings item")
-                        } icon: {
-                            Image(systemName: AlohaSymbol.compose)
-                        }
-                    }
-                    NavigationLink(value: Route.scheduledPosts) {
-                        Label {
-                            Text("Scheduled posts", comment: "Settings item")
-                        } icon: {
-                            Image(systemName: "clock")
-                        }
-                    }
+                    // Drafts, scheduled posts and posts waiting for review
+                    // are on your profile's Drafts tab, as on the web.
                     if let session = environment.activeSession,
                         session.capabilities.isNextcloudSocial
                     {
@@ -210,15 +198,6 @@ public struct SettingsView: View {
                         BlueskySettingsRows(session: session)
                     }
                     if environment.activeSession?.capabilities.isNextcloudSocial == true {
-                        // A post a moderator holds must never vanish without a
-                        // word; this is where it waits.
-                        NavigationLink(value: Route.heldPosts) {
-                            Label {
-                                Text("Waiting for review", comment: "Settings item")
-                            } icon: {
-                                Image(systemName: "clock.badge.questionmark")
-                            }
-                        }
                         NavigationLink(value: Route.memories) {
                             Label {
                                 Text("Looking back", comment: "Settings item")

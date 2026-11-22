@@ -728,6 +728,12 @@ struct ThemedAppShell: View {
         detailPaths = restored.restoredDetailPaths
         selectedTab = restored.tab
         sidebarItem = restored.sidebarItem.item
+        // Bookmarks, Favorites, Archived posts and Statistics were sidebar
+        // places before they became tabs of your own profile; a scene left
+        // on one of them comes back on the feed rather than on nothing.
+        if case .route(let route) = sidebarItem, ProfileStart.ownTab(for: route) != nil {
+            sidebarItem = .mode(selectedMode)
+        }
         if usesSidebar {
             if case .mode(let mode) = sidebarItem { selectedMode = mode }
         } else if case .mode(let mode) = selectedTab {

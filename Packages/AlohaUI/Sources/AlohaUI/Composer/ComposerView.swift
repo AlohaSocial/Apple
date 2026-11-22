@@ -334,7 +334,7 @@ public struct ComposerView: View {
                 }
             } message: {
                 Text(
-                    "Your post is with a moderator and will appear once it has been looked at. You can find it under Settings until then.",
+                    "Your post is with a moderator and will appear once it has been looked at. Until then it is on your profile, under Drafts.",
                     comment: "Held for review detail")
             }
             // A scheduled post is a success with nothing to show for it yet,
@@ -355,7 +355,7 @@ public struct ComposerView: View {
                         """
                         Your post will go out on \
                         \(date.formatted(.dateTime.weekday().day().month().hour().minute())). \
-                        You can change or cancel it under Scheduled posts in Settings.
+                        You can change or cancel it on your profile, under Drafts.
                         """,
                         comment: "Scheduled post confirmation. The argument is a date and time.")
                 }

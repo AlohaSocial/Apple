@@ -4,7 +4,8 @@ import XCTest
 
 #if os(iOS)
 
-    /// The screens added after the first tour was written: keyword filters,
+    /// The screens added after the first tour was written: your own profile's
+    /// Saved and Drafts tabs, keyword filters,
     /// "Your year", about-this-server, the moderator's three, the follow
     /// constellation, the composer's card row and the shortcut sheet.
     ///
@@ -31,6 +32,32 @@ import XCTest
             app.launch()
             app.dismissSystemAlertsIfPresent()
             XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 15))
+        }
+
+        // MARK: - Your own profile
+
+        /// Saved, Drafts and Statistics are tabs of your own profile, as on
+        /// the web, and no longer rows of the account menu or Settings.
+        func testOwnProfileHasSavedAndDrafts() {
+            XCTAssertTrue(app.openFromAccountMenu("My profile"), "My profile not reachable")
+            for tab in ["Saved", "Drafts"] {
+                XCTAssertTrue(
+                    app.buttons[tab].firstMatch.waitForExistence(timeout: 10),
+                    "\(tab) tab missing from your own profile")
+            }
+            app.buttons["Saved"].firstMatch.tap()
+            XCTAssertTrue(
+                app.buttons["Favorites"].firstMatch.waitForExistence(timeout: 5),
+                "Saved has no Favorites switch")
+            XCTAssertTrue(
+                app.buttons["Bookmarks"].firstMatch.exists, "Saved has no Bookmarks switch")
+            shoot("32-profile-saved")
+
+            app.buttons["Drafts"].firstMatch.tap()
+            XCTAssertTrue(
+                app.labelled("Scheduled posts").waitForExistence(timeout: 5),
+                "Drafts has no Scheduled posts section")
+            shoot("33-profile-drafts")
         }
 
         // MARK: - Settings surfaces

@@ -51,7 +51,7 @@ extension ThemedAppShell {
         #if os(iOS)
             return [
                 .conversations, .explore, .lists,
-                .collections(accountID: nil), .notifications, .bookmarks, .settings,
+                .collections(accountID: nil), .notifications, .settings,
                 .search(query: nil),
             ]
         #elseif os(visionOS)
@@ -246,7 +246,8 @@ extension ThemedAppShell {
 #if os(macOS)
     extension ThemedAppShell {
         /// Everywhere the "Go to…" field can take a person: the sidebar's
-        /// places, then the screens kept in the account menu.
+        /// places, then the screens kept in the account menu and the tabs
+        /// of your own profile.
         func jumpItems(_ session: AccountSession) -> [CommandPalette.Item] {
             var items = ShellPlace.sidebarOrder(modes: session.visibleModes, modeTitle: modeTitle)
                 .enumerated().map { index, place in
@@ -264,21 +265,30 @@ extension ThemedAppShell {
             add(
                 "lists", String(localized: "Your lists", comment: "Account menu item"),
                 AlohaSymbol.list, .lists)
+            // Bookmarks, Favorites, Drafts, Scheduled posts and Statistics
+            // open tabs of your own profile, as the web's palette does.
             add(
-                "bookmarks", String(localized: "Bookmarks", comment: "Account menu item"),
+                "bookmarks", String(localized: "Bookmarks", comment: "Profile Saved tab switch"),
                 AlohaSymbol.bookmark, .bookmarks)
             add(
-                "liked", String(localized: "Favorites", comment: "Account menu item"),
+                "liked", String(localized: "Favorites", comment: "Profile Saved tab switch"),
                 AlohaSymbol.favourite, .favourites)
             add(
                 "requests", String(localized: "Follow requests", comment: "Account menu item"),
                 "person.badge.clock", .followRequests)
             add(
-                "drafts", String(localized: "Drafts", comment: "Settings item"),
+                "drafts", String(localized: "Drafts", comment: "Profile tab, own profile only"),
                 "doc.text", .drafts)
             add(
-                "scheduled", String(localized: "Scheduled posts", comment: "Settings item"),
+                "scheduled",
+                String(localized: "Scheduled posts", comment: "Profile drafts tab section"),
                 "clock", .scheduledPosts)
+            if session.capabilities.isNextcloudSocial {
+                add(
+                    "statistics",
+                    String(localized: "Statistics", comment: "Profile tab, own profile only"),
+                    "chart.bar.xaxis", .statistics)
+            }
             add(
                 "filters", String(localized: "Filtered words", comment: "Settings item"),
                 "line.3.horizontal.decrease", .filters)

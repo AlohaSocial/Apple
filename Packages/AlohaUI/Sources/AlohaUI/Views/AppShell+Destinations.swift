@@ -38,16 +38,19 @@ extension ThemedAppShell {
     @ViewBuilder
     private func destinationContent(_ route: Route, session: AccountSession) -> some View {
         switch route {
-        case .thread, .profile, .hashtag, .bookmarks, .favourites, .notifications,
+        case .bookmarks, .favourites, .drafts, .scheduledPosts, .heldPosts, .archived,
+            .statistics:
+            ownProfileDestination(route, session: session)
+        case .thread, .profile, .hashtag, .notifications,
             .explore, .search, .lists, .filters, .timeline, .threadReader:
             timelineDestination(route, session: session)
-        case .safety, .conversations, .conversation, .video, .drafts, .scheduledPosts,
+        case .safety, .conversations, .conversation, .video,
             .notificationRequests, .notificationPolicy, .followRequests, .handle, .settings:
             conversationDestination(route, session: session)
-        case .interests, .memories, .heldPosts, .starterPacks, .starterPack, .place,
-            .archived, .collections, .followers, .following, .tagged, .annualReport:
+        case .interests, .memories, .starterPacks, .starterPack, .place,
+            .collections, .followers, .following, .tagged, .annualReport:
             nextcloudSocialDestination(route, session: session)
-        case .statistics, .migration, .authorizedApps, .featuredTags,
+        case .migration, .authorizedApps, .featuredTags,
             .editProfile, .channels, .serverInfo, .deleteAccount:
             nextcloudAccountDestination(route, session: session)
         case .moderation, .moderationReports, .moderationReport, .moderationAccounts,
@@ -57,6 +60,16 @@ extension ThemedAppShell {
             .linkTimeline:
             blueskyDestination(route, session: session)
         }
+    }
+
+    /// Saved, Drafts and Statistics are tabs of your own profile, as on the
+    /// web; the routes that named their old screens open it on that tab.
+    private func ownProfileDestination(_ route: Route, session: AccountSession) -> some View {
+        ProfileView(
+            accountID: session.snapshot.serverAccountID, session: session,
+            start: ProfileStart.ownTab(for: route) ?? .posts
+        ) { handle($0, session: session) }
+        .readerColumn
     }
 
     @ViewBuilder
@@ -70,16 +83,6 @@ extension ThemedAppShell {
                 .readerColumn
         case .hashtag(let name):
             HashtagTimelineView(name: name, session: session) { handle($0, session: session) }
-        case .bookmarks:
-            TimelineView(
-                key: TimelineKey(mode: .home, source: .bookmarks), session: session
-            ) { handle($0, session: session) }
-            .navigationTitle(Text("Bookmarks", comment: "Screen title"))
-        case .favourites:
-            TimelineView(
-                key: TimelineKey(mode: .home, source: .favourites), session: session
-            ) { handle($0, session: session) }
-            .navigationTitle(Text("Favorites", comment: "Screen title"))
         case .notifications:
             NotificationsView(session: session) { handle($0, session: session) }
                 .readerColumn
@@ -129,10 +132,6 @@ extension ThemedAppShell {
             }
         case .video(let statusID):
             VideoWatchView(statusID: statusID, session: session) { handle($0, session: session) }
-        case .drafts:
-            DraftsView(session: session)
-        case .scheduledPosts:
-            ScheduledPostsView(session: session)
         case .notificationRequests:
             NotificationRequestsView(session: session)
         case .notificationPolicy:
@@ -153,16 +152,12 @@ extension ThemedAppShell {
             InterestsSettingsScreen(session: session)
         case .memories:
             MemoriesView(session: session) { handle($0, session: session) }
-        case .heldPosts:
-            HeldPostsView(session: session)
         case .starterPacks:
             StarterPacksView(session: session) { handle($0, session: session) }
         case .starterPack(let slug):
             StarterPackView(slug: slug, session: session) { handle($0, session: session) }
         case .place(let id):
             PlaceView(id: id, session: session) { handle($0, session: session) }
-        case .archived:
-            ArchivedPostsView(session: session) { handle($0, session: session) }
         case .collections(let accountID):
             CollectionsView(session: session, accountID: accountID) { handle($0, session: session) }
         case .followers(let accountID):
@@ -185,8 +180,6 @@ extension ThemedAppShell {
     @ViewBuilder
     private func nextcloudAccountDestination(_ route: Route, session: AccountSession) -> some View {
         switch route {
-        case .statistics:
-            StatisticsView(session: session)
         case .migration:
             MigrationView(session: session)
         case .authorizedApps:

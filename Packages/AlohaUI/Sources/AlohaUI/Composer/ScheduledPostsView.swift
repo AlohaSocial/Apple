@@ -5,6 +5,8 @@ import AlohaModels
 import AlohaNetwork
 import SwiftUI
 
+/// Your scheduled posts, a section of the Drafts tab on your own profile.
+///
 /// `GET /api/v1/scheduled_statuses` sends **no `Link` header** — a
 /// `ScheduledStatus` carries no status nid for one to point at — so it is
 /// fetched whole rather than paged (docs/02 §5).
@@ -21,8 +23,10 @@ public struct ScheduledPostsView: View {
         self.session = session
     }
 
+    /// A stack in the profile's own scroll view rather than a list, so the
+    /// row's actions are in its context menu instead of a swipe.
     public var body: some View {
-        List {
+        LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(scheduled) { post in
                 Button {
                     rescheduling = post
@@ -31,10 +35,11 @@ public struct ScheduledPostsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint(
-                    Text("Choose another time to send it", comment: "Scheduled post row hint"))
-            }
-            .onDelete { offsets in
-                Task { await cancel(at: offsets) }
+                    Text("Choose another time to send it", comment: "Scheduled post row hint")
+                )
+                .contextMenu { actions(post) }
+                .accessibilityActions { actions(post) }
+                Divider()
             }
 
             if let errorMessage {
@@ -42,21 +47,42 @@ public struct ScheduledPostsView: View {
             }
 
             if scheduled.isEmpty && !isLoading {
-                ContentUnavailableView {
-                    Text("Nothing scheduled", comment: "Empty scheduled posts")
-                } description: {
-                    Text(
+                ProfileSectionNote(
+                    text: Text(
                         "Posts you schedule from the composer wait here until they go out.",
-                        comment: "Scheduled posts explanation")
-                }
+                        comment: "Scheduled posts explanation"))
+            } else if scheduled.isEmpty && isLoading {
+                SkeletonListRow(text: 2)
             }
         }
-        .navigationTitle(Text("Scheduled", comment: "Screen title"))
         .task { await load() }
-        .alohaRefreshable { await load() }
         .sheet(item: $rescheduling) { post in
             RescheduleSheet(current: post.scheduledAt) { date in
                 Task { await reschedule(post, to: date) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func actions(_ post: ScheduledStatus) -> some View {
+        Button {
+            rescheduling = post
+        } label: {
+            Label {
+                Text("Change time", comment: "Scheduled post action")
+            } icon: {
+                Image(systemName: "clock")
+            }
+        }
+        Button(role: .destructive) {
+            if let index = scheduled.firstIndex(where: { $0.id == post.id }) {
+                Task { await cancel(at: IndexSet(integer: index)) }
+            }
+        } label: {
+            Label {
+                Text("Cancel this scheduled post", comment: "Scheduled post action")
+            } icon: {
+                Image(systemName: "xmark.circle")
             }
         }
     }

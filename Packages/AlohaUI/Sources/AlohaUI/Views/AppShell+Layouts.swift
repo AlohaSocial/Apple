@@ -184,12 +184,6 @@ extension ThemedAppShell {
                         route: .profile(accountID: session.snapshot.serverAccountID),
                         session: session)
                     sidebarTab(
-                        "Bookmarks", symbol: AlohaSymbol.bookmark, route: .bookmarks,
-                        session: session)
-                    sidebarTab(
-                        "Favorites", symbol: AlohaSymbol.favourite, route: .favourites,
-                        session: session)
-                    sidebarTab(
                         "Your lists", symbol: "list.bullet.rectangle", route: .lists,
                         session: session)
                     if session.capabilities.collections {
@@ -203,14 +197,6 @@ extension ThemedAppShell {
                     sidebarTab(
                         "Blocked and muted", symbol: "hand.raised", route: .safety, session: session
                     )
-                    if session.capabilities.isNextcloudSocial {
-                        sidebarTab(
-                            "Archived posts", symbol: "archivebox", route: .archived,
-                            session: session)
-                        sidebarTab(
-                            "Statistics", symbol: "chart.bar.xaxis", route: .statistics,
-                            session: session)
-                    }
                     sidebarTab(
                         "Settings", symbol: AlohaSymbol.settings, route: .settings,
                         session: session)

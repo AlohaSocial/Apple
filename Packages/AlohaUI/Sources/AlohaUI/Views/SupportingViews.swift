@@ -547,7 +547,9 @@ public enum SidebarItem: Hashable, Sendable {
     public static let sidebarRoutes: [Route] = [
         .notifications, .conversations, .explore, .search(query: nil), .lists,
         .collections(accountID: nil),
-        .followRequests, .favourites, .bookmarks, .archived, .statistics, .safety, .settings,
+        // Saved, Drafts and Statistics are tabs of your own profile, which
+        // is pushed like any profile.
+        .followRequests, .safety, .settings,
     ]
 }
 

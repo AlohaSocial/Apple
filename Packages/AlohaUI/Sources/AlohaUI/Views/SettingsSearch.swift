@@ -112,7 +112,7 @@ enum SettingsSection: CaseIterable, Sendable {
         case .content:
             String(
                 localized:
-                    "content filter filters language translate translation mute block drafts scheduled held review waiting moderator memories recap looking back on this day",
+                    "content filter filters language translate translation mute block memories recap looking back on this day",
                 comment:
                     "Settings search keywords for the Content section, separated by spaces. Translate into the words people in your language would type."
             )
