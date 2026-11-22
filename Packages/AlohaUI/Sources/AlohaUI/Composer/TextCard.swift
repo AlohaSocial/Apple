@@ -50,7 +50,7 @@ public enum TextCard {
                     hue: (accountHue + 40).truncatingRemainder(dividingBy: 360) / 360,
                     saturation: 0.65, brightness: 0.32),
                 ink: .white,
-                name: String(localized: "Your colour", comment: "Card background")),
+                name: String(localized: "Your color", comment: "Card background")),
             Background(
                 id: "sunset", from: Color(hex: 0xFF7A59), to: Color(hex: 0xE8367F), ink: .white,
                 name: String(localized: "Sunset", comment: "Card background")),

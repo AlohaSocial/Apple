@@ -113,7 +113,7 @@ import XCTest
                 let accountItems = ["My profile", "Settings"]
             #else
                 let accountItems = [
-                    "My profile", "Follow requests", "Favorites", "Bookmarks", "Blocking",
+                    "My profile", "Follow requests", "Favorites", "Bookmarks", "Blocked and muted",
                     "Settings",
                 ]
             #endif

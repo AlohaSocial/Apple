@@ -201,7 +201,8 @@ extension ThemedAppShell {
                         "Follow requests", symbol: "person.badge.clock", route: .followRequests,
                         session: session)
                     sidebarTab(
-                        "Blocking", symbol: "hand.raised", route: .safety, session: session)
+                        "Blocked and muted", symbol: "hand.raised", route: .safety, session: session
+                    )
                     if session.capabilities.isNextcloudSocial {
                         sidebarTab(
                             "Archived posts", symbol: "archivebox", route: .archived,

@@ -126,11 +126,66 @@
         }
       }
     },
+    "Add content warning" : {
+      "comment" : "Composer action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Inhaltswarnung hinzufügen"
+          }
+        }
+      }
+    },
     "Adjust photo" : {
       "comment" : "Story crop title"
     },
     "Allow photo access in Settings to see your last photos here. You can still choose one from the library." : {
       "comment" : "Story composer recent photos unavailable"
+    },
+    "Aloha Social is open source under the MIT license." : {
+      "comment" : "Settings footer",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aloha Social ist Open Source unter der MIT-Lizenz."
+          }
+        }
+      }
+    },
+    "Blocked and muted" : {
+      "comment" : "Screen title\nSettings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Blockiert"
+          }
+        }
+      }
+    },
+    "Center" : {
+      "comment" : "Focal point reset",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Zentrieren"
+          }
+        }
+      }
+    },
+    "Center again" : {
+      "comment" : "Constellation action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Wieder zentrieren"
+          }
+        }
+      }
     },
     "Choose a photo or video" : {
       "comment" : "Story composer picker",
@@ -139,6 +194,17 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Bild oder Video auswählen"
+          }
+        }
+      }
+    },
+    "Couldn't summarize that." : {
+      "comment" : "Summary failed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Zusammenfassen fehlgeschlagen."
           }
         }
       }
@@ -164,6 +230,17 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Diese Story löschen?"
+          }
+        }
+      }
+    },
+    "Direct message" : {
+      "comment" : "Visibility",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Direkt"
           }
         }
       }
@@ -243,6 +320,17 @@
         }
       }
     },
+    "Hidden servers" : {
+      "comment" : "Safety section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Blockierte Server"
+          }
+        }
+      }
+    },
     "Kind of short" : {
       "comment" : "Story composer picker",
       "localizations" : {
@@ -250,6 +338,17 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Art der Story"
+          }
+        }
+      }
+    },
+    "License" : {
+      "comment" : "Composer video field label\nComposer video field placeholder",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Lizenz"
           }
         }
       }
@@ -320,8 +419,30 @@
         }
       }
     },
+    "Local, Global and hashtag timelines" : {
+      "comment" : "Filter context",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Öffentliche Timelines"
+          }
+        }
+      }
+    },
     "Mentions from people you don't follow, new accounts and limited accounts are the most common sources of unwanted attention. Setting them to \"Filter\" sends them to the Filtered activities screen instead of your inbox." : {
       "comment" : "Notification policy explanation"
+    },
+    "Moving your account" : {
+      "comment" : "Screen title\nSettings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Umzug"
+          }
+        }
+      }
     },
     "New short" : {
       "comment" : "Story composer title",
@@ -474,8 +595,33 @@
     "Shorts that start in the camera." : {
       "comment" : "Onboarding title"
     },
+    "Show replies as comments in Files" : {
+      "comment" : "Settings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Antworten als Kommentare in Dateien"
+          }
+        }
+      }
+    },
+    "Show the numbers" : {
+      "comment" : "Onboarding demo toggle\nPhotos menu setting\nSettings item"
+    },
     "Shows who liked this post" : {
       "comment" : "Hint for the favourites number"
+    },
+    "Summarize thread" : {
+      "comment" : "Thread action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Unterhaltung zusammenfassen"
+          }
+        }
+      }
     },
     "Swipe from either edge to reply, like, boost or bookmark. You choose which in Settings." : {
       "comment" : "Tip detail: swipe actions on timeline posts",
@@ -521,6 +667,17 @@
         }
       }
     },
+    "That post could not be canceled. It will still go out." : {
+      "comment" : "Scheduled post cancel failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dieser Beitrag konnte nicht abgesagt werden. Er wird trotzdem veröffentlicht."
+          }
+        }
+      }
+    },
     "That short couldn't be deleted." : {
       "comment" : "Story delete failure",
       "localizations" : {
@@ -543,6 +700,17 @@
         }
       }
     },
+    "The accent color comes from your Nextcloud, so the app looks like the server it is signed in to." : {
+      "comment" : "Where the accent colour comes from",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Die Akzentfarbe kommt von deiner Nextcloud, damit die App so aussieht wie der Server, bei dem sie angemeldet ist."
+          }
+        }
+      }
+    },
     "The archive holds your profile, posts, photos and videos, and the lists below. It never holds your private key." : {
       "comment" : "Migration export explanation",
       "localizations" : {
@@ -550,6 +718,28 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Das Archiv enthält dein Profil, deine Beiträge, Bilder und Videos sowie die Listen unten. Deinen privaten Schlüssel enthält es nie."
+          }
+        }
+      }
+    },
+    "The title is what you see where a post was folded away, so make it something you will recognize." : {
+      "comment" : "Filter title explanation",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Den Titel siehst du dort, wo ein Beitrag eingeklappt wurde – wähle also etwas, das du wiedererkennst."
+          }
+        }
+      }
+    },
+    "There is zero tolerance for objectionable content and abusive behavior." : {
+      "comment" : "Terms rule",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Für anstößige Inhalte und missbräuchliches Verhalten gilt null Toleranz."
           }
         }
       }
@@ -580,6 +770,28 @@
       "comment" : "Story composer hint"
     },
     "Viewers of this short could not be loaded. Please try again." : {},
+    "Waiting for review" : {
+      "comment" : "Held for review title\nScreen title\nSettings item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Wartet auf Prüfung"
+          }
+        }
+      }
+    },
+    "When to tell you" : {
+      "comment" : "Settings section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Benachrichtigungen"
+          }
+        }
+      }
+    },
     "When you choose to see a filtered sender's activities, they are listed here, and their activities always reach you." : {
       "comment" : "Allowed senders explanation",
       "localizations" : {
@@ -587,6 +799,17 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wenn du die Benachrichtigungen einer gefilterten Person sehen willst, steht sie hier, und ihre Benachrichtigungen erreichen dich immer."
+          }
+        }
+      }
+    },
+    "Your color" : {
+      "comment" : "Card background",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Deine Farbe"
           }
         }
       }
@@ -2213,17 +2436,6 @@
         }
       }
     },
-    "Add a content warning" : {
-      "comment" : "Composer action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inhaltswarnung hinzufügen"
-          }
-        }
-      }
-    },
     "Add a custom emoji" : {
       "comment" : "Composer action",
       "localizations" : {
@@ -2706,17 +2918,6 @@
     },
     "Aloha Social has no account of its own." : {
       "comment" : "Onboarding footnote"
-    },
-    "Aloha Social is open source under the MIT licence." : {
-      "comment" : "Settings footer",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aloha Social ist Open Source unter der MIT-Lizenz."
-          }
-        }
-      }
     },
     "Aloha Social on GitHub" : {
       "comment" : "Menu item"
@@ -3354,7 +3555,7 @@
       }
     },
     "Blocked" : {
-      "comment" : "Relationship badge",
+      "comment" : "Relationship badge\nSafety section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3365,7 +3566,7 @@
       }
     },
     "Blocked accounts" : {
-      "comment" : "Migration list\nSafety section",
+      "comment" : "Migration list",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3376,23 +3577,12 @@
       }
     },
     "Blocked servers" : {
-      "comment" : "Migration list\nSafety section",
+      "comment" : "Migration list",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Blockierte Server"
-          }
-        }
-      }
-    },
-    "Blocking" : {
-      "comment" : "Screen title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Blockiert"
           }
         }
       }
@@ -3423,7 +3613,7 @@
       }
     },
     "Bluesky" : {
-      "comment" : "Network name\nScreen title\nSettings item",
+      "comment" : "Network name",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3780,28 +3970,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kategorie"
-          }
-        }
-      }
-    },
-    "Centre" : {
-      "comment" : "Focal point reset",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zentrieren"
-          }
-        }
-      }
-    },
-    "Centre again" : {
-      "comment" : "Constellation action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wieder zentrieren"
           }
         }
       }
@@ -4462,17 +4630,6 @@
         }
       }
     },
-    "Couldn't summarise that." : {
-      "comment" : "Summary failed",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zusammenfassen fehlgeschlagen."
-          }
-        }
-      }
-    },
     "Couldn't tag them." : {
       "comment" : "Tag people failed",
       "localizations" : {
@@ -4638,17 +4795,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ablehnen"
-          }
-        }
-      }
-    },
-    "Default visibility" : {
-      "comment" : "Settings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Standard-Sichtbarkeit"
           }
         }
       }
@@ -4981,17 +5127,6 @@
     },
     "Digest times" : {
       "comment" : "Settings section"
-    },
-    "Direct" : {
-      "comment" : "Visibility",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Direkt"
-          }
-        }
-      }
     },
     "Direct messages" : {
       "comment" : "Menu item\nSafety section\nScreen title\nSidebar item\nToolbar button",
@@ -5871,7 +6006,7 @@
       }
     },
     "Filtered words" : {
-      "comment" : "Screen title",
+      "comment" : "Screen title\nSettings item",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5893,7 +6028,7 @@
       }
     },
     "Filters" : {
-      "comment" : "Filters section\nSettings item",
+      "comment" : "Filters section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6191,23 +6326,12 @@
       }
     },
     "Followers" : {
-      "comment" : "Chart axis\nProfile stat\nScreen title\nStatistics stat",
+      "comment" : "Chart axis\nProfile stat\nScreen title\nStatistics stat\nVisibility",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Follower"
-          }
-        }
-      }
-    },
-    "Followers only" : {
-      "comment" : "Visibility",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur Follower"
           }
         }
       }
@@ -6622,7 +6746,7 @@
       }
     },
     "Hashtags" : {
-      "comment" : "Search results section\nStatistics section\nTrends filter",
+      "comment" : "Discover section\nSearch results section\nStatistics section\nTrends filter",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6791,20 +6915,6 @@
     },
     "Hold an activity" : {
       "comment" : "Activities hint title"
-    },
-    "Home" : {
-      "comment" : "Feed mode\nFilter context\nMenu item\nMode title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Startseite"
-          }
-        }
-      }
-    },
-    "Home feed" : {
-      "comment" : "Settings section"
     },
     "Hour" : {
       "comment" : "Trend period",
@@ -7308,17 +7418,6 @@
     },
     "Library" : {
       "comment" : "Sidebar section\nStory composer library chip"
-    },
-    "Licence" : {
-      "comment" : "Composer video field label\nComposer video field placeholder",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lizenz"
-          }
-        }
-      }
     },
     "Lift the silence" : {
       "comment" : "Moderation action",
@@ -7835,17 +7934,6 @@
       }
     },
     "Messages could not be loaded. Pull down to try again." : {},
-    "Migration" : {
-      "comment" : "Screen title\nSettings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Umzug"
-          }
-        }
-      }
-    },
     "Mira" : {
       "comment" : "Onboarding mock author"
     },
@@ -8168,7 +8256,7 @@
       }
     },
     "Muted" : {
-      "comment" : "Relationship badge",
+      "comment" : "Relationship badge\nSafety section",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8179,7 +8267,7 @@
       }
     },
     "Muted accounts" : {
-      "comment" : "Migration list\nSafety section",
+      "comment" : "Migration list",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8213,7 +8301,7 @@
       }
     },
     "My Feed" : {
-      "comment" : "Mode title\nShorts feed\nTimeline source",
+      "comment" : "Feed mode\nFilter context\nMenu item\nMode title\nSettings section\nShorts feed\nTimeline source",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9402,17 +9490,6 @@
         }
       }
     },
-    "Notifications" : {
-      "comment" : "Settings section",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen"
-          }
-        }
-      }
-    },
     "Notifications are grouped and delivered at these hours (local time). Direct messages and mentions from accounts you follow always come through immediately. Quiet hours override digest times." : {
       "comment" : "Digest times explanation"
     },
@@ -9956,17 +10033,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Originalton · %@"
-          }
-        }
-      }
-    },
-    "Packs" : {
-      "comment" : "Discover section",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pakete"
           }
         }
       }
@@ -10819,17 +10885,6 @@
         }
       }
     },
-    "Privacy & Safety" : {
-      "comment" : "Settings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datenschutz & Sicherheit"
-          }
-        }
-      }
-    },
     "Private conversation" : {
       "comment" : "Conversation header subtitle",
       "localizations" : {
@@ -10947,17 +11002,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffentliche Beiträge, die mit diesem Ort markiert sind, erscheinen hier."
-          }
-        }
-      }
-    },
-    "Public timelines" : {
-      "comment" : "Filter context",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffentliche Timelines"
           }
         }
       }
@@ -11540,17 +11584,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Antworten"
-          }
-        }
-      }
-    },
-    "Replies as comments in Files" : {
-      "comment" : "Settings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Antworten als Kommentare in Dateien"
           }
         }
       }
@@ -12574,9 +12607,6 @@
         }
       }
     },
-    "Show numbers" : {
-      "comment" : "Onboarding demo toggle\nPhotos menu setting\nSettings item"
-    },
     "Show original" : {
       "comment" : "Undo a translation shown in place",
       "localizations" : {
@@ -13067,7 +13097,7 @@
       }
     },
     "Starter packs" : {
-      "comment" : "Screen title",
+      "comment" : "Discover section\nScreen title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13262,17 +13292,6 @@
         }
       }
     },
-    "Summarise thread" : {
-      "comment" : "Thread action",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unterhaltung zusammenfassen"
-          }
-        }
-      }
-    },
     "Summary" : {
       "comment" : "Summary sheet title",
       "localizations" : {
@@ -13432,17 +13451,6 @@
     },
     "Tagged people could not be loaded. Please try again." : {},
     "Tagged posts could not be loaded. Please try again." : {},
-    "Tags" : {
-      "comment" : "Discover section",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tags"
-          }
-        }
-      }
-    },
     "tails" : {
       "comment" : "Coin flip result",
       "localizations" : {
@@ -13756,17 +13764,6 @@
     "That list could not be created. Try again." : {
       "comment" : "List create failure"
     },
-    "That post could not be cancelled. It will still go out." : {
-      "comment" : "Scheduled post cancel failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Beitrag konnte nicht abgesagt werden. Er wird trotzdem veröffentlicht."
-          }
-        }
-      }
-    },
     "That reaction didn't send." : {
       "comment" : "Story reaction failure",
       "localizations" : {
@@ -13835,17 +13832,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Video konnte nicht gelesen werden."
-          }
-        }
-      }
-    },
-    "The accent colour comes from your Nextcloud, so the app looks like the server it is signed in to." : {
-      "comment" : "Where the accent colour comes from",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Akzentfarbe kommt von deiner Nextcloud, damit die App so aussieht wie der Server, bei dem sie angemeldet ist."
           }
         }
       }
@@ -14154,17 +14140,6 @@
         }
       }
     },
-    "The title is what you see where a post was folded away, so make it something you will recognise." : {
-      "comment" : "Filter title explanation",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Den Titel siehst du dort, wo ein Beitrag eingeklappt wurde – wähle also etwas, das du wiedererkennst."
-          }
-        }
-      }
-    },
     "The video could not be imported. Please try again." : {},
     "The weekly recap setting could not be saved. Please try again." : {},
     "Their servers didn't answer this time." : {
@@ -14197,17 +14172,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dann"
-          }
-        }
-      }
-    },
-    "There is zero tolerance for objectionable content and abusive behaviour." : {
-      "comment" : "Terms rule",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für anstößige Inhalte und missbräuchliches Verhalten gilt null Toleranz."
           }
         }
       }
@@ -14412,7 +14376,7 @@
       }
     },
     "Timeline" : {
-      "comment" : "Menu title\nSettings section",
+      "comment" : "Menu title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15060,7 +15024,7 @@
       }
     },
     "Video" : {
-      "comment" : "Feed mode\nMode title\nStory composer media kind\nWatch screen title",
+      "comment" : "Story composer media kind\nWatch screen title",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15094,7 +15058,7 @@
       }
     },
     "Videos" : {
-      "comment" : "Discover section\nMode title\nProfile tab",
+      "comment" : "Discover section\nFeed mode\nMode title\nProfile tab",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15211,17 +15175,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Warte auf deinen Server …"
-          }
-        }
-      }
-    },
-    "Waiting to be looked at" : {
-      "comment" : "Held for review title\nScreen title\nSettings item",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wartet auf Prüfung"
           }
         }
       }
@@ -15640,7 +15593,7 @@
       }
     },
     "Who sees new posts" : {
-      "comment" : "Profile editing field",
+      "comment" : "Profile editing field\nSettings item",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16127,7 +16080,7 @@
     },
     "Your annual report could not be loaded. Please try again." : {},
     "Your Bluesky account" : {
-      "comment" : "Bluesky after a move picker",
+      "comment" : "Bluesky after a move picker\nScreen title\nSettings item",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16144,17 +16097,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Kanäle"
-          }
-        }
-      }
-    },
-    "Your colour" : {
-      "comment" : "Card background",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Farbe"
           }
         }
       }

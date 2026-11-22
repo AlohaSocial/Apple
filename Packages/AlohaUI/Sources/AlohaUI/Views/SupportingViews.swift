@@ -517,7 +517,7 @@ private struct QuietMockup: View {
                     Divider()
 
                     Toggle(isOn: $numbers) {
-                        Text("Show numbers", comment: "Onboarding demo toggle")
+                        Text("Show the numbers", comment: "Onboarding demo toggle")
                             .font(.caption)
                     }
                     .tint(palette.accent)

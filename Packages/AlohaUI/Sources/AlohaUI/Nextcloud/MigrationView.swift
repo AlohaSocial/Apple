@@ -101,7 +101,7 @@ public struct MigrationView: View {
         }
         .formStyle(.grouped)
         .alohaGround(palette)
-        .navigationTitle(Text("Migration", comment: "Screen title"))
+        .navigationTitle(Text("Moving your account", comment: "Screen title"))
         .fileImporter(
             isPresented: Binding(
                 get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),

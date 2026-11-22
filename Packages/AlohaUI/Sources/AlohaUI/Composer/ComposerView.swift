@@ -324,7 +324,7 @@ public struct ComposerView: View {
             // looked at it, and the person should hear that rather than watch
             // it vanish (the server's own rule for its review queue).
             .alert(
-                Text("Waiting to be looked at", comment: "Held for review title"),
+                Text("Waiting for review", comment: "Held for review title"),
                 isPresented: $isShowingHeldNotice
             ) {
                 Button {

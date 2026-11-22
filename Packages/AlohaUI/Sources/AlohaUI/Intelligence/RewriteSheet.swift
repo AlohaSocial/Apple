@@ -216,11 +216,11 @@ public struct SummarySheet: View {
                 return
             case .refused:
                 errorMessage = String(
-                    localized: "Apple Intelligence didn't want to summarise this.",
+                    localized: "Apple Intelligence didn't want to summarize this.",
                     comment: "Summary refused by the on-device model's guardrails")
             case .contextExceeded:
                 errorMessage = String(
-                    localized: "This is too long to summarise on this device.",
+                    localized: "This is too long to summarize on this device.",
                     comment: "Summary input exceeded the on-device model's context")
             case .unavailable:
                 errorMessage = String(
@@ -229,7 +229,7 @@ public struct SummarySheet: View {
             case let other:
                 errorMessage =
                     IntelligenceMessages.transient(other)
-                    ?? String(localized: "Couldn't summarise that.", comment: "Summary failed")
+                    ?? String(localized: "Couldn't summarize that.", comment: "Summary failed")
             }
         }
     }

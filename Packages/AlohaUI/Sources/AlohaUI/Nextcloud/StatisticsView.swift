@@ -731,8 +731,8 @@ public struct StatisticsView: View {
         switch key {
         case "public": Text("Public", comment: "Visibility")
         case "unlisted": Text("Unlisted", comment: "Visibility")
-        case "private", "followers": Text("Followers only", comment: "Visibility")
-        case "direct": Text("Direct", comment: "Visibility")
+        case "private", "followers": Text("Followers", comment: "Visibility")
+        case "direct": Text("Direct message", comment: "Visibility")
         default: Text(verbatim: key)
         }
     }

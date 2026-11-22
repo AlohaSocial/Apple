@@ -5,7 +5,7 @@ import AlohaModels
 import AlohaNetwork
 import SwiftUI
 
-/// "Waiting to be looked at": your own posts a moderator has not yet reviewed.
+/// "Waiting for review": your own posts a moderator has not yet reviewed.
 ///
 /// The one thing this screen must never do is lose what somebody wrote without
 /// telling them where it went — so the text is shown whole, and withdrawing
@@ -59,7 +59,7 @@ public struct HeldPostsView: View {
                     .listRowSeparator(.hidden)
             }
         }
-        .navigationTitle(Text("Waiting to be looked at", comment: "Screen title"))
+        .navigationTitle(Text("Waiting for review", comment: "Screen title"))
         .task { await load() }
         .alohaRefreshable { await load() }
         .alert(

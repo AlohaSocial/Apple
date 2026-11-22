@@ -26,8 +26,8 @@ import SwiftUI
                     Picker(selection: $model.visibility) {
                         Text("Public", comment: "Visibility").tag(Visibility.public)
                         Text("Unlisted", comment: "Visibility").tag(Visibility.unlisted)
-                        Text("Followers only", comment: "Visibility").tag(Visibility.private)
-                        Text("Direct", comment: "Visibility").tag(Visibility.direct)
+                        Text("Followers", comment: "Visibility").tag(Visibility.private)
+                        Text("Direct message", comment: "Visibility").tag(Visibility.direct)
                     } label: {
                         Text("Visibility", comment: "Composer picker")
                     }
@@ -57,8 +57,8 @@ import SwiftUI
             switch model.visibility {
             case .public: Text("Public", comment: "Visibility")
             case .unlisted: Text("Unlisted", comment: "Visibility")
-            case .private: Text("Followers only", comment: "Visibility")
-            case .direct: Text("Direct", comment: "Visibility")
+            case .private: Text("Followers", comment: "Visibility")
+            case .direct: Text("Direct message", comment: "Visibility")
             default: Text("Visibility", comment: "Composer picker")
             }
         }
