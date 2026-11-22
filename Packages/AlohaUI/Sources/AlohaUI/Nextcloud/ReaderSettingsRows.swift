@@ -143,7 +143,7 @@ struct BlueskySettingsRows: View {
                 }
                 NavigationLink(value: Route.blueskySettings) {
                     Label {
-                        Text("Bluesky", comment: "Settings item")
+                        Text("Your Bluesky account", comment: "Settings item")
                     } icon: {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                     }

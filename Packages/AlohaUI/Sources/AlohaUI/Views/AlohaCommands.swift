@@ -133,7 +133,7 @@ import SwiftUI
                 Button {
                     open(.timeline(.home()))
                 } label: {
-                    Text("Home", comment: "Menu item")
+                    Text("My Feed", comment: "Menu item")
                 }
                 .keyboardShortcut("h", modifiers: [.command, .shift])
 

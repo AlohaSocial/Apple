@@ -129,7 +129,7 @@ import XCTest
         // way a person reaches it, so a row that stops working fails here too.
 
         func testFiltersAreAccessible() throws {
-            XCTAssertTrue(app.openSettingsRow("Filters"), "Filters not reachable")
+            XCTAssertTrue(app.openSettingsRow("Filtered words"), "Filters not reachable")
             XCTAssertTrue(app.navigationBars["Filtered words"].waitForExistence(timeout: 8))
             try audit("Filters")
 

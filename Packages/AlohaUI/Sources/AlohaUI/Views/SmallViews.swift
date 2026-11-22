@@ -6,6 +6,8 @@ import AlohaNetwork
 import AlohaStore
 import SwiftUI
 
+/// Your drafts: a section of the Drafts tab on your own profile, and, opened
+/// from a composer, a list to pick one from.
 public struct DraftsView: View {
     @Environment(\.alohaPalette) private var palette
 
@@ -43,6 +45,60 @@ public struct DraftsView: View {
     }
 
     public var body: some View {
+        if onPick == nil { profileSection } else { pickerList }
+    }
+
+    /// The drafts inside the profile's own scroll view: a stack, not a
+    /// list, so it scrolls with the profile. Without a list's swipe, a
+    /// draft is deleted from its context menu.
+    private var profileSection: some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            if let errorMessage {
+                errorStrip(errorMessage)
+            }
+            ForEach(shownDrafts) { draft in
+                Button {
+                    Task { await reopen(draft) }
+                } label: {
+                    row(draft)
+                        .padding(.vertical, AlohaMetrics.space2)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(
+                    Text("Opens the draft in the composer", comment: "Drafts row hint")
+                )
+                .contextMenu { deleteButton(draft) }
+                .accessibilityActions { deleteButton(draft) }
+                Divider()
+            }
+            if shownDrafts.isEmpty && !isLoading && errorMessage == nil {
+                ProfileSectionNote(
+                    text: Text(
+                        "A post you close without sending is saved here.",
+                        comment: "Drafts explanation"))
+            } else if shownDrafts.isEmpty && isLoading {
+                SkeletonListRow(text: 2)
+            }
+        }
+        .task(id: DraftSync.shared.state(for: session.id).revision) { await load() }
+        .sheet(item: $reopening, onDismiss: reload) { draft in
+            ComposerView(session: session, draft: draft)
+        }
+    }
+
+    private func deleteButton(_ draft: DraftSnapshot) -> some View {
+        Button(role: .destructive) {
+            Task { await delete([draft]) }
+        } label: {
+            Label {
+                Text("Delete draft", comment: "Drafts row action")
+            } icon: {
+                Image(systemName: "trash")
+            }
+        }
+    }
+
+    private var pickerList: some View {
         List {
             if let errorMessage {
                 errorStrip(errorMessage)

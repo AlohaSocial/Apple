@@ -34,12 +34,12 @@
         }
       }
     },
-    "Cancelled." : {
+    "Canceled." : {
       "comment" : "Request cancelled",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Abgebrochen."
           }
         }

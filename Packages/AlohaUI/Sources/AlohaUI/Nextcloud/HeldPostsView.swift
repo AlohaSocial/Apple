@@ -5,7 +5,8 @@ import AlohaModels
 import AlohaNetwork
 import SwiftUI
 
-/// "Waiting to be looked at": your own posts a moderator has not yet reviewed.
+/// "Waiting for review": your own posts a moderator has not yet reviewed, a
+/// section of the Drafts tab on your own profile.
 ///
 /// The one thing this screen must never do is lose what somebody wrote without
 /// telling them where it went — so the text is shown whole, and withdrawing
@@ -27,41 +28,28 @@ public struct HeldPostsView: View {
     }
 
     public var body: some View {
-        List {
+        LazyVStack(alignment: .leading, spacing: 0) {
             if let errorMessage {
                 errorRow(errorMessage)
             }
 
             ForEach(held) { post in
                 row(post)
+                Divider()
             }
 
             if held.isEmpty && !isLoading && errorMessage == nil {
-                ContentUnavailableView {
-                    Text("Nothing of yours is waiting.", comment: "Empty held posts")
-                } description: {
-                    Text(
+                ProfileSectionNote(
+                    text: Text(
                         "When a moderator has to look at a post before it goes out, it waits here until they do.",
-                        comment: "Held posts explanation")
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(palette.background)
-            }
-        }
-        .listStyle(.plain)
-        .alohaGround(palette)
-        .overlay {
-            if isLoading && held.isEmpty {
+                        comment: "Held posts explanation"))
+            } else if held.isEmpty && isLoading {
                 // A first page arriving is a list in progress, not a blank
-                // screen with a spinner floating over it.
-                SkeletonListRow(text: 4)
-                    .listRowBackground(palette.background)
-                    .listRowSeparator(.hidden)
+                // space with a spinner floating in it.
+                SkeletonListRow(text: 2)
             }
         }
-        .navigationTitle(Text("Waiting to be looked at", comment: "Screen title"))
         .task { await load() }
-        .alohaRefreshable { await load() }
         .alert(
             Text("Withdraw this post?", comment: "Withdraw confirmation title"),
             isPresented: Binding(get: { withdrawing != nil }, set: { if !$0 { withdrawing = nil } })
@@ -140,8 +128,6 @@ public struct HeldPostsView: View {
             }
         }
         .padding(.vertical, AlohaMetrics.space2)
-        .listRowBackground(palette.background)
-        .listRowSeparator(.hidden)
     }
 
     private func errorRow(_ message: String) -> some View {
@@ -159,7 +145,6 @@ public struct HeldPostsView: View {
             .disabled(isLoading || pendingWithdrawal != nil)
         }
         .padding(.vertical, AlohaMetrics.space2)
-        .listRowBackground(palette.background)
     }
 
     private func load() async {

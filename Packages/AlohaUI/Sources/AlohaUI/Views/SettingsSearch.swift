@@ -22,10 +22,10 @@ enum SettingsSection: CaseIterable, Sendable {
         case .appearance: String(localized: "Appearance", comment: "Settings section")
         case .yourAccount: String(localized: "Your account", comment: "Settings section")
         case .feeds: String(localized: "Feeds", comment: "Settings section")
-        case .timeline: String(localized: "Timeline", comment: "Settings section")
+        case .timeline: String(localized: "My Feed", comment: "Settings section")
         case .nextcloud: String(localized: "Nextcloud", comment: "Settings section")
         case .media: String(localized: "Media", comment: "Settings section")
-        case .notifications: String(localized: "Notifications", comment: "Settings section")
+        case .notifications: String(localized: "When to tell you", comment: "Settings section")
         case .posting: String(localized: "Posting", comment: "Settings section")
         case .intelligence: String(localized: "Intelligence", comment: "Settings section")
         case .storage: String(localized: "Storage", comment: "Settings section")
@@ -112,7 +112,7 @@ enum SettingsSection: CaseIterable, Sendable {
         case .content:
             String(
                 localized:
-                    "content filter filters language translate translation mute block drafts scheduled held review waiting moderator memories recap looking back on this day",
+                    "content filter filters language translate translation mute block memories recap looking back on this day",
                 comment:
                     "Settings search keywords for the Content section, separated by spaces. Translate into the words people in your language would type."
             )

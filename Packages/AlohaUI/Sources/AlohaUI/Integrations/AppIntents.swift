@@ -366,8 +366,8 @@ public enum VisibilityAppEnum: String, AppEnum {
     public static let caseDisplayRepresentations: [VisibilityAppEnum: DisplayRepresentation] = [
         .public: "Public",
         .unlisted: "Unlisted",
-        .followers: "Followers only",
-        .direct: "Direct",
+        .followers: "Followers",
+        .direct: "Direct message",
     ]
 
     var modelValue: Visibility {
@@ -385,9 +385,9 @@ public enum FeedModeAppEnum: String, AppEnum {
 
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Feed")
     public static let caseDisplayRepresentations: [FeedModeAppEnum: DisplayRepresentation] = [
-        .home: "Home",
+        .home: "My Feed",
         .photos: "Photos",
-        .video: "Video",
+        .video: "Videos",
         .shorts: "Shorts",
     ]
 

@@ -200,7 +200,7 @@ public struct AltTextEditor: View {
                 .textSelection(.enabled)
 
             Text(
-                "Written from what this device recognised, not from looking at the photo. Check it before you use it.",
+                "Written from what this device recognized, not from looking at the photo. Check it before you use it.",
                 comment: "Alt text suggestion caveat"
             )
             .font(.caption)

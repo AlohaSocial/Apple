@@ -4,7 +4,8 @@ import XCTest
 
 #if os(iOS)
 
-    /// The screens added after the first tour was written: keyword filters,
+    /// The screens added after the first tour was written: your own profile's
+    /// Saved and Drafts tabs, keyword filters,
     /// "Your year", about-this-server, the moderator's three, the follow
     /// constellation, the composer's card row and the shortcut sheet.
     ///
@@ -33,10 +34,47 @@ import XCTest
             XCTAssertTrue(app.navigationTitle("My Feed").waitForExistence(timeout: 15))
         }
 
+        // MARK: - Your own profile
+
+        /// Saved, Drafts and Statistics are tabs of your own profile, as on
+        /// the web, and no longer rows of the account menu or Settings.
+        func testOwnProfileHasSavedAndDrafts() {
+            XCTAssertTrue(app.openFromAccountMenu("My profile"), "My profile not reachable")
+            for tab in ["Saved", "Drafts"] {
+                XCTAssertTrue(
+                    app.buttons[tab].firstMatch.waitForExistence(timeout: 10),
+                    "\(tab) tab missing from your own profile")
+            }
+            // The own-profile tabs come after the public ones and start off
+            // an iPhone's screen, so the strip is scrolled to them first.
+            reveal(app.buttons["Saved"].firstMatch).tap()
+            XCTAssertTrue(
+                app.buttons["Favorites"].firstMatch.waitForExistence(timeout: 5),
+                "Saved has no Favorites switch")
+            XCTAssertTrue(
+                app.buttons["Bookmarks"].firstMatch.exists, "Saved has no Bookmarks switch")
+            shoot("32-profile-saved")
+
+            reveal(app.buttons["Drafts"].firstMatch).tap()
+            XCTAssertTrue(
+                app.labelled("Scheduled posts").waitForExistence(timeout: 5),
+                "Drafts has no Scheduled posts section")
+            shoot("33-profile-drafts")
+        }
+
+        /// Swipes the profile's tab strip until `tab` can take a tap.
+        private func reveal(_ tab: XCUIElement) -> XCUIElement {
+            let strip = app.scrollViews["profile-tabs"].firstMatch
+            for _ in 0..<4 where !tab.isHittable && strip.exists { strip.swipeLeft() }
+            XCTAssertTrue(tab.isHittable, "\(tab.label) tab cannot be reached")
+            return tab
+        }
+
         // MARK: - Settings surfaces
 
         func testFiltersOpenAndEdit() {
-            XCTAssertTrue(app.openSettingsRow("Filters"), "Filters not reachable from Settings")
+            XCTAssertTrue(
+                app.openSettingsRow("Filtered words"), "Filters not reachable from Settings")
             XCTAssertTrue(
                 app.navigationBars["Filtered words"].waitForExistence(timeout: 8),
                 "Filters screen did not open")

@@ -127,7 +127,7 @@ enum WidgetPhotoSourceChoice: String, AppEnum {
         name: LocalizedStringResource("Photos from", comment: "Widget configuration type name"))
     static let caseDisplayRepresentations: [WidgetPhotoSourceChoice: DisplayRepresentation] = [
         .home: DisplayRepresentation(
-            title: LocalizedStringResource("Home", comment: "Photo frame source")),
+            title: LocalizedStringResource("My Feed", comment: "Photo frame source")),
         .hashtag: DisplayRepresentation(
             title: LocalizedStringResource("A hashtag", comment: "Photo frame source")),
         .person: DisplayRepresentation(

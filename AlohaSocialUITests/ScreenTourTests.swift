@@ -82,7 +82,7 @@ import XCTest
             XCTAssertTrue(more.exists, "Additional composer tools are not reachable")
             shoot("13-composer")
             more.tap()
-            let warning = app.buttons["Add a content warning"].firstMatch
+            let warning = app.buttons["Add content warning"].firstMatch
             XCTAssertTrue(warning.waitForExistence(timeout: 5))
             warning.tap()
             XCTAssertTrue(app.textFields["Content warning"].waitForExistence(timeout: 5))

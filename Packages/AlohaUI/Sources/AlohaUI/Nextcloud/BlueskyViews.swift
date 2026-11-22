@@ -349,7 +349,7 @@ public struct BlueskySettingsView: View {
                 session: session, kinds: ["bluesky_follows"], reload: importsReload)
         }
         .alohaGround(palette)
-        .navigationTitle(Text("Bluesky", comment: "Screen title"))
+        .navigationTitle(Text("Your Bluesky account", comment: "Screen title"))
         .overlay {
             if isLoading && identity == nil { SkeletonListRow(text: 3) }
         }

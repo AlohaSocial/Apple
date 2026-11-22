@@ -325,7 +325,7 @@ public struct SafetyListsView: View {
                 }
                 if blocked.isEmpty && !isLoading && errorMessage == nil { emptyRow }
             } header: {
-                Text("Blocked accounts", comment: "Safety section")
+                Text("Blocked", comment: "Safety section")
             }
 
             Section {
@@ -344,7 +344,7 @@ public struct SafetyListsView: View {
                 }
                 if muted.isEmpty && !isLoading && errorMessage == nil { emptyRow }
             } header: {
-                Text("Muted accounts", comment: "Safety section")
+                Text("Muted", comment: "Safety section")
             }
 
             Section {
@@ -383,7 +383,7 @@ public struct SafetyListsView: View {
                 }
                 if domains.isEmpty && !isLoading && errorMessage == nil { emptyRow }
             } header: {
-                Text("Blocked servers", comment: "Safety section")
+                Text("Hidden servers", comment: "Safety section")
             } footer: {
                 Text(
                     "Blocking a server hides everyone on it and removes your follows there.",
@@ -400,7 +400,7 @@ public struct SafetyListsView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(Text("Blocking", comment: "Screen title"))
+        .navigationTitle(Text("Blocked and muted", comment: "Screen title"))
         .task { await load() }
         .alohaRefreshable { await load() }
     }

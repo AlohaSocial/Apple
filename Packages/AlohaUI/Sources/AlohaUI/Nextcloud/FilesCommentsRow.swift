@@ -30,7 +30,7 @@ struct FilesCommentsRow: View {
                 ) {
                     VStack(alignment: .leading, spacing: 2) {
                         Label {
-                            Text("Replies as comments in Files", comment: "Settings item")
+                            Text("Show replies as comments in Files", comment: "Settings item")
                         } icon: {
                             Image(systemName: "text.bubble")
                         }

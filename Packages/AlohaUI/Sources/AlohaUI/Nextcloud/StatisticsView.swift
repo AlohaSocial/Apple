@@ -8,7 +8,8 @@ import SwiftUI
 
 /// Per-account statistics: what you posted, who answered, when, and in what
 /// language — over a window you choose. Everything is counted by your own
-/// server; nothing leaves it.
+/// server; nothing leaves it. The Statistics tab of your own profile, drawn
+/// inside the profile's scroll view, as on the web.
 public struct StatisticsView: View {
     @Environment(\.alohaPalette) private var palette
 
@@ -38,103 +39,95 @@ public struct StatisticsView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(palette.destructive)
-                }
-
-                if let statistics, loadedDays == days {
-                    hero(statistics)
-                    engagement(statistics)
-                    // The one number on the page somebody can act on the same
-                    // afternoon, so it sits near the top rather than last.
-                    altText(statistics)
-                    postsByMonth(statistics)
-                    engagementByMonth(statistics)
-                    activity(statistics)
-                    visibility(statistics)
-                    consistency(statistics)
-                    namedCounts(
-                        Text("Hashtags", comment: "Statistics section"), statistics.hashtags,
-                        prefix: "#")
-                    namedCounts(
-                        Text("Languages", comment: "Statistics section"), statistics.languages)
-                    namedCounts(
-                        Text("Sites you link to", comment: "Statistics section"), statistics.domains
-                    )
-                    bestPosts(statistics)
-                    partners(statistics)
-                    engagementSources(statistics)
-                    audience(statistics)
-                    reach(statistics)
-                } else if !isLoading && errorMessage == nil {
-                    ContentUnavailableView {
-                        Text("Nothing to count yet", comment: "Statistics empty")
-                    } description: {
-                        Text("Post something and come back.", comment: "Statistics empty detail")
-                    }
-                }
-            }
-            .padding(AlohaMetrics.space4)
-        }
-        .safeAreaBar(edge: .top, spacing: 0) {
-            AlohaGlassContainer(spacing: AlohaMetrics.space2) {
+        VStack(alignment: .leading, spacing: AlohaMetrics.space5) {
+            HStack(spacing: AlohaMetrics.space2) {
                 windowPicker
-                    .padding(.horizontal, AlohaMetrics.space4)
-                    .padding(.vertical, AlohaMetrics.space2)
-                    .alohaGlassEffect(
-                        .regular, in: RoundedRectangle(cornerRadius: AlohaMetrics.cornerMedium))
+                actionsMenu
             }
-        }
-        .background(palette.background)
-        .navigationTitle(Text("Statistics", comment: "Screen title"))
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button {
-                        Task { await load(fresh: true) }
-                    } label: {
-                        Label {
-                            Text("Count again", comment: "Statistics action")
-                        } icon: {
-                            Image(systemName: AlohaSymbol.refresh)
-                        }
-                    }
-                    .disabled(isLoading)
-                    Button {
-                        Task { await export() }
-                    } label: {
-                        Label {
-                            Text("Export as CSV", comment: "Statistics action")
-                        } icon: {
-                            Image(systemName: AlohaSymbol.share)
-                        }
-                    }
-                    .disabled(isExporting || isLoading)
-                } label: {
-                    Image(systemName: AlohaSymbol.more)
-                }
-                .accessibilityLabel(Text("More actions", comment: "Statistics action"))
-                .help(Text("More actions", comment: "Statistics action"))
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(palette.destructive)
             }
-        }
-        .overlay {
+
             if isLoading && (statistics == nil || loadedDays != days) {
                 // The shape of the page arriving: a hero block and a grid of
-                // tiles. A spinner over a blank screen reads as broken, where
+                // tiles. A spinner over a blank space reads as broken, where
                 // the shape of the answer reads as working.
                 statisticsSkeleton
+            } else if let statistics, loadedDays == days {
+                hero(statistics)
+                engagement(statistics)
+                // The one number on the page somebody can act on the same
+                // afternoon, so it sits near the top rather than last.
+                altText(statistics)
+                postsByMonth(statistics)
+                engagementByMonth(statistics)
+                activity(statistics)
+                visibility(statistics)
+                consistency(statistics)
+                namedCounts(
+                    Text("Hashtags", comment: "Statistics section"), statistics.hashtags,
+                    prefix: "#")
+                namedCounts(
+                    Text("Languages", comment: "Statistics section"), statistics.languages)
+                namedCounts(
+                    Text("Sites you link to", comment: "Statistics section"), statistics.domains
+                )
+                bestPosts(statistics)
+                partners(statistics)
+                engagementSources(statistics)
+                audience(statistics)
+                reach(statistics)
+            } else if !isLoading && errorMessage == nil {
+                ContentUnavailableView {
+                    Text("Nothing to count yet", comment: "Statistics empty")
+                } description: {
+                    Text("Post something and come back.", comment: "Statistics empty detail")
+                }
             }
         }
+        .padding(AlohaMetrics.space4)
         .sheet(item: Binding(get: { exportURL.map(ExportFile.init) }, set: { exportURL = $0?.url }))
         { file in
             ExportShareSheet(url: file.url)
         }
         .task(id: days) { await load() }
-        .alohaRefreshable { await load() }
+    }
+
+    /// What the screen's toolbar used to hold; the profile's toolbar is the
+    /// profile's, so the actions sit beside the window they count over.
+    private var actionsMenu: some View {
+        Menu {
+            Button {
+                Task { await load(fresh: true) }
+            } label: {
+                Label {
+                    Text("Count again", comment: "Statistics action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.refresh)
+                }
+            }
+            .disabled(isLoading)
+            Button {
+                Task { await export() }
+            } label: {
+                Label {
+                    Text("Export as CSV", comment: "Statistics action")
+                } icon: {
+                    Image(systemName: AlohaSymbol.share)
+                }
+            }
+            .disabled(isExporting || isLoading)
+        } label: {
+            Image(systemName: AlohaSymbol.more)
+                .frame(minWidth: 44, minHeight: 32)
+        }
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel(Text("More actions", comment: "Statistics action"))
+        .help(Text("More actions", comment: "Statistics action"))
     }
 
     // MARK: - Sections
@@ -644,7 +637,6 @@ public struct StatisticsView: View {
                 }
             }
         }
-        .padding(AlohaMetrics.space4)
         .accessibilityLabel(Text("Loading statistics", comment: "Statistics loading"))
     }
 
@@ -731,8 +723,8 @@ public struct StatisticsView: View {
         switch key {
         case "public": Text("Public", comment: "Visibility")
         case "unlisted": Text("Unlisted", comment: "Visibility")
-        case "private", "followers": Text("Followers only", comment: "Visibility")
-        case "direct": Text("Direct", comment: "Visibility")
+        case "private", "followers": Text("Followers", comment: "Visibility")
+        case "direct": Text("Direct message", comment: "Visibility")
         default: Text(verbatim: key)
         }
     }

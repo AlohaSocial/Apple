@@ -8,7 +8,7 @@ import SwiftUI
 
 /// Your archived posts: off the profile and out of every timeline, but not
 /// deleted and never federated as gone (Pixelfed's notion). Unarchive puts
-/// one back.
+/// one back. A section of the Drafts tab on your own profile.
 public struct ArchivedPostsView: View {
     @Environment(\.alohaPalette) private var palette
 
@@ -30,8 +30,11 @@ public struct ArchivedPostsView: View {
     /// The selected post (`statusListNavigation`).
     @State private var selectedID: String?
 
+    /// A stack in the profile's own scroll view rather than a list, so it
+    /// draws its own selection, and unarchiving is a button under the post
+    /// instead of a swipe.
     public var body: some View {
-        SelectableList(selection: $selectedID) {
+        LazyVStack(alignment: .leading, spacing: 0) {
             if let errorMessage {
                 errorRow(errorMessage)
             }
@@ -45,70 +48,55 @@ public struct ArchivedPostsView: View {
                     showsCounts: session.settings.showPopularityCounts,
                     onAction: onAction
                 )
-                // The swipe here is the list's own: unarchive.
-                .statusRowInteractions(status, session: session, swipes: false, onAction: onAction)
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .statusListRow(status.id, ground: palette.background)
-                .listRowSeparator(.hidden)
-                .swipeActions(edge: .trailing) {
-                    Button {
-                        Task { await unarchive(status) }
-                    } label: {
-                        Label {
-                            Text("Unarchive", comment: "Archived posts action")
-                        } icon: {
-                            Image(systemName: "tray.and.arrow.up")
-                        }
+                .statusListRow(status.id, ground: nil)
+                .statusRowInteractions(status, session: session, onAction: onAction)
+                unarchiveButton(status)
+                    .onAppear {
+                        if status.id == statuses.last?.id { Task { await loadMore() } }
                     }
-                    .tint(palette.accent)
-                    .disabled(isLoading || restoring.contains(status.id))
-                }
-                .onAppear {
-                    if status.id == statuses.last?.id { Task { await loadMore() } }
-                }
+                Divider()
             }
 
             if (isLoading && !statuses.isEmpty) || !restoring.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity)
-                    .listRowBackground(palette.background)
-                    .listRowSeparator(.hidden)
             }
 
             if statuses.isEmpty && !isLoading && restoring.isEmpty && errorMessage == nil {
-                ContentUnavailableView {
-                    Text("Nothing archived", comment: "Empty archived posts")
-                } description: {
-                    Text(
+                ProfileSectionNote(
+                    text: Text(
                         "Archiving takes a post off your profile without deleting it. Find it here to bring it back.",
-                        comment: "Archived posts explanation")
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(palette.background)
+                        comment: "Archived posts explanation"))
+            } else if statuses.isEmpty && isLoading {
+                SkeletonListRow(person: 2)
             }
         }
-        .listStyle(.plain)
         .statusListNavigation(
             selection: $selectedID, ids: statuses.map(\.id),
             status: { id in statuses.first { $0.id == id } }, onAction: onAction,
-            refresh: { await load() }
+            refresh: { await load() }, isNativeList: false
         )
-        .alohaGround(palette)
-        .overlay {
-            if isLoading && statuses.isEmpty {
-                // A first page arriving is a list in progress, not a blank
-                // screen with a spinner floating over it.
-                SkeletonListRow(person: 4)
-                    .listRowBackground(palette.background)
-                    .listRowSeparator(.hidden)
-            }
-        }
-        .navigationTitle(Text("Archived posts", comment: "Screen title"))
         .task { await load() }
         .onStatusesRemoved(for: session) { removal in
             statuses.removeAll { removal.removes($0) }
         }
-        .alohaRefreshable { await load() }
+    }
+
+    private func unarchiveButton(_ status: Status) -> some View {
+        Button {
+            Task { await unarchive(status) }
+        } label: {
+            Label {
+                Text("Unarchive", comment: "Archived posts action")
+            } icon: {
+                Image(systemName: "tray.and.arrow.up")
+            }
+            .font(.footnote.weight(.medium))
+        }
+        .buttonStyle(.bordered)
+        .tint(palette.accent)
+        .disabled(isLoading || restoring.contains(status.id))
+        .padding(.bottom, AlohaMetrics.space2)
     }
 
     private func errorRow(_ message: String) -> some View {
@@ -126,7 +114,6 @@ public struct ArchivedPostsView: View {
             .disabled(isLoading || !restoring.isEmpty)
         }
         .padding(.vertical, AlohaMetrics.space2)
-        .listRowBackground(palette.background)
     }
 
     private func load() async {

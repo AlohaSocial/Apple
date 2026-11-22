@@ -112,9 +112,9 @@ import XCTest
             #if os(iOS)
                 let accountItems = ["My profile", "Settings"]
             #else
+                // Favorites and Bookmarks are under Saved on My profile.
                 let accountItems = [
-                    "My profile", "Follow requests", "Favorites", "Bookmarks", "Blocking",
-                    "Settings",
+                    "My profile", "Follow requests", "Blocked and muted", "Settings",
                 ]
             #endif
             for item in accountItems {

@@ -335,8 +335,8 @@ public struct EditProfileView: View {
             Picker(selection: $privacy) {
                 Text("Public", comment: "Visibility").tag(Visibility.public)
                 Text("Unlisted", comment: "Visibility").tag(Visibility.unlisted)
-                Text("Followers only", comment: "Visibility").tag(Visibility.private)
-                Text("Direct", comment: "Visibility").tag(Visibility.direct)
+                Text("Followers", comment: "Visibility").tag(Visibility.private)
+                Text("Direct message", comment: "Visibility").tag(Visibility.direct)
             } label: {
                 Text("Who sees new posts", comment: "Profile editing field")
             }

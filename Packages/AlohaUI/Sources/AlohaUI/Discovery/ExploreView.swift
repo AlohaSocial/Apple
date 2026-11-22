@@ -147,10 +147,10 @@ public struct ExploreView: View {
     private func title(for section: Section) -> Text {
         switch section {
         case .people: Text("People", comment: "Discover section")
-        case .packs: Text("Packs", comment: "Discover section")
+        case .packs: Text("Starter packs", comment: "Discover section")
         case .pictures: Text("Photos", comment: "Discover section")
         case .videos: Text("Videos", comment: "Discover section")
-        case .hashtags: Text("Tags", comment: "Discover section")
+        case .hashtags: Text("Hashtags", comment: "Discover section")
         }
     }
 
