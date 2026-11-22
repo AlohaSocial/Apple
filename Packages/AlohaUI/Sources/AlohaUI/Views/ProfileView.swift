@@ -221,32 +221,45 @@ public struct ProfileView: View {
         }
     #endif
 
+    /// Your own profile has more tabs than an iPhone is wide, so the strip
+    /// scrolls, and keeps the selected tab in view: a deep link to Drafts
+    /// or Saved lands on a tab that would otherwise start off screen.
     private var tabBar: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: AlohaMetrics.space2) {
-                ForEach(availableTabs) { option in
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) { tab = option }
-                    } label: {
-                        title(for: option)
-                            .font(.subheadline.weight(tab == option ? .semibold : .regular))
-                            .foregroundStyle(tab == option ? palette.onAccent : palette.label)
-                            .padding(.horizontal, AlohaMetrics.space3)
-                            .frame(minHeight: 44)
-                            .contentShape(Capsule())
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: AlohaMetrics.space2) {
+                    ForEach(availableTabs) { option in
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) { tab = option }
+                        } label: {
+                            title(for: option)
+                                .font(.subheadline.weight(tab == option ? .semibold : .regular))
+                                .foregroundStyle(tab == option ? palette.onAccent : palette.label)
+                                .padding(.horizontal, AlohaMetrics.space3)
+                                .frame(minHeight: 44)
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .alohaGlassEffect(
+                            .regular.tint(tab == option ? palette.accent : nil).interactive(),
+                            in: Capsule()
+                        )
+                        .accessibilityAddTraits(
+                            tab == option ? [.isButton, .isSelected] : .isButton)
                     }
-                    .buttonStyle(.plain)
-                    .alohaGlassEffect(
-                        .regular.tint(tab == option ? palette.accent : nil).interactive(),
-                        in: Capsule()
-                    )
-                    .accessibilityAddTraits(tab == option ? [.isButton, .isSelected] : .isButton)
+                }
+                .padding(.horizontal, AlohaMetrics.space4)
+                .padding(.vertical, AlohaMetrics.space2)
+            }
+            .scrollIndicators(.hidden)
+            .accessibilityIdentifier("profile-tabs")
+            .onAppear { proxy.scrollTo(tab.id, anchor: .center) }
+            .onChange(of: tab) { _, selected in
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(selected.id, anchor: .center)
                 }
             }
-            .padding(.horizontal, AlohaMetrics.space4)
-            .padding(.vertical, AlohaMetrics.space2)
         }
-        .scrollIndicators(.hidden)
         .background(palette.background)
     }
 

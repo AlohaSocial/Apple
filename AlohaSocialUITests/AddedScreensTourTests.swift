@@ -45,7 +45,9 @@ import XCTest
                     app.buttons[tab].firstMatch.waitForExistence(timeout: 10),
                     "\(tab) tab missing from your own profile")
             }
-            app.buttons["Saved"].firstMatch.tap()
+            // The own-profile tabs come after the public ones and start off
+            // an iPhone's screen, so the strip is scrolled to them first.
+            reveal(app.buttons["Saved"].firstMatch).tap()
             XCTAssertTrue(
                 app.buttons["Favorites"].firstMatch.waitForExistence(timeout: 5),
                 "Saved has no Favorites switch")
@@ -53,11 +55,19 @@ import XCTest
                 app.buttons["Bookmarks"].firstMatch.exists, "Saved has no Bookmarks switch")
             shoot("32-profile-saved")
 
-            app.buttons["Drafts"].firstMatch.tap()
+            reveal(app.buttons["Drafts"].firstMatch).tap()
             XCTAssertTrue(
                 app.labelled("Scheduled posts").waitForExistence(timeout: 5),
                 "Drafts has no Scheduled posts section")
             shoot("33-profile-drafts")
+        }
+
+        /// Swipes the profile's tab strip until `tab` can take a tap.
+        private func reveal(_ tab: XCUIElement) -> XCUIElement {
+            let strip = app.scrollViews["profile-tabs"].firstMatch
+            for _ in 0..<4 where !tab.isHittable && strip.exists { strip.swipeLeft() }
+            XCTAssertTrue(tab.isHittable, "\(tab.label) tab cannot be reached")
+            return tab
         }
 
         // MARK: - Settings surfaces
