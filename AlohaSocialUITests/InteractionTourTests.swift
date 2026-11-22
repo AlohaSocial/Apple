@@ -358,7 +358,7 @@ import XCTest
             app.launch()
             let title = app.labelled("Which feeds do you want?")
             XCTAssertTrue(title.waitForExistence(timeout: 15))
-            for name in ["Photos", "Video", "Shorts"] {
+            for name in ["Photos", "Videos", "Shorts"] {
                 let choice = app.buttons.matching(
                     NSPredicate(format: "label BEGINSWITH %@", name + ",")
                 ).firstMatch

@@ -158,7 +158,7 @@ public struct ScheduledPostsView: View {
         errorMessage = StatusActions.failureMessage(
             lastError,
             fallback: String(
-                localized: "That post could not be cancelled. It will still go out.",
+                localized: "That post could not be canceled. It will still go out.",
                 comment: "Scheduled post cancel failure"))
     }
 

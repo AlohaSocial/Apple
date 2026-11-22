@@ -280,10 +280,10 @@ extension ThemedAppShell {
                 "scheduled", String(localized: "Scheduled posts", comment: "Settings item"),
                 "clock", .scheduledPosts)
             add(
-                "filters", String(localized: "Filters", comment: "Settings item"),
+                "filters", String(localized: "Filtered words", comment: "Settings item"),
                 "line.3.horizontal.decrease", .filters)
             add(
-                "blocking", String(localized: "Blocking", comment: "Account menu item"),
+                "blocking", String(localized: "Blocked and muted", comment: "Account menu item"),
                 "hand.raised", .safety)
             return items
         }

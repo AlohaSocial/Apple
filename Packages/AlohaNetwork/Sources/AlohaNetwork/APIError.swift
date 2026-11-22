@@ -260,7 +260,7 @@ extension APIError: LocalizedError {
             String(
                 localized: "Your server sent an unreadable reply.", comment: "Malformed response")
         case .cancelled:
-            String(localized: "Cancelled.", comment: "Request cancelled")
+            String(localized: "Canceled.", comment: "Request cancelled")
         }
     }
 

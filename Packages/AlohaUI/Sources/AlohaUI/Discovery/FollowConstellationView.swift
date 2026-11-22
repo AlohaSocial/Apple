@@ -107,7 +107,7 @@ public struct FollowConstellationView: View {
                 }
                 .buttonStyle(.bordered)
                 .padding(AlohaMetrics.space3)
-                .accessibilityLabel(Text("Centre again", comment: "Constellation action"))
+                .accessibilityLabel(Text("Center again", comment: "Constellation action"))
             }
         }
         .sheet(item: $selected) { suggestion in

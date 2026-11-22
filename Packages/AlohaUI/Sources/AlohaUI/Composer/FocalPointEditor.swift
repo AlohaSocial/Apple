@@ -82,7 +82,7 @@ struct FocalPointEditor: View {
                 Button {
                     withAnimation { point = .zero }
                 } label: {
-                    Text("Centre", comment: "Focal point reset")
+                    Text("Center", comment: "Focal point reset")
                 }
                 .disabled(point == .zero)
             }

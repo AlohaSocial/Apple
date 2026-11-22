@@ -53,7 +53,7 @@ struct AccountMenuButton: View {
                         item("Archived posts", symbol: "archivebox", route: .archived)
                         item("Statistics", symbol: "chart.bar.xaxis", route: .statistics)
                     }
-                    item("Blocking", symbol: "hand.raised", route: .safety)
+                    item("Blocked and muted", symbol: "hand.raised", route: .safety)
                 }
                 #if os(macOS)
                     // The Mac has a Settings window (⌘,), and settings that

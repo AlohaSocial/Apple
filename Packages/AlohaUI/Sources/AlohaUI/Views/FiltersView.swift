@@ -210,9 +210,10 @@ private struct FilterRow: View {
 enum FilterContextName {
     static func of(_ context: FilterContext) -> String {
         switch context {
-        case .home: String(localized: "Home", comment: "Filter context")
+        case .home: String(localized: "My Feed", comment: "Filter context")
         case .notifications: String(localized: "Activities", comment: "Filter context")
-        case .public: String(localized: "Public timelines", comment: "Filter context")
+        case .public:
+            String(localized: "Local, Global and hashtag timelines", comment: "Filter context")
         case .thread: String(localized: "Conversations", comment: "Filter context")
         case .account: String(localized: "Profiles", comment: "Filter context")
         case .unknownCase: ""
@@ -387,7 +388,7 @@ struct FilterEditorView: View {
                     }
                 } footer: {
                     Text(
-                        "The title is what you see where a post was folded away, so make it something you will recognise.",
+                        "The title is what you see where a post was folded away, so make it something you will recognize.",
                         comment: "Filter title explanation")
                 }
 
